@@ -15,20 +15,20 @@
 | wps_word_insert_text | 直达 | 在Word文档中插入文本。 |
 | wps_word_find_replace | 直达 | 在Word文档中查找并替换文本。 |
 | wps_word_insert_table | wps_call | 在Word文档光标位置插入表格 |
-| wps_word_set_paragraph | wps_call | 设置当前段落格式（对齐方式、行间距等） |
+| wps_word_set_paragraph | 直达 | 设置当前段落格式（对齐方式、行间距等） |
 | wps_word_get_active_document | 直达 | 获取当前WPS Writer活动文档的基本信息 |
 | wps_word_insert_image | wps_call | 在Word文档中插入图片。 |
 | wps_word_insert_page_break | wps_call | 在文档光标位置插入分页符 |
 | wps_word_set_font_style | wps_call | 设置选中文字的字体样式属性 |
 | wps_word_insert_comment | wps_call | 在Word文档选中内容处插入批注 |
 | wps_word_set_text_color | wps_call | 设置Word文档中选中文字的颜色 |
-| wps_word_get_paragraphs | wps_call | 获取Word文档的段落结构信息，返回每段的文本、样式和字符位置。 |
+| wps_word_get_paragraphs | 直达 | 获取Word文档的段落结构信息，返回每段的文本、样式和字符位置。 |
 | wps_word_find_in_document | wps_call | 在Word文档中查找文本并返回位置信息，不执行替换操作。 |
-| wps_word_smart_fill_field | wps_call | 智能填写Word模板中的字段。 |
+| wps_word_smart_fill_field | 直达 | 智能填写Word模板中的字段。 |
 | wps_word_replace_bookmark_content | wps_call | 替换Word文档中书签的内容。 |
 | wps_word_get_open_documents | wps_call | 获取当前WPS Writer中所有已打开的文档列表。 |
 | wps_word_switch_document | wps_call | 切换到指定名称的文档。 |
-| wps_word_open_document | wps_call | 打开指定路径的Word文档。 |
+| wps_word_open_document | 直达 | 打开指定路径的Word文档。 |
 | wps_word_get_document_text | 直达 | 获取当前Word文档的文本内容。 |
 | wps_word_insert_header | wps_call | 设置页眉内容。 |
 | wps_word_insert_footer | wps_call | 设置页脚内容。 |

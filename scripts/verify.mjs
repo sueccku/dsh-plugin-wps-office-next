@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process";
 
 const entry = process.argv[2] || "mcp/dist/index.js";
-const BUDGET = { maxTools: 40, maxSchemaBytes: 22000 };
+const BUDGET = { maxTools: 45, maxSchemaBytes: 25000 };
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";

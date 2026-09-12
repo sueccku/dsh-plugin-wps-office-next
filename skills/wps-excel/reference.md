@@ -18,7 +18,7 @@
 | wps_excel_clean_data | wps_call | 数据清洗工具，支持多种清洗操作的组合。 |
 | wps_excel_remove_duplicates | wps_call | 删除指定范围内的重复行。 |
 | wps_excel_sort_range | wps_call | 对Excel选定区域按指定列排序。 |
-| wps_excel_find_replace | wps_call | 在Excel中查找并替换内容。 |
+| wps_excel_find_replace | 直达 | 在Excel中查找并替换内容。 |
 | wps_excel_insert_row | wps_call | 在Excel中插入行。 |
 | wps_excel_add_comment | wps_call | 给单元格添加批注。 |
 | wps_excel_protect_sheet | wps_call | 保护或取消保护工作表。 |
@@ -50,7 +50,7 @@
 | wps_excel_set_cell_format | 直达 | 设置Excel单元格格式，包括字体、颜色、背景色、粗体、斜体、字号等。 |
 | wps_excel_set_cell_style | wps_call | 应用预定义样式到Excel单元格，如标题、强调、输入、输出等内置样式。 |
 | wps_excel_set_border | wps_call | 设置Excel单元格边框样式，支持不同粗细、位置和颜色。 |
-| wps_excel_set_number_format | wps_call | 设置Excel单元格的数字格式。 |
+| wps_excel_set_number_format | 直达 | 设置Excel单元格的数字格式。 |
 | wps_excel_merge_cells | wps_call | 合并Excel指定范围的单元格。 |
 | wps_excel_unmerge_cells | wps_call | 拆分Excel中已合并的单元格，恢复为独立的单元格。 |
 | wps_excel_set_column_width | wps_call | 设置Excel指定列的列宽。 |
@@ -58,7 +58,7 @@
 | wps_excel_hide_row | wps_call | 隐藏或显示Excel指定行。 |
 | wps_excel_set_data_validation | wps_call | 设置Excel单元格的数据验证规则，如下拉列表、数值范围、日期范围等。 |
 | wps_excel_open_workbook | 直达 | 打开指定路径的Excel工作簿文件。 |
-| wps_excel_get_open_workbooks | wps_call | 获取当前所有已打开的Excel工作簿列表。 |
+| wps_excel_get_open_workbooks | 直达 | 获取当前所有已打开的Excel工作簿列表。 |
 | wps_excel_switch_workbook | wps_call | 切换到指定名称的Excel工作簿。 |
 | wps_excel_close_workbook | wps_call | 关闭指定的Excel工作簿，可选是否保存。 |
 | wps_excel_create_workbook | wps_call | 新建一个空白Excel工作簿。 |

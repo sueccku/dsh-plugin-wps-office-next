@@ -41,7 +41,7 @@ tools/list 收敛为三档，由 WPS_OFFICE_TOOLSET 切换（默认 standard）�
 | 档位 | 工具数 | schema 字节 | 约 tokens | 内容 |
 |---|---|---|---|---|
 | minimal | 4 | 1,348 | 385 | 仅门面 |
-| standard（默认） | 31 | 17,797 | 5,085 | 4 门面 + 27 精选，较基线降 87.5% |
+| standard（默认） | 43 | 23,198 | 6,628 | 4 门面 + 39 精选，较基线降 83.6% |
 | full | 254 | 143,217 | 40,919 | 全量，保留完整描述 |
 
 未广告的工具仍然完全可用，两条路都能走：按全名直接调用，或先查后调：
@@ -88,7 +88,7 @@ tools/list 收敛为三档，由 WPS_OFFICE_TOOLSET 切换（默认 standard）�
 | 目标环境 | WPS 12.1+ x64；不兼容 x86，不兼容多组件模式 |
 | 形态 | 单一 npm 包 = DSH bundle + 自带 MCP server + 自带 COM host + 全部 skills |
 | MCP serverName | wps-office-next |
-| 默认工具面 | standard 档 31 个工具；预算上限 40 工具 / 22,000 字节 |
+| 默认工具面 | standard 档 43 个工具；预算上限 45 工具 / 25,000 字节 |
 | 传输层 | 常驻 PowerShell STA 宿主，复用上游 248 个 COM action |
 | 加载项 | 全部删除；Windows COM 路径不依赖任何 WPS 加载项 |
 | 构建产物 | 预构建产物入库，保证安装后开箱可用 |
@@ -96,7 +96,7 @@ tools/list 收敛为三档，由 WPS_OFFICE_TOOLSET 切换（默认 standard）�
 
 ## 提交身份
 
-本仓当前使用占位提交身份 wps-dsh-dev <wps-dsh-dev@localhost>，首次推送前需替换为真实身份。
+提交身份为 sueccku <1075322047@qq.com>。
 
 ## 许可与来源
 

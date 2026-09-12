@@ -26,16 +26,16 @@
 | wps_ppt_add_textbox | 直达 | 在幻灯片中添加文本框。 |
 | wps_ppt_set_slide_title | 直达 | 设置幻灯片的标题文本。 |
 | wps_ppt_insert_image | wps_call | 在幻灯片中插入图片。 |
-| wps_ppt_set_shape_text | wps_call | 设置幻灯片中指定形状的文字内容。 |
+| wps_ppt_set_shape_text | 直达 | 设置幻灯片中指定形状的文字内容。 |
 | wps_ppt_set_animation | wps_call | 设置幻灯片中指定元素的动画效果。 |
 | wps_ppt_set_background | wps_call | 设置幻灯片的背景颜色或背景图片。 |
 | wps_ppt_set_slide_size | wps_call | 设置演示文稿的幻灯片尺寸。 |
 | wps_ppt_set_transition | wps_call | 设置幻灯片切换效果。 |
 | wps_ppt_add_chart | wps_call | 在幻灯片中插入图表。 |
-| wps_ppt_set_shape_fill | wps_call | 设置幻灯片中指定形状的填充颜色。 |
+| wps_ppt_set_shape_fill | 直达 | 设置幻灯片中指定形状的填充颜色。 |
 | wps_ppt_add_speaker_notes | wps_call | 添加或追加演讲者备注到指定幻灯片。 |
 | wps_ppt_create_presentation | wps_call | 新建空白演示文稿。 |
-| wps_ppt_open_presentation | wps_call | 打开指定路径的演示文稿文件。 |
+| wps_ppt_open_presentation | 直达 | 打开指定路径的演示文稿文件。 |
 | wps_ppt_close_presentation | wps_call | 关闭演示文稿。 |
 | wps_ppt_get_open_presentations | wps_call | 获取当前所有已打开的演示文稿列表。 |
 | wps_ppt_switch_presentation | wps_call | 切换到指定名称的演示文稿。 |
@@ -72,7 +72,7 @@
 | wps_ppt_insert_ppt_image | 直达 | 插入图片到幻灯片中。 |
 | wps_ppt_delete_ppt_image | wps_call | 删除幻灯片中指定的图片。 |
 | wps_ppt_set_image_style | wps_call | 设置幻灯片中指定图片的样式。 |
-| wps_ppt_export_slide_as_image | wps_call | 将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。 |
+| wps_ppt_export_slide_as_image | 直达 | 将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。 |
 | wps_ppt_replace_ppt_image | wps_call | 原位替换幻灯片中的某张图片：保留原图的位置、尺寸、旋转角度，删除旧图后在同一矩形内插入新图。 |
 | wps_ppt_add_animation | wps_call | 为幻灯片中的形状添加动画效果。 |
 | wps_ppt_remove_animation | wps_call | 移除幻灯片中指定的动画效果。 |
@@ -108,7 +108,7 @@
 | wps_ppt_auto_layout | wps_call | 自动调整幻灯片中所有元素的布局。 |
 | wps_ppt_smart_distribute | wps_call | 将指定形状进行等距分布排列。 |
 | wps_ppt_create_grid | wps_call | 在幻灯片中创建网格布局。 |
-| wps_ppt_insert_table | wps_call | 在幻灯片中插入表格。 |
+| wps_ppt_insert_table | 直达 | 在幻灯片中插入表格。 |
 | wps_ppt_set_table_cell | wps_call | 设置PPT表格中指定单元格的文本内容。 |
 | wps_ppt_get_table_cell | wps_call | 获取PPT表格中指定单元格的文本内容。 |
 | wps_ppt_set_table_style | wps_call | 设置PPT表格的整体样式。 |

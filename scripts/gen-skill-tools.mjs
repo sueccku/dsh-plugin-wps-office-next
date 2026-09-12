@@ -4,6 +4,7 @@
 // including the ones only reachable through wps_call.
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
+import { createRequire } from "node:module";
 
 const entry = process.argv[2] || "mcp/dist/index.js";
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true, env: { ...process.env, WPS_OFFICE_TOOLSET: "full" } });
@@ -19,17 +20,10 @@ send({ jsonrpc: "2.0", method: "notifications/initialized" });
 const res = await req(2, "tools/list", {});
 const tools = (res.result && res.result.tools) || [];
 
-// The shipped advertised surface for standard mode, read from the same module the server uses.
-const standard = new Set([
-  "wps_status", "wps_help", "wps_call", "wps_batch",
-  "wps_excel_get_sheet_list", "wps_excel_read_range", "wps_excel_write_range", "wps_excel_set_cell_format",
-  "wps_excel_set_formula", "wps_excel_create_chart", "wps_excel_create_pivot_table", "wps_excel_open_workbook",
-  "wps_word_get_active_document", "wps_word_get_document_text", "wps_word_insert_text", "wps_word_find_replace",
-  "wps_word_apply_style", "wps_word_set_font", "wps_word_generate_toc",
-  "wps_ppt_get_slide_count", "wps_ppt_get_slide_info", "wps_ppt_get_shapes", "wps_ppt_add_slide",
-  "wps_ppt_set_slide_title", "wps_ppt_set_slide_content", "wps_ppt_add_textbox", "wps_ppt_insert_ppt_image",
-  "wps_common_save", "wps_common_save_as", "wps_convert_to_pdf", "wps_convert_format"
-]);
+// The advertised surface comes from the same module the server uses, so it cannot drift.
+const require = createRequire(import.meta.url);
+const toolset = require("../mcp/dist/server/toolset.js");
+const standard = new Set([...(toolset.FACADE_TOOLS || []), ...(toolset.STANDARD_TOOLS || [])]);;
 
 function firstSentence(text, max) {
   const flat = (text || "").replace(/\s+/g, " ").trim();
