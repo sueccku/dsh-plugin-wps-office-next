@@ -2557,6 +2557,8 @@ return }
         $pres = if ($p.name) { $ppt.Presentations.Item($p.name) } else { $ppt.ActivePresentation }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No presentation" }; return }
         $name = $pres.Name
+        $saveChanges = if ($null -ne $p.saveChanges) { [bool]$p.saveChanges } else { $true }
+        if (-not $saveChanges) { $pres.Saved = $true }
         $pres.Close()
         Output-Json @{ success = $true; data = @{ closed = $name } }
     }
@@ -4908,6 +4910,170 @@ return }
         Output-Json @{ success = $true; data = @{ style = $p.style; count = $count } }
     }
 
+    # ==================== dsh-plugin-wps-office-next additions ====================
+    # These 10 actions were referenced by upstream tools but never implemented here, so
+    # those tools always answered "Unknown action" on Windows.
+
+    "setZoom" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        $percent = [int]$p.percent
+        if ($percent -lt 10 -or $percent -gt 400) { Output-Json @{ success = $false; error = "percent must be between 10 and 400" }; return }
+        try {
+            if ($null -ne $p.sheet) { $wb.Sheets.Item($p.sheet).Activate() | Out-Null }
+            $excel.ActiveWindow.Zoom = $percent
+            Output-Json @{ success = $true; data = @{ zoom = $excel.ActiveWindow.Zoom } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setLineSpacing" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $multiple = [double]$p.lineSpacing
+        if ($multiple -le 0) { Output-Json @{ success = $false; error = "lineSpacing must be greater than 0" }; return }
+        try {
+            if ($null -ne $p.paragraphIndex) {
+                $index = [int]$p.paragraphIndex + 1
+                if ($index -lt 1 -or $index -gt $doc.Paragraphs.Count) { Output-Json @{ success = $false; error = "paragraphIndex out of range" }; return }
+                $paras = @($doc.Paragraphs.Item($index))
+            } else {
+                $paras = @($doc.Paragraphs)
+            }
+            foreach ($para in $paras) {
+                $para.Format.LineSpacingRule = 5
+                $para.Format.LineSpacing = $multiple * 12
+            }
+            Output-Json @{ success = $true; data = @{ lineSpacing = $multiple; applied = $paras.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "autoSum" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        $sheet = if ($null -ne $p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        try {
+            $target = $sheet.Range([string]$p.targetCell)
+            $target.Formula = "=SUM(" + [string]$p.range + ")"
+            Output-Json @{ success = $true; data = @{ targetCell = [string]$p.targetCell; formula = $target.Formula; value = $target.Value2 } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "evaluateFormula" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $formula = [string]$p.formula
+        if (-not $formula.StartsWith('=')) { $formula = '=' + $formula }
+        try {
+            $result = $excel.Evaluate($formula)
+            Output-Json @{ success = $true; data = @{ formula = $formula; result = $result; method = 'application-evaluate' } }
+        } catch {
+            try {
+                $wb = $excel.ActiveWorkbook
+                if ($null -eq $wb) { throw }
+                $probe = $excel.ActiveSheet.Range('XFD1048576')
+                $probe.Formula = $formula
+                $value = $probe.Value2
+                $probe.ClearContents() | Out-Null
+                Output-Json @{ success = $true; data = @{ formula = $formula; result = $value; method = 'scratch-cell' } }
+            } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+        }
+    }
+
+    "setSlideTheme" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        $theme = [string]$p.theme
+        if (-not $theme) { Output-Json @{ success = $false; error = "theme must be a template path" }; return }
+        if (-not (Test-Path $theme)) {
+            Output-Json @{ success = $false; error = ("theme must be an existing .thmx/.potx/.pptx template path; not found: " + $theme) }
+return }
+        try {
+            $pres.ApplyTemplate($theme) | Out-Null
+            Output-Json @{ success = $true; data = @{ applied = $theme } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setSlideSize" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        try {
+            $ps = $pres.PageSetup
+            if ($null -ne $p.width) { $ps.SlideWidth = [double]$p.width * 0.75 }
+            if ($null -ne $p.height) { $ps.SlideHeight = [double]$p.height * 0.75 }
+            Output-Json @{ success = $true; data = @{ slideWidth = $ps.SlideWidth; slideHeight = $ps.SlideHeight; requestedPixels = @{ width = $p.width; height = $p.height } } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setShapeFill" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        $color = Convert-HexColorToRgbInt([string]$p.color)
+        if ($null -eq $color) { Output-Json @{ success = $false; error = "color must be a hex value such as #FF0000" }; return }
+        try {
+            $slide = $pres.Slides.Item([int]$p.slideIndex)
+            $shape = $slide.Shapes.Item([int]$p.shapeIndex)
+            $shape.Fill.Visible = -1
+            $shape.Fill.Solid() | Out-Null
+            $shape.Fill.ForeColor.RGB = $color
+            Output-Json @{ success = $true; data = @{ shape = $shape.Name; color = [string]$p.color } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setFontColor" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        $color = Convert-HexColorToRgbInt([string]$p.color)
+        if ($null -eq $color) { Output-Json @{ success = $false; error = "color must be a hex value such as #FF0000" }; return }
+        try {
+            $slide = $pres.Slides.Item([int]$p.slideIndex)
+            $shape = $slide.Shapes.Item([int]$p.shapeIndex)
+            $shape.TextFrame.TextRange.Font.Color.RGB = $color
+            Output-Json @{ success = $true; data = @{ shape = $shape.Name; color = [string]$p.color } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setTextColor" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $color = Convert-HexColorToRgbInt([string]$p.color)
+        if ($null -eq $color) {
+            $nameMap = @{ black = '000000'; white = 'FFFFFF'; red = 'FF0000'; green = '00B050'; blue = '0000FF'; yellow = 'FFFF00'; orange = 'FFA500'; purple = '800080'; gray = '808080'; grey = '808080'; pink = 'FFC0CB'; brown = '8B4513' }
+            $key = ([string]$p.color).Trim().ToLower()
+            if ($nameMap.ContainsKey($key)) { $color = Convert-HexColorToRgbInt($nameMap[$key]) }
+        }
+        if ($null -eq $color) { Output-Json @{ success = $false; error = "color must be a hex value such as #FF0000 or a known color name" }; return }
+        try {
+            $range = if ($p.range -eq 'all') { $word.ActiveDocument.Content } else { $word.Selection.Range }
+            $range.Font.Color = $color
+            Output-Json @{ success = $true; data = @{ color = [string]$p.color } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "insertSectionBreak" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $breakMap = @{ nextPage = 2; continuous = 3; evenPage = 4; oddPage = 5 }
+        $requested = 'nextPage'
+        if ($p.breakType) { $requested = [string]$p.breakType }
+        $breakType = $breakMap[$requested]
+        if ($null -eq $breakType) { Output-Json @{ success = $false; error = "breakType must be nextPage, continuous, evenPage or oddPage" }; return }
+        try {
+            $word.Selection.InsertBreak($breakType)
+            Output-Json @{ success = $true; data = @{ breakType = $requested; sections = $doc.Sections.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
     default {
         Output-Json @{ success = $false; error = "Unknown action: $Action" }
     }

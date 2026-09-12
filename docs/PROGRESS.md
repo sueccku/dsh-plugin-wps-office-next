@@ -9,7 +9,7 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 | P2 常驻 COM host | 完成 | warm ping 1ms（原 969ms）；test/com-host.test.mjs 6/6 |
 | P3 工具面收敛 | 完成 | standard 43 工具 / 23,198 字节 / 约 6.6k tokens；scripts/verify.mjs 22/22 |
 | 最小技能集 + DSH 自举 | 完成 | plugin.js + cordis.patch.yml；4 个技能；test/plugin.test.mjs 32/32；真实 profile 启动验证通过 |
-| P4 缺陷修复 | 未开始 | 24 条缺陷清单待处理 |
+| P4 缺陷修复 | 进行中 | 已修：11 个永久失败的工具（含 standard 档里的 set_shape_fill）、closePresentation 放弃更改；证据 node test/new-actions.test.mjs 28/28 |
 | P5 全量技能打磨 | 未开始 | 当前为最小技能集 |
 
 ## DSH 端到端验证（真实 profile，非模拟）
@@ -50,3 +50,20 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 - P4：按 baseline/known-defects.md 修复 24 条缺陷，重点是 50 处静默 catch 与结果形状统一。
 - P5：把最小技能集扩展为全量技能，并把工具目录生成接入 CI 防漂移。
 - 分发：提交身份已设为 sueccku；gh 2.100.0 已装并完成登录，仓库已推送。
+## P4 修复进度
+
+已修完（详见 docs/FIXES.md）：
+
+1. 11 个工具在 Windows 上永久失败——上游引用了 10 个桥里根本不存在的 action。
+   已全部实现并在真实 WPS 上逐项回读验证；其中 wps_ppt_set_shape_fill 原本就在
+   standard 档里被广告，属于用户直接可见的坏功能。
+2. closePresentation 在 saveChanges=false 时丢弃修改会弹保存框，已修。
+
+待修（本节列的其余项）：
+
+- 合并 21 处重复工具
+- 参数校验只检查 required，写错参数名静默忽略
+- Excel 逐格循环读改批量，并处理二维数组编组
+- 统一结果形状、消灭 50 处静默 catch
+- 文档与代码不一致（auto_fit 声明但不存在；tools/index.ts 计数有误）
+- 高层场景封装（KPI 卡片/时间线/流程图等）从工具层下沉到技能层
