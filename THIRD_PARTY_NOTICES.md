@@ -21,4 +21,9 @@ It is not affiliated with, endorsed by, or maintained by their authors.
 - Ingested into this repository: the DeepSeek Harness bundle layout
   (`cordis.patch.yml`, skill registration module, doctor script).
 
-Both upstream licenses are reproduced in full in `LICENSES/`.
+Both upstream MIT license texts are reproduced verbatim in `LICENSES/`:
+
+- `LICENSES/lc2panda-wps-skills.txt`
+- `LICENSES/CatNebulaaaa-wps-dsh-plugin.txt`
+
+This repository's own license is in `LICENSE`.

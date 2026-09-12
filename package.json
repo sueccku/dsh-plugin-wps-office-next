@@ -16,6 +16,7 @@
     "mcp",
     "host",
     "scripts",
+    "LICENSES",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
@@ -43,5 +44,23 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
-  }
+  },
+  "author": "sueccku",
+  "homepage": "https://github.com/sueccku/dsh-plugin-wps-office-next#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sueccku/dsh-plugin-wps-office-next.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sueccku/dsh-plugin-wps-office-next/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "wps-office",
+    "mcp",
+    "com",
+    "windows",
+    "agent-skill"
+  ]
 }
