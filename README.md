@@ -96,7 +96,7 @@ tools/list 收敛为三档，由 WPS_OFFICE_TOOLSET 切换（默认 standard）�
 
 ## 提交身份
 
-提交身份为 sueccku <1075322047@qq.com>。
+提交身份为 sueccku（见 git log）。
 
 ## 许可与来源
 
