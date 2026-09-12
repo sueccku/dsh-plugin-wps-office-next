@@ -1,0 +1,3 @@
+# Windows-only repository: never rewrite line endings or strip BOMs.
+# mcp/scripts/wps-com.ps1 carries a UTF-8 BOM that Windows PowerShell 5.1 depends on.
+* -text
