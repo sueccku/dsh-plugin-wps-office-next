@@ -1,0 +1,986 @@
+{
+  "generatedFrom": "D:\\dsh\\wps-skills\\wps-office-mcp\\scripts\\wps-com.ps1",
+  "count": 245,
+  "actions": [
+    {
+      "line": 264,
+      "action": "ping"
+    },
+    {
+      "line": 268,
+      "action": "wireCheck"
+    },
+    {
+      "line": 272,
+      "action": "getAppInfo"
+    },
+    {
+      "line": 297,
+      "action": "getSelectedText"
+    },
+    {
+      "line": 337,
+      "action": "setSelectedText"
+    },
+    {
+      "line": 378,
+      "action": "save"
+    },
+    {
+      "line": 400,
+      "action": "saveAs"
+    },
+    {
+      "line": 434,
+      "action": "openFile"
+    },
+    {
+      "line": 462,
+      "action": "createDocument"
+    },
+    {
+      "line": 469,
+      "action": "createPresentation"
+    },
+    {
+      "line": 476,
+      "action": "convertToPDF"
+    },
+    {
+      "line": 507,
+      "action": "convertFormat"
+    },
+    {
+      "line": 544,
+      "action": "getActiveWorkbook"
+    },
+    {
+      "line": 554,
+      "action": "getCellValue"
+    },
+    {
+      "line": 564,
+      "action": "setCellValue"
+    },
+    {
+      "line": 573,
+      "action": "getRangeData"
+    },
+    {
+      "line": 588,
+      "action": "setRangeData"
+    },
+    {
+      "line": 600,
+      "action": "diagnoseFormula"
+    },
+    {
+      "line": 635,
+      "action": "cleanData"
+    },
+    {
+      "line": 687,
+      "action": "createPivotTable"
+    },
+    {
+      "line": 727,
+      "action": "updatePivotTable"
+    },
+    {
+      "line": 808,
+      "action": "setFormula"
+    },
+    {
+      "line": 818,
+      "action": "setCellFormat"
+    },
+    {
+      "line": 827,
+      "action": "setCellStyle"
+    },
+    {
+      "line": 864,
+      "action": "setBorder"
+    },
+    {
+      "line": 895,
+      "action": "copyFormat"
+    },
+    {
+      "line": 907,
+      "action": "clearFormats"
+    },
+    {
+      "line": 916,
+      "action": "addConditionalFormat"
+    },
+    {
+      "line": 946,
+      "action": "removeConditionalFormat"
+    },
+    {
+      "line": 959,
+      "action": "getConditionalFormats"
+    },
+    {
+      "line": 973,
+      "action": "addDataValidation"
+    },
+    {
+      "line": 1007,
+      "action": "removeDataValidation"
+    },
+    {
+      "line": 1016,
+      "action": "getDataValidations"
+    },
+    {
+      "line": 1025,
+      "action": "getFormula"
+    },
+    {
+      "line": 1036,
+      "action": "setArrayFormula"
+    },
+    {
+      "line": 1045,
+      "action": "getCellInfo"
+    },
+    {
+      "line": 1060,
+      "action": "refreshLinks"
+    },
+    {
+      "line": 1076,
+      "action": "consolidate"
+    },
+    {
+      "line": 1088,
+      "action": "calculateSheet"
+    },
+    {
+      "line": 1102,
+      "action": "getExcelContext"
+    },
+    {
+      "line": 1123,
+      "action": "getContext"
+    },
+    {
+      "line": 1144,
+      "action": "sortRange"
+    },
+    {
+      "line": 1155,
+      "action": "autoFilter"
+    },
+    {
+      "line": 1168,
+      "action": "createChart"
+    },
+    {
+      "line": 1193,
+      "action": "updateChart"
+    },
+    {
+      "line": 1252,
+      "action": "exportChartAsImage"
+    },
+    {
+      "line": 1268,
+      "action": "exportRangeAsImage"
+    },
+    {
+      "line": 1296,
+      "action": "removeDuplicates"
+    },
+    {
+      "line": 1320,
+      "action": "createSheet"
+    },
+    {
+      "line": 1330,
+      "action": "deleteSheet"
+    },
+    {
+      "line": 1343,
+      "action": "renameSheet"
+    },
+    {
+      "line": 1354,
+      "action": "copySheet"
+    },
+    {
+      "line": 1370,
+      "action": "getSheetList"
+    },
+    {
+      "line": 1383,
+      "action": "switchSheet"
+    },
+    {
+      "line": 1393,
+      "action": "moveSheet"
+    },
+    {
+      "line": 1407,
+      "action": "mergeCells"
+    },
+    {
+      "line": 1417,
+      "action": "unmergeCells"
+    },
+    {
+      "line": 1426,
+      "action": "setColumnWidth"
+    },
+    {
+      "line": 1436,
+      "action": "setRowHeight"
+    },
+    {
+      "line": 1444,
+      "action": "autoFitColumn"
+    },
+    {
+      "line": 1460,
+      "action": "autoFitRow"
+    },
+    {
+      "line": 1474,
+      "action": "autoFitAll"
+    },
+    {
+      "line": 1484,
+      "action": "setNumberFormat"
+    },
+    {
+      "line": 1493,
+      "action": "wrapText"
+    },
+    {
+      "line": 1503,
+      "action": "setPrintArea"
+    },
+    {
+      "line": 1511,
+      "action": "getSelection"
+    },
+    {
+      "line": 1520,
+      "action": "clearRange"
+    },
+    {
+      "line": 1533,
+      "action": "insertRows"
+    },
+    {
+      "line": 1545,
+      "action": "insertColumns"
+    },
+    {
+      "line": 1559,
+      "action": "deleteRows"
+    },
+    {
+      "line": 1571,
+      "action": "deleteColumns"
+    },
+    {
+      "line": 1585,
+      "action": "hideRows"
+    },
+    {
+      "line": 1595,
+      "action": "hideColumns"
+    },
+    {
+      "line": 1611,
+      "action": "showRows"
+    },
+    {
+      "line": 1621,
+      "action": "showColumns"
+    },
+    {
+      "line": 1637,
+      "action": "groupRows"
+    },
+    {
+      "line": 1646,
+      "action": "groupColumns"
+    },
+    {
+      "line": 1659,
+      "action": "freezePanes"
+    },
+    {
+      "line": 1674,
+      "action": "unfreezePanes"
+    },
+    {
+      "line": 1681,
+      "action": "findInSheet"
+    },
+    {
+      "line": 1702,
+      "action": "replaceInSheet"
+    },
+    {
+      "line": 1712,
+      "action": "copyRange"
+    },
+    {
+      "line": 1721,
+      "action": "pasteRange"
+    },
+    {
+      "line": 1738,
+      "action": "fillSeries"
+    },
+    {
+      "line": 1753,
+      "action": "transpose"
+    },
+    {
+      "line": 1767,
+      "action": "textToColumns"
+    },
+    {
+      "line": 1783,
+      "action": "subtotal"
+    },
+    {
+      "line": 1799,
+      "action": "createNamedRange"
+    },
+    {
+      "line": 1811,
+      "action": "deleteNamedRange"
+    },
+    {
+      "line": 1820,
+      "action": "getNamedRanges"
+    },
+    {
+      "line": 1833,
+      "action": "addCellComment"
+    },
+    {
+      "line": 1844,
+      "action": "deleteCellComment"
+    },
+    {
+      "line": 1853,
+      "action": "getCellComments"
+    },
+    {
+      "line": 1866,
+      "action": "protectSheet"
+    },
+    {
+      "line": 1875,
+      "action": "unprotectSheet"
+    },
+    {
+      "line": 1884,
+      "action": "protectWorkbook"
+    },
+    {
+      "line": 1895,
+      "action": "insertExcelImage"
+    },
+    {
+      "line": 1907,
+      "action": "setHyperlink"
+    },
+    {
+      "line": 1920,
+      "action": "lockCells"
+    },
+    {
+      "line": 1930,
+      "action": "openWorkbook"
+    },
+    {
+      "line": 1937,
+      "action": "getOpenWorkbooks"
+    },
+    {
+      "line": 1948,
+      "action": "switchWorkbook"
+    },
+    {
+      "line": 1956,
+      "action": "closeWorkbook"
+    },
+    {
+      "line": 1967,
+      "action": "createWorkbook"
+    },
+    {
+      "line": 1976,
+      "action": "getActiveDocument"
+    },
+    {
+      "line": 1987,
+      "action": "generateTOC"
+    },
+    {
+      "line": 2000,
+      "action": "getDocumentText"
+    },
+    {
+      "line": 2010,
+      "action": "getOpenDocuments"
+    },
+    {
+      "line": 2021,
+      "action": "switchDocument"
+    },
+    {
+      "line": 2029,
+      "action": "openDocument"
+    },
+    {
+      "line": 2037,
+      "action": "closeDocument"
+    },
+    {
+      "line": 2048,
+      "action": "insertText"
+    },
+    {
+      "line": 2065,
+      "action": "setFont"
+    },
+    {
+      "line": 2084,
+      "action": "findReplace"
+    },
+    {
+      "line": 2101,
+      "action": "insertTable"
+    },
+    {
+      "line": 2120,
+      "action": "setParagraph"
+    },
+    {
+      "line": 2145,
+      "action": "setPageSetup"
+    },
+    {
+      "line": 2167,
+      "action": "insertPageBreak"
+    },
+    {
+      "line": 2179,
+      "action": "insertHeader"
+    },
+    {
+      "line": 2193,
+      "action": "insertFooter"
+    },
+    {
+      "line": 2212,
+      "action": "insertHyperlink"
+    },
+    {
+      "line": 2228,
+      "action": "insertBookmark"
+    },
+    {
+      "line": 2238,
+      "action": "getBookmarks"
+    },
+    {
+      "line": 2250,
+      "action": "getDocumentParagraphs"
+    },
+    {
+      "line": 2271,
+      "action": "findInDocument"
+    },
+    {
+      "line": 2307,
+      "action": "smartFillField"
+    },
+    {
+      "line": 2430,
+      "action": "replaceBookmarkContent"
+    },
+    {
+      "line": 2451,
+      "action": "addComment"
+    },
+    {
+      "line": 2462,
+      "action": "getComments"
+    },
+    {
+      "line": 2474,
+      "action": "getDocumentStats"
+    },
+    {
+      "line": 2482,
+      "action": "insertImage"
+    },
+    {
+      "line": 2496,
+      "action": "applyStyle"
+    },
+    {
+      "line": 2511,
+      "action": "enableTrackChanges"
+    },
+    {
+      "line": 2521,
+      "action": "getTrackChangesStatus"
+    },
+    {
+      "line": 2531,
+      "action": "replaceRange"
+    },
+    {
+      "line": 2550,
+      "action": "getActivePresentation"
+    },
+    {
+      "line": 2570,
+      "action": "openPresentation"
+    },
+    {
+      "line": 2578,
+      "action": "closePresentation"
+    },
+    {
+      "line": 2588,
+      "action": "getOpenPresentations"
+    },
+    {
+      "line": 2599,
+      "action": "switchPresentation"
+    },
+    {
+      "line": 2607,
+      "action": "deleteSlide"
+    },
+    {
+      "line": 2617,
+      "action": "duplicateSlide"
+    },
+    {
+      "line": 2630,
+      "action": "insertSlidesFromFile"
+    },
+    {
+      "line": 2654,
+      "action": "moveSlide"
+    },
+    {
+      "line": 2665,
+      "action": "getSlideCount"
+    },
+    {
+      "line": 2673,
+      "action": "getSlideInfo"
+    },
+    {
+      "line": 2710,
+      "action": "switchSlide"
+    },
+    {
+      "line": 2720,
+      "action": "setSlideLayout"
+    },
+    {
+      "line": 2734,
+      "action": "getSlideNotes"
+    },
+    {
+      "line": 2747,
+      "action": "setSlideNotes"
+    },
+    {
+      "line": 2784,
+      "action": "addSlide"
+    },
+    {
+      "line": 2809,
+      "action": "addTextBox"
+    },
+    {
+      "line": 2826,
+      "action": "deleteTextBox"
+    },
+    {
+      "line": 2837,
+      "action": "getTextBoxes"
+    },
+    {
+      "line": 2855,
+      "action": "setTextBoxText"
+    },
+    {
+      "line": 2866,
+      "action": "setTextBoxStyle"
+    },
+    {
+      "line": 2889,
+      "action": "setSlideTitle"
+    },
+    {
+      "line": 2899,
+      "action": "getSlideTitle"
+    },
+    {
+      "line": 2910,
+      "action": "setSlideSubtitle"
+    },
+    {
+      "line": 2929,
+      "action": "setSlideContent"
+    },
+    {
+      "line": 2948,
+      "action": "addShape"
+    },
+    {
+      "line": 2970,
+      "action": "deleteShape"
+    },
+    {
+      "line": 2981,
+      "action": "getShapes"
+    },
+    {
+      "line": 2995,
+      "action": "setShapeStyle"
+    },
+    {
+      "line": 3014,
+      "action": "setShapeText"
+    },
+    {
+      "line": 3025,
+      "action": "setShapePosition"
+    },
+    {
+      "line": 3039,
+      "action": "insertPptImage"
+    },
+    {
+      "line": 3053,
+      "action": "deletePptImage"
+    },
+    {
+      "line": 3064,
+      "action": "replacePptImage"
+    },
+    {
+      "line": 3087,
+      "action": "setImageStyle"
+    },
+    {
+      "line": 3102,
+      "action": "exportSlideAsImage"
+    },
+    {
+      "line": 3134,
+      "action": "insertPptTable"
+    },
+    {
+      "line": 3150,
+      "action": "setPptTableCell"
+    },
+    {
+      "line": 3177,
+      "action": "getPptTableCell"
+    },
+    {
+      "line": 3208,
+      "action": "setPptTableStyle"
+    },
+    {
+      "line": 3222,
+      "action": "setPptTableCellStyle"
+    },
+    {
+      "line": 3258,
+      "action": "setPptTableRowStyle"
+    },
+    {
+      "line": 3297,
+      "action": "setShapeShadow"
+    },
+    {
+      "line": 3316,
+      "action": "setBackgroundGradient"
+    },
+    {
+      "line": 3336,
+      "action": "setShapeGradient"
+    },
+    {
+      "line": 3355,
+      "action": "setShapeBorder"
+    },
+    {
+      "line": 3370,
+      "action": "setShapeTransparency"
+    },
+    {
+      "line": 3381,
+      "action": "setShapeRoundness"
+    },
+    {
+      "line": 3392,
+      "action": "setShapeFullStyle"
+    },
+    {
+      "line": 3406,
+      "action": "alignShapes"
+    },
+    {
+      "line": 3420,
+      "action": "distributeShapes"
+    },
+    {
+      "line": 3434,
+      "action": "groupShapes"
+    },
+    {
+      "line": 3445,
+      "action": "duplicateShape"
+    },
+    {
+      "line": 3456,
+      "action": "setShapeZOrder"
+    },
+    {
+      "line": 3470,
+      "action": "insertPptChart"
+    },
+    {
+      "line": 3484,
+      "action": "addAnimation"
+    },
+    {
+      "line": 3495,
+      "action": "setSlideTransition"
+    },
+    {
+      "line": 3505,
+      "action": "setSlideBackground"
+    },
+    {
+      "line": 3552,
+      "action": "addConnector"
+    },
+    {
+      "line": 3566,
+      "action": "addArrow"
+    },
+    {
+      "line": 3580,
+      "action": "applyColorScheme"
+    },
+    {
+      "line": 3605,
+      "action": "autoBeautifySlide"
+    },
+    {
+      "line": 3629,
+      "action": "createKpiCards"
+    },
+    {
+      "line": 3672,
+      "action": "createStyledTable"
+    },
+    {
+      "line": 3732,
+      "action": "addTitleDecoration"
+    },
+    {
+      "line": 3750,
+      "action": "addPageIndicator"
+    },
+    {
+      "line": 3770,
+      "action": "beautifyAllSlides"
+    },
+    {
+      "line": 3795,
+      "action": "createProgressBar"
+    },
+    {
+      "line": 3836,
+      "action": "createGauge"
+    },
+    {
+      "line": 3878,
+      "action": "createMiniCharts"
+    },
+    {
+      "line": 3925,
+      "action": "createDonutChart"
+    },
+    {
+      "line": 3968,
+      "action": "autoLayout"
+    },
+    {
+      "line": 4027,
+      "action": "smartDistribute"
+    },
+    {
+      "line": 4083,
+      "action": "createGrid"
+    },
+    {
+      "line": 4118,
+      "action": "addAnimationPreset"
+    },
+    {
+      "line": 4148,
+      "action": "addEmphasisAnimation"
+    },
+    {
+      "line": 4167,
+      "action": "createFlowChart"
+    },
+    {
+      "line": 4232,
+      "action": "createOrgChart"
+    },
+    {
+      "line": 4288,
+      "action": "createTimeline"
+    },
+    {
+      "line": 4342,
+      "action": "getSlideMaster"
+    },
+    {
+      "line": 4355,
+      "action": "setMasterBackground"
+    },
+    {
+      "line": 4374,
+      "action": "addMasterElement"
+    },
+    {
+      "line": 4404,
+      "action": "set3DRotation"
+    },
+    {
+      "line": 4429,
+      "action": "set3DDepth"
+    },
+    {
+      "line": 4452,
+      "action": "set3DMaterial"
+    },
+    {
+      "line": 4468,
+      "action": "create3DText"
+    },
+    {
+      "line": 4501,
+      "action": "setPptChartData"
+    },
+    {
+      "line": 4522,
+      "action": "setPptChartStyle"
+    },
+    {
+      "line": 4540,
+      "action": "removeAnimation"
+    },
+    {
+      "line": 4555,
+      "action": "getAnimations"
+    },
+    {
+      "line": 4570,
+      "action": "setAnimationOrder"
+    },
+    {
+      "line": 4582,
+      "action": "removeSlideTransition"
+    },
+    {
+      "line": 4592,
+      "action": "applyTransitionToAll"
+    },
+    {
+      "line": 4606,
+      "action": "setBackgroundColor"
+    },
+    {
+      "line": 4629,
+      "action": "setBackgroundImage"
+    },
+    {
+      "line": 4640,
+      "action": "addPptHyperlink"
+    },
+    {
+      "line": 4653,
+      "action": "removePptHyperlink"
+    },
+    {
+      "line": 4664,
+      "action": "setSlideNumber"
+    },
+    {
+      "line": 4672,
+      "action": "setPptFooter"
+    },
+    {
+      "line": 4681,
+      "action": "setPptDateTime"
+    },
+    {
+      "line": 4693,
+      "action": "findPptText"
+    },
+    {
+      "line": 4715,
+      "action": "replacePptText"
+    },
+    {
+      "line": 4736,
+      "action": "startSlideShow"
+    },
+    {
+      "line": 4744,
+      "action": "endSlideShow"
+    },
+    {
+      "line": 4751,
+      "action": "unifyFont"
+    },
+    {
+      "line": 4818,
+      "action": "set3DRotation"
+    },
+    {
+      "line": 4845,
+      "action": "set3DDepth"
+    },
+    {
+      "line": 4866,
+      "action": "set3DMaterial"
+    },
+    {
+      "line": 4881,
+      "action": "create3DText"
+    },
+    {
+      "line": 4907,
+      "action": "beautifySlide"
+    }
+  ]
+}

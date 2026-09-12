@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.wps-office-mcp/
+.DS_Store
+Thumbs.db
+*.tmp
+tmp/
+test/.artifacts/

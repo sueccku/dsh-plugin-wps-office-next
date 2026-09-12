@@ -1,0 +1,1257 @@
+{
+  "generatedFrom": "D:\\dsh\\wps-skills\\wps-office-mcp\\src",
+  "count": 250,
+  "duplicateNames": [],
+  "tools": [
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 163,
+      "name": "wps_check_connection"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 194,
+      "name": "wps_get_active_document"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 223,
+      "name": "wps_insert_text"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 263,
+      "name": "wps_get_active_workbook"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 292,
+      "name": "wps_get_cell_value"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 337,
+      "name": "wps_set_cell_value"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 387,
+      "name": "wps_get_active_presentation"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 416,
+      "name": "wps_execute_method"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 470,
+      "name": "wps_cache_data"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 527,
+      "name": "wps_get_cached_data"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 586,
+      "name": "wps_list_cache"
+    },
+    {
+      "file": "server\\mcp-server.ts",
+      "line": 622,
+      "name": "wps_clear_cache"
+    },
+    {
+      "file": "tools\\common\\convert.ts",
+      "line": 129,
+      "name": "wps_convert_to_pdf"
+    },
+    {
+      "file": "tools\\common\\convert.ts",
+      "line": 228,
+      "name": "wps_convert_format"
+    },
+    {
+      "file": "tools\\common\\general.ts",
+      "line": 32,
+      "name": "wps_common_save"
+    },
+    {
+      "file": "tools\\common\\general.ts",
+      "line": 92,
+      "name": "wps_common_save_as"
+    },
+    {
+      "file": "tools\\common\\general.ts",
+      "line": 188,
+      "name": "wps_common_ping"
+    },
+    {
+      "file": "tools\\common\\general.ts",
+      "line": 248,
+      "name": "wps_common_wire_check"
+    },
+    {
+      "file": "tools\\common\\general.ts",
+      "line": 320,
+      "name": "wps_common_get_app_info"
+    },
+    {
+      "file": "tools\\common\\general.ts",
+      "line": 391,
+      "name": "wps_common_get_selected_text"
+    },
+    {
+      "file": "tools\\common\\general.ts",
+      "line": 460,
+      "name": "wps_common_set_selected_text"
+    },
+    {
+      "file": "tools\\excel\\chart.ts",
+      "line": 77,
+      "name": "wps_excel_create_chart"
+    },
+    {
+      "file": "tools\\excel\\chart.ts",
+      "line": 295,
+      "name": "wps_excel_update_chart"
+    },
+    {
+      "file": "tools\\excel\\chart.ts",
+      "line": 516,
+      "name": "wps_excel_export_chart_as_image"
+    },
+    {
+      "file": "tools\\excel\\chart.ts",
+      "line": 644,
+      "name": "wps_excel_export_range_as_image"
+    },
+    {
+      "file": "tools\\excel\\comment-protect.ts",
+      "line": 33,
+      "name": "wps_excel_delete_cell_comment"
+    },
+    {
+      "file": "tools\\excel\\comment-protect.ts",
+      "line": 70,
+      "name": "wps_excel_get_cell_comments"
+    },
+    {
+      "file": "tools\\excel\\comment-protect.ts",
+      "line": 117,
+      "name": "wps_excel_unprotect_sheet"
+    },
+    {
+      "file": "tools\\excel\\comment-protect.ts",
+      "line": 153,
+      "name": "wps_excel_lock_cells"
+    },
+    {
+      "file": "tools\\excel\\comment-protect.ts",
+      "line": 191,
+      "name": "wps_excel_set_array_formula"
+    },
+    {
+      "file": "tools\\excel\\comment-protect.ts",
+      "line": 229,
+      "name": "wps_excel_insert_excel_image"
+    },
+    {
+      "file": "tools\\excel\\comment-protect.ts",
+      "line": 279,
+      "name": "wps_excel_set_hyperlink"
+    },
+    {
+      "file": "tools\\excel\\data-advanced.ts",
+      "line": 22,
+      "name": "wps_excel_auto_filter"
+    },
+    {
+      "file": "tools\\excel\\data-advanced.ts",
+      "line": 63,
+      "name": "wps_excel_copy_range"
+    },
+    {
+      "file": "tools\\excel\\data-advanced.ts",
+      "line": 103,
+      "name": "wps_excel_paste_range"
+    },
+    {
+      "file": "tools\\excel\\data-advanced.ts",
+      "line": 147,
+      "name": "wps_excel_fill_series"
+    },
+    {
+      "file": "tools\\excel\\data-advanced.ts",
+      "line": 189,
+      "name": "wps_excel_transpose"
+    },
+    {
+      "file": "tools\\excel\\data-advanced.ts",
+      "line": 229,
+      "name": "wps_excel_text_to_columns"
+    },
+    {
+      "file": "tools\\excel\\data-advanced.ts",
+      "line": 269,
+      "name": "wps_excel_subtotal"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 38,
+      "name": "wps_excel_read_range"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 124,
+      "name": "wps_excel_write_range"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 210,
+      "name": "wps_excel_clean_data"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 328,
+      "name": "wps_excel_remove_duplicates"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 423,
+      "name": "wps_excel_sort_range"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 465,
+      "name": "wps_excel_find_replace"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 508,
+      "name": "wps_excel_insert_row"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 546,
+      "name": "wps_excel_add_comment"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 583,
+      "name": "wps_excel_protect_sheet"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 621,
+      "name": "wps_excel_set_conditional_format"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 659,
+      "name": "wps_excel_protect_workbook"
+    },
+    {
+      "file": "tools\\excel\\data.ts",
+      "line": 696,
+      "name": "wps_excel_set_zoom"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 36,
+      "name": "wps_excel_set_cell_format"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 127,
+      "name": "wps_excel_set_cell_style"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 201,
+      "name": "wps_excel_set_border"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 293,
+      "name": "wps_excel_set_number_format"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 376,
+      "name": "wps_excel_merge_cells"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 445,
+      "name": "wps_excel_unmerge_cells"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 514,
+      "name": "wps_excel_set_column_width"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 597,
+      "name": "wps_excel_set_row_height"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 689,
+      "name": "wps_excel_hide_row"
+    },
+    {
+      "file": "tools\\excel\\format.ts",
+      "line": 777,
+      "name": "wps_excel_set_data_validation"
+    },
+    {
+      "file": "tools\\excel\\formula.ts",
+      "line": 30,
+      "name": "wps_excel_set_formula"
+    },
+    {
+      "file": "tools\\excel\\formula.ts",
+      "line": 114,
+      "name": "wps_excel_generate_formula"
+    },
+    {
+      "file": "tools\\excel\\formula.ts",
+      "line": 215,
+      "name": "wps_excel_diagnose_formula"
+    },
+    {
+      "file": "tools\\excel\\formula.ts",
+      "line": 324,
+      "name": "wps_excel_evaluate_formula"
+    },
+    {
+      "file": "tools\\excel\\formula.ts",
+      "line": 346,
+      "name": "wps_excel_set_print_area"
+    },
+    {
+      "file": "tools\\excel\\formula.ts",
+      "line": 365,
+      "name": "wps_excel_zoom"
+    },
+    {
+      "file": "tools\\excel\\pivot.ts",
+      "line": 71,
+      "name": "wps_excel_create_pivot_table"
+    },
+    {
+      "file": "tools\\excel\\pivot.ts",
+      "line": 286,
+      "name": "wps_excel_update_pivot_table"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 34,
+      "name": "wps_excel_insert_rows"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 73,
+      "name": "wps_excel_insert_columns"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 112,
+      "name": "wps_excel_delete_rows"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 151,
+      "name": "wps_excel_delete_columns"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 190,
+      "name": "wps_excel_hide_rows"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 228,
+      "name": "wps_excel_show_rows"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 266,
+      "name": "wps_excel_show_columns"
+    },
+    {
+      "file": "tools\\excel\\row-column.ts",
+      "line": 304,
+      "name": "wps_excel_group_rows"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 42,
+      "name": "wps_excel_create_sheet"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 113,
+      "name": "wps_excel_delete_sheet"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 176,
+      "name": "wps_excel_rename_sheet"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 247,
+      "name": "wps_excel_copy_sheet"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 324,
+      "name": "wps_excel_get_sheet_list"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 387,
+      "name": "wps_excel_switch_sheet"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 450,
+      "name": "wps_excel_move_sheet"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 521,
+      "name": "wps_excel_get_selection"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 581,
+      "name": "wps_excel_delete_row"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 648,
+      "name": "wps_excel_insert_column"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 715,
+      "name": "wps_excel_delete_column"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 782,
+      "name": "wps_excel_freeze_panes"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 857,
+      "name": "wps_excel_auto_fill"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 927,
+      "name": "wps_excel_set_named_range"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 998,
+      "name": "wps_excel_hide_column"
+    },
+    {
+      "file": "tools\\excel\\sheet.ts",
+      "line": 1076,
+      "name": "wps_excel_auto_sum"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 22,
+      "name": "wps_excel_open_workbook"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 70,
+      "name": "wps_excel_get_open_workbooks"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 104,
+      "name": "wps_excel_switch_workbook"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 146,
+      "name": "wps_excel_close_workbook"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 189,
+      "name": "wps_excel_create_workbook"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 222,
+      "name": "wps_excel_get_cell_value"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 260,
+      "name": "wps_excel_set_cell_value"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 299,
+      "name": "wps_excel_get_formula"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 336,
+      "name": "wps_excel_get_cell_info"
+    },
+    {
+      "file": "tools\\excel\\workbook.ts",
+      "line": 373,
+      "name": "wps_excel_clear_range"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 38,
+      "name": "wps_ppt_add_animation"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 140,
+      "name": "wps_ppt_remove_animation"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 218,
+      "name": "wps_ppt_get_animations"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 315,
+      "name": "wps_ppt_set_animation_order"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 398,
+      "name": "wps_ppt_add_animation_preset"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 501,
+      "name": "wps_ppt_add_emphasis_animation"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 602,
+      "name": "wps_ppt_set_slide_transition"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 706,
+      "name": "wps_ppt_remove_slide_transition"
+    },
+    {
+      "file": "tools\\ppt\\animation.ts",
+      "line": 777,
+      "name": "wps_ppt_apply_transition_to_all"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 37,
+      "name": "wps_ppt_set_slide_background"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 128,
+      "name": "wps_ppt_set_background_color"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 205,
+      "name": "wps_ppt_set_background_image"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 285,
+      "name": "wps_ppt_set_slide_number"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 362,
+      "name": "wps_ppt_set_ppt_footer"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 439,
+      "name": "wps_ppt_set_ppt_date_time"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 532,
+      "name": "wps_ppt_duplicate_shape"
+    },
+    {
+      "file": "tools\\ppt\\background.ts",
+      "line": 610,
+      "name": "wps_ppt_set_shape_z_order"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 35,
+      "name": "wps_ppt_apply_color_scheme"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 134,
+      "name": "wps_ppt_auto_beautify_slide"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 228,
+      "name": "wps_ppt_beautify_all_slides"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 317,
+      "name": "wps_ppt_create_kpi_cards"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 417,
+      "name": "wps_ppt_create_styled_table"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 525,
+      "name": "wps_ppt_add_title_decoration"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 617,
+      "name": "wps_ppt_add_page_indicator"
+    },
+    {
+      "file": "tools\\ppt\\beautify-advanced.ts",
+      "line": 702,
+      "name": "wps_ppt_set_background_gradient"
+    },
+    {
+      "file": "tools\\ppt\\chart-flow.ts",
+      "line": 35,
+      "name": "wps_ppt_insert_ppt_chart"
+    },
+    {
+      "file": "tools\\ppt\\chart-flow.ts",
+      "line": 149,
+      "name": "wps_ppt_set_ppt_chart_data"
+    },
+    {
+      "file": "tools\\ppt\\chart-flow.ts",
+      "line": 233,
+      "name": "wps_ppt_set_ppt_chart_style"
+    },
+    {
+      "file": "tools\\ppt\\chart-flow.ts",
+      "line": 326,
+      "name": "wps_ppt_create_flow_chart"
+    },
+    {
+      "file": "tools\\ppt\\chart-flow.ts",
+      "line": 440,
+      "name": "wps_ppt_create_org_chart"
+    },
+    {
+      "file": "tools\\ppt\\chart-flow.ts",
+      "line": 526,
+      "name": "wps_ppt_create_timeline"
+    },
+    {
+      "file": "tools\\ppt\\data-viz.ts",
+      "line": 35,
+      "name": "wps_ppt_create_progress_bar"
+    },
+    {
+      "file": "tools\\ppt\\data-viz.ts",
+      "line": 120,
+      "name": "wps_ppt_create_gauge"
+    },
+    {
+      "file": "tools\\ppt\\data-viz.ts",
+      "line": 207,
+      "name": "wps_ppt_create_mini_charts"
+    },
+    {
+      "file": "tools\\ppt\\data-viz.ts",
+      "line": 288,
+      "name": "wps_ppt_create_donut_chart"
+    },
+    {
+      "file": "tools\\ppt\\data-viz.ts",
+      "line": 371,
+      "name": "wps_ppt_auto_layout"
+    },
+    {
+      "file": "tools\\ppt\\data-viz.ts",
+      "line": 446,
+      "name": "wps_ppt_smart_distribute"
+    },
+    {
+      "file": "tools\\ppt\\data-viz.ts",
+      "line": 526,
+      "name": "wps_ppt_create_grid"
+    },
+    {
+      "file": "tools\\ppt\\image.ts",
+      "line": 29,
+      "name": "wps_ppt_insert_ppt_image"
+    },
+    {
+      "file": "tools\\ppt\\image.ts",
+      "line": 130,
+      "name": "wps_ppt_delete_ppt_image"
+    },
+    {
+      "file": "tools\\ppt\\image.ts",
+      "line": 204,
+      "name": "wps_ppt_set_image_style"
+    },
+    {
+      "file": "tools\\ppt\\image.ts",
+      "line": 320,
+      "name": "wps_ppt_export_slide_as_image"
+    },
+    {
+      "file": "tools\\ppt\\image.ts",
+      "line": 444,
+      "name": "wps_ppt_replace_ppt_image"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 40,
+      "name": "wps_ppt_get_slide_master"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 106,
+      "name": "wps_ppt_set_master_background"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 180,
+      "name": "wps_ppt_add_master_element"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 257,
+      "name": "wps_ppt_set_3d_rotation"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 341,
+      "name": "wps_ppt_set_3d_depth"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 425,
+      "name": "wps_ppt_set_3d_material"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 526,
+      "name": "wps_ppt_create_3d_text"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 613,
+      "name": "wps_ppt_add_ppt_hyperlink"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 697,
+      "name": "wps_ppt_remove_ppt_hyperlink"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 776,
+      "name": "wps_ppt_find_ppt_text"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 870,
+      "name": "wps_ppt_replace_ppt_text"
+    },
+    {
+      "file": "tools\\ppt\\misc.ts",
+      "line": 952,
+      "name": "wps_ppt_start_slide_show"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 32,
+      "name": "wps_ppt_create_presentation"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 95,
+      "name": "wps_ppt_open_presentation"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 173,
+      "name": "wps_ppt_close_presentation"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 254,
+      "name": "wps_ppt_get_open_presentations"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 335,
+      "name": "wps_ppt_switch_presentation"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 407,
+      "name": "wps_ppt_set_slide_theme"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 471,
+      "name": "wps_ppt_copy_slide"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 548,
+      "name": "wps_ppt_insert_slide_image"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 635,
+      "name": "wps_ppt_insert_slides_from_file"
+    },
+    {
+      "file": "tools\\ppt\\presentation.ts",
+      "line": 731,
+      "name": "wps_ppt_set_active_target"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 35,
+      "name": "wps_ppt_delete_shape"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 109,
+      "name": "wps_ppt_get_shapes"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 191,
+      "name": "wps_ppt_set_shape_position"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 285,
+      "name": "wps_ppt_set_shape_shadow"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 380,
+      "name": "wps_ppt_set_shape_gradient"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 479,
+      "name": "wps_ppt_set_shape_border"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 570,
+      "name": "wps_ppt_set_shape_transparency"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 649,
+      "name": "wps_ppt_align_shapes"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 748,
+      "name": "wps_ppt_distribute_shapes"
+    },
+    {
+      "file": "tools\\ppt\\shape-basic.ts",
+      "line": 835,
+      "name": "wps_ppt_group_shapes"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 49,
+      "name": "wps_ppt_delete_slide"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 119,
+      "name": "wps_ppt_duplicate_slide"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 190,
+      "name": "wps_ppt_move_slide"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 267,
+      "name": "wps_ppt_get_slide_count"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 331,
+      "name": "wps_ppt_get_slide_info"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 420,
+      "name": "wps_ppt_switch_slide"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 490,
+      "name": "wps_ppt_set_slide_layout"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 586,
+      "name": "wps_ppt_get_slide_notes"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 660,
+      "name": "wps_ppt_set_slide_notes"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 737,
+      "name": "wps_ppt_add_shape"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 875,
+      "name": "wps_ppt_set_shape_style"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 980,
+      "name": "wps_ppt_add_textbox"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1098,
+      "name": "wps_ppt_set_slide_title"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1180,
+      "name": "wps_ppt_insert_image"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1286,
+      "name": "wps_ppt_set_shape_text"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1354,
+      "name": "wps_ppt_set_animation"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1451,
+      "name": "wps_ppt_set_background"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1543,
+      "name": "wps_ppt_set_slide_size"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1627,
+      "name": "wps_ppt_set_transition"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1719,
+      "name": "wps_ppt_add_chart"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1822,
+      "name": "wps_ppt_set_shape_fill"
+    },
+    {
+      "file": "tools\\ppt\\slide-ops.ts",
+      "line": 1896,
+      "name": "wps_ppt_add_speaker_notes"
+    },
+    {
+      "file": "tools\\ppt\\slide.ts",
+      "line": 32,
+      "name": "wps_ppt_add_slide"
+    },
+    {
+      "file": "tools\\ppt\\slide.ts",
+      "line": 142,
+      "name": "wps_ppt_beautify"
+    },
+    {
+      "file": "tools\\ppt\\slide.ts",
+      "line": 273,
+      "name": "wps_ppt_unify_font"
+    },
+    {
+      "file": "tools\\ppt\\slide.ts",
+      "line": 376,
+      "name": "wps_ppt_set_font_color"
+    },
+    {
+      "file": "tools\\ppt\\slide.ts",
+      "line": 458,
+      "name": "wps_ppt_align_objects"
+    },
+    {
+      "file": "tools\\ppt\\table.ts",
+      "line": 33,
+      "name": "wps_ppt_insert_table"
+    },
+    {
+      "file": "tools\\ppt\\table.ts",
+      "line": 130,
+      "name": "wps_ppt_set_table_cell"
+    },
+    {
+      "file": "tools\\ppt\\table.ts",
+      "line": 222,
+      "name": "wps_ppt_get_table_cell"
+    },
+    {
+      "file": "tools\\ppt\\table.ts",
+      "line": 310,
+      "name": "wps_ppt_set_table_style"
+    },
+    {
+      "file": "tools\\ppt\\table.ts",
+      "line": 403,
+      "name": "wps_ppt_set_table_cell_style"
+    },
+    {
+      "file": "tools\\ppt\\table.ts",
+      "line": 506,
+      "name": "wps_ppt_set_table_row_style"
+    },
+    {
+      "file": "tools\\ppt\\textbox.ts",
+      "line": 22,
+      "name": "wps_ppt_delete_textbox"
+    },
+    {
+      "file": "tools\\ppt\\textbox.ts",
+      "line": 59,
+      "name": "wps_ppt_get_textboxes"
+    },
+    {
+      "file": "tools\\ppt\\textbox.ts",
+      "line": 95,
+      "name": "wps_ppt_set_textbox_text"
+    },
+    {
+      "file": "tools\\ppt\\textbox.ts",
+      "line": 135,
+      "name": "wps_ppt_set_textbox_style"
+    },
+    {
+      "file": "tools\\ppt\\textbox.ts",
+      "line": 178,
+      "name": "wps_ppt_get_slide_title"
+    },
+    {
+      "file": "tools\\ppt\\textbox.ts",
+      "line": 214,
+      "name": "wps_ppt_set_slide_subtitle"
+    },
+    {
+      "file": "tools\\ppt\\textbox.ts",
+      "line": 251,
+      "name": "wps_ppt_set_slide_content"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 38,
+      "name": "wps_word_insert_text"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 148,
+      "name": "wps_word_find_replace"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 293,
+      "name": "wps_word_insert_table"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 339,
+      "name": "wps_word_set_paragraph"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 384,
+      "name": "wps_word_get_active_document"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 432,
+      "name": "wps_word_insert_image"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 522,
+      "name": "wps_word_insert_page_break"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 552,
+      "name": "wps_word_set_font_style"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 590,
+      "name": "wps_word_insert_comment"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 629,
+      "name": "wps_word_set_text_color"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 669,
+      "name": "wps_word_get_paragraphs"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 741,
+      "name": "wps_word_find_in_document"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 831,
+      "name": "wps_word_smart_fill_field"
+    },
+    {
+      "file": "tools\\word\\content.ts",
+      "line": 912,
+      "name": "wps_word_replace_bookmark_content"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 35,
+      "name": "wps_word_get_open_documents"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 110,
+      "name": "wps_word_switch_document"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 188,
+      "name": "wps_word_open_document"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 272,
+      "name": "wps_word_get_document_text"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 356,
+      "name": "wps_word_insert_header"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 434,
+      "name": "wps_word_insert_footer"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 512,
+      "name": "wps_word_generate_doc_toc"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 578,
+      "name": "wps_word_insert_section_break"
+    },
+    {
+      "file": "tools\\word\\document.ts",
+      "line": 642,
+      "name": "wps_word_set_line_spacing"
+    },
+    {
+      "file": "tools\\word\\format.ts",
+      "line": 32,
+      "name": "wps_word_apply_style"
+    },
+    {
+      "file": "tools\\word\\format.ts",
+      "line": 124,
+      "name": "wps_word_set_font"
+    },
+    {
+      "file": "tools\\word\\format.ts",
+      "line": 255,
+      "name": "wps_word_generate_toc"
+    },
+    {
+      "file": "tools\\word\\format.ts",
+      "line": 344,
+      "name": "wps_word_insert_bookmark"
+    },
+    {
+      "file": "tools\\word\\format.ts",
+      "line": 418,
+      "name": "wps_word_set_page_setup"
+    },
+    {
+      "file": "tools\\word\\proofread.ts",
+      "line": 27,
+      "name": "wps_word_enable_track_changes"
+    },
+    {
+      "file": "tools\\word\\proofread.ts",
+      "line": 95,
+      "name": "wps_word_get_track_changes_status"
+    },
+    {
+      "file": "tools\\word\\proofread.ts",
+      "line": 154,
+      "name": "wps_word_replace_range"
+    },
+    {
+      "file": "tools\\word\\proofread.ts",
+      "line": 282,
+      "name": "wps_word_proofread_basic"
+    }
+  ]
+}

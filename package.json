@@ -1,0 +1,42 @@
+{
+  "name": "dsh-plugin-wps-office-next",
+  "version": "0.1.0",
+  "private": false,
+  "description": "One-stop DeepSeek Harness bundle for WPS Office on Windows (COM-only). Merged from lc2panda/wps-skills and CatNebulaaaa/wps-dsh-plugin.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    "./plugin": "./plugin.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "cordis.patch.yml",
+    ".npmrc",
+    "plugin.js",
+    "skills",
+    "mcp",
+    "host",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "snapshot": "node scripts/snapshot-tools.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "engines": {
+    "node": ">=22.19.0",
+    "os": [
+      "win32"
+    ],
+    "cpu": [
+      "x64"
+    ]
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
