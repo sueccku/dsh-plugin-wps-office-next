@@ -96,6 +96,30 @@ wps_ppt_apply_transition_to_all。
 
 正确做法是逐工具动态验证：用文档化参数调用，再回读可观测的效果。
 
+### 7. 单元格写入：PowerShell 的 COM 绑定器缓存（高危，已修）
+
+现象：`wps_excel_write_range` 对**任何含数字的数据**都失败，只有纯字符串能写；
+`wps_excel_set_cell_value` 同样。而它们是广告中的核心工具。
+
+根因分两层：
+
+1. `ConvertFrom-Json` 产出的数值赋给 COM 的 `Value2` 会抛 `InvalidCastException`。
+2. 更隐蔽的是：**PowerShell 5.1 对 COM 成员按首次调用缓存绑定器**。
+   同一个 `Value2` 调用点，先赋字符串则之后数字失败，先赋数字则之后字符串失败。
+   实测：同一进程内 "Sheets.Item -> OK"（字符串）之后数字三种目标全部失败；
+   反过来在模块里先写了数字，之后字符串/布尔全部失败。
+
+修复：写入改走 `$cell.PSObject.Properties['Value2'].Value = $v`。
+PSPropertyInfo 每次调用重新绑定，数字/字符串/小数/布尔混合均正常。
+区域写入同时改为解包成 typed 矩阵后**一次整体赋值**（O(n*m) 次 COM 往返降为 1 次）。
+
+验证：setCellValue 六种类型往返正确；混合类型区域写入精确往返；
+excel-range 12/12；8000 格读取 15ms。
+
+### 8. setCellValue 行列参数解包
+
+`Cells.Item($p.row, $p.col)` 的参数同样是 PSObject 包装的数值，显式 `[int]` 转换后稳定。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

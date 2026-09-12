@@ -557,7 +557,7 @@ switch ($Action) {
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
         $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
-        $cell = $sheet.Cells.Item($p.row, $p.col)
+        $cell = $sheet.Cells.Item([int]$p.row, [int]$p.col)
         Output-Json @{ success = $true; data = @{ value = $cell.Value2; text = $cell.Text; formula = $cell.Formula } }
     }
 
@@ -566,10 +566,26 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $row = [int]$p.row
+        $col = [int]$p.col
+        # ConvertFrom-Json wraps scalars in PSObject; COM parameterised properties and Value2
+        # reject the wrapped form, so every value crossing into COM is unwrapped explicitly.
         $value = $p.value
-        if ($value -is [int] -or $value -is [long] -or $value -is [double] -or $value -is [decimal]) { $value = [double]$value }
-        elseif ($null -ne $value -and -not ($value -is [bool])) { $value = [string]$value }
-        $sheet.Cells.Item($p.row, $p.col).Value2 = $value
+        if ($null -eq $value) { $value = $null }
+        elseif ($value -is [bool]) { $value = [bool]$value }
+        elseif ($value -is [int] -or $value -is [long] -or $value -is [double] -or $value -is [decimal]) { $value = [double]$value }
+        else { $value = [string]$value }
+        try {
+            $cell = $sheet.Cells.Item($row, $col)
+        # PowerShell caches the COM binder for a member after its first use, so a direct
+        # ".Value2 = $v" call site fails as soon as the value type changes (Int32 vs String).
+        # Going through PSPropertyInfo re-binds per call and accepts mixed types.
+        $cell.PSObject.Properties['Value2'].Value = $value
+        } catch {
+            $valueType = if ($null -eq $value) { 'null' } else { $value.GetType().FullName }
+            Output-Json @{ success = $false; error = $_.Exception.Message; errorType = $_.Exception.GetType().Name; valueType = $valueType; rowType = $p.row.GetType().FullName; colType = $p.col.GetType().FullName }
+            exit
+        }
         Output-Json @{ success = $true }
     }
 
@@ -624,7 +640,7 @@ switch ($Action) {
             }
         }
         $target = $sheet.Range($p.range).Resize($rows, $cols)
-        $target.Value2 = $matrix
+        $target.PSObject.Properties['Value2'].Value = $matrix
         Output-Json @{ success = $true; data = @{ rows = $rows; columns = $cols; range = $p.range } }
     }
 
