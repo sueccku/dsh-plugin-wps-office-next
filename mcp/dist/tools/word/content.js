@@ -201,7 +201,7 @@ const findReplaceHandler = async (args) => {
                     content: [
                         {
                             type: 'text',
-                            text: `替换完成！\n查找: "${find_text}"\n替换为: "${replace_text}"\n替换了 ${result.count} 处`,
+                            text: `替换完成！\n查找: "${find_text}"\n替换为: "${replace_text}"\n替换完成`,
                         },
                     ],
                 };

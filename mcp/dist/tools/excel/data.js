@@ -400,12 +400,13 @@ exports.findReplaceDefinition = {
 const findReplaceHandler = async (args) => {
     const { find, replace, matchCase } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('findReplace', { find, replace, matchCase: matchCase || false }, wps_1.WpsAppType.SPREADSHEET);
+        // Excel must not reuse the Word findReplace action: that one only touches Word documents.
+        const response = await wps_client_1.wpsClient.executeMethod('findReplaceExcel', { findText: find, replaceText: replace, matchCase: matchCase || false }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `查找替换失败: ${response.error}` }], error: response.error };
         }
-        const count = response.data?.count || 0;
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `查找替换完成！将"${find}"替换为"${replace}"，共替换${count}处` }] };
+        const cells = response.data?.cells ?? 0;
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `查找替换完成！将"${find}"替换为"${replace}"，涉及 ${cells} 个单元格` }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

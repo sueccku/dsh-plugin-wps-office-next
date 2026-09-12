@@ -485,16 +485,17 @@ export const findReplaceHandler: ToolHandler = async (
     matchCase?: boolean;
   };
   try {
-    const response = await wpsClient.executeMethod<{ count: number; message: string }>(
-      'findReplace',
-      { find, replace, matchCase: matchCase || false },
+    // Excel must not reuse the Word findReplace action: that one only touches Word documents.
+    const response = await wpsClient.executeMethod<{ cells: number; find: string; replace: string; sheet: string; changed: boolean }>(
+      'findReplaceExcel',
+      { findText: find, replaceText: replace, matchCase: matchCase || false },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `查找替换失败: ${response.error}` }], error: response.error };
     }
-    const count = response.data?.count || 0;
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `查找替换完成！将"${find}"替换为"${replace}"，共替换${count}处` }] };
+    const cells = response.data?.cells ?? 0;
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `查找替换完成！将"${find}"替换为"${replace}"，涉及 ${cells} 个单元格` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `查找替换出错: ${errMsg}` }], error: errMsg };

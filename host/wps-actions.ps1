@@ -2111,13 +2111,15 @@ return }
         $find = $doc.Content.Find
         $find.ClearFormatting()
         $find.Replacement.ClearFormatting()
-        $find.Text = $p.findText
-        $find.Replacement.Text = $p.replaceText
+        $findText = if ($null -ne $p.findText) { [string]$p.findText } else { [string]$p.find }
+        $replaceText = if ($null -ne $p.replaceText) { [string]$p.replaceText } else { [string]$p.replace }
+        $find.Text = $findText
+        $find.Replacement.Text = $replaceText
         $matchCase = if ($null -ne $p.matchCase) { [bool]$p.matchCase } else { $false }
         $matchWholeWord = if ($null -ne $p.matchWholeWord) { [bool]$p.matchWholeWord } else { $false }
         $replaceAll = if ($null -ne $p.replaceAll) { [bool]$p.replaceAll } else { $true }
         $replaceType = if ($replaceAll) { 2 } else { 1 }
-        $result = $find.Execute($p.findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, $p.replaceText, $replaceType)
+        $result = $find.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, $replaceText, $replaceType)
         Output-Json @{ success = $true; data = @{ replaced = $result } }
     }
 
@@ -5118,6 +5120,50 @@ return }
         try {
             $word.Selection.InsertBreak($breakType)
             Output-Json @{ success = $true; data = @{ breakType = $requested; sections = $doc.Sections.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+    # Excel has its own find/replace: the shared action above operates on Word only.
+    "findReplaceExcel" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $findText = if ($null -ne $p.findText) { [string]$p.findText } else { [string]$p.find }
+        $replaceText = if ($null -ne $p.replaceText) { [string]$p.replaceText } else { [string]$p.replace }
+        if (-not $findText) { Output-Json @{ success = $false; error = "findText must not be empty" }; return }
+        $matchCase = if ($null -ne $p.matchCase) { [bool]$p.matchCase } else { $false }
+        $matchWholeWord = if ($null -ne $p.matchWholeWord) { [bool]$p.matchWholeWord } else { $false }
+        $lookAt = if ($matchWholeWord) { 1 } else { 2 }
+        try {
+            $scope = if ($null -ne $p.range -and "$($p.range)" -ne "") { $sheet.Range([string]$p.range) } else { $sheet.UsedRange }
+            # Count matching cells from a single Value2 read. Excel's Find/FindNext binding is
+            # unreliable under PowerShell's COM binder cache; reading values is exact and cheap.
+            $cells = 0
+            $values = $scope.Value2
+            if ($null -ne $values) {
+                # foreach enumerates every element of a COM 2D array, so this works without
+                # depending on Rank/lower-bound behaviour differing between WPS builds.
+                $isArray = $false
+                try { $isArray = $values.GetType().IsArray } catch { $isArray = $false }
+                $items = if ($isArray) { $values } else { @($values) }
+                foreach ($v in $items) {
+                    if ($null -eq $v) { continue }
+                    $s = [string]$v
+                    $hit = if ($matchCase) { $s.Contains($findText) } else { $s.IndexOf($findText, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 }
+                    if ($hit) { $cells++ }
+                }
+            }
+            $didReplace = $false
+            if ($cells -gt 0) {
+                $replaceMethod = $scope.PSObject.Methods['Replace']
+                if ($null -ne $replaceMethod) {
+                    $didReplace = $replaceMethod.Invoke(@($findText, $replaceText, $lookAt, 1, $matchCase, $false))
+                } else {
+                    $didReplace = $scope.Replace($findText, $replaceText, $lookAt, 1, $matchCase, $false)
+                }
+            }
+            Output-Json @{ success = $true; data = @{ cells = $cells; find = $findText; replace = $replaceText; sheet = $sheet.Name; changed = [bool]$didReplace } }
         } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
     default {

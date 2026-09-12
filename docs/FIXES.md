@@ -120,6 +120,26 @@ excel-range 12/12；8000 格读取 15ms。
 
 `Cells.Item($p.row, $p.col)` 的参数同样是 PSObject 包装的数值，显式 `[int]` 转换后稳定。
 
+### 9. Excel 查找替换：跨应用缺陷 + 静默无效 + 计数造假（已修）
+
+`wps_excel_find_replace` 同时有三个缺陷：
+
+1. **跨应用**：它调用的是 Word 专用的 `findReplace` action（实现里是 `Get-WpsWord` + `$doc.Content.Find`），
+   所以"在 Excel 里查找替换"实际作用在 **Word 文档**上。
+2. **静默无效**：它发 `find`/`replace`，而桥读 `findText`/`replaceText`，字符串从未被传入。
+3. **计数造假**：它期望 `data.count`，而 Word action 返回的是 `replaced` 布尔值，于是永远显示"共替换 0 处"。
+
+修复：
+
+- 桥里新增独立的 **`findReplaceExcel`** action，Excel 工具改调它，不再复用 Word 的实现。
+- Word 的 `findReplace` 同时接受 `find`/`replace` 别名（容错）。
+- 计数改为一次 `Value2` 读取后在 PowerShell 内精确统计（Excel 的 `Find`/`FindNext` 受 COM 绑定器缓存影响不可靠），
+  替换仍交给 `Range.Replace` 执行；返回 `cells` 与 `changed`。
+- 顺带修掉 Word 工具消息里的 "替换了 undefined 处"。
+
+回归：test/find-replace.test.mjs 10/10，其中包含**跨应用隔离**用例：
+在 Word 文档打开的状态下执行 Excel 查找替换，Word 内容必须保持不变。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
