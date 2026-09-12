@@ -1,0 +1,23 @@
+# DSH integration for the Windows/COM-only WPS bundle (dsh-plugin-wps-office-next).
+#
+# The plugin entry must stay first: its module top level publishes WPS_OFFICE_MCP_ENTRY,
+# which the MCP client entry below reads when it activates. That is what removes the old
+# WPS_SKILLS_ROOT / WPS_OFFICE_MCP_ENTRY configuration step.
+
+- insert:
+    - id: wps-office-next-plugin
+      name: 'dsh-plugin-wps-office-next/plugin'
+
+    - id: mcp-wps-office-next
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: wps-office-next
+        transport: stdio
+        command: node
+        args:
+          - !!js "process.env.WPS_OFFICE_MCP_ENTRY ?? (() => { throw new Error('dsh-plugin-wps-office-next: MCP entry was not resolved; the plugin entry must load before the mcp entry') })()"
+        cwd: !!js "process.env.WPS_OFFICE_MCP_CWD ?? process.cwd()"
+        env:
+          WPS_OFFICE_TOOLSET: !!js "process.env.WPS_OFFICE_TOOLSET ?? 'standard'"
+        toolCallTimeoutMs: 330000
+        failOnStartupError: true

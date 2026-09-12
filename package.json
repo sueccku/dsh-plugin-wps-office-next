@@ -11,7 +11,6 @@
   },
   "files": [
     "cordis.patch.yml",
-    ".npmrc",
     "plugin.js",
     "skills",
     "mcp",
@@ -23,7 +22,13 @@
   ],
   "scripts": {
     "snapshot": "node scripts/snapshot-tools.mjs",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "gen:skills": "node scripts/gen-skill-tools.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "uuid": "^9.0.0",
+    "winston": "^3.11.0"
   },
   "engines": {
     "node": ">=22.19.0",
