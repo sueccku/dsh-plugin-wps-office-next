@@ -29,6 +29,26 @@ Unknown action，其中 wps_ppt_set_shape_fill 还在我们的 standard 档里�
 上游实现直接调用 $pres.Close()，丢弃修改时会弹保存对话框，破坏无人值守场景。
 现在与 Excel/Word 一致：saveChanges 为 false 时先置 Saved=$true 再关闭。
 
+### 3. 省略 sheet 时必然失败（缺陷 C4，影响 6 处）
+
+上游把省略的 sheet 强制成索引 0：`$p.sheet -is [int]` 的两个分支代码完全相同，
+最终都走 `Sheets.Item(0)`，触发 DISP_E_BADINDEX。而 wps_excel_read_range / write_range 的
+schema 里 sheet 是可选参数——也就是说**最常用的读写工具在不指定工作表时必然失败**。
+
+已实测确认：`getRangeData {range:"A1:B2"}` 返回 Invalid index (0x8002000B)。
+现在 6 处统一改为：传了就按名/序号取，没传就用 `$excel.ActiveSheet`。
+同时修掉工具层的 `sheet || 0` 强制转换。
+
+### 4. 范围读取逐格循环（缺陷 C5）+ 二维数组编组
+
+原实现按 cell 逐个读（O(n*m) 次 COM 往返），根因是绕开 `Range.Value2` 返回 `Object[,]`
+时 `ConvertTo-Json` 会把它压平的问题。
+
+现在改为一次 `$range.Value2` 读取，再用 `GetLowerBound()/GetUpperBound()` 显式转成锯齿数组
+（不能硬编码 0 或 1 基），并处理单格标量与空区域两种情况。
+
+实测：读取 400x20 = 8000 格耗时 **37ms**；原实现是 8000 次 COM 往返。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -39,5 +59,7 @@ Unknown action，其中 wps_ppt_set_shape_fill 还在我们的 standard 档里�
 
 ## 验证
 
-node test/new-actions.test.mjs —— 28 项，全部在真实 WPS 上执行：
-创建一次性文档 → 逐项调用并回读校验 → 不保存关闭。
+两个测试都在真实 WPS 上跑，各自创建一次性文档、回读校验、不保存关闭：
+
+- node test/new-actions.test.mjs —— 28 项（新增/修复的 10 个 action 与 closePresentation）
+- node test/excel-range.test.mjs —— 10 项（sheet 回退、二维编组、单格、8000 格性能）

@@ -68,7 +68,7 @@ export const readRangeHandler: ToolHandler = async (
   };
 
   try {
-    const response = await wpsClient.getRangeData(sheet || 0, range);
+    const response = await wpsClient.getRangeData(sheet, range);
 
     if (!response || response.length === 0) {
       return {
@@ -170,7 +170,7 @@ export const writeRangeHandler: ToolHandler = async (
   }
 
   try {
-    const success = await wpsClient.setRangeData(sheet || 0, range, data);
+    const success = await wpsClient.setRangeData(sheet, range, data);
 
     if (success) {
       return {

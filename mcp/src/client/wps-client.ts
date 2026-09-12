@@ -145,12 +145,12 @@ export class WpsClient {
     return response.success;
   }
 
-  async getRangeData(sheet: string | number, range: string): Promise<unknown[][]> {
+  async getRangeData(sheet: string | number | undefined, range: string): Promise<unknown[][]> {
     const response = await this.invokeAction<{ data: unknown[][] }>('getRangeData', { sheet, range });
     return response.data?.data || [];
   }
 
-  async setRangeData(sheet: string | number, range: string, data: unknown[][]): Promise<boolean> {
+  async setRangeData(sheet: string | number | undefined, range: string, data: unknown[][]): Promise<boolean> {
     const response = await this.invokeAction('setRangeData', { sheet, range, data });
     return response.success;
   }

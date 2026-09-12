@@ -55,7 +55,7 @@ exports.readRangeDefinition = {
 const readRangeHandler = async (args) => {
     const { range, sheet, include_header } = args;
     try {
-        const response = await wps_client_1.wpsClient.getRangeData(sheet || 0, range);
+        const response = await wps_client_1.wpsClient.getRangeData(sheet, range);
         if (!response || response.length === 0) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -145,7 +145,7 @@ const writeRangeHandler = async (args) => {
         };
     }
     try {
-        const success = await wps_client_1.wpsClient.setRangeData(sheet || 0, range, data);
+        const success = await wps_client_1.wpsClient.setRangeData(sheet, range, data);
         if (success) {
             return {
                 id: (0, uuid_1.v4)(),

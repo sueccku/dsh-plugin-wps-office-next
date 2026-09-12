@@ -32,8 +32,8 @@ export declare class WpsClient {
     getActiveWorkbook(): Promise<WorkbookInfo | null>;
     getCellValue(sheet: string | number, row: number, col: number): Promise<unknown>;
     setCellValue(sheet: string | number, row: number, col: number, value: unknown): Promise<boolean>;
-    getRangeData(sheet: string | number, range: string): Promise<unknown[][]>;
-    setRangeData(sheet: string | number, range: string, data: unknown[][]): Promise<boolean>;
+    getRangeData(sheet: string | number | undefined, range: string): Promise<unknown[][]>;
+    setRangeData(sheet: string | number | undefined, range: string, data: unknown[][]): Promise<boolean>;
     setFormula(sheet: string | number, row: number, col: number, formula: string): Promise<boolean>;
     getActiveDocument(): Promise<DocumentInfo | null>;
     createDocument(): Promise<boolean>;
