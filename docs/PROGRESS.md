@@ -9,7 +9,7 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 | P2 常驻 COM host | 完成 | warm ping 1ms（原 969ms）；test/com-host.test.mjs 6/6 |
 | P3 工具面收敛 | 完成 | standard 43 工具 / 23,198 字节 / 约 6.6k tokens；scripts/verify.mjs 22/22 |
 | 最小技能集 + DSH 自举 | 完成 | plugin.js + cordis.patch.yml；4 个技能；test/plugin.test.mjs 32/32；真实 profile 启动验证通过 |
-| P4 缺陷修复 | 进行中 | 已修：11 个永久失败的工具、closePresentation、sheet 省略失败（6 处）、范围逐格读；证据 new-actions 28/28 + excel-range 10/10 |
+| P4 缺陷修复 | 进行中 | 已修：11 个永久失败的工具、closePresentation、sheet 省略失败（6 处）、范围逐格读、3 对重复工具合并；证据 new-actions 28/28 + excel-range 10/10 + deprecated 8/8。新发现 PPT 动画/切换整族不可用（传英文名，COM 要数字枚举） |
 | P5 全量技能打磨 | 未开始 | 当前为最小技能集 |
 
 ## DSH 端到端验证（真实 profile，非模拟）
@@ -61,7 +61,7 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 
 待修（本节列的其余项）：
 
-- 合并 21 处重复工具
+- ~~合并重复工具~~ 第一批 3 对已合并；其余 15 对参数接口不同，待参数契约测试后再处理
 - 参数校验只检查 required，写错参数名静默忽略
 - 统一结果形状、消灭 50 处静默 catch
 - 文档与代码不一致（auto_fit 声明但不存在；tools/index.ts 计数有误）

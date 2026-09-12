@@ -49,6 +49,53 @@ schema 里 sheet 是可选参数——也就是说**最常用的读写工具在�
 
 实测：读取 400x20 = 8000 格耗时 **37ms**；原实现是 8000 次 COM 往返。
 
+### 5. 重复工具合并（第一批，3 对）
+
+上游有 18 组「同应用、同一 action」的工具对。其中接口完全等价的先合并：
+
+| 废弃名 | 规范名 | 依据 |
+|---|---|---|
+| wps_excel_zoom | wps_excel_set_zoom | 参数与语义完全相同（都只收 percent） |
+| wps_ppt_add_speaker_notes | wps_ppt_set_slide_notes | 参数与语义完全相同（slideIndex, notes） |
+| wps_word_generate_doc_toc | wps_word_generate_toc | levels 是规范参数的子集 |
+
+实现方式：mcp/src/tools/deprecated.ts 登记废弃→规范映射，启动时把废弃名改成转发别名。
+旧名字仍然可用（不破坏既有提示词），但不再出现在 wps_help 的目录与搜索里；
+wps_status 会汇报合并数量。验证：test/deprecated.test.mjs 8/8。
+
+### 6. 未合并的 15 对：为什么先不动
+
+这些对的参数接口不同（例如 delete_rows 用 startRow、delete_row 用 row；
+fill_series 与 auto_fill 是两种不同操作），**机械转发会改变行为**。
+更关键的是：继续合并前必须先修底层，否则只是把坏工具合并成一个更权威的坏名字。
+
+## 已确认不可用的整族功能：PPT 动画与切换
+
+实测（真实 WPS，未保存关闭）：
+
+```
+SlideShowTransition.EntryEffect = 'fade'      -> FAIL: Index was outside the bounds of the array
+SlideShowTransition.EntryEffect = 1793        -> OK
+TimeLine.MainSequence.AddEffect(sh,'fadeIn',1) -> FAIL: Cannot convert "fadeIn" (string) to type Object
+TimeLine.MainSequence.AddEffect(sh, 10, 1)     -> OK
+```
+
+**COM 要求数字枚举，而上游整族传的是英文名**，所以 animate/transition 相关工具全部不可用：
+wps_ppt_add_animation、wps_ppt_set_animation、wps_ppt_add_animation_preset、
+wps_ppt_add_emphasis_animation、wps_ppt_set_slide_transition、wps_ppt_set_transition、
+wps_ppt_apply_transition_to_all。
+
+另外 wps_ppt_set_transition / wps_ppt_set_animation 连参数名都不对：
+桥读 effect / shapeName，它们传 transition / shapeIndex。
+
+## 待办：参数契约测试
+
+工具层与桥之间存在系统性的参数名不一致。静态比对（scripts/analyze-param-mismatch.mjs）
+会因对象展开与改名产生大量误报，**不足以作为结论**；且实测也证明 handler 会主动补别名
+（wps_ppt_insert_ppt_image 同时发 filePath/path/imagePath）。
+
+正确做法是逐工具动态验证：用文档化参数调用，再回读可观测的效果。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
