@@ -1,15 +1,11 @@
 import { readFileSync } from "node:fs";
-const text = readFileSync("mcp/scripts/wps-com.ps1", "utf8");
-const lines = text.split(/\r?\n/);
-const actions = process.argv.slice(2);
-for (const a of actions) {
-  const start = lines.findIndex((l) => l === '    "' + a + '" {');
-  if (start < 0) { console.log("=== " + a + "  NOT FOUND"); continue; }
-  let end = start + 1;
-  while (end < lines.length && lines[end] !== "    }") end++;
-  const body = lines.slice(start + 1, end);
-  const used = [...new Set(body.join("\n").match(/\$p\.[A-Za-z_][A-Za-z0-9_]*/g) || [])].map((s) => s.slice(3));
-  console.log("=== " + a + "  (lines " + (start + 1) + "-" + (end + 1) + ")");
-  console.log("    reads params: " + (used.length ? used.join(", ") : "(none)"));
-  if (body.length <= 14) { console.log(body.map((l) => "      " + l.trim()).join("\n")); }
+const lines = readFileSync("mcp/scripts/wps-com.ps1", "utf8").split(/\r?\n/);
+for (const a of process.argv.slice(2)) {
+  const s = lines.findIndex((l) => l === '    "' + a + '" {');
+  if (s < 0) { console.log("=== " + a + " NOT FOUND"); continue; }
+  let e = s + 1;
+  while (e < lines.length && lines[e] !== "    }") e++;
+  console.log("=== " + a + "  (lines " + (s + 1) + "-" + (e + 1) + ")");
+  console.log(lines.slice(s + 1, e).map((l) => "    " + l.trim()).join("\n"));
+  console.log("");
 }

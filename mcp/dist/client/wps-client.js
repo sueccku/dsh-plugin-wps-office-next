@@ -13,6 +13,7 @@ const wps_1 = require("../types/wps");
 const logger_1 = require("../utils/logger");
 const error_1 = require("../utils/error");
 const com_host_1 = require("./com-host");
+const node_fs_1 = require("node:fs");
 // ==================== PPT 目标文稿锁定（避免多文稿打开时 ActivePresentation 漂移）====================
 // 通过 wps_ppt_set_active_target 设置后，所有 PRESENTATION 类调用（executeMethod 带 WpsAppType.PRESENTATION）
 // 自动注入 presentationName，由 wps-com.ps1 的 Get-TargetPres 精确定位目标文稿；单次调用显式传 presentationName 可覆盖。
@@ -30,6 +31,21 @@ function getPptTarget() {
  * 统一执行接口 - 通过常驻 COM host 调用 WPS
  * 进程生命周期、串行化、超时与崩溃恢复由 com-host.ts 负责
  */
+/**
+ * 参数契约追踪：把每次调用实际发出的 action 与参数键写入 JSONL
+ * 由 WPS_OFFICE_TRACE 环境变量开启，用于发现「工具发了参数但底层不读」这类静默失败
+ */
+function traceCall(action, params, success) {
+    const target = process.env.WPS_OFFICE_TRACE;
+    if (!target)
+        return;
+    try {
+        (0, node_fs_1.appendFileSync)(target, JSON.stringify({ ts: Date.now(), action, keys: Object.keys(params || {}), success }) + '\n');
+    }
+    catch {
+        // 追踪本身绝不能影响调用
+    }
+}
 async function execWpsAction(action, params = {}) {
     return com_host_1.comHost.invoke(action, params);
 }
@@ -52,6 +68,7 @@ class WpsClient {
             const result = await execWpsAction(action, params);
             const duration = Date.now() - startTime;
             (0, logger_1.logResponse)(action, result.success, duration);
+            traceCall(action, params, result.success === true);
             if (result.success) {
                 this.status.connected = true;
                 this.status.lastHeartbeat = new Date();
@@ -61,6 +78,7 @@ class WpsClient {
         catch (error) {
             const duration = Date.now() - startTime;
             (0, logger_1.logResponse)(action, false, duration);
+            traceCall(action, params, false);
             this.status.connected = false;
             throw error_1.errorUtils.wrap(error, `WPS 调用失败（PowerShell COM）: ${action}`);
         }

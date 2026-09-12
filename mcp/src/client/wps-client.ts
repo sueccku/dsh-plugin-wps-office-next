@@ -18,6 +18,7 @@ import {
 import { log, logRequest, logResponse } from '../utils/logger';
 import { errorUtils } from '../utils/error';
 import { comHost } from './com-host';
+import { appendFileSync } from 'node:fs';
 
 // ==================== PPT 目标文稿锁定（避免多文稿打开时 ActivePresentation 漂移）====================
 // 通过 wps_ppt_set_active_target 设置后，所有 PRESENTATION 类调用（executeMethod 带 WpsAppType.PRESENTATION）
@@ -37,6 +38,20 @@ export function getPptTarget(): string | undefined {
  * 统一执行接口 - 通过常驻 COM host 调用 WPS
  * 进程生命周期、串行化、超时与崩溃恢复由 com-host.ts 负责
  */
+/**
+ * 参数契约追踪：把每次调用实际发出的 action 与参数键写入 JSONL
+ * 由 WPS_OFFICE_TRACE 环境变量开启，用于发现「工具发了参数但底层不读」这类静默失败
+ */
+function traceCall(action: string, params: Record<string, unknown>, success: boolean): void {
+  const target = process.env.WPS_OFFICE_TRACE;
+  if (!target) return;
+  try {
+    appendFileSync(target, JSON.stringify({ ts: Date.now(), action, keys: Object.keys(params || {}), success }) + '\n');
+  } catch {
+    // 追踪本身绝不能影响调用
+  }
+}
+
 async function execWpsAction(action: string, params: Record<string, unknown> = {}): Promise<unknown> {
   return comHost.invoke(action, params);
 }
@@ -63,6 +78,7 @@ export class WpsClient {
       const result = await execWpsAction(action, params) as WpsApiResponse<T>;
       const duration = Date.now() - startTime;
       logResponse(action, result.success, duration);
+      traceCall(action, params, result.success === true);
 
       if (result.success) {
         this.status.connected = true;
@@ -73,6 +89,7 @@ export class WpsClient {
     } catch (error) {
       const duration = Date.now() - startTime;
       logResponse(action, false, duration);
+      traceCall(action, params, false);
       this.status.connected = false;
       throw errorUtils.wrap(error, `WPS 调用失败（PowerShell COM）: ${action}`);
     }
