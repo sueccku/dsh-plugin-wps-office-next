@@ -64,8 +64,20 @@ exports.setCellFormatDefinition = {
 };
 const setCellFormatHandler = async (args) => {
     const { range, format, sheet } = args;
+    // The schema declares the format fields twice: nested under `format` and as flat properties.
+    // Merge both so either shape works instead of silently ignoring the flat ones.
+    const nested = format && typeof format === 'object' ? format : {};
+    const merged = { ...nested };
+    for (const key of [
+        'bold', 'italic', 'fontSize', 'fontName', 'fontColor', 'bgColor',
+        'underline', 'strikethrough', 'horizontalAlignment', 'verticalAlignment',
+        'wrapText', 'numberFormat',
+    ]) {
+        if (args[key] !== undefined && merged[key] === undefined)
+            merged[key] = args[key];
+    }
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setCellFormat', { range, format, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('setCellFormat', { range, format: merged, sheet }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -74,9 +86,8 @@ const setCellFormatHandler = async (args) => {
                 error: response.error,
             };
         }
-        const formatDesc = Object.entries(format)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(', ');
+        const applied = response.data?.applied || [];
+        const formatDesc = applied.length ? applied.join(', ') : Object.keys(merged).join(', ');
         return {
             id: (0, uuid_1.v4)(),
             success: true,

@@ -166,6 +166,26 @@ excel-range 12/12；8000 格读取 15ms。
 
 证据：本机一致性自检 11/11；全量回归全绿。
 
+### 11. `wps_excel_set_cell_format`：整个格式对象被丢弃（已修）
+
+这是广告中的常用工具，实际行为是：
+
+- 桥只读 `numberFormat`，`format` 与 `sheet` 被忽略，返回却是 `success: true`；
+- 工具的 schema **同时**声明了嵌套 `format` 对象和 12 个平铺属性（bold/fontSize/...），
+  但 handler 只转发 `format`，所以平铺写法也被静默忽略——同一个功能有两套入口，两套都不可用。
+
+修复：
+
+- 桥实现完整的格式应用：粗体、斜体、下划线、删除线、字体名、字号、字色、背景色、
+  水平/垂直对齐、自动换行、数字格式；支持嵌套与平铺两种形状；支持 `sheet` 指定工作表。
+- 工具层把平铺属性合并进 `format`，并在返回消息里报告实际生效的属性列表。
+- 空格式**明确报错**（`no supported format property was provided`），不再假装成功。
+- 顺带扩展 `getCellInfo` 的回读字段（italic、字体色、对齐、换行、sheet），使格式可验证。
+- 顺带加固 helper：新增 `Find-ComProperty`，先索引后枚举，应对成员集合惰性填充。
+
+回归：test/cell-format.test.mjs 16/16，包含 10 个属性逐个回读、平铺写法、
+空格式必须报错、以及**不串到相邻单元格**。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

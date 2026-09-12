@@ -183,17 +183,20 @@ function ConvertTo-ComValue($value) {
     if ($value -is [int] -or $value -is [long] -or $value -is [double] -or $value -is [decimal]) { return [double]$value }
     return [string]$value
 }
+function Find-ComProperty($target, [string]$member) {
+    if ($null -eq $target) { throw ('Find-ComProperty: null target for member ' + $member) }
+    $prop = $target.PSObject.Properties[$member]
+    if ($null -ne $prop) { return $prop }
+    # A COM adapter's member collection is populated lazily, so fall back to enumeration.
+    return ($target.PSObject.Properties | Where-Object { $_.Name -eq $member } | Select-Object -First 1)
+}
 function Set-ComValue($target, [string]$member, $value) {
-    if ($null -eq $target) { throw ('Set-ComValue: null target for member ' + $member) }
-    # A COM adapter's member collection is populated lazily: an indexed lookup can return null
-    # until the collection has been enumerated once, so enumerate instead of indexing.
-    $prop = $target.PSObject.Properties | Where-Object { $_.Name -eq $member } | Select-Object -First 1
+    $prop = Find-ComProperty $target $member
     if ($null -eq $prop) { throw ('Set-ComValue: member not found: ' + $member) }
     $prop.Value = ConvertTo-ComValue $value
 }
 function Get-ComValue($target, [string]$member) {
-    if ($null -eq $target) { throw ('Get-ComValue: null target for member ' + $member) }
-    $prop = $target.PSObject.Properties | Where-Object { $_.Name -eq $member } | Select-Object -First 1
+    $prop = Find-ComProperty $target $member
     if ($null -eq $prop) { throw ('Get-ComValue: member not found: ' + $member) }
     return $prop.Value
 }
@@ -897,10 +900,59 @@ switch ($Action) {
     "setCellFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
-        $range = $sheet.Range($p.range)
-        if ($p.numberFormat) { $range.NumberFormat = $p.numberFormat }
-        Output-Json @{ success = $true; data = @{ range = $p.range; format = $p.numberFormat } }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        try {
+            $range = $sheet.Range([string]$p.range)
+            # The tool may send a nested format object, flat properties, or both.
+            $f = @{}
+            if ($null -ne $p.format) {
+                foreach ($prop in $p.format.PSObject.Properties) { $f[$prop.Name] = $prop.Value }
+            }
+            foreach ($name in @('bold','italic','fontSize','fontName','fontColor','bgColor','underline','strikethrough','horizontalAlignment','verticalAlignment','wrapText','numberFormat')) {
+                $flat = $p.PSObject.Properties | Where-Object { $_.Name -eq $name } | Select-Object -First 1
+                if ($null -ne $flat -and $null -ne $flat.Value) { $f[$name] = $flat.Value }
+            }
+            $applied = @()
+            $font = $range.Font
+            if ($null -ne $f['bold']) { Set-ComValue $font 'Bold' ([bool]$f['bold']); $applied += 'bold' }
+            if ($null -ne $f['italic']) { Set-ComValue $font 'Italic' ([bool]$f['italic']); $applied += 'italic' }
+            if ($null -ne $f['underline']) {
+                $underlineValue = if ([bool]$f['underline']) { 2 } else { -4142 }
+                Set-ComValue $font 'Underline' $underlineValue
+                $applied += 'underline'
+            }
+            if ($null -ne $f['strikethrough']) { Set-ComValue $font 'Strikethrough' ([bool]$f['strikethrough']); $applied += 'strikethrough' }
+            if ($null -ne $f['fontName'] -and "$($f['fontName'])" -ne "") { Set-ComValue $font 'Name' ([string]$f['fontName']); $applied += 'fontName' }
+            if ($null -ne $f['fontSize'] -and [double]$f['fontSize'] -gt 0) { Set-ComValue $font 'Size' ([double]$f['fontSize']); $applied += 'fontSize' }
+            if ($null -ne $f['fontColor']) {
+                $fontRgb = Convert-HexColorToRgbInt([string]$f['fontColor'])
+                if ($null -ne $fontRgb) { Set-ComValue $font 'Color' $fontRgb; $applied += 'fontColor' }
+            }
+            if ($null -ne $f['bgColor']) {
+                $bgRgb = Convert-HexColorToRgbInt([string]$f['bgColor'])
+                if ($null -ne $bgRgb) {
+                    Set-ComValue $range.Interior 'Color' $bgRgb
+                    Set-ComValue $range.Interior 'Pattern' 1
+                    $applied += 'bgColor'
+                }
+            }
+            if ($null -ne $f['horizontalAlignment']) {
+                $alignMap = @{ left = -4131; center = -4108; right = -4152; justify = -4130 }
+                $alignValue = $alignMap[[string]$f['horizontalAlignment']]
+                if ($null -ne $alignValue) { Set-ComValue $range 'HorizontalAlignment' $alignValue; $applied += 'horizontalAlignment' }
+            }
+            if ($null -ne $f['verticalAlignment']) {
+                $valignMap = @{ top = -4160; center = -4108; bottom = -4107 }
+                $valignValue = $valignMap[[string]$f['verticalAlignment']]
+                if ($null -ne $valignValue) { Set-ComValue $range 'VerticalAlignment' $valignValue; $applied += 'verticalAlignment' }
+            }
+            if ($null -ne $f['wrapText']) { Set-ComValue $range 'WrapText' ([bool]$f['wrapText']); $applied += 'wrapText' }
+            if ($null -ne $f['numberFormat'] -and "$($f['numberFormat'])" -ne "") { Set-ComValue $range 'NumberFormat' ([string]$f['numberFormat']); $applied += 'numberFormat' }
+            if ($applied.Count -eq 0) { Output-Json @{ success = $false; error = "no supported format property was provided" }; exit }
+            Output-Json @{ success = $true; data = @{ range = [string]$p.range; sheet = $sheet.Name; applied = $applied } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "setCellStyle" {
@@ -1124,16 +1176,24 @@ switch ($Action) {
     "getCellInfo" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
-        $cell = $sheet.Range($p.cell)
-        $value = $cell.Value2
-        $formula = if ($cell.Formula) { $cell.Formula } else { "" }
-        $numberFormat = if ($cell.NumberFormat) { $cell.NumberFormat } else { "" }
-        $fontName = if ($cell.Font.Name) { $cell.Font.Name } else { "" }
-        $fontSize = if ($cell.Font.Size) { $cell.Font.Size } else { 0 }
-        $bold = if ($null -ne $cell.Font.Bold) { [bool]$cell.Font.Bold } else { $false }
-        $bgColor = if ($null -ne $cell.Interior.Color) { $cell.Interior.Color } else { 0 }
-        Output-Json @{ success = $true; data = @{ cell = $p.cell; value = $value; formula = $formula; numberFormat = $numberFormat; font = @{ name = $fontName; size = $fontSize; bold = $bold }; backgroundColor = $bgColor } }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        try {
+            $cell = $sheet.Range([string]$p.cell)
+            $value = Get-ComValue $cell 'Value2'
+            $formula = [string](Get-ComValue $cell 'Formula')
+            $numberFormat = [string](Get-ComValue $cell 'NumberFormat')
+            $font = $cell.Font
+            Output-Json @{ success = $true; data = @{
+                cell = [string]$p.cell; sheet = $sheet.Name; value = $value; formula = $formula; numberFormat = $numberFormat
+                font = @{ name = [string](Get-ComValue $font 'Name'); size = [double](Get-ComValue $font 'Size'); bold = [bool](Get-ComValue $font 'Bold'); italic = [bool](Get-ComValue $font 'Italic'); color = [double](Get-ComValue $font 'Color') }
+                backgroundColor = [double](Get-ComValue $cell.Interior 'Color')
+                horizontalAlignment = [double](Get-ComValue $cell 'HorizontalAlignment')
+                verticalAlignment = [double](Get-ComValue $cell 'VerticalAlignment')
+                wrapText = [bool](Get-ComValue $cell 'WrapText')
+            } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "refreshLinks" {
