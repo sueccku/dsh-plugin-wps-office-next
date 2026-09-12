@@ -151,6 +151,11 @@ export const convertToPdfDefinition: ToolDefinition = {
         type: 'boolean',
         description: '导出后是否自动打开PDF，默认false',
       },
+      app_type: {
+        type: 'string',
+        enum: ['excel', 'word', 'ppt'],
+        description: '要导出的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档',
+      },
     },
     required: [],
   },
@@ -159,9 +164,10 @@ export const convertToPdfDefinition: ToolDefinition = {
 export const convertToPdfHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { outputPath, openAfterExport } = args as {
+  const { outputPath, openAfterExport, app_type } = args as {
     outputPath?: string;
     openAfterExport?: boolean;
+    app_type?: string;
   };
 
   try {
@@ -176,11 +182,11 @@ export const convertToPdfHandler: ToolHandler = async (
     }>(
       'convertToPDF',
       {
+        // The bridge reads outputPath. The path/filePath aliases carried the same value and were
+        // never read; the parameter guard now rejects them outright.
         outputPath: outputPath || '',
-        // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-        path: outputPath || '',
-        filePath: outputPath || '',
         openAfterExport: openAfterExport || false,
+        appType: app_type,
       }
       // 不指定appType，让WPS加载项自动检测当前活动的应用
     );
@@ -255,6 +261,11 @@ export const convertFormatDefinition: ToolDefinition = {
         type: 'string',
         description: '输出路径（包含文件名），如不指定则使用原文件名改为新扩展名',
       },
+      app_type: {
+        type: 'string',
+        enum: ['excel', 'word', 'ppt'],
+        description: '要转换的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档',
+      },
     },
     required: ['targetFormat'],
   },
@@ -263,9 +274,10 @@ export const convertFormatDefinition: ToolDefinition = {
 export const convertFormatHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { targetFormat, outputPath } = args as {
+  const { targetFormat, outputPath, app_type } = args as {
     targetFormat: string;
     outputPath?: string;
+    app_type?: string;
   };
 
   if (!targetFormat || targetFormat.trim() === '') {
@@ -292,9 +304,7 @@ export const convertFormatHandler: ToolHandler = async (
       {
         targetFormat: targetFormat.toLowerCase().replace(/^\./, ''), // 去掉开头的点
         outputPath: outputPath || '',
-        // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-        path: outputPath || '',
-        filePath: outputPath || '',
+        appType: app_type,
       }
       // 不指定appType，让WPS加载项自动检测
     );

@@ -485,13 +485,13 @@ export const insertImageHandler: ToolHandler = async (
   }
 
   try {
-    // 跨平台参数对齐：macOS/Windows 底层均优先读取 params.path，同时保留 imagePath/filePath 别名
+    // The bridge reads "path"; the imagePath/filePath aliases were never read.
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
     }>(
       'insertImage',
-      { imagePath, path: imagePath, filePath: imagePath, width, height },
+      { path: imagePath, width, height },
       WpsAppType.WRITER
     );
 

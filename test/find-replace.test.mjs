@@ -72,6 +72,16 @@ check("SEARCH-ONLY DID NOT DELETE THE MATCHES", (afterSearch.match(/alpha/g) || 
 const r5 = await call("wps_word_find_replace", { find_text: "no-such-token-xyz" });
 check("search with no match reports zero", ok(r5) && /0\s*次/.test(text(r5)), text(r5).replace(/\s+/g, " ").slice(0, 90));
 
+// Close everything this test opened. The close actions are dialog-safe now (see
+// test/close-safety.test.mjs), so a scratch run leaves no documents behind for the next one.
+// Word has no close tool, so all three go through the wps_call facade.
+for (const [method, appType] of [["closeWorkbook", "et"], ["closeDocument", "wps"], ["closePresentation", "wpp"]]) {
+  for (let i = 0; i < 6; i++) {
+    const res = await call("wps_call", { tool: "wps_execute_method", args: { method, params: { save: false }, appType } });
+    if (!ok(res)) break;
+  }
+}
+
 child.kill();
 const failed = results.filter((r) => !r.ok).length;
 console.log(failed === 0 ? "FIND/REPLACE TESTS OK (" + results.length + ")" : "FIND/REPLACE TESTS FAILED (" + failed + "/" + results.length + ")");

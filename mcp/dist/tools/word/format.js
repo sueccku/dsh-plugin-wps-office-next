@@ -403,7 +403,10 @@ const setPageSetupHandler = async (args) => {
         };
     }
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setPageSetup', { orientation, marginTop, marginBottom, marginLeft, marginRight }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('setPageSetup', 
+        // The bridge's keys are topMargin/bottomMargin/leftMargin/rightMargin; the schema keeps the
+        // marginX spelling for callers.
+        { orientation, topMargin: marginTop, bottomMargin: marginBottom, leftMargin: marginLeft, rightMargin: marginRight }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const s = response.data.settings;
             let desc = '';

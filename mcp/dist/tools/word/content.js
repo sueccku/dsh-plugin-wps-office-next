@@ -402,8 +402,8 @@ const insertImageHandler = async (args) => {
         };
     }
     try {
-        // 跨平台参数对齐：macOS/Windows 底层均优先读取 params.path，同时保留 imagePath/filePath 别名
-        const response = await wps_client_1.wpsClient.executeMethod('insertImage', { imagePath, path: imagePath, filePath: imagePath, width, height }, wps_1.WpsAppType.WRITER);
+        // The bridge reads "path"; the imagePath/filePath aliases were never read.
+        const response = await wps_client_1.wpsClient.executeMethod('insertImage', { path: imagePath, width, height }, wps_1.WpsAppType.WRITER);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),

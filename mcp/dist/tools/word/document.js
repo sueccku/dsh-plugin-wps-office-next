@@ -188,7 +188,6 @@ const openDocumentHandler = async (args) => {
     }
     try {
         const params = {
-            filePath,
             path: filePath,
         };
         const response = await wps_client_1.wpsClient.executeMethod('openDocument', params, wps_1.WpsAppType.WRITER);

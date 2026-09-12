@@ -205,6 +205,18 @@ function Resolve-Worksheet($excel, $wb, $p, [switch]$RequireName) {
     return $excel.ActiveSheet
 }
 
+function Open-ExportedFile($path, $flag) {
+    # Returns "opened", "failed: <reason>" or $null when nothing was asked for.
+    if (-not $flag) { return $null }
+    if ($null -eq $path -or "$path" -eq "") { return "failed: no output path" }
+    try {
+        Start-Process -FilePath ([string]$path)
+        return "opened"
+    } catch {
+        return ("failed: " + $_.Exception.Message)
+    }
+}
+
 function Resolve-ImageFilePath($value) {
     # WPS resolves picture paths against its own working directory, so a relative path that looks
     # right from the caller's shell fails with a bare E_FAIL. Resolve it here and report a missing
@@ -442,8 +454,8 @@ $script:ActionParamKeys = @{
     'closePresentation' = @('name', 'save', 'saveChanges')
     'closeWorkbook' = @('name', 'save', 'saveChanges')
     'consolidate' = @('createLinks', 'destination', 'function', 'leftColumn', 'sheet', 'sources', 'topRow')
-    'convertFormat' = @('outputPath', 'presentationName', 'targetFormat')
-    'convertToPDF' = @('outputPath', 'presentationName')
+    'convertFormat' = @('appType', 'outputPath', 'presentationName', 'targetFormat')
+    'convertToPDF' = @('appType', 'openAfterExport', 'outputPath', 'presentationName')
     'copyFormat' = @('sheet', 'source', 'target')
     'copyRange' = @('destination', 'range', 'sheet', 'source')
     'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
@@ -535,8 +547,8 @@ $script:ActionParamKeys = @{
     'insertBookmark' = @('name')
     'insertColumns' = @('column', 'count', 'sheet', 'startColumn')
     'insertExcelImage' = @('cell', 'height', 'left', 'path', 'sheet', 'top', 'width')
-    'insertFooter' = @('alignment', 'includePageNumber', 'text')
-    'insertHeader' = @('alignment', 'text')
+    'insertFooter' = @('alignment', 'includePageNumber', 'section', 'text')
+    'insertHeader' = @('alignment', 'section', 'text')
     'insertHyperlink' = @('address', 'displayText', 'text', 'url')
     'insertImage' = @('filePath', 'height', 'path', 'scale', 'width')
     'insertPageBreak' = @('type')
@@ -863,37 +875,53 @@ return }
     }
 
     "convertToPDF" {
-        $excel = Get-WpsExcel
+        # Without appType this used to take the first running application, and since Excel is
+        # usually running, converting a Word document exported the workbook instead.
+        $want = if ($null -ne $p.appType) { ([string]$p.appType).ToLower() } else { $null }
+        $wantExcel = ($null -eq $want) -or $want -eq "excel" -or $want -eq "et"
+        $wantWord = ($null -eq $want) -or $want -eq "word" -or $want -eq "wps"
+        $wantPpt = ($null -eq $want) -or $want -eq "ppt" -or $want -eq "wpp"
+        $openAfter = ($null -ne $p.openAfterExport) -and [bool]$p.openAfterExport
+        $excel = if ($wantExcel) { Get-WpsExcel } else { $null }
         if ($null -ne $excel -and $null -ne $excel.ActiveWorkbook) {
             $wb = $excel.ActiveWorkbook
             $sourcePath = $wb.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, 'pdf') }
             $wb.ExportAsFixedFormat(0, $outputPath)
-            Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "excel" } }
+            $openResult = Open-ExportedFile $outputPath $openAfter
+            Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "excel"; openAfterExport = $openResult } }
 return }
-        $word = Get-WpsWord
+        $word = if ($wantWord) { Get-WpsWord } else { $null }
         if ($null -ne $word -and $null -ne $word.ActiveDocument) {
             $doc = $word.ActiveDocument
             $sourcePath = $doc.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, 'pdf') }
             $doc.ExportAsFixedFormat($outputPath, 17)
-            Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "word" } }
+            $openResult = Open-ExportedFile $outputPath $openAfter
+            Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "word"; openAfterExport = $openResult } }
 return }
-        $ppt = Get-WpsPpt
+        $ppt = if ($wantPpt) { Get-WpsPpt } else { $null }
         if ($null -ne $ppt -and $null -ne $ppt.ActivePresentation) {
             $pres = Get-TargetPres $ppt $p
             $sourcePath = $pres.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, 'pdf') }
             $pres.SaveAs($outputPath, 32)
-            Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "ppt" } }
+            $openResult = Open-ExportedFile $outputPath $openAfter
+            Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "ppt"; openAfterExport = $openResult } }
 return }
+        if ($null -ne $want) { Output-Json @{ success = $false; error = ("no running " + $want + " document to export") }; return }
         Output-Json @{ success = $false; error = "No active document" }
     }
 
     "convertFormat" {
         $targetFormat = $p.targetFormat
         if (-not $targetFormat) { Output-Json @{ success = $false; error = "targetFormat required" }; return }
-        $excel = Get-WpsExcel
+        # Same first-running-application hazard as convertToPDF.
+        $want = if ($null -ne $p.appType) { ([string]$p.appType).ToLower() } else { $null }
+        $wantExcel = ($null -eq $want) -or $want -eq "excel" -or $want -eq "et"
+        $wantWord = ($null -eq $want) -or $want -eq "word" -or $want -eq "wps"
+        $wantPpt = ($null -eq $want) -or $want -eq "ppt" -or $want -eq "wpp"
+        $excel = if ($wantExcel) { Get-WpsExcel } else { $null }
         if ($null -ne $excel -and $null -ne $excel.ActiveWorkbook) {
             $wb = $excel.ActiveWorkbook
             $sourcePath = $wb.FullName
@@ -902,7 +930,7 @@ return }
             if ($null -ne $format) { $wb.SaveAs($outputPath, $format) } else { $wb.SaveAs($outputPath) }
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "excel"; targetFormat = $targetFormat } }
 return }
-        $word = Get-WpsWord
+        $word = if ($wantWord) { Get-WpsWord } else { $null }
         if ($null -ne $word -and $null -ne $word.ActiveDocument) {
             $doc = $word.ActiveDocument
             $sourcePath = $doc.FullName
@@ -911,7 +939,7 @@ return }
             if ($null -ne $format) { $doc.SaveAs($outputPath, $format) } else { $doc.SaveAs($outputPath) }
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "word"; targetFormat = $targetFormat } }
 return }
-        $ppt = Get-WpsPpt
+        $ppt = if ($wantPpt) { Get-WpsPpt } else { $null }
         if ($null -ne $ppt -and $null -ne $ppt.ActivePresentation) {
             $pres = Get-TargetPres $ppt $p
             $sourcePath = $pres.FullName
@@ -920,6 +948,7 @@ return }
             if ($null -ne $format) { $pres.SaveAs($outputPath, $format) } else { $pres.SaveAs($outputPath) }
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "ppt"; targetFormat = $targetFormat } }
 return }
+        if ($null -ne $want) { Output-Json @{ success = $false; error = ("no running " + $want + " document to convert") }; return }
         Output-Json @{ success = $false; error = "No active document" }
     }
 
@@ -2951,21 +2980,29 @@ return }
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = $word.ActiveDocument
-        $section = $doc.Sections.Item(1)
+        $sectionNo = if ($null -ne $p.section) { [int]$p.section } else { 1 }
+        if ($sectionNo -lt 1 -or $sectionNo -gt $doc.Sections.Count) {
+            Output-Json @{ success = $false; error = ("section " + $sectionNo + " does not exist; the document has " + $doc.Sections.Count) }
+return }
+        $section = $doc.Sections.Item($sectionNo)
         $header = $section.Headers.Item(1)
         $header.Range.Text = if ($p.text) { $p.text } else { "" }
         if ($p.alignment) {
             $alignMap = @{ left = 0; center = 1; right = 2 }
             $header.Range.ParagraphFormat.Alignment = $alignMap[$p.alignment]
         }
-        Output-Json @{ success = $true }
+        Output-Json @{ success = $true; data = @{ section = $sectionNo; text = $header.Range.Text } }
     }
 
     "insertFooter" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = $word.ActiveDocument
-        $section = $doc.Sections.Item(1)
+        $sectionNo = if ($null -ne $p.section) { [int]$p.section } else { 1 }
+        if ($sectionNo -lt 1 -or $sectionNo -gt $doc.Sections.Count) {
+            Output-Json @{ success = $false; error = ("section " + $sectionNo + " does not exist; the document has " + $doc.Sections.Count) }
+return }
+        $section = $doc.Sections.Item($sectionNo)
         $footer = $section.Footers.Item(1)
         $footer.Range.Text = if ($p.text) { $p.text } else { "" }
         if ($p.alignment) {
@@ -2977,7 +3014,7 @@ return }
             $footer.Range.Fields.Add($footer.Range, -1, "PAGE", $false)
             $footer.Range.InsertAfter(" 页 ")
         }
-        Output-Json @{ success = $true }
+        Output-Json @{ success = $true; data = @{ section = $sectionNo } }
     }
 
     "insertHyperlink" {

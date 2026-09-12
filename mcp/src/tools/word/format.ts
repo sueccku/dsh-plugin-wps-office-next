@@ -480,7 +480,9 @@ export const setPageSetupHandler: ToolHandler = async (
       settings: Record<string, unknown>;
     }>(
       'setPageSetup',
-      { orientation, marginTop, marginBottom, marginLeft, marginRight },
+      // The bridge's keys are topMargin/bottomMargin/leftMargin/rightMargin; the schema keeps the
+      // marginX spelling for callers.
+      { orientation, topMargin: marginTop, bottomMargin: marginBottom, leftMargin: marginLeft, rightMargin: marginRight },
       WpsAppType.WRITER
     );
 

@@ -26,9 +26,20 @@ const jsonOut = process.argv.includes("--json");
  */
 function sentKeys(source, from) {
   const after = source.slice(from);
-  const m = /^\s*,\s*\{/.exec(after);
-  if (!m) return null;
-  const braceAt = m[0].length - 1;
+  // The argument object may be preceded by a comment, and may be a variable holding it.
+  const m = /^\s*,\s*(?:\/\/[^\n]*\n\s*)*\{/.exec(after);
+  if (!m) {
+    const idm = /^\s*,\s*([A-Za-z_$][\w$]*)\s*(?:,|\))/.exec(after);
+    if (!idm) return null;
+    const decl = new RegExp("(?:const|let|var)\\s+" + idm[1] + "\\s*(?::[^=]*)?=\\s*\\{").exec(source);
+    if (!decl) return null;
+    return collectKeys(source, decl.index + decl[0].length - 1);
+  }
+  return collectKeys(after, m[0].length - 1);
+}
+
+function collectKeys(text, braceAt) {
+  const after = text;
   let depth = 0;
   let end = -1;
   for (let i = braceAt; i < after.length; i++) {
@@ -37,7 +48,6 @@ function sentKeys(source, from) {
     else if (ch === "}") { depth--; if (depth === 0) { end = i; break; } }
   }
   if (end < 0) return null;
-  // Only the argument object follows the action string, so this is the literal, not a generic.
   const body = after.slice(braceAt + 1, end);
   const keys = new Set();
   let d = 0;

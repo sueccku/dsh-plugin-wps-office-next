@@ -61,6 +61,16 @@ check("no bleed to A2", !(a2.font && a2.font.bold === true) && Number(a2.font &&
 const r3 = await call("wps_excel_set_cell_format", { range: "C1", format: {} });
 check("empty format fails loudly", !ok(r3) && text(r3).includes("no supported format property"), text(r3).slice(0, 110));
 
+// Close everything this test opened. The close actions are dialog-safe now (see
+// test/close-safety.test.mjs), so a scratch run leaves no documents behind for the next one.
+// Word has no close tool, so all three go through the wps_call facade.
+for (const [method, appType] of [["closeWorkbook", "et"], ["closeDocument", "wps"], ["closePresentation", "wpp"]]) {
+  for (let i = 0; i < 6; i++) {
+    const res = await call("wps_call", { tool: "wps_execute_method", args: { method, params: { save: false }, appType } });
+    if (!ok(res)) break;
+  }
+}
+
 child.kill();
 const failed = results.filter((r) => !r.ok).length;
 console.log(failed === 0 ? "CELL FORMAT TESTS OK (" + results.length + ")" : "CELL FORMAT TESTS FAILED (" + failed + "/" + results.length + ")");

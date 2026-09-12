@@ -148,6 +148,16 @@ check("getCellComments excludes comments outside the range", !JSON.stringify(out
 const wordAfter = text(await call("wps_word_get_document_text", {}));
 check("CROSS-APP: the Word document is untouched", wordAfter.includes("word body text") && !wordAfter.includes("note-on-b2"), wordAfter.replace(/\s+/g, " ").slice(0, 90));
 
+// Close everything this test opened. The close actions are dialog-safe now (see
+// test/close-safety.test.mjs), so a scratch run leaves no documents behind for the next one.
+// Word has no close tool, so all three go through the wps_call facade.
+for (const [method, appType] of [["closeWorkbook", "et"], ["closeDocument", "wps"], ["closePresentation", "wpp"]]) {
+  for (let i = 0; i < 6; i++) {
+    const res = await call("wps_call", { tool: "wps_execute_method", args: { method, params: { save: false }, appType } });
+    if (!ok(res)) break;
+  }
+}
+
 child.kill();
 const failed = results.filter((r) => !r.ok).length;
 console.log(failed === 0 ? "EXCEL CONTRACT FIX TESTS OK (" + results.length + ")" : "EXCEL CONTRACT FIX TESTS FAILED (" + failed + "/" + results.length + ")");

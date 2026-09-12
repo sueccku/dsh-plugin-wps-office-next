@@ -9,11 +9,11 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 | metric | count |
 | --- | --- |
 | tools in the full catalog | 254 |
-| tool/action pairs checked | 212 |
-| **A. handler sends a parameter the bridge never reads** | **61** |
+| tool/action pairs checked | 226 |
+| **A. handler sends a parameter the bridge never reads** | **55** |
 | B. schema advertises a parameter the handler never uses | 0 |
 | actions with no key table (guard skipped) | 1 |
-| handlers whose arguments are not statically readable | 25 |
+| handlers whose arguments are not statically readable | 11 |
 
 ## A. Sent by the tool, never read by the bridge
 
@@ -23,8 +23,6 @@ is either an alias to reconcile or a capability to implement.
 
 | tool | action | parameter(s) dropped | bridge reads |
 | --- | --- | --- | --- |
-| `wps_convert_to_pdf` | `convertToPDF` | `path`, `filePath`, `openAfterExport` | `outputPath`, `presentationName` |
-| `wps_convert_format` | `convertFormat` | `path`, `filePath` | `outputPath`, `presentationName`, `targetFormat` |
 | `wps_ppt_add_animation` | `addAnimation` | `shapeIndex`, `trigger` | `effect`, `presentationName`, `shapeName`, `slideIndex` |
 | `wps_ppt_remove_animation` | `removeAnimation` | `animationIndex` | `index`, `presentationName`, `slideIndex` |
 | `wps_ppt_set_animation_order` | `setAnimationOrder` | `animationIndex`, `newOrder` | `from`, `presentationName`, `slideIndex`, `to` |
@@ -80,10 +78,6 @@ is either an alias to reconcile or a capability to implement.
 | `wps_ppt_delete_textbox` | `deleteTextBox` | `textboxIndex` | `name`, `presentationName`, `shapeIndex`, `slideIndex` |
 | `wps_ppt_set_textbox_text` | `setTextBoxText` | `textboxIndex` | `name`, `presentationName`, `shapeIndex`, `slideIndex`, `text` |
 | `wps_ppt_set_textbox_style` | `setTextBoxStyle` | `textboxIndex`, `style` | `alignment`, `bold`, `color`, `fontName`, `fontSize`, `italic`, `name`, `presentationName`, `shapeIndex`, `slideIndex` |
-| `wps_word_insert_image` | `insertImage` | `imagePath` | `filePath`, `height`, `path`, `scale`, `width` |
-| `wps_word_insert_header` | `insertHeader` | `section` | `alignment`, `text` |
-| `wps_word_insert_footer` | `insertFooter` | `section` | `alignment`, `includePageNumber`, `text` |
-| `wps_word_set_page_setup` | `setPageSetup` | `marginTop`, `marginBottom`, `marginLeft`, `marginRight` | `bottomMargin`, `leftMargin`, `orientation`, `paperSize`, `rightMargin`, `topMargin` |
 
 ## B. Advertised by the schema, never used by the handler
 
@@ -94,28 +88,14 @@ None.
 | tool | reason |
 | --- | --- |
 | `wps_excel_set_cell_format` | bridge has no key table for `setCellFormat` |
-| `wps_common_save_as` | argument object not statically readable |
-| `wps_excel_update_chart` | argument object not statically readable |
 | `wps_excel_text_to_columns` | argument object not statically readable |
 | `wps_excel_read_range` | 0 executeMethod calls |
 | `wps_excel_write_range` | 0 executeMethod calls |
-| `wps_excel_set_zoom` | argument object not statically readable |
 | `wps_excel_evaluate_formula` | argument object not statically readable |
 | `wps_excel_set_print_area` | argument object not statically readable |
 | `wps_excel_zoom` | argument object not statically readable |
-| `wps_excel_auto_sum` | argument object not statically readable |
-| `wps_excel_open_workbook` | argument object not statically readable |
-| `wps_ppt_set_slide_theme` | argument object not statically readable |
 | `wps_ppt_set_background` | argument object not statically readable |
-| `wps_ppt_set_slide_size` | argument object not statically readable |
-| `wps_ppt_set_shape_fill` | argument object not statically readable |
-| `wps_ppt_set_font_color` | argument object not statically readable |
 | `wps_word_set_paragraph` | argument object not statically readable |
 | `wps_word_set_font_style` | argument object not statically readable |
-| `wps_word_set_text_color` | argument object not statically readable |
-| `wps_word_get_paragraphs` | argument object not statically readable |
-| `wps_word_open_document` | argument object not statically readable |
-| `wps_word_get_document_text` | argument object not statically readable |
-| `wps_word_insert_section_break` | argument object not statically readable |
 | `wps_word_set_line_spacing` | argument object not statically readable |
 | `wps_word_proofread_basic` | 0 executeMethod calls |

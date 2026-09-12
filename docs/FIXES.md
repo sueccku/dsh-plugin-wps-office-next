@@ -319,6 +319,44 @@ excel-range 12/12；8000 格读取 15ms。
   桥现在解析相对路径并校验存在性，缺文件时报明确错误；
 - **`Hyperlinks.Add` 不会覆盖已有单元格的值**：`TextToDisplay` 只在空单元格上写入。
   测试据此改在空单元格上验证 `url`/`text` 确实传到了桥；
+### 16. 打开/另存/转换的路径键名错配，以及「转 PDF 永远导 Excel」（已修）
+
+闸门覆盖所有的工具后（对账从 212 对提升到 226 对），又暴露出同一类错配，而且都在**文件路径**上：
+
+| 工具 | 工具发的 | 桥读的 | 实际后果 |
+| --- | --- | --- | --- |
+| wps_common_save_as | filePath / outputPath | path | **另存为忽略目标路径** |
+| wps_excel_open_workbook | filePath | path | 打开的不是指定文件 |
+| wps_word_open_document | filePath | path | 同上 |
+| wps_word_insert_image | imagePath / filePath | path | 图片路径丢失 |
+| wps_word_set_page_setup | marginTop 等 | topMargin 等 | 页边距全部无效 |
+
+上游的做法是**一次发多个别名赌其中一个会被读到**（例如同时发 `filePath`/`path`/`outputPath`）。
+闸门现在会把没被读取的别名直接报错，这类赌博写法无法再蒙混过关。
+
+另外两个能力缺口：
+
+- `convertToPDF` / `convertFormat` 按 **Excel → Word → PPT 取第一个正在运行的应用**，
+  而 Excel 几乎总是开着，所以「把这个 Word 转成 PDF」实际导出的是工作簿。
+  两个工具现在都有 `app_type`（excel/word/ppt）参数；指定后只考虑该应用，
+  指定了却没有对应文档时**明确报错**而不是退回去导 Excel；
+- `openAfterExport`（导出后打开）此前被丢弃，现已实现，并在结果里回报 `opened` / `failed: 原因`；
+- `wps_word_insert_header` / `insert_footer` 的 `section` 此前被丢弃，
+  现在按节写入，节号不存在时报出「文档只有 N 节」。
+
+回归：test/file-ops.test.mjs **11 项**——另存为真的落盘、打开工作簿真的打开、
+文件不存在要报错、`app_type=ppt` 时不得偷偷导出 Excel、页眉页脚按节且越界报错。
+
+### 17. 测试自身的文档泄漏（已修）
+
+上面两个测试暴露了一个卫生问题：测试每次 `createWorkbook`/`createDocument` 都不收尾，
+累计泄漏了 **23 个工作簿 + 14 个 Word 文档**。
+
+根因是早期 `close_*` 会弹模态框（第 13 条之前的 `save`/`saveChanges` 错配），
+所以测试一律不敢关文档。关闭工具修好之后，测试可以正常收尾了：
+
+- 会新建文档的 5 个测试都加了收尾（Word 没有 close 工具，统一走 `wps_call` 门面）；
+- 实测跑完全量后 **leftover workbooks=0 / word docs=0 / presentations=0**。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -346,7 +384,9 @@ excel-range 12/12；8000 格读取 15ms。
 
 | test/excel-contract-fixes.test.mjs | 35 | 25 处参数错配逐个真实验证、跨应用批注污染 |
 
-合计 186 项，加 node scripts/verify.mjs 22 项门禁（含 45 工具 / 25,000 字节预算）。
+| test/file-ops.test.mjs | 11 | 另存/打开的路径、按应用转换、页眉页脚分节 |
+
+合计 197 项，加 node scripts/verify.mjs 22 项门禁（含 45 工具 / 25,000 字节预算）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 212 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。它不参与通过/失败门禁（当前仍有 85 处待修），

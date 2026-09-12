@@ -79,6 +79,16 @@ check("set_number_format with sheet", ok(nf), text(nf).replace(/\s+/g, " ").slic
 check("format applied on the named sheet", String((await info("A1", "Beta")).numberFormat).includes("0.00%"), "beta=" + (await info("A1", "Beta")).numberFormat);
 check("format did not leak to the active sheet", !String((await info("A1", "AlphaCopy")).numberFormat).includes("0.00%"), "active=" + (await info("A1", "AlphaCopy")).numberFormat);
 
+// Close everything this test opened. The close actions are dialog-safe now (see
+// test/close-safety.test.mjs), so a scratch run leaves no documents behind for the next one.
+// Word has no close tool, so all three go through the wps_call facade.
+for (const [method, appType] of [["closeWorkbook", "et"], ["closeDocument", "wps"], ["closePresentation", "wpp"]]) {
+  for (let i = 0; i < 6; i++) {
+    const res = await call("wps_call", { tool: "wps_execute_method", args: { method, params: { save: false }, appType } });
+    if (!ok(res)) break;
+  }
+}
+
 child.kill();
 const failed = results.filter((r) => !r.ok).length;
 console.log(failed === 0 ? "SHEET OPS TESTS OK (" + results.length + ")" : "SHEET OPS TESTS FAILED (" + failed + "/" + results.length + ")");

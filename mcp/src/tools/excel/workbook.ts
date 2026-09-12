@@ -47,7 +47,9 @@ export const openWorkbookHandler: ToolHandler = async (
     };
   }
   try {
-    const params = { filePath, path: filePath };
+    // The bridge reads "path"; filePath was never read, so a relative or alternate spelling of the
+    // argument was silently ignored.
+    const params = { path: filePath };
     const response = await wpsClient.executeMethod<{ message: string }>(
       'openWorkbook',
       params,

@@ -138,20 +138,25 @@ exports.convertToPdfDefinition = {
                 type: 'boolean',
                 description: '导出后是否自动打开PDF，默认false',
             },
+            app_type: {
+                type: 'string',
+                enum: ['excel', 'word', 'ppt'],
+                description: '要导出的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档',
+            },
         },
         required: [],
     },
 };
 const convertToPdfHandler = async (args) => {
-    const { outputPath, openAfterExport } = args;
+    const { outputPath, openAfterExport, app_type } = args;
     try {
         // 调用WPS加载项执行转换
         const response = await wps_client_1.wpsClient.executeMethod('convertToPDF', {
+            // The bridge reads outputPath. The path/filePath aliases carried the same value and were
+            // never read; the parameter guard now rejects them outright.
             outputPath: outputPath || '',
-            // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-            path: outputPath || '',
-            filePath: outputPath || '',
             openAfterExport: openAfterExport || false,
+            appType: app_type,
         }
         // 不指定appType，让WPS加载项自动检测当前活动的应用
         );
@@ -226,12 +231,17 @@ exports.convertFormatDefinition = {
                 type: 'string',
                 description: '输出路径（包含文件名），如不指定则使用原文件名改为新扩展名',
             },
+            app_type: {
+                type: 'string',
+                enum: ['excel', 'word', 'ppt'],
+                description: '要转换的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档',
+            },
         },
         required: ['targetFormat'],
     },
 };
 const convertFormatHandler = async (args) => {
-    const { targetFormat, outputPath } = args;
+    const { targetFormat, outputPath, app_type } = args;
     if (!targetFormat || targetFormat.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
@@ -245,9 +255,7 @@ const convertFormatHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('convertFormat', {
             targetFormat: targetFormat.toLowerCase().replace(/^\./, ''), // 去掉开头的点
             outputPath: outputPath || '',
-            // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-            path: outputPath || '',
-            filePath: outputPath || '',
+            appType: app_type,
         }
         // 不指定appType，让WPS加载项自动检测
         );

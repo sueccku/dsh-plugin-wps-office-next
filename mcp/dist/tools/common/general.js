@@ -115,10 +115,10 @@ const saveAsHandler = async (args) => {
         };
     }
     try {
+        // The bridge reads "path" for saveAs. Sending filePath and outputPath as well was a bet that
+        // one of them would be read, and the two that were not were silently discarded.
         const params = {
-            filePath,
             path: filePath,
-            outputPath: filePath,
         };
         if (format) {
             params.format = format.toLowerCase().replace(/^\./, '');

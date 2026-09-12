@@ -221,7 +221,6 @@ export const openDocumentHandler: ToolHandler = async (
 
   try {
     const params = {
-      filePath,
       path: filePath,
     };
 
