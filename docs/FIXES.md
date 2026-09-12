@@ -215,6 +215,54 @@ excel-range 12/12；8000 格读取 15ms。
 回归：test/sheet-ops.test.mjs 21/21，其中最关键的一项是
 “删除指定表时，活动表必须原封不动”。
 
+### 13. 参数名不匹配只会静默失效——一类缺陷，不是一堆 bug（已加闸门）
+
+第 9～12 条的根因是同一个：**MCP 不校验参数名，PowerShell 也不会抱怨没人读的属性**。
+工具发 'name'、桥读 'sheet'，于是操作落到活动工作表上；工具发 'save'、桥读 'saveChanges'，
+于是 'save=false' 被丢掉并弹出模态框。每一个都要靠人工逐工具实验才能发现，这才是真正的成本。
+
+现在改成机器发现：
+
+- 生成器（scripts/build-host-actions.ps1）静态扫描桥的 switch，
+  **推导出每个 action 真正读取的参数名表**（含 Resolve-Worksheet / Get-TargetPres /
+  Get-WorksheetByParam 这三个共享解析器贡献的键），并写进生成产物。
+  读法无法静态确定的 action（当前仅 setCellFormat，因为它遍历嵌套的 format）**排除在表外**，
+  因此闸门不可能误拒一个确实会被读取的键。
+- 桥在 $p 生成后立刻比对：出现该 action 不读的键就**明确报错**，
+  并列出被拒的键与该 action 接受的键。静默失效变成响亮失败。
+- 宿主新增只校验不执行的 __validateParams 控制帧；
+  scripts/param-contract.mjs 用它在**不碰 COM** 的前提下，把全部 254 个工具的
+  handler 实参对象与桥的键表对账，并生成 docs/param-contract.md。
+
+覆盖：251/256 个 action 进入键表（1 个动态跳过），254 个工具中 212 对完成对账。
+闸门上线当天即抓出 findReplace 的 replaceMode（见第 14 条），并量出其余 85 处
+「工具发了、桥不读」的错配——它们此前全都是静默的。
+
+顺带把最大的一类修掉：约 50 个 Excel action 无视工具传来的 'sheet'、一律操作活动表。
+桥新增 Get-WorksheetByParam（只读 $p.sheet，不把 'name' 当表名，因为若干 action 的 name
+另有含义），替换了 58 处 '$sheet = $excel.ActiveSheet' 兜底。
+
+### 14. Word 查找替换：**纯查找会删掉所有命中内容**（已修）
+
+这是本轮唯一的**数据丢失**级缺陷。
+
+- 工具在「只查找」时也传 replaceText: ''，桥把它当替换文本，
+  于是 Find.Execute(..., 替换为 '') 把每一处命中**原地删除**；
+- 桥只返回 { replaced = ... }，而工具读的是 count（永远 undefined），
+  所以返回消息里的次数是编造的，「未找到」分支也永远走不到。
+
+修复：
+
+- 桥读 replaceMode；无该标志时，**空替换文本一律按「只查找」处理**——
+  不能把「删除命中」当作没写替换文本的默认行为；
+- 新增 Get-WordMatchCount：用 Find 走一遍文档统计命中数，
+  Wrap=wdFindStop 且有上限，不允许 WPS 的怪癖把常驻宿主挂住；纯查找只计数、不改文档；
+- 替换模式先计数再替换，返回真实 count（replaceAll=false 时为 0/1）；
+- 工具层按 replaceMode 决定是否发送 replaceText，并如实回报次数。
+
+回归：test/find-replace.test.mjs 14/14，其中新增
+**「纯查找不得删除命中内容」**与「无命中时报 0 次」两项。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -238,4 +286,10 @@ excel-range 12/12；8000 格读取 15ms。
 | test/deprecated.test.mjs | 8 | 弃用名合并与隐藏 |
 | test/sheet-ops.test.mjs | 21 | 工作表组目标正确性、0 基 position、删表安全 |
 
-合计 133 项，加 `node scripts/verify.mjs` 22 项门禁（含 45 工具 / 25,000 字节预算）。
+| test/close-safety.test.mjs | 14 | 关闭文档不得弹模态框、不得泄漏工作簿/演示文稿 |
+
+合计 151 项，加 node scripts/verify.mjs 22 项门禁（含 45 工具 / 25,000 字节预算）。
+
+另有 node scripts/param-contract.mjs：零副作用地把 212 对工具/action 的参数契约对账一遍，
+结果写入 docs/param-contract.md。它不参与通过/失败门禁（当前仍有 85 处待修），
+但把「还有多少静默失效」变成了一个随时可查、只会变小的数字。

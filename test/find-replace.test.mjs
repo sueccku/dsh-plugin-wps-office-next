@@ -55,6 +55,23 @@ check("word find/replace runs", ok(r3), text(r3).slice(0, 90));
 const wordFinal = text(await call("wps_word_get_document_text", {}));
 check("word text actually replaced", wordFinal.includes("omega") && !wordFinal.includes("alpha"), wordFinal.replace(/\s+/g, " ").slice(0, 90));
 
+// --- Search-only must never erase what it found ---
+// The bridge used to apply the tool's empty replaceText as a replacement, so a plain search
+// deleted every match and then reported a fabricated count.
+await call("wps_word_find_replace", { find_text: "omega", replace_text: "alpha", replace_all: true });
+const beforeSearch = text(await call("wps_word_get_document_text", {}));
+check("re-seeded for the search-only check", (beforeSearch.match(/alpha/g) || []).length === 2, beforeSearch.replace(/\s+/g, " ").slice(0, 80));
+
+const r4 = await call("wps_word_find_replace", { find_text: "alpha" });
+const t4 = text(r4);
+check("search-only returns a real count", ok(r4) && /2\s*次/.test(t4), t4.replace(/\s+/g, " ").slice(0, 90));
+const afterSearch = text(await call("wps_word_get_document_text", {}));
+check("SEARCH-ONLY DID NOT DELETE THE MATCHES", (afterSearch.match(/alpha/g) || []).length === 2, afterSearch.replace(/\s+/g, " ").slice(0, 90));
+
+// A search that finds nothing must say so rather than silently "succeed".
+const r5 = await call("wps_word_find_replace", { find_text: "no-such-token-xyz" });
+check("search with no match reports zero", ok(r5) && /0\s*次/.test(text(r5)), text(r5).replace(/\s+/g, " ").slice(0, 90));
+
 child.kill();
 const failed = results.filter((r) => !r.ok).length;
 console.log(failed === 0 ? "FIND/REPLACE TESTS OK (" + results.length + ")" : "FIND/REPLACE TESTS FAILED (" + failed + "/" + results.length + ")");

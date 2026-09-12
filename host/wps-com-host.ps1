@@ -77,6 +77,25 @@ while ($true) {
         continue
     }
 
+    # Contract probe: answer what an action accepts without executing anything. Used by
+    # scripts/param-contract.mjs to compare every tool schema against the bridge in one pass.
+    if ($action -eq '__validateParams') {
+        $target = [string]$req.params.action
+        $accepted = $script:ActionParamKeys[$target]
+        $given = @()
+        if ($null -ne $req.params.keys) { $given = @($req.params.keys) }
+        $unknown = @()
+        if ($null -ne $accepted) { $unknown = @($given | Where-Object { $accepted -notcontains $_ }) }
+        Send-Response $id $true @{ success = $true; data = @{
+            action = $target
+            validated = ($null -ne $accepted)
+            accepted = @($accepted)
+            given = $given
+            unknown = $unknown
+        } } 0
+        continue
+    }
+
     if ($action -eq '__shutdown') { Send-Response $id $true @{ success = $true; data = @{ message = 'shutdown' } } 0; break }
 
     $paramsJson = '{}'

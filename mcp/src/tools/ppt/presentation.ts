@@ -204,9 +204,10 @@ export const closePresentationHandler: ToolHandler = async (
 
   try {
     const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      name: string;
+      closed?: string;
+      saved?: boolean;
+      saveRequested?: boolean;
+      warning?: string;
     }>(
       'closePresentation',
       {
@@ -216,15 +217,17 @@ export const closePresentationHandler: ToolHandler = async (
       WpsAppType.PRESENTATION
     );
 
-    if (response.success && response.data) {
-      const saveStatus = save !== false ? '已保存' : '未保存';
+    if (response.success) {
+      const closed = response.data?.closed ?? name ?? '(当前演示文稿)';
+      const saveStatus = response.data?.saved ? '已保存' : '未保存';
+      const warnNote = response.data?.warning ? `\n注意: ${response.data.warning}` : '';
       return {
         id: uuidv4(),
         success: true,
         content: [
           {
             type: 'text',
-            text: `演示文稿已关闭！\n名称: ${response.data.name}\n保存状态: ${saveStatus}`,
+            text: `演示文稿已关闭！\n名称: ${closed}\n保存状态: ${saveStatus}${warnNote}`,
           },
         ],
       };

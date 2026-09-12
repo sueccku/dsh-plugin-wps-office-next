@@ -167,7 +167,12 @@ export const closeWorkbookHandler: ToolHandler = async (
 ): Promise<ToolCallResult> => {
   const { name, save } = args as { name?: string; save?: boolean };
   try {
-    const response = await wpsClient.executeMethod<{ message: string }>(
+    const response = await wpsClient.executeMethod<{
+      closed?: string;
+      saved?: boolean;
+      saveRequested?: boolean;
+      warning?: string;
+    }>(
       'closeWorkbook',
       { name, save: save !== false },
       WpsAppType.SPREADSHEET
@@ -175,7 +180,12 @@ export const closeWorkbookHandler: ToolHandler = async (
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `关闭工作簿失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿已关闭${name ? ': ' + name : ''}${save !== false ? '（已保存）' : '（未保存）'}` }] };
+    // Report what actually happened, not what was asked for: closing a never-saved workbook
+    // with save=true drops the save instead of raising a modal Save As dialog.
+    const closed = response.data?.closed ?? name ?? '(当前工作簿)';
+    const savedNote = response.data?.saved ? '（已保存）' : '（未保存）';
+    const warnNote = response.data?.warning ? `\n注意: ${response.data.warning}` : '';
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿已关闭: ${closed}${savedNote}${warnNote}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `关闭工作簿出错: ${errMsg}` }], error: errMsg };

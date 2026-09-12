@@ -66,3 +66,28 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 - 统一结果形状、消灭 50 处静默 catch
 - 文档与代码不一致（auto_fit 声明但不存在；tools/index.ts 计数有误）
 - 高层场景封装（KPI 卡片/时间线/流程图等）从工具层下沉到技能层
+
+## P4 修复进度（续）
+
+第 12～14 条已落地，详见 docs/FIXES.md：
+
+3. 工作表操作组（delete/rename/copy/move/switch）作用在活动表上，且 0 基 position 契约自相矛盾。
+4. **数据丢失级**：Word 纯查找会删掉所有命中内容，且次数是编造的。
+5. **系统性闸门**：桥侧自动推导每个 action 真正读取的参数名，出现多余键即明确报错；
+   配套 scripts/param-contract.mjs 零副作用对账全部工具，结果见 docs/param-contract.md。
+   闸门上线当天即抓出 findReplace/replaceMode 并量出其余 85 处静默忽略。
+6. 顺带修掉最大一类：58 处 Excel action 无视 'sheet'、一律操作活动表。
+7. 关闭工具：工具发 'save'、桥读 'saveChanges'，导致 save=false 被丢弃并弹模态框
+   （此前两次泄漏 78/85 个工作簿的根因）；现在三个 close action 都做了「未落盘文档不弹框」处理，
+   并如实回报 saved 与 warning。
+
+当前实测：151 项测试 + 22 项门禁全绿；参数契约对账 212 对，剩余 85 处错配已列成清单。
+
+待修：
+
+- docs/param-contract.md 里的 85 处「工具发了、桥不读」错配（别名与缺能力），按 Excel → Word → PPT 顺序处理
+- ~~参数校验只检查 required~~ 已由第 13 条的参数名闸门覆盖
+- 统一结果形状、消灭 50 处静默 catch
+- 文档与代码不一致（auto_fit 声明但不存在；tools/index.ts 计数有误）
+- 高层场景封装（KPI 卡片/时间线/流程图等）从工具层下沉到技能层
+- 其余 15 对重复工具（参数接口不同）

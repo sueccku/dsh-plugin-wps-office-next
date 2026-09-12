@@ -205,6 +205,64 @@ function Resolve-Worksheet($excel, $wb, $p, [switch]$RequireName) {
     return $excel.ActiveSheet
 }
 
+function Get-WorksheetByParam($excel, $p) {
+    # Most Excel actions are documented to accept a target worksheet but silently operated on
+    # whichever sheet happened to be active. Only $p.sheet is read here: in several actions "name"
+    # means something else entirely (a range name, a chart name), so aliasing it to a sheet would
+    # send those actions to the wrong place.
+    $name = Get-PropOrNull $p 'sheet'
+    if ($null -ne $name -and "$name" -ne "") {
+        $wb = $excel.ActiveWorkbook
+        if ($null -ne $wb) { return $wb.Sheets.Item($name) }
+    }
+    return $excel.ActiveSheet
+}
+
+function Test-WpsActionParamKeys($Action, $Params, $Accepted) {
+    # Returns $null when every supplied parameter is one the action actually reads, otherwise a
+    # message naming the unexpected keys.
+    #
+    # MCP does not validate parameter names against the bridge, and PowerShell happily ignores an
+    # object property nobody reads. So a tool that spells a parameter differently from this script
+    # used to be silently dropped: delete_sheet(name) deleted the active sheet, close_workbook(save)
+    # ignored save=false, find_replace sent keys this file never looked at. Comparing the supplied
+    # keys against the keys the action reads turns all of those into a loud error.
+    if ($null -eq $Accepted) { return $null }
+    $given = @()
+    if ($null -ne $Params) { $given = @($Params.PSObject.Properties | ForEach-Object { $_.Name }) }
+    if ($given.Count -eq 0) { return $null }
+    $extra = @($given | Where-Object { $Accepted -notcontains $_ })
+    if ($extra.Count -eq 0) { return $null }
+    return ("unknown parameter(s) for '" + $Action + "': " + ($extra -join ', ') +
+            " | accepted: " + ((@($Accepted) | Sort-Object) -join ', '))
+}
+
+function Get-WordMatchCount($doc, [string]$findText, [bool]$matchCase, [bool]$matchWholeWord) {
+    # Word exposes no match-count API, so walk the document with Find. Wrap is set to wdFindStop
+    # and the loop is bounded: a WPS quirk must not be able to hang the resident host.
+    $count = 0
+    if ([string]::IsNullOrEmpty($findText)) { return 0 }
+    $contentEnd = [int]$doc.Content.End
+    $search = $doc.Content
+    $limit = 100000
+    while ($count -lt $limit) {
+        $finder = $search.Find
+        $finder.ClearFormatting()
+        $finder.Text = $findText
+        $finder.Forward = $true
+        $finder.MatchCase = $matchCase
+        $finder.MatchWholeWord = $matchWholeWord
+        $finder.Wrap = 0
+        if (-not $finder.Execute()) { break }
+        $count++
+        $next = [int]$search.End
+        if ($next -ge $contentEnd) { break }
+        if ($next -le [int]$search.Start) { break }
+        $search.SetRange($next, $contentEnd)
+    }
+    return $count
+}
+
 function Set-ComValue($target, [string]$member, $value) {
     $prop = Find-ComProperty $target $member
     if ($null -eq $prop) { throw ('Set-ComValue: member not found: ' + $member) }
@@ -699,7 +757,7 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         $value = $cell.Value2
         $formula = $cell.Formula
@@ -826,7 +884,7 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $table = $null
         if ($p.pivotTableName) {
             try { $table = $sheet.PivotTables($p.pivotTableName) } catch {}
@@ -973,7 +1031,7 @@ switch ($Action) {
     "setCellStyle" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         if ($p.fontSize) { $range.Font.Size = $p.fontSize }
         if ($null -ne $p.bold) { $range.Font.Bold = [bool]$p.bold }
@@ -1010,7 +1068,7 @@ switch ($Action) {
     "setBorder" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $styleMap = @{ thin = 1; medium = 2; thick = 4; double = 6; none = 0 }
         $style = $styleMap[$p.style]
@@ -1041,7 +1099,7 @@ switch ($Action) {
     "copyFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $sourceRange = $sheet.Range($p.source)
         $targetRange = $sheet.Range($p.target)
         $sourceRange.Copy()
@@ -1053,7 +1111,7 @@ switch ($Action) {
     "clearFormats" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.ClearFormats()
         Output-Json @{ success = $true; data = @{ range = $p.range } }
@@ -1062,7 +1120,7 @@ switch ($Action) {
     "addConditionalFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $formatType = if ($p.type) { $p.type } else { "cellValue" }
         if ($formatType -eq "cellValue") {
@@ -1092,7 +1150,7 @@ switch ($Action) {
     "removeConditionalFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         if ($p.index) {
             $range.FormatConditions.Item([int]$p.index).Delete()
@@ -1105,7 +1163,7 @@ switch ($Action) {
     "getConditionalFormats" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $formats = @()
         $count = $range.FormatConditions.Count
@@ -1119,7 +1177,7 @@ switch ($Action) {
     "addDataValidation" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $typeMap = @{ list = 3; whole = 1; decimal = 2; date = 4; time = 5; textLength = 6; custom = 7 }
         $validationType = $typeMap[$p.validationType]
@@ -1153,7 +1211,7 @@ switch ($Action) {
     "removeDataValidation" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.Validation.Delete()
         Output-Json @{ success = $true; data = @{ range = $p.range } }
@@ -1162,7 +1220,7 @@ switch ($Action) {
     "getDataValidations" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $validation = $range.Validation
         Output-Json @{ success = $true; data = @{ range = $p.range; type = $validation.Type; formula1 = $validation.Formula1; formula2 = $validation.Formula2; inputTitle = $validation.InputTitle; inputMessage = $validation.InputMessage } }
@@ -1171,7 +1229,7 @@ switch ($Action) {
     "getFormula" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         $formula = if ($cell.Formula) { $cell.Formula } else { "" }
         $formulaLocal = ""
@@ -1182,7 +1240,7 @@ switch ($Action) {
     "setArrayFormula" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.FormulaArray = $p.formula
         Output-Json @{ success = $true; data = @{ range = $p.range; formula = $p.formula } }
@@ -1230,7 +1288,7 @@ switch ($Action) {
     "consolidate" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $destRange = $sheet.Range($p.destination)
         $funcMap = @{ sum = 9; count = 2; average = 1; max = 4; min = 5 }
         $func = $funcMap[$p.function]
@@ -1246,7 +1304,7 @@ switch ($Action) {
             $excel.Calculate()
             Output-Json @{ success = $true; data = @{ calculated = "all" } }
         } else {
-            $sheet = $excel.ActiveSheet
+            $sheet = Get-WorksheetByParam $excel $p
             $sheet.Calculate()
             Output-Json @{ success = $true; data = @{ calculated = $sheet.Name } }
         }
@@ -1258,7 +1316,7 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $usedRange = $sheet.UsedRange
         $headers = @()
         if ($usedRange.Rows.Count -gt 0) {
@@ -1279,7 +1337,7 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $usedRange = $sheet.UsedRange
         $headers = @()
         if ($usedRange.Rows.Count -gt 0) {
@@ -1298,7 +1356,7 @@ switch ($Action) {
     "sortRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $keyCol = $sheet.Range($p.keyColumn)
         $order = if ($p.order -eq "desc") { 2 } else { 1 }
@@ -1309,7 +1367,7 @@ switch ($Action) {
     "autoFilter" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         if ($p.criteria) {
             $range.AutoFilter($p.field, $p.criteria)
@@ -1322,7 +1380,7 @@ switch ($Action) {
     "createChart" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.dataRange)
         $chartType = $p.chartType
         if ($null -eq $chartType) {
@@ -1450,7 +1508,7 @@ switch ($Action) {
     "removeDuplicates" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $originalCount = $range.Rows.Count
         $cols = @()
@@ -1613,7 +1671,7 @@ switch ($Action) {
     "mergeCells" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $across = if ($null -ne $p.across) { [bool]$p.across } else { $false }
         $range.Merge($across)
@@ -1623,7 +1681,7 @@ switch ($Action) {
     "unmergeCells" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.UnMerge()
         Output-Json @{ success = $true; data = @{ range = $p.range } }
@@ -1632,7 +1690,7 @@ switch ($Action) {
     "setColumnWidth" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $col = $p.column
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
         $sheet.Range("${col}:${col}").ColumnWidth = $p.width
@@ -1642,7 +1700,7 @@ switch ($Action) {
     "setRowHeight" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $sheet.Range("$($p.row):$($p.row)").RowHeight = $p.height
         Output-Json @{ success = $true; data = @{ row = $p.row; height = $p.height } }
     }
@@ -1650,7 +1708,7 @@ switch ($Action) {
     "autoFitColumn" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.range) {
             $sheet.Range($p.range).Columns.AutoFit()
         } elseif ($p.column) {
@@ -1666,7 +1724,7 @@ switch ($Action) {
     "autoFitRow" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.range) {
             $sheet.Range($p.range).Rows.AutoFit()
         } elseif ($p.row) {
@@ -1680,7 +1738,7 @@ switch ($Action) {
     "autoFitAll" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
         $range.Columns.AutoFit()
         $range.Rows.AutoFit()
@@ -1704,7 +1762,7 @@ switch ($Action) {
     "wrapText" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $wrap = if ($null -ne $p.wrap) { [bool]$p.wrap } else { $true }
         $range.WrapText = $wrap
@@ -1714,7 +1772,7 @@ switch ($Action) {
     "setPrintArea" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.range) { $sheet.PageSetup.PrintArea = $p.range } else { $sheet.PageSetup.PrintArea = "" }
         Output-Json @{ success = $true; data = @{ printArea = if ($p.range) { $p.range } else { "cleared" } } }
     }
@@ -1731,7 +1789,7 @@ switch ($Action) {
     "clearRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $clearType = if ($p.type) { $p.type } else { "all" }
         if ($clearType -eq "contents") { $range.ClearContents() }
@@ -1744,7 +1802,7 @@ switch ($Action) {
     "insertRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $startRow = if ($p.row) { [int]$p.row } elseif ($p.startRow) { [int]$p.startRow } else { $null }
         if ($null -eq $startRow) { Output-Json @{ success = $false; error = "row/startRow required" }; exit }
         $count = if ($p.count) { [int]$p.count } else { 1 }
@@ -1756,7 +1814,7 @@ switch ($Action) {
     "insertColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $col = if ($p.column) { $p.column } elseif ($p.startColumn) { $p.startColumn } else { $null }
         if ($null -eq $col) { Output-Json @{ success = $false; error = "column/startColumn required" }; exit }
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
@@ -1770,7 +1828,7 @@ switch ($Action) {
     "deleteRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $startRow = if ($p.row) { [int]$p.row } elseif ($p.startRow) { [int]$p.startRow } else { $null }
         if ($null -eq $startRow) { Output-Json @{ success = $false; error = "row/startRow required" }; exit }
         $count = if ($p.count) { [int]$p.count } else { 1 }
@@ -1782,7 +1840,7 @@ switch ($Action) {
     "deleteColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $col = if ($p.column) { $p.column } elseif ($p.startColumn) { $p.startColumn } else { $null }
         if ($null -eq $col) { Output-Json @{ success = $false; error = "column/startColumn required" }; exit }
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
@@ -1796,7 +1854,7 @@ switch ($Action) {
     "hideRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $rows = if ($p.rows) { $p.rows } elseif ($p.row) { @($p.row) } else { @() }
         if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows required" }; exit }
         foreach ($r in $rows) { $sheet.Range("${r}:${r}").Hidden = $true }
@@ -1806,7 +1864,7 @@ switch ($Action) {
     "hideColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cols = if ($p.columns) { $p.columns } elseif ($p.column) { @($p.column) } else { @() }
         if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns required" }; exit }
         $hidden = @()
@@ -1822,7 +1880,7 @@ switch ($Action) {
     "showRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $rows = if ($p.rows) { $p.rows } elseif ($p.row) { @($p.row) } else { @() }
         if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows required" }; exit }
         foreach ($r in $rows) { $sheet.Range("${r}:${r}").Hidden = $false }
@@ -1832,7 +1890,7 @@ switch ($Action) {
     "showColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cols = if ($p.columns) { $p.columns } elseif ($p.column) { @($p.column) } else { @() }
         if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns required" }; exit }
         $shown = @()
@@ -1848,7 +1906,7 @@ switch ($Action) {
     "groupRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if (-not $p.startRow -or -not $p.endRow) { Output-Json @{ success = $false; error = "startRow/endRow required" }; exit }
         $sheet.Range("$($p.startRow):$($p.endRow)").Group()
         Output-Json @{ success = $true; data = @{ grouped = "$($p.startRow):$($p.endRow)" } }
@@ -1857,7 +1915,7 @@ switch ($Action) {
     "groupColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if (-not $p.startColumn -or -not $p.endColumn) { Output-Json @{ success = $false; error = "startColumn/endColumn required" }; exit }
         $startCol = $p.startColumn
         $endCol = $p.endColumn
@@ -1870,7 +1928,7 @@ switch ($Action) {
     "freezePanes" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.cell) {
             $sheet.Range($p.cell).Select()
         } elseif ($p.row -and $p.column) {
@@ -1892,7 +1950,7 @@ switch ($Action) {
     "findInSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $searchRange = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
         $results = @()
         $lookAt = if ($p.matchCase) { 1 } else { 2 }
@@ -1913,7 +1971,7 @@ switch ($Action) {
     "replaceInSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $searchRange = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
         $lookAt = if ($p.matchCase) { 1 } else { 2 }
         # Signature is deliberately identical to the findReplaceExcel call site: PowerShell caches a COM
@@ -1925,7 +1983,7 @@ switch ($Action) {
     "copyRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.Copy()
         Output-Json @{ success = $true; data = @{ range = $p.range; message = "已复制到剪贴板" } }
@@ -1934,7 +1992,7 @@ switch ($Action) {
     "pasteRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $destRange = $sheet.Range($p.destination)
         if ($p.pasteType -eq "values") {
             $destRange.PasteSpecial(-4163)
@@ -1951,7 +2009,7 @@ switch ($Action) {
     "fillSeries" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $startCell = $range.Cells.Item(1, 1)
         $startValue = if ($null -ne $p.startValue) { $p.startValue } else { 1 }
@@ -1967,7 +2025,7 @@ switch ($Action) {
     "transpose" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $sourceRange = $sheet.Range($p.sourceRange)
         $destCell = if ($p.destinationCell) { $p.destinationCell } elseif ($p.targetCell) { $p.targetCell } else { $null }
         if ($null -eq $destCell) { Output-Json @{ success = $false; error = "destinationCell/targetCell required" }; exit }
@@ -1981,7 +2039,7 @@ switch ($Action) {
     "textToColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $delimiter = if ($p.delimiter) { $p.delimiter } else { "," }
         $tab = $false; $semicolon = $false; $comma = $false; $space = $false; $other = $false; $otherChar = $null
@@ -1997,7 +2055,7 @@ switch ($Action) {
     "subtotal" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $funcMap = @{ sum = 9; count = 2; average = 1; max = 4; min = 5 }
         $func = $funcMap[$p.function]
@@ -2015,7 +2073,7 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $addr = $range.Address()
         $wb.Names.Add($p.name, "=" + $sheet.Name + "!" + $addr)
@@ -2047,7 +2105,7 @@ switch ($Action) {
     "addCellComment" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         if ($cell.Comment) { $cell.Comment.Delete() }
         $cell.AddComment($p.text)
@@ -2058,7 +2116,7 @@ switch ($Action) {
     "deleteCellComment" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         if ($cell.Comment) { $cell.Comment.Delete() }
         Output-Json @{ success = $true; data = @{ cell = $p.cell } }
@@ -2067,7 +2125,7 @@ switch ($Action) {
     "getCellComments" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $comments = @()
         for ($i = 1; $i -le $sheet.Comments.Count; $i++) {
             $c = $sheet.Comments.Item($i)
@@ -2109,7 +2167,7 @@ switch ($Action) {
     "insertExcelImage" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $left = if ($null -ne $p.left) { $p.left } else { 100 }
         $top = if ($null -ne $p.top) { $p.top } else { 100 }
         $width = if ($null -ne $p.width) { $p.width } else { -1 }
@@ -2121,7 +2179,7 @@ switch ($Action) {
     "setHyperlink" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.cell)
         $address = if ($p.address) { $p.address } else { "" }
         $subAddress = if ($p.subAddress) { $p.subAddress } else { "" }
@@ -2134,7 +2192,7 @@ switch ($Action) {
     "lockCells" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $locked = if ($null -ne $p.locked) { [bool]$p.locked } else { $true }
         $range.Locked = $locked
@@ -2173,9 +2231,35 @@ switch ($Action) {
         $wb = if ($p.name) { $excel.Workbooks.Item($p.name) } else { $excel.ActiveWorkbook }
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No workbook" }; exit }
         $name = $wb.Name
-        $saveChanges = if ($null -ne $p.saveChanges) { [bool]$p.saveChanges } else { $true }
-        $wb.Close($saveChanges)
-        Output-Json @{ success = $true; data = @{ closed = $name } }
+        $path = ""
+        try { $path = [string]$wb.Path } catch { }
+        # Tools spell this parameter "save" while this action used to read only "saveChanges".
+        # The mismatch meant save=false was silently ignored and every close asked to save.
+        $saveWanted = $true
+        if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
+        elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
+        $saveChanges = $saveWanted
+        $warning = $null
+        if ($saveWanted -and $path -eq "") {
+            # Close(save) on a workbook that has no file yet opens a modal Save As dialog and
+            # blocks the COM call until something answers it. Never allow that.
+            $saveChanges = $false
+            $warning = "workbook was never saved to disk; closed without saving (use save_as first if you need it on disk)"
+        }
+        $prevAlerts = $false
+        try { $prevAlerts = [bool]$excel.DisplayAlerts } catch { }
+        try { $excel.DisplayAlerts = $false } catch { }
+        try {
+            $wb.Close($saveChanges)
+        } catch {
+            try { $excel.DisplayAlerts = $prevAlerts } catch { }
+            Output-Json @{ success = $false; error = $_.Exception.Message }
+            exit
+        }
+        try { $excel.DisplayAlerts = $prevAlerts } catch { }
+        $data = @{ closed = $name; saved = [bool]$saveChanges; saveRequested = $saveWanted }
+        if ($null -ne $warning) { $data.warning = $warning }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "createWorkbook" {
@@ -2254,9 +2338,32 @@ switch ($Action) {
         $docItem = if ($p.name) { $word.Documents.Item($p.name) } else { $word.ActiveDocument }
         if ($null -eq $docItem) { Output-Json @{ success = $false; error = "No document" }; exit }
         $name = $docItem.Name
-        $saveChanges = if ($null -ne $p.saveChanges) { [bool]$p.saveChanges } else { $true }
-        $docItem.Close($saveChanges)
-        Output-Json @{ success = $true; data = @{ closed = $name } }
+        $path = ""
+        try { $path = [string]$docItem.Path } catch { }
+        # Same "save" vs "saveChanges" mismatch as closeWorkbook.
+        $saveWanted = $true
+        if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
+        elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
+        $saveChanges = $saveWanted
+        $warning = $null
+        if ($saveWanted -and $path -eq "") {
+            $saveChanges = $false
+            $warning = "document was never saved to disk; closed without saving (use save_as first if you need it on disk)"
+        }
+        $prevAlerts = $false
+        try { $prevAlerts = [bool]$word.DisplayAlerts } catch { }
+        try { $word.DisplayAlerts = 0 } catch { }
+        try {
+            $docItem.Close($saveChanges)
+        } catch {
+            try { $word.DisplayAlerts = $prevAlerts } catch { }
+            Output-Json @{ success = $false; error = $_.Exception.Message }
+            exit
+        }
+        try { $word.DisplayAlerts = $prevAlerts } catch { }
+        $data = @{ closed = $name; saved = [bool]$saveChanges; saveRequested = $saveWanted }
+        if ($null -ne $warning) { $data.warning = $warning }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "insertText" {
@@ -2299,19 +2406,35 @@ switch ($Action) {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
         $doc = $word.ActiveDocument
-        $find = $doc.Content.Find
-        $find.ClearFormatting()
-        $find.Replacement.ClearFormatting()
         $findText = if ($null -ne $p.findText) { [string]$p.findText } else { [string]$p.find }
+        $hasReplaceText = ($null -ne $p.replaceText) -or ($null -ne $p.replace)
         $replaceText = if ($null -ne $p.replaceText) { [string]$p.replaceText } else { [string]$p.replace }
-        $find.Text = $findText
-        $find.Replacement.Text = $replaceText
         $matchCase = if ($null -ne $p.matchCase) { [bool]$p.matchCase } else { $false }
         $matchWholeWord = if ($null -ne $p.matchWholeWord) { [bool]$p.matchWholeWord } else { $false }
         $replaceAll = if ($null -ne $p.replaceAll) { [bool]$p.replaceAll } else { $true }
+
+        # A caller that only wants to search must never erase what it found. The tool layer signals
+        # search with replaceMode=false. Without the flag, an empty replacement means "search" too:
+        # replacing matches with an empty string deletes them, which is not what a search asks for.
+        $isReplace = if ($null -ne $p.replaceMode) { [bool]$p.replaceMode } else { ($hasReplaceText -and $replaceText -ne "") }
+
+        # Count first, so the result reports how much the document actually had to match.
+        $count = Get-WordMatchCount $doc $findText $matchCase $matchWholeWord
+
+        if (-not $isReplace) {
+            Output-Json @{ success = $true; data = @{ count = $count; replaced = $false; found = $count; find = $findText; replaceMode = $false } }
+            exit
+        }
+
+        $find = $doc.Content.Find
+        $find.ClearFormatting()
+        $find.Replacement.ClearFormatting()
+        $find.Text = $findText
+        $find.Replacement.Text = $replaceText
         $replaceType = if ($replaceAll) { 2 } else { 1 }
         $result = $find.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, $replaceText, $replaceType)
-        Output-Json @{ success = $true; data = @{ replaced = $result } }
+        $replacedCount = if ($replaceAll) { $count } else { if ($result) { 1 } else { 0 } }
+        Output-Json @{ success = $true; data = @{ count = $replacedCount; replaced = [bool]$result; found = $count; find = $findText; replace = $replaceText; replaceMode = $true } }
     }
 
     "insertTable" {
@@ -2797,10 +2920,29 @@ switch ($Action) {
         $pres = if ($p.name) { $ppt.Presentations.Item($p.name) } else { $ppt.ActivePresentation }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No presentation" }; exit }
         $name = $pres.Name
-        $saveChanges = if ($null -ne $p.saveChanges) { [bool]$p.saveChanges } else { $true }
-        if (-not $saveChanges) { $pres.Saved = $true }
+        $path = ""
+        try { $path = [string]$pres.Path } catch { }
+        # Same "save" vs "saveChanges" mismatch as closeWorkbook.
+        $saveWanted = $true
+        if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
+        elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
+        $saved = $false
+        $warning = $null
+        if ($saveWanted) {
+            if ($path -eq "") {
+                # Presentation.Close() takes no save argument, so it only stays quiet if the
+                # document is already marked clean.
+                $warning = "presentation was never saved to disk; closed without saving (use save_as first if you need it on disk)"
+            } else {
+                $pres.Save()
+                $saved = $true
+            }
+        }
+        if (-not $saved) { $pres.Saved = $true }
         $pres.Close()
-        Output-Json @{ success = $true; data = @{ closed = $name } }
+        $data = @{ closed = $name; saved = $saved; saveRequested = $saveWanted }
+        if ($null -ne $warning) { $data.warning = $warning }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "getOpenPresentations" {

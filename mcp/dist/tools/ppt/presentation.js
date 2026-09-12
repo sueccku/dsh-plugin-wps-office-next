@@ -171,15 +171,17 @@ const closePresentationHandler = async (args) => {
             name,
             save: save !== false,
         }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success && response.data) {
-            const saveStatus = save !== false ? '已保存' : '未保存';
+        if (response.success) {
+            const closed = response.data?.closed ?? name ?? '(当前演示文稿)';
+            const saveStatus = response.data?.saved ? '已保存' : '未保存';
+            const warnNote = response.data?.warning ? `\n注意: ${response.data.warning}` : '';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
                 content: [
                     {
                         type: 'text',
-                        text: `演示文稿已关闭！\n名称: ${response.data.name}\n保存状态: ${saveStatus}`,
+                        text: `演示文稿已关闭！\n名称: ${closed}\n保存状态: ${saveStatus}${warnNote}`,
                     },
                 ],
             };

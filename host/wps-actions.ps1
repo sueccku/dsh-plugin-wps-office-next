@@ -205,6 +205,64 @@ function Resolve-Worksheet($excel, $wb, $p, [switch]$RequireName) {
     return $excel.ActiveSheet
 }
 
+function Get-WorksheetByParam($excel, $p) {
+    # Most Excel actions are documented to accept a target worksheet but silently operated on
+    # whichever sheet happened to be active. Only $p.sheet is read here: in several actions "name"
+    # means something else entirely (a range name, a chart name), so aliasing it to a sheet would
+    # send those actions to the wrong place.
+    $name = Get-PropOrNull $p 'sheet'
+    if ($null -ne $name -and "$name" -ne "") {
+        $wb = $excel.ActiveWorkbook
+        if ($null -ne $wb) { return $wb.Sheets.Item($name) }
+    }
+    return $excel.ActiveSheet
+}
+
+function Test-WpsActionParamKeys($Action, $Params, $Accepted) {
+    # Returns $null when every supplied parameter is one the action actually reads, otherwise a
+    # message naming the unexpected keys.
+    #
+    # MCP does not validate parameter names against the bridge, and PowerShell happily ignores an
+    # object property nobody reads. So a tool that spells a parameter differently from this script
+    # used to be silently dropped: delete_sheet(name) deleted the active sheet, close_workbook(save)
+    # ignored save=false, find_replace sent keys this file never looked at. Comparing the supplied
+    # keys against the keys the action reads turns all of those into a loud error.
+    if ($null -eq $Accepted) { return $null }
+    $given = @()
+    if ($null -ne $Params) { $given = @($Params.PSObject.Properties | ForEach-Object { $_.Name }) }
+    if ($given.Count -eq 0) { return $null }
+    $extra = @($given | Where-Object { $Accepted -notcontains $_ })
+    if ($extra.Count -eq 0) { return $null }
+    return ("unknown parameter(s) for '" + $Action + "': " + ($extra -join ', ') +
+            " | accepted: " + ((@($Accepted) | Sort-Object) -join ', '))
+}
+
+function Get-WordMatchCount($doc, [string]$findText, [bool]$matchCase, [bool]$matchWholeWord) {
+    # Word exposes no match-count API, so walk the document with Find. Wrap is set to wdFindStop
+    # and the loop is bounded: a WPS quirk must not be able to hang the resident host.
+    $count = 0
+    if ([string]::IsNullOrEmpty($findText)) { return 0 }
+    $contentEnd = [int]$doc.Content.End
+    $search = $doc.Content
+    $limit = 100000
+    while ($count -lt $limit) {
+        $finder = $search.Find
+        $finder.ClearFormatting()
+        $finder.Text = $findText
+        $finder.Forward = $true
+        $finder.MatchCase = $matchCase
+        $finder.MatchWholeWord = $matchWholeWord
+        $finder.Wrap = 0
+        if (-not $finder.Execute()) { break }
+        $count++
+        $next = [int]$search.End
+        if ($next -ge $contentEnd) { break }
+        if ($next -le [int]$search.Start) { break }
+        $search.SetRange($next, $contentEnd)
+    }
+    return $count
+}
+
 function Set-ComValue($target, [string]$member, $value) {
     $prop = Find-ComProperty $target $member
     if ($null -eq $prop) { throw ('Set-ComValue: member not found: ' + $member) }
@@ -304,10 +362,267 @@ function Get-PptSaveFormat([string]$format) {
     return $map[$f]
 }
 
+# Accepted parameter names per action, derived from the switch below by the generator.
+$script:ActionParamKeys = @{
+    'addAnimation' = @('effect', 'presentationName', 'shapeName', 'slideIndex')
+    'addAnimationPreset' = @('delayIncrement', 'presentationName', 'preset', 'slideIndex')
+    'addArrow' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
+    'addCellComment' = @('cell', 'sheet', 'text', 'visible')
+    'addComment' = @('comment', 'text')
+    'addConditionalFormat' = @('backgroundColor', 'colorScaleType', 'fontColor', 'operator', 'range', 'sheet', 'type', 'value', 'value1', 'value2')
+    'addConnector' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
+    'addDataValidation' = @('errorMessage', 'errorTitle', 'formula1', 'formula2', 'inputMessage', 'inputTitle', 'list', 'operator', 'range', 'sheet', 'showDropdown', 'validationType')
+    'addEmphasisAnimation' = @('duration', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
+    'addMasterElement' = @('color', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
+    'addPageIndicator' = @('dark', 'left', 'presentationName', 'slideIndex', 'top')
+    'addPptHyperlink' = @('address', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress')
+    'addShape' = @('fillColor', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'type', 'width')
+    'addSlide' = @('content', 'layout', 'position', 'presentationName', 'title')
+    'addTextBox' = @('fontName', 'fontSize', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'width')
+    'addTitleDecoration' = @('color', 'height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
+    'alignShapes' = @('alignment', 'names', 'presentationName', 'slideIndex')
+    'applyColorScheme' = @('colorScheme', 'presentationName', 'scheme')
+    'applyStyle' = @('range', 'styleName')
+    'applyTransitionToAll' = @('duration', 'presentationName', 'transition')
+    'autoBeautifySlide' = @('presentationName', 'slideIndex', 'style')
+    'autoFilter' = @('criteria', 'field', 'range', 'sheet')
+    'autoFitAll' = @('range', 'sheet')
+    'autoFitColumn' = @('column', 'range', 'sheet')
+    'autoFitRow' = @('range', 'row', 'sheet')
+    'autoLayout' = @('cols', 'gap', 'layout', 'margin', 'presentationName', 'slideIndex')
+    'autoSum' = @('range', 'sheet', 'targetCell')
+    'beautifyAllSlides' = @('presentationName', 'style')
+    'beautifySlide' = @('presentationName', 'slideIndex', 'style')
+    'calculateSheet' = @('all', 'sheet')
+    'cleanData' = @('operations', 'range', 'sheet')
+    'clearFormats' = @('range', 'sheet')
+    'clearRange' = @('range', 'sheet', 'type')
+    'closeDocument' = @('name', 'save', 'saveChanges')
+    'closePresentation' = @('name', 'save', 'saveChanges')
+    'closeWorkbook' = @('name', 'save', 'saveChanges')
+    'consolidate' = @('createLinks', 'destination', 'function', 'leftColumn', 'sheet', 'sources', 'topRow')
+    'convertFormat' = @('outputPath', 'presentationName', 'targetFormat')
+    'convertToPDF' = @('outputPath', 'presentationName')
+    'copyFormat' = @('sheet', 'source', 'target')
+    'copyRange' = @('range', 'sheet')
+    'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
+    'create3DText' = @('depth', 'fontColor', 'fontSize', 'height', 'left', 'presentationName', 'rotationX', 'rotationY', 'slideIndex', 'text', 'top', 'width')
+    'createChart' = @('chartType', 'chartTypeName', 'dataRange', 'left', 'position', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
+    'createDocument' = @()
+    'createDonutChart' = @('centerText', 'centerX', 'centerY', 'color', 'presentationName', 'radius', 'slideIndex', 'title', 'value')
+    'createFlowChart' = @('boxHeight', 'boxWidth', 'direction', 'gap', 'presentationName', 'slideIndex', 'startX', 'startY', 'steps')
+    'createGauge' = @('centerX', 'centerY', 'presentationName', 'radius', 'slideIndex', 'title', 'value')
+    'createGrid' = @('borderColor', 'cellColor', 'cols', 'gap', 'margin', 'presentationName', 'rows', 'slideIndex')
+    'createKpiCards' = @('cardHeight', 'cards', 'cardWidth', 'gap', 'presentationName', 'slideIndex', 'startX', 'startY')
+    'createMiniCharts' = @('gap', 'items', 'itemWidth', 'presentationName', 'slideIndex', 'startX', 'startY')
+    'createNamedRange' = @('name', 'range', 'sheet')
+    'createOrgChart' = @('boxHeight', 'boxWidth', 'levelGap', 'nodes', 'presentationName', 'slideIndex', 'startY')
+    'createPivotTable' = @('columnFields', 'destinationCell', 'destinationSheet', 'filterFields', 'rowFields', 'sourceRange', 'tableName', 'valueFields')
+    'createPresentation' = @()
+    'createProgressBar' = @('bgColor', 'color', 'height', 'label', 'left', 'presentationName', 'progress', 'slideIndex', 'top', 'width')
+    'createSheet' = @('name', 'position')
+    'createStyledTable' = @('cols', 'data', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'style', 'top', 'width')
+    'createTimeline' = @('dotColor', 'events', 'lineColor', 'lineLength', 'presentationName', 'slideIndex', 'startX', 'startY')
+    'createWorkbook' = @('name')
+    'deleteCellComment' = @('cell', 'sheet')
+    'deleteColumns' = @('column', 'count', 'sheet', 'startColumn')
+    'deleteNamedRange' = @('name')
+    'deletePptImage' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'deleteRows' = @('count', 'row', 'sheet', 'startRow')
+    'deleteShape' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'deleteSheet' = @('name', 'oldName', 'sheet')
+    'deleteSlide' = @('index', 'presentationName', 'slideIndex')
+    'deleteTextBox' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'diagnoseFormula' = @('cell', 'sheet')
+    'distributeShapes' = @('direction', 'names', 'presentationName', 'slideIndex')
+    'duplicateShape' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'duplicateSlide' = @('index', 'presentationName', 'slideIndex')
+    'enableTrackChanges' = @('enable')
+    'endSlideShow' = @()
+    'evaluateFormula' = @('formula')
+    'exportChartAsImage' = @('chartName', 'format', 'outputPath', 'path', 'sheet')
+    'exportRangeAsImage' = @('format', 'outputPath', 'path', 'range', 'sheet')
+    'exportSlideAsImage' = @('format', 'height', 'outputPath', 'path', 'presentationName', 'slideIndex', 'width')
+    'fillSeries' = @('range', 'sheet', 'startValue', 'step', 'type')
+    'findInDocument' = @('findText', 'matchCase', 'matchWholeWord', 'maxResults')
+    'findInSheet' = @('matchCase', 'range', 'searchText', 'sheet')
+    'findPptText' = @('presentationName', 'text')
+    'findReplace' = @('find', 'findText', 'matchCase', 'matchWholeWord', 'replace', 'replaceAll', 'replaceMode', 'replaceText')
+    'findReplaceExcel' = @('find', 'findText', 'matchCase', 'matchWholeWord', 'range', 'replace', 'replaceText', 'sheet')
+    'freezePanes' = @('cell', 'column', 'row', 'sheet')
+    'generateTOC' = @('includePageNumbers', 'levels', 'position')
+    'getActiveDocument' = @()
+    'getActivePresentation' = @('presentationName')
+    'getActiveWorkbook' = @()
+    'getAnimations' = @('presentationName', 'slideIndex')
+    'getAppInfo' = @()
+    'getBookmarks' = @()
+    'getCellComments' = @('sheet')
+    'getCellInfo' = @('cell', 'sheet')
+    'getCellValue' = @('col', 'row', 'sheet')
+    'getComments' = @()
+    'getConditionalFormats' = @('range', 'sheet')
+    'getContext' = @('sheet')
+    'getDataValidations' = @('range', 'sheet')
+    'getDocumentParagraphs' = @('endParagraph', 'startParagraph')
+    'getDocumentStats' = @()
+    'getDocumentText' = @()
+    'getExcelContext' = @('sheet')
+    'getFormula' = @('cell', 'sheet')
+    'getNamedRanges' = @()
+    'getOpenDocuments' = @()
+    'getOpenPresentations' = @()
+    'getOpenWorkbooks' = @()
+    'getPptTableCell' = @('col', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName')
+    'getRangeData' = @('range', 'sheet')
+    'getSelectedText' = @()
+    'getSelection' = @()
+    'getShapes' = @('presentationName', 'slideIndex')
+    'getSheetList' = @()
+    'getSlideCount' = @('presentationName')
+    'getSlideInfo' = @('index', 'presentationName', 'slideIndex')
+    'getSlideMaster' = @('presentationName')
+    'getSlideNotes' = @('index', 'presentationName', 'slideIndex')
+    'getSlideTitle' = @('presentationName', 'slideIndex')
+    'getTextBoxes' = @('presentationName', 'slideIndex')
+    'getTrackChangesStatus' = @()
+    'groupColumns' = @('endColumn', 'sheet', 'startColumn')
+    'groupRows' = @('endRow', 'sheet', 'startRow')
+    'groupShapes' = @('names', 'presentationName', 'slideIndex')
+    'hideColumns' = @('column', 'columns', 'sheet')
+    'hideRows' = @('row', 'rows', 'sheet')
+    'insertBookmark' = @('name')
+    'insertColumns' = @('column', 'count', 'sheet', 'startColumn')
+    'insertExcelImage' = @('height', 'left', 'path', 'sheet', 'top', 'width')
+    'insertFooter' = @('alignment', 'includePageNumber', 'text')
+    'insertHeader' = @('alignment', 'text')
+    'insertHyperlink' = @('address', 'displayText', 'text', 'url')
+    'insertImage' = @('filePath', 'height', 'path', 'scale', 'width')
+    'insertPageBreak' = @('type')
+    'insertPptChart' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'type', 'width')
+    'insertPptImage' = @('height', 'left', 'path', 'presentationName', 'slideIndex', 'top', 'width')
+    'insertPptTable' = @('cols', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'top', 'width')
+    'insertRows' = @('count', 'row', 'sheet', 'startRow')
+    'insertSectionBreak' = @('breakType')
+    'insertSlidesFromFile' = @('afterIndex', 'filePath', 'path', 'presentationName', 'slideEnd', 'slideStart')
+    'insertTable' = @('cols', 'data', 'rows')
+    'insertText' = @('position', 'style', 'text')
+    'lockCells' = @('locked', 'range', 'sheet')
+    'mergeCells' = @('across', 'range', 'sheet')
+    'moveSheet' = @('name', 'oldName', 'position', 'sheet')
+    'moveSlide' = @('from', 'fromIndex', 'presentationName', 'to', 'toIndex')
+    'openDocument' = @('path')
+    'openFile' = @('appType', 'path')
+    'openPresentation' = @('path')
+    'openWorkbook' = @('path', 'readOnly', 'updateLinks')
+    'pasteRange' = @('destination', 'pasteType', 'sheet')
+    'ping' = @()
+    'protectSheet' = @('contents', 'drawingObjects', 'password', 'scenarios', 'sheet')
+    'protectWorkbook' = @('password', 'structure', 'windows')
+    'refreshLinks' = @()
+    'removeAnimation' = @('index', 'presentationName', 'slideIndex')
+    'removeConditionalFormat' = @('index', 'range', 'sheet')
+    'removeDataValidation' = @('range', 'sheet')
+    'removeDuplicates' = @('columns', 'hasHeader', 'range', 'sheet')
+    'removePptHyperlink' = @('presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
+    'removeSlideTransition' = @('presentationName', 'slideIndex')
+    'renameSheet' = @('name', 'newName', 'oldName', 'sheet')
+    'replaceBookmarkContent' = @('name', 'text')
+    'replaceInSheet' = @('matchCase', 'range', 'replaceText', 'searchText', 'sheet')
+    'replacePptImage' = @('filePath', 'name', 'path', 'presentationName', 'shapeIndex', 'slideIndex')
+    'replacePptText' = @('find', 'findText', 'presentationName', 'replace', 'replaceText')
+    'replaceRange' = @('endPos', 'startPos', 'text')
+    'save' = @()
+    'saveAs' = @('appType', 'format', 'path')
+    'set3DDepth' = @('depth', 'depthColor', 'lighting', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
+    'set3DMaterial' = @('material', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
+    'set3DRotation' = @('presentationName', 'preset', 'rotationX', 'rotationY', 'rotationZ', 'shapeIndex', 'shapeName', 'slideIndex')
+    'setAnimationOrder' = @('from', 'presentationName', 'slideIndex', 'to')
+    'setArrayFormula' = @('formula', 'range', 'sheet')
+    'setBackgroundColor' = @('applyToAll', 'color', 'presentationName', 'slideIndex')
+    'setBackgroundGradient' = @('color1', 'color2', 'presentationName', 'slideIndex')
+    'setBackgroundImage' = @('path', 'presentationName', 'slideIndex')
+    'setBorder' = @('color', 'position', 'range', 'sheet', 'style')
+    'setCellStyle' = @('backgroundColor', 'bold', 'border', 'borderColor', 'fontColor', 'fontName', 'fontSize', 'horizontalAlignment', 'italic', 'range', 'sheet', 'verticalAlignment')
+    'setCellValue' = @('col', 'row', 'sheet', 'value')
+    'setColumnWidth' = @('column', 'sheet', 'width')
+    'setFont' = @('bold', 'color', 'fontName', 'fontSize', 'italic', 'range', 'underline')
+    'setFontColor' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
+    'setFormula' = @('col', 'formula', 'range', 'row', 'sheet')
+    'setHyperlink' = @('address', 'cell', 'screenTip', 'sheet', 'subAddress', 'textToDisplay')
+    'setImageStyle' = @('height', 'left', 'name', 'presentationName', 'rotation', 'shapeIndex', 'slideIndex', 'top', 'width')
+    'setLineSpacing' = @('lineSpacing', 'paragraphIndex')
+    'setMasterBackground' = @('color', 'color1', 'color2', 'gradient', 'presentationName')
+    'setNumberFormat' = @('format', 'name', 'oldName', 'range', 'sheet')
+    'setPageSetup' = @('bottomMargin', 'leftMargin', 'orientation', 'paperSize', 'rightMargin', 'topMargin')
+    'setParagraph' = @('alignment', 'firstLineIndent', 'leftIndent', 'lineSpacing', 'range', 'rightIndent', 'spaceAfter', 'spaceBefore')
+    'setPptChartData' = @('chartIndex', 'chartName', 'data', 'presentationName', 'slideIndex')
+    'setPptChartStyle' = @('chartIndex', 'chartName', 'hasLegend', 'presentationName', 'slideIndex', 'title')
+    'setPptDateTime' = @('presentationName', 'text', 'useFixed', 'visible')
+    'setPptFooter' = @('presentationName', 'text')
+    'setPptTableCell' = @('col', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName', 'text', 'value')
+    'setPptTableCellStyle' = @('backgroundColor', 'bold', 'col', 'fontColor', 'fontSize', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName')
+    'setPptTableRowStyle' = @('backgroundColor', 'bold', 'fontColor', 'fontSize', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName')
+    'setPptTableStyle' = @('height', 'left', 'presentationName', 'slideIndex', 'tableIndex', 'tableName', 'top', 'width')
+    'setPrintArea' = @('range', 'sheet')
+    'setRangeData' = @('data', 'range', 'sheet')
+    'setRowHeight' = @('height', 'row', 'sheet')
+    'setSelectedText' = @('text')
+    'setShapeBorder' = @('color', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'width')
+    'setShapeFill' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
+    'setShapeFullStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
+    'setShapeGradient' = @('color1', 'color2', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'setShapePosition' = @('height', 'left', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'top', 'width')
+    'setShapeRoundness' = @('name', 'presentationName', 'roundness', 'shapeIndex', 'slideIndex')
+    'setShapeShadow' = @('blur', 'color', 'name', 'offsetX', 'offsetY', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
+    'setShapeStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'setShapeText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
+    'setShapeTransparency' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
+    'setShapeZOrder' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'zOrder')
+    'setSlideBackground' = @('color', 'fontName', 'imagePath', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex')
+    'setSlideContent' = @('content', 'presentationName', 'slideIndex')
+    'setSlideLayout' = @('index', 'layout', 'presentationName', 'slideIndex')
+    'setSlideNotes' = @('content', 'index', 'layout', 'notes', 'position', 'presentationName', 'slideIndex', 'title')
+    'setSlideNumber' = @('presentationName', 'visible')
+    'setSlideSize' = @('height', 'presentationName', 'width')
+    'setSlideSubtitle' = @('presentationName', 'slideIndex', 'subtitle')
+    'setSlideTheme' = @('presentationName', 'theme')
+    'setSlideTitle' = @('presentationName', 'slideIndex', 'title')
+    'setSlideTransition' = @('effect', 'presentationName', 'slideIndex')
+    'setTextBoxStyle' = @('alignment', 'bold', 'color', 'fontName', 'fontSize', 'italic', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'setTextBoxText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
+    'setTextColor' = @('color', 'range')
+    'setZoom' = @('percent', 'sheet')
+    'showColumns' = @('column', 'columns', 'sheet')
+    'showRows' = @('row', 'rows', 'sheet')
+    'smartDistribute' = @('direction', 'presentationName', 'shapes', 'slideIndex')
+    'smartFillField' = @('fillMode', 'keyword', 'value')
+    'sortRange' = @('keyColumn', 'order', 'range', 'sheet')
+    'startSlideShow' = @('presentationName')
+    'subtotal' = @('function', 'groupBy', 'range', 'replace', 'sheet', 'totalColumn', 'totalColumns')
+    'switchDocument' = @('index', 'name')
+    'switchPresentation' = @('index', 'name')
+    'switchSheet' = @('name', 'oldName', 'sheet')
+    'switchSlide' = @('index', 'presentationName', 'slideIndex')
+    'switchWorkbook' = @('index', 'name')
+    'textToColumns' = @('delimiter', 'range', 'sheet')
+    'transpose' = @('destinationCell', 'sheet', 'sourceRange', 'targetCell')
+    'unfreezePanes' = @()
+    'unifyFont' = @('fontName', 'presentationName', 'slideIndex', 'style')
+    'unmergeCells' = @('range', 'sheet')
+    'unprotectSheet' = @('password', 'sheet')
+    'updateChart' = @('chartIndex', 'chartName', 'chartType', 'colors', 'dataRange', 'legendPosition', 'sheet', 'showDataLabels', 'showLegend', 'title')
+    'updatePivotTable' = @('addColumnFields', 'addFilterFields', 'addRowFields', 'addValueFields', 'pivotTableCell', 'pivotTableName', 'refresh', 'removeColumnFields', 'removeFilterFields', 'removeRowFields', 'removeValueFields', 'sheet', 'updateValueFields')
+    'wireCheck' = @()
+    'wrapText' = @('range', 'sheet', 'wrap')
+}
+
 function Invoke-WpsAction {
     param([string]$Action, [string]$Params = '{}')
 
 try { $p = $Params | ConvertFrom-Json } catch { $p = @{} }
+    $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]
+    if ($null -ne $__paramError) { Output-Json @{ success = $false; error = $__paramError }; return }
 
 switch ($Action) {
 
@@ -675,7 +990,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         $value = $cell.Value2
         $formula = $cell.Formula
@@ -802,7 +1117,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $table = $null
         if ($p.pivotTableName) {
             try { $table = $sheet.PivotTables($p.pivotTableName) } catch {}
@@ -949,7 +1264,7 @@ return }
     "setCellStyle" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         if ($p.fontSize) { $range.Font.Size = $p.fontSize }
         if ($null -ne $p.bold) { $range.Font.Bold = [bool]$p.bold }
@@ -986,7 +1301,7 @@ return }
     "setBorder" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $styleMap = @{ thin = 1; medium = 2; thick = 4; double = 6; none = 0 }
         $style = $styleMap[$p.style]
@@ -1017,7 +1332,7 @@ return }
     "copyFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $sourceRange = $sheet.Range($p.source)
         $targetRange = $sheet.Range($p.target)
         $sourceRange.Copy()
@@ -1029,7 +1344,7 @@ return }
     "clearFormats" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.ClearFormats()
         Output-Json @{ success = $true; data = @{ range = $p.range } }
@@ -1038,7 +1353,7 @@ return }
     "addConditionalFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $formatType = if ($p.type) { $p.type } else { "cellValue" }
         if ($formatType -eq "cellValue") {
@@ -1068,7 +1383,7 @@ return }
     "removeConditionalFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         if ($p.index) {
             $range.FormatConditions.Item([int]$p.index).Delete()
@@ -1081,7 +1396,7 @@ return }
     "getConditionalFormats" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $formats = @()
         $count = $range.FormatConditions.Count
@@ -1095,7 +1410,7 @@ return }
     "addDataValidation" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $typeMap = @{ list = 3; whole = 1; decimal = 2; date = 4; time = 5; textLength = 6; custom = 7 }
         $validationType = $typeMap[$p.validationType]
@@ -1129,7 +1444,7 @@ return }
     "removeDataValidation" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.Validation.Delete()
         Output-Json @{ success = $true; data = @{ range = $p.range } }
@@ -1138,7 +1453,7 @@ return }
     "getDataValidations" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $validation = $range.Validation
         Output-Json @{ success = $true; data = @{ range = $p.range; type = $validation.Type; formula1 = $validation.Formula1; formula2 = $validation.Formula2; inputTitle = $validation.InputTitle; inputMessage = $validation.InputMessage } }
@@ -1147,7 +1462,7 @@ return }
     "getFormula" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         $formula = if ($cell.Formula) { $cell.Formula } else { "" }
         $formulaLocal = ""
@@ -1158,7 +1473,7 @@ return }
     "setArrayFormula" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.FormulaArray = $p.formula
         Output-Json @{ success = $true; data = @{ range = $p.range; formula = $p.formula } }
@@ -1206,7 +1521,7 @@ return }
     "consolidate" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $destRange = $sheet.Range($p.destination)
         $funcMap = @{ sum = 9; count = 2; average = 1; max = 4; min = 5 }
         $func = $funcMap[$p.function]
@@ -1222,7 +1537,7 @@ return }
             $excel.Calculate()
             Output-Json @{ success = $true; data = @{ calculated = "all" } }
         } else {
-            $sheet = $excel.ActiveSheet
+            $sheet = Get-WorksheetByParam $excel $p
             $sheet.Calculate()
             Output-Json @{ success = $true; data = @{ calculated = $sheet.Name } }
         }
@@ -1234,7 +1549,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $usedRange = $sheet.UsedRange
         $headers = @()
         if ($usedRange.Rows.Count -gt 0) {
@@ -1255,7 +1570,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $usedRange = $sheet.UsedRange
         $headers = @()
         if ($usedRange.Rows.Count -gt 0) {
@@ -1274,7 +1589,7 @@ return }
     "sortRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $keyCol = $sheet.Range($p.keyColumn)
         $order = if ($p.order -eq "desc") { 2 } else { 1 }
@@ -1285,7 +1600,7 @@ return }
     "autoFilter" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         if ($p.criteria) {
             $range.AutoFilter($p.field, $p.criteria)
@@ -1298,7 +1613,7 @@ return }
     "createChart" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.dataRange)
         $chartType = $p.chartType
         if ($null -eq $chartType) {
@@ -1426,7 +1741,7 @@ return }
     "removeDuplicates" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $originalCount = $range.Rows.Count
         $cols = @()
@@ -1589,7 +1904,7 @@ return }
     "mergeCells" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $across = if ($null -ne $p.across) { [bool]$p.across } else { $false }
         $range.Merge($across)
@@ -1599,7 +1914,7 @@ return }
     "unmergeCells" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.UnMerge()
         Output-Json @{ success = $true; data = @{ range = $p.range } }
@@ -1608,7 +1923,7 @@ return }
     "setColumnWidth" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $col = $p.column
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
         $sheet.Range("${col}:${col}").ColumnWidth = $p.width
@@ -1618,7 +1933,7 @@ return }
     "setRowHeight" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $sheet.Range("$($p.row):$($p.row)").RowHeight = $p.height
         Output-Json @{ success = $true; data = @{ row = $p.row; height = $p.height } }
     }
@@ -1626,7 +1941,7 @@ return }
     "autoFitColumn" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.range) {
             $sheet.Range($p.range).Columns.AutoFit()
         } elseif ($p.column) {
@@ -1642,7 +1957,7 @@ return }
     "autoFitRow" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.range) {
             $sheet.Range($p.range).Rows.AutoFit()
         } elseif ($p.row) {
@@ -1656,7 +1971,7 @@ return }
     "autoFitAll" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
         $range.Columns.AutoFit()
         $range.Rows.AutoFit()
@@ -1680,7 +1995,7 @@ return }
     "wrapText" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $wrap = if ($null -ne $p.wrap) { [bool]$p.wrap } else { $true }
         $range.WrapText = $wrap
@@ -1690,7 +2005,7 @@ return }
     "setPrintArea" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.range) { $sheet.PageSetup.PrintArea = $p.range } else { $sheet.PageSetup.PrintArea = "" }
         Output-Json @{ success = $true; data = @{ printArea = if ($p.range) { $p.range } else { "cleared" } } }
     }
@@ -1707,7 +2022,7 @@ return }
     "clearRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $clearType = if ($p.type) { $p.type } else { "all" }
         if ($clearType -eq "contents") { $range.ClearContents() }
@@ -1720,7 +2035,7 @@ return }
     "insertRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $startRow = if ($p.row) { [int]$p.row } elseif ($p.startRow) { [int]$p.startRow } else { $null }
         if ($null -eq $startRow) { Output-Json @{ success = $false; error = "row/startRow required" }; return }
         $count = if ($p.count) { [int]$p.count } else { 1 }
@@ -1732,7 +2047,7 @@ return }
     "insertColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $col = if ($p.column) { $p.column } elseif ($p.startColumn) { $p.startColumn } else { $null }
         if ($null -eq $col) { Output-Json @{ success = $false; error = "column/startColumn required" }; return }
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
@@ -1746,7 +2061,7 @@ return }
     "deleteRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $startRow = if ($p.row) { [int]$p.row } elseif ($p.startRow) { [int]$p.startRow } else { $null }
         if ($null -eq $startRow) { Output-Json @{ success = $false; error = "row/startRow required" }; return }
         $count = if ($p.count) { [int]$p.count } else { 1 }
@@ -1758,7 +2073,7 @@ return }
     "deleteColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $col = if ($p.column) { $p.column } elseif ($p.startColumn) { $p.startColumn } else { $null }
         if ($null -eq $col) { Output-Json @{ success = $false; error = "column/startColumn required" }; return }
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
@@ -1772,7 +2087,7 @@ return }
     "hideRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $rows = if ($p.rows) { $p.rows } elseif ($p.row) { @($p.row) } else { @() }
         if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows required" }; return }
         foreach ($r in $rows) { $sheet.Range("${r}:${r}").Hidden = $true }
@@ -1782,7 +2097,7 @@ return }
     "hideColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cols = if ($p.columns) { $p.columns } elseif ($p.column) { @($p.column) } else { @() }
         if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns required" }; return }
         $hidden = @()
@@ -1798,7 +2113,7 @@ return }
     "showRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $rows = if ($p.rows) { $p.rows } elseif ($p.row) { @($p.row) } else { @() }
         if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows required" }; return }
         foreach ($r in $rows) { $sheet.Range("${r}:${r}").Hidden = $false }
@@ -1808,7 +2123,7 @@ return }
     "showColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cols = if ($p.columns) { $p.columns } elseif ($p.column) { @($p.column) } else { @() }
         if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns required" }; return }
         $shown = @()
@@ -1824,7 +2139,7 @@ return }
     "groupRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if (-not $p.startRow -or -not $p.endRow) { Output-Json @{ success = $false; error = "startRow/endRow required" }; return }
         $sheet.Range("$($p.startRow):$($p.endRow)").Group()
         Output-Json @{ success = $true; data = @{ grouped = "$($p.startRow):$($p.endRow)" } }
@@ -1833,7 +2148,7 @@ return }
     "groupColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if (-not $p.startColumn -or -not $p.endColumn) { Output-Json @{ success = $false; error = "startColumn/endColumn required" }; return }
         $startCol = $p.startColumn
         $endCol = $p.endColumn
@@ -1846,7 +2161,7 @@ return }
     "freezePanes" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         if ($p.cell) {
             $sheet.Range($p.cell).Select()
         } elseif ($p.row -and $p.column) {
@@ -1868,7 +2183,7 @@ return }
     "findInSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $searchRange = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
         $results = @()
         $lookAt = if ($p.matchCase) { 1 } else { 2 }
@@ -1889,7 +2204,7 @@ return }
     "replaceInSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $searchRange = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
         $lookAt = if ($p.matchCase) { 1 } else { 2 }
         # Signature is deliberately identical to the findReplaceExcel call site: PowerShell caches a COM
@@ -1901,7 +2216,7 @@ return }
     "copyRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $range.Copy()
         Output-Json @{ success = $true; data = @{ range = $p.range; message = "已复制到剪贴板" } }
@@ -1910,7 +2225,7 @@ return }
     "pasteRange" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $destRange = $sheet.Range($p.destination)
         if ($p.pasteType -eq "values") {
             $destRange.PasteSpecial(-4163)
@@ -1927,7 +2242,7 @@ return }
     "fillSeries" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $startCell = $range.Cells.Item(1, 1)
         $startValue = if ($null -ne $p.startValue) { $p.startValue } else { 1 }
@@ -1943,7 +2258,7 @@ return }
     "transpose" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $sourceRange = $sheet.Range($p.sourceRange)
         $destCell = if ($p.destinationCell) { $p.destinationCell } elseif ($p.targetCell) { $p.targetCell } else { $null }
         if ($null -eq $destCell) { Output-Json @{ success = $false; error = "destinationCell/targetCell required" }; return }
@@ -1957,7 +2272,7 @@ return }
     "textToColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $delimiter = if ($p.delimiter) { $p.delimiter } else { "," }
         $tab = $false; $semicolon = $false; $comma = $false; $space = $false; $other = $false; $otherChar = $null
@@ -1973,7 +2288,7 @@ return }
     "subtotal" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $funcMap = @{ sum = 9; count = 2; average = 1; max = 4; min = 5 }
         $func = $funcMap[$p.function]
@@ -1991,7 +2306,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $addr = $range.Address()
         $wb.Names.Add($p.name, "=" + $sheet.Name + "!" + $addr)
@@ -2023,7 +2338,7 @@ return }
     "addCellComment" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         if ($cell.Comment) { $cell.Comment.Delete() }
         $cell.AddComment($p.text)
@@ -2034,7 +2349,7 @@ return }
     "deleteCellComment" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
         if ($cell.Comment) { $cell.Comment.Delete() }
         Output-Json @{ success = $true; data = @{ cell = $p.cell } }
@@ -2043,7 +2358,7 @@ return }
     "getCellComments" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $comments = @()
         for ($i = 1; $i -le $sheet.Comments.Count; $i++) {
             $c = $sheet.Comments.Item($i)
@@ -2085,7 +2400,7 @@ return }
     "insertExcelImage" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $left = if ($null -ne $p.left) { $p.left } else { 100 }
         $top = if ($null -ne $p.top) { $p.top } else { 100 }
         $width = if ($null -ne $p.width) { $p.width } else { -1 }
@@ -2097,7 +2412,7 @@ return }
     "setHyperlink" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.cell)
         $address = if ($p.address) { $p.address } else { "" }
         $subAddress = if ($p.subAddress) { $p.subAddress } else { "" }
@@ -2110,7 +2425,7 @@ return }
     "lockCells" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $locked = if ($null -ne $p.locked) { [bool]$p.locked } else { $true }
         $range.Locked = $locked
@@ -2149,9 +2464,34 @@ return }
         $wb = if ($p.name) { $excel.Workbooks.Item($p.name) } else { $excel.ActiveWorkbook }
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No workbook" }; return }
         $name = $wb.Name
-        $saveChanges = if ($null -ne $p.saveChanges) { [bool]$p.saveChanges } else { $true }
-        $wb.Close($saveChanges)
-        Output-Json @{ success = $true; data = @{ closed = $name } }
+        $path = ""
+        try { $path = [string]$wb.Path } catch { }
+        # Tools spell this parameter "save" while this action used to read only "saveChanges".
+        # The mismatch meant save=false was silently ignored and every close asked to save.
+        $saveWanted = $true
+        if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
+        elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
+        $saveChanges = $saveWanted
+        $warning = $null
+        if ($saveWanted -and $path -eq "") {
+            # Close(save) on a workbook that has no file yet opens a modal Save As dialog and
+            # blocks the COM call until something answers it. Never allow that.
+            $saveChanges = $false
+            $warning = "workbook was never saved to disk; closed without saving (use save_as first if you need it on disk)"
+        }
+        $prevAlerts = $false
+        try { $prevAlerts = [bool]$excel.DisplayAlerts } catch { }
+        try { $excel.DisplayAlerts = $false } catch { }
+        try {
+            $wb.Close($saveChanges)
+        } catch {
+            try { $excel.DisplayAlerts = $prevAlerts } catch { }
+            Output-Json @{ success = $false; error = $_.Exception.Message }
+return }
+        try { $excel.DisplayAlerts = $prevAlerts } catch { }
+        $data = @{ closed = $name; saved = [bool]$saveChanges; saveRequested = $saveWanted }
+        if ($null -ne $warning) { $data.warning = $warning }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "createWorkbook" {
@@ -2230,9 +2570,31 @@ return }
         $docItem = if ($p.name) { $word.Documents.Item($p.name) } else { $word.ActiveDocument }
         if ($null -eq $docItem) { Output-Json @{ success = $false; error = "No document" }; return }
         $name = $docItem.Name
-        $saveChanges = if ($null -ne $p.saveChanges) { [bool]$p.saveChanges } else { $true }
-        $docItem.Close($saveChanges)
-        Output-Json @{ success = $true; data = @{ closed = $name } }
+        $path = ""
+        try { $path = [string]$docItem.Path } catch { }
+        # Same "save" vs "saveChanges" mismatch as closeWorkbook.
+        $saveWanted = $true
+        if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
+        elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
+        $saveChanges = $saveWanted
+        $warning = $null
+        if ($saveWanted -and $path -eq "") {
+            $saveChanges = $false
+            $warning = "document was never saved to disk; closed without saving (use save_as first if you need it on disk)"
+        }
+        $prevAlerts = $false
+        try { $prevAlerts = [bool]$word.DisplayAlerts } catch { }
+        try { $word.DisplayAlerts = 0 } catch { }
+        try {
+            $docItem.Close($saveChanges)
+        } catch {
+            try { $word.DisplayAlerts = $prevAlerts } catch { }
+            Output-Json @{ success = $false; error = $_.Exception.Message }
+return }
+        try { $word.DisplayAlerts = $prevAlerts } catch { }
+        $data = @{ closed = $name; saved = [bool]$saveChanges; saveRequested = $saveWanted }
+        if ($null -ne $warning) { $data.warning = $warning }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "insertText" {
@@ -2275,19 +2637,33 @@ return }
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = $word.ActiveDocument
-        $find = $doc.Content.Find
-        $find.ClearFormatting()
-        $find.Replacement.ClearFormatting()
         $findText = if ($null -ne $p.findText) { [string]$p.findText } else { [string]$p.find }
+        $hasReplaceText = ($null -ne $p.replaceText) -or ($null -ne $p.replace)
         $replaceText = if ($null -ne $p.replaceText) { [string]$p.replaceText } else { [string]$p.replace }
-        $find.Text = $findText
-        $find.Replacement.Text = $replaceText
         $matchCase = if ($null -ne $p.matchCase) { [bool]$p.matchCase } else { $false }
         $matchWholeWord = if ($null -ne $p.matchWholeWord) { [bool]$p.matchWholeWord } else { $false }
         $replaceAll = if ($null -ne $p.replaceAll) { [bool]$p.replaceAll } else { $true }
+
+        # A caller that only wants to search must never erase what it found. The tool layer signals
+        # search with replaceMode=false. Without the flag, an empty replacement means "search" too:
+        # replacing matches with an empty string deletes them, which is not what a search asks for.
+        $isReplace = if ($null -ne $p.replaceMode) { [bool]$p.replaceMode } else { ($hasReplaceText -and $replaceText -ne "") }
+
+        # Count first, so the result reports how much the document actually had to match.
+        $count = Get-WordMatchCount $doc $findText $matchCase $matchWholeWord
+
+        if (-not $isReplace) {
+            Output-Json @{ success = $true; data = @{ count = $count; replaced = $false; found = $count; find = $findText; replaceMode = $false } }
+return }
+        $find = $doc.Content.Find
+        $find.ClearFormatting()
+        $find.Replacement.ClearFormatting()
+        $find.Text = $findText
+        $find.Replacement.Text = $replaceText
         $replaceType = if ($replaceAll) { 2 } else { 1 }
         $result = $find.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, $replaceText, $replaceType)
-        Output-Json @{ success = $true; data = @{ replaced = $result } }
+        $replacedCount = if ($replaceAll) { $count } else { if ($result) { 1 } else { 0 } }
+        Output-Json @{ success = $true; data = @{ count = $replacedCount; replaced = [bool]$result; found = $count; find = $findText; replace = $replaceText; replaceMode = $true } }
     }
 
     "insertTable" {
@@ -2772,10 +3148,29 @@ return }
         $pres = if ($p.name) { $ppt.Presentations.Item($p.name) } else { $ppt.ActivePresentation }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No presentation" }; return }
         $name = $pres.Name
-        $saveChanges = if ($null -ne $p.saveChanges) { [bool]$p.saveChanges } else { $true }
-        if (-not $saveChanges) { $pres.Saved = $true }
+        $path = ""
+        try { $path = [string]$pres.Path } catch { }
+        # Same "save" vs "saveChanges" mismatch as closeWorkbook.
+        $saveWanted = $true
+        if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
+        elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
+        $saved = $false
+        $warning = $null
+        if ($saveWanted) {
+            if ($path -eq "") {
+                # Presentation.Close() takes no save argument, so it only stays quiet if the
+                # document is already marked clean.
+                $warning = "presentation was never saved to disk; closed without saving (use save_as first if you need it on disk)"
+            } else {
+                $pres.Save()
+                $saved = $true
+            }
+        }
+        if (-not $saved) { $pres.Saved = $true }
         $pres.Close()
-        Output-Json @{ success = $true; data = @{ closed = $name } }
+        $data = @{ closed = $name; saved = $saved; saveRequested = $saveWanted }
+        if ($null -ne $warning) { $data.warning = $warning }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "getOpenPresentations" {

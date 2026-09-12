@@ -211,16 +211,18 @@ export const findReplaceHandler: ToolHandler = async (
     const isReplaceMode = replace_text !== undefined && replace_text !== null;
 
     const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      findText: string;
-      replaceText: string;
-      count: number;
+      count?: number;
+      found?: number;
+      replaced?: boolean;
+      find?: string;
+      replace?: string;
     }>(
       'findReplace',
       {
         findText: find_text,
-        replaceText: isReplaceMode ? replace_text : '',
+        // replaceText is only meaningful in replace mode: sending an empty string while merely
+        // searching used to be applied as a replacement and erased every match.
+        replaceText: isReplaceMode ? replace_text : undefined,
         replaceAll: replace_all !== false, // 默认true
         matchCase: match_case || false,
         matchWholeWord: match_whole_word || false,
@@ -232,8 +234,10 @@ export const findReplaceHandler: ToolHandler = async (
     if (response.success && response.data) {
       const result = response.data;
 
+      const found = typeof result.count === 'number' ? result.count : result.found;
+
       if (isReplaceMode) {
-        if (result.count === 0) {
+        if (found === 0) {
           return {
             id: uuidv4(),
             success: true,
@@ -245,28 +249,33 @@ export const findReplaceHandler: ToolHandler = async (
             ],
           };
         }
+        const replaced = typeof found === 'number' ? `共 ${found} 处` : '已执行替换';
         return {
           id: uuidv4(),
           success: true,
           content: [
             {
               type: 'text',
-              text: `替换完成！\n查找: "${find_text}"\n替换为: "${replace_text}"\n替换完成`,
-            },
-          ],
-        };
-      } else {
-        return {
-          id: uuidv4(),
-          success: true,
-          content: [
-            {
-              type: 'text',
-              text: `查找完成！\n"${find_text}" 在文档中出现了 ${result.count} 次`,
+              text: `替换完成！\n查找: "${find_text}"\n替换为: "${replace_text}"\n${replaced}`,
             },
           ],
         };
       }
+      // A search must report the real match count: the bridge counts matches without touching
+      // the document, so an absent number here means the bridge is older, not that nothing matched.
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text:
+              typeof found === 'number'
+                ? `查找完成！\n"${find_text}" 在文档中出现了 ${found} 次`
+                : `查找完成！\n已查找 "${find_text}"（桥未回报匹配次数）`,
+          },
+        ],
+      };
     } else {
       return {
         id: uuidv4(),
