@@ -543,7 +543,10 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
-        $sheet.Cells.Item($p.row, $p.col).Value2 = $p.value
+        $value = $p.value
+        if ($value -is [int] -or $value -is [long] -or $value -is [double] -or $value -is [decimal]) { $value = [double]$value }
+        elseif ($null -ne $value -and -not ($value -is [bool])) { $value = [string]$value }
+        $sheet.Cells.Item($p.row, $p.col).Value2 = $value
         Output-Json @{ success = $true }
     }
 
@@ -576,11 +579,30 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
-        $range = $sheet.Range($p.range)
-        for ($r = 0; $r -lt $p.data.Count; $r++) {
-            for ($c = 0; $c -lt $p.data[$r].Count; $c++) { $range.Cells.Item($r + 1, $c + 1).Value2 = $p.data[$r][$c] }
+        $rows = @($p.data).Count
+        if ($rows -eq 0) { Output-Json @{ success = $false; error = "data must not be empty" }; return }
+        $cols = 0
+        for ($r = 0; $r -lt $rows; $r++) {
+            $row = @($p.data[$r])
+            if ($row.Count -gt $cols) { $cols = $row.Count }
         }
-        Output-Json @{ success = $true }
+        if ($cols -eq 0) { Output-Json @{ success = $false; error = "data rows must not be empty" }; return }
+        # ConvertFrom-Json yields PSObject-wrapped numbers; assigning one straight to Value2 throws
+        # (Int32 -> String cast). Unwrap into a typed matrix and write the whole block in one call.
+        $matrix = New-Object 'object[,]' $rows, $cols
+        for ($r = 0; $r -lt $rows; $r++) {
+            $row = @($p.data[$r])
+            for ($c = 0; $c -lt $row.Count; $c++) {
+                $v = $row[$c]
+                if ($null -eq $v) { $matrix[$r, $c] = $null }
+                elseif ($v -is [bool]) { $matrix[$r, $c] = [bool]$v }
+                elseif ($v -is [int] -or $v -is [long] -or $v -is [double] -or $v -is [decimal]) { $matrix[$r, $c] = [double]$v }
+                else { $matrix[$r, $c] = [string]$v }
+            }
+        }
+        $target = $sheet.Range($p.range).Resize($rows, $cols)
+        $target.Value2 = $matrix
+        Output-Json @{ success = $true; data = @{ rows = $rows; columns = $cols; range = $p.range } }
     }
 
     "diagnoseFormula" {

@@ -24,6 +24,14 @@ try {
   const withSheet = await comHost.invoke("getRangeData", { sheet: 1, range: "A1:B2" });
   check("read_range with sheet", withSheet.success === true && JSON.stringify(withSheet.data.data) === JSON.stringify([[11, 22], [33, 44]]));
 
+  // mixed string/number rows: this used to fail with an Int32 -> String cast error because
+  // ConvertFrom-Json yields PSObject-wrapped numbers
+  const mixed = [["h1", "h2", "h3"], [1, 2, 3], [4.5, 6, 7]];
+  const wm = await comHost.invoke("setRangeData", { range: "F1:H3", data: mixed });
+  check("write mixed-type block", wm.success === true, JSON.stringify(wm).slice(0, 140));
+  const rm = await comHost.invoke("getRangeData", { range: "F1:H3" });
+  check("mixed block round-trips exactly", rm.success === true && JSON.stringify(rm.data.data) === JSON.stringify(mixed), JSON.stringify(rm.data && rm.data.data));
+
   const one = await comHost.invoke("getRangeData", { range: "A1" });
   check("single cell read stays 1x1", one.success === true && JSON.stringify(one.data.data) === JSON.stringify([[11]]), JSON.stringify(one.data));
 
