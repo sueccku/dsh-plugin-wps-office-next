@@ -36,6 +36,21 @@ import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
 
 /**
+ * Worksheet positions are 0-based in every sheet tool schema, so results must echo a 0-based
+ * index too. The bridge reports Excel's 1-based Sheet.Index as `index` and the 0-based slot as
+ * `position`; older bridges only send `index`, hence the fallback.
+ */
+function sheetPos(
+  response: { data?: { position?: unknown; index?: unknown } },
+  fallback?: number
+): number | string {
+  const data = response?.data ?? {};
+  if (typeof data.position === 'number') return data.position;
+  if (typeof data.index === 'number') return data.index - 1;
+  return typeof fallback === 'number' ? fallback : '?';
+}
+
+/**
  * 创建新工作表
  */
 export const createSheetDefinition: ToolDefinition = {
@@ -51,7 +66,7 @@ export const createSheetDefinition: ToolDefinition = {
       },
       position: {
         type: 'number',
-        description: '插入位置索引（从0开始），不填则添加到末尾',
+        description: '插入位置索引，从0开始（0=最前）；不填则追加到末尾',
       },
     },
     required: ['name'],
@@ -70,6 +85,8 @@ export const createSheetHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       name: string;
       index: number;
+      position?: number;
+      sheetCount?: number;
     }>(
       'createSheet',
       { name, position },
@@ -91,7 +108,7 @@ export const createSheetHandler: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `工作表创建成功！\n名称: ${response.data.name}\n位置: 第${response.data.index + 1}个`,
+          text: `工作表创建成功！\n名称: ${response.data.name}\n位置索引: ${sheetPos(response)}\n工作表总数: ${response.data?.sheetCount ?? '?'}`,
         },
       ],
     };
@@ -260,7 +277,7 @@ export const copySheetDefinition: ToolDefinition = {
       },
       position: {
         type: 'number',
-        description: '插入位置索引（从0开始），不填则添加到末尾',
+        description: '插入位置索引，从0开始（0=最前）；不填则追加到末尾',
       },
     },
     required: ['name'],
@@ -281,6 +298,8 @@ export const copySheetHandler: ToolHandler = async (
       sourceName: string;
       newName: string;
       index: number;
+      position?: number;
+      sheetCount?: number;
     }>(
       'copySheet',
       { name, newName, position },
@@ -302,7 +321,7 @@ export const copySheetHandler: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `工作表复制成功！\n源工作表: ${response.data.sourceName}\n新工作表: ${response.data.newName}\n位置: 第${response.data.index + 1}个`,
+          text: `工作表复制成功！\n源工作表: ${response.data.sourceName}\n新工作表: ${response.data.newName}\n位置索引: ${sheetPos(response)}\n工作表总数: ${response.data?.sheetCount ?? '?'}`,
         },
       ],
     };
@@ -338,6 +357,8 @@ export const getSheetListHandler: ToolHandler = async (
       sheets: Array<{
         name: string;
         index: number;
+      position?: number;
+      sheetCount?: number;
         active: boolean;
       }>;
       count: number;
@@ -459,7 +480,7 @@ export const moveSheetDefinition: ToolDefinition = {
       },
       position: {
         type: 'number',
-        description: '目标位置索引（从0开始）',
+        description: '目标位置索引，从0开始（0=最前）',
       },
     },
     required: ['name', 'position'],
@@ -477,7 +498,9 @@ export const moveSheetHandler: ToolHandler = async (
   try {
     const response = await wpsClient.executeMethod<{
       name: string;
-      newPosition: number;
+      newPosition?: number;
+      position?: number;
+      sheetCount?: number;
     }>(
       'moveSheet',
       { name, position },
@@ -499,7 +522,7 @@ export const moveSheetHandler: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `工作表 "${name}" 已移动到第${position + 1}个位置`,
+          text: `工作表 "${name}" 已移动，位置索引: ${sheetPos(response, position)}\n工作表总数: ${response.data?.sheetCount ?? '?'}`,
         },
       ],
     };

@@ -186,6 +186,35 @@ excel-range 12/12；8000 格读取 15ms。
 回归：test/cell-format.test.mjs 16/16，包含 10 个属性逐个回读、平铺写法、
 空格式必须报错、以及**不串到相邻单元格**。
 
+### 12. 工作表操作组 `delete`/`rename`/`copy`/`move`/`switch` 作用在错误的工作表上（已修）
+
+这一组是本轮最危险的一类缺陷，因为它们的失败方式是**静默改错对象**，不是报错。
+
+根因：工具的 schema 用 `name` / `oldName` 命名参数，桥只读 `sheet`。
+参数名不匹配 → 桥取不到名字 → 回退到“当前活动工作表”。于是：
+
+- `delete_sheet(name="报表")` 删掉的是当时恰好激活的那张表；
+- `rename_sheet` / `copy_sheet` / `move_sheet` 同样作用在活动表上；
+- `switch_sheet` 因为拿不到名字**必然失败**（活动表没变，它自己也不知道要切到哪）。
+
+修复：
+
+- 桥统一用 `Resolve-Worksheet` 解析目标，接受 `sheet` / `name` / `oldName` 三种键名；
+- `delete_sheet` 加 `-RequireName`：**没有显式目标就报错**，绝不回退到活动表；
+  且拒绝删除工作簿里最后一张表；
+- 其余五个工具补齐参数，响应键与工具层期望对齐；
+- `set_number_format` 的 `sheet` 参数此前也被忽略，一并修好。
+
+顺带修掉一个**契约自相矛盾**：`position` 在 schema 里写明 0 基，
+但桥回显的是 Excel 的 1 基 `Sheet.Index`，工具层又 `+1`，
+导致 `position: 0` 的返回消息是“位置: 第2个”——模型照着读会算错。
+现在桥同时返回 0 基 `position`、1 基 `index`、`sheetCount`，
+工具层只回显 0 基值并附总数；负数位置明确报错；
+创建/复制省略 `position` 时按 schema 承诺**追加到末尾**（此前创建反而插到最前）。
+
+回归：test/sheet-ops.test.mjs 21/21，其中最关键的一项是
+“删除指定表时，活动表必须原封不动”。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -196,7 +225,17 @@ excel-range 12/12；8000 格读取 15ms。
 
 ## 验证
 
-两个测试都在真实 WPS 上跑，各自创建一次性文档、回读校验、不保存关闭：
+全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。
 
-- node test/new-actions.test.mjs —— 28 项（新增/修复的 10 个 action 与 closePresentation）
-- node test/excel-range.test.mjs —— 10 项（sheet 回退、二维编组、单格、8000 格性能）
+| 测试 | 项数 | 覆盖 |
+| --- | --- | --- |
+| test/com-host.test.mjs | 6 | 常驻宿主握手、就绪帧、串行队列、重启 |
+| test/plugin.test.mjs | 32 | 插件注册、skills、工具面过滤、预算 |
+| test/new-actions.test.mjs | 28 | 本轮新增/修复的 10 个 action、closePresentation |
+| test/excel-range.test.mjs | 12 | sheet 回退、二维编组、单格、8000 格性能 |
+| test/find-replace.test.mjs | 10 | 查找替换的参数名契约 |
+| test/cell-format.test.mjs | 16 | 10 个格式属性逐个回读、平铺写法、空格式报错 |
+| test/deprecated.test.mjs | 8 | 弃用名合并与隐藏 |
+| test/sheet-ops.test.mjs | 21 | 工作表组目标正确性、0 基 position、删表安全 |
+
+合计 133 项，加 `node scripts/verify.mjs` 22 项门禁（含 45 工具 / 25,000 字节预算）。

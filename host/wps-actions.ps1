@@ -190,6 +190,21 @@ function Find-ComProperty($target, [string]$member) {
     # A COM adapter's member collection is populated lazily, so fall back to enumeration.
     return ($target.PSObject.Properties | Where-Object { $_.Name -eq $member } | Select-Object -First 1)
 }
+function Get-PropOrNull($p, [string]$name) {
+    $prop = $p.PSObject.Properties | Where-Object { $_.Name -eq $name } | Select-Object -First 1
+    if ($null -eq $prop) { return $null }
+    return $prop.Value
+}
+function Resolve-Worksheet($excel, $wb, $p, [switch]$RequireName) {
+    # Upstream tools spell the sheet parameter differently per tool (sheet/name/oldName).
+    foreach ($key in @('sheet','name','oldName')) {
+        $value = Get-PropOrNull $p $key
+        if ($null -ne $value -and "$value" -ne "") { return $wb.Sheets.Item($value) }
+    }
+    if ($RequireName) { return $null }
+    return $excel.ActiveSheet
+}
+
 function Set-ComValue($target, [string]$member, $value) {
     $prop = Find-ComProperty $target $member
     if ($null -eq $prop) { throw ('Set-ComValue: member not found: ' + $member) }
@@ -1437,9 +1452,25 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = $wb.Sheets.Add()
-        if ($p.name) { $sheet.Name = $p.name }
-        Output-Json @{ success = $true; data = @{ sheetName = $sheet.Name; sheetIndex = $sheet.Index } }
+        try {
+            # position is 0-based, as the tool schema states.
+            $position = Get-PropOrNull $p 'position'
+            # Omitted position means append at the end, which is what the tool schema promises.
+            $wanted = $wb.Sheets.Count
+            if ($null -ne $position) { $wanted = [int]$position }
+            if ($wanted -lt 0) { Output-Json @{ success = $false; error = "position must be 0 or greater (0-based sheet index)" }; return }
+            if ($wanted -eq 0) {
+                $sheet = $wb.Sheets.Add($wb.Sheets.Item(1))
+            } else {
+                $afterIndex = [Math]::Min($wanted, $wb.Sheets.Count)
+                if ($afterIndex -lt 1) { $afterIndex = 1 }
+                $sheet = $wb.Sheets.Add($null, $wb.Sheets.Item($afterIndex))
+            }
+            $requestedName = Get-PropOrNull $p 'name'
+            if ($null -ne $requestedName -and "$requestedName" -ne "") { Set-ComValue $sheet 'Name' ([string]$requestedName) }
+            # index is the 1-based Excel ordinal; position is the 0-based index the caller asked in.
+            Output-Json @{ success = $true; data = @{ name = $sheet.Name; index = $sheet.Index; position = [int]$sheet.Index - 1; requestedPosition = $wanted; sheetCount = $wb.Sheets.Count; sheetName = $sheet.Name; sheetIndex = $sheet.Index } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "deleteSheet" {
@@ -1447,12 +1478,20 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
-        $name = $sheet.Name
-        $excel.DisplayAlerts = $false
-        $sheet.Delete()
-        $excel.DisplayAlerts = $true
-        Output-Json @{ success = $true; data = @{ deletedSheet = $name } }
+        # Deleting is destructive: never fall back to the active sheet, require an explicit target.
+        $sheet = Resolve-Worksheet $excel $wb $p -RequireName
+        if ($null -eq $sheet) { Output-Json @{ success = $false; error = "sheet name is required to delete a sheet" }; return }
+        if ($wb.Sheets.Count -le 1) { Output-Json @{ success = $false; error = "cannot delete the only sheet in a workbook" }; return }
+        try {
+            $name = $sheet.Name
+            $excel.DisplayAlerts = $false
+            $sheet.Delete()
+            $excel.DisplayAlerts = $true
+            Output-Json @{ success = $true; data = @{ deletedSheet = $name; remaining = $wb.Sheets.Count } }
+        } catch {
+            $excel.DisplayAlerts = $true
+            Output-Json @{ success = $false; error = $_.Exception.Message }
+        }
     }
 
     "renameSheet" {
@@ -1460,10 +1499,13 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
-        $oldName = $sheet.Name
-        $sheet.Name = $p.newName
-        Output-Json @{ success = $true; data = @{ oldName = $oldName; newName = $p.newName } }
+        try {
+            $sheet = Resolve-Worksheet $excel $wb $p -RequireName
+            if ($null -eq $sheet) { Output-Json @{ success = $false; error = "oldName is required to rename a sheet" }; return }
+            $oldName = $sheet.Name
+            Set-ComValue $sheet 'Name' ([string]$p.newName)
+            Output-Json @{ success = $true; data = @{ oldName = $oldName; newName = $sheet.Name } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "copySheet" {
@@ -1471,15 +1513,26 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
-        if ($p.before) {
-            $sheet.Copy($wb.Sheets.Item($p.before))
-        } elseif ($p.after) {
-            $sheet.Copy($null, $wb.Sheets.Item($p.after))
-        } else {
-            $sheet.Copy($null, $wb.Sheets.Item($wb.Sheets.Count))
-        }
-        Output-Json @{ success = $true; data = @{ copiedFrom = $sheet.Name } }
+        try {
+            $sheet = Resolve-Worksheet $excel $wb $p -RequireName
+            if ($null -eq $sheet) { Output-Json @{ success = $false; error = "name is required to copy a sheet" }; return }
+            # position is 0-based: the copy should end up at that index.
+            $position = Get-PropOrNull $p 'position'
+            $wanted = -1
+            if ($null -ne $position) { $wanted = [int]$position }
+            if ($wanted -lt 0) { $wanted = $wb.Sheets.Count }
+            if ($wanted -eq 0) {
+                $sheet.Copy($wb.Sheets.Item(1), $null)
+            } else {
+                $afterIndex = [Math]::Min($wanted, $wb.Sheets.Count)
+                if ($afterIndex -lt 1) { $afterIndex = $wb.Sheets.Count }
+                $sheet.Copy($null, $wb.Sheets.Item($afterIndex))
+            }
+            $copy = $excel.ActiveSheet
+            $requestedName = Get-PropOrNull $p 'newName'
+            if ($null -ne $requestedName -and "$requestedName" -ne "") { Set-ComValue $copy 'Name' ([string]$requestedName) }
+            Output-Json @{ success = $true; data = @{ sourceName = $sheet.Name; copiedFrom = $sheet.Name; newName = $copy.Name; index = $copy.Index; position = [int]$copy.Index - 1; requestedPosition = $wanted; sheetCount = $wb.Sheets.Count; sheetIndex = $copy.Index } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "getSheetList" {
@@ -1500,9 +1553,12 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = $wb.Sheets.Item($p.sheet)
-        $sheet.Activate()
-        Output-Json @{ success = $true; data = @{ activeSheet = $sheet.Name } }
+        try {
+            $sheet = Resolve-Worksheet $excel $wb $p -RequireName
+            if ($null -eq $sheet) { Output-Json @{ success = $false; error = "name is required to switch sheets" }; return }
+            $null = Invoke-ComMethod $sheet 'Activate' @()
+            Output-Json @{ success = $true; data = @{ activeSheet = $sheet.Name } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "moveSheet" {
@@ -1510,13 +1566,24 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
-        if ($p.before) {
-            $sheet.Move($wb.Sheets.Item($p.before))
-        } elseif ($p.after) {
-            $sheet.Move($null, $wb.Sheets.Item($p.after))
-        }
-        Output-Json @{ success = $true; data = @{ movedSheet = $sheet.Name } }
+        try {
+            $sheet = Resolve-Worksheet $excel $wb $p -RequireName
+            if ($null -eq $sheet) { Output-Json @{ success = $false; error = "name is required to move a sheet" }; return }
+            $position = Get-PropOrNull $p 'position'
+            if ($null -eq $position) { Output-Json @{ success = $false; error = "position is required to move a sheet" }; return }
+            # position is 0-based; Excel's Index is 1-based.
+            $currentIndex = [int]$sheet.Index
+            $target = [int]$position + 1
+            $count = $wb.Sheets.Count
+            if ($target -lt 1) { $target = 1 }
+            if ($target -gt $count) { $target = $count }
+            if ($target -lt $currentIndex) {
+                $sheet.Move($wb.Sheets.Item($target), $null)
+            } elseif ($target -gt $currentIndex) {
+                $sheet.Move($null, $wb.Sheets.Item($target))
+            }
+            Output-Json @{ success = $true; data = @{ name = $sheet.Name; movedSheet = $sheet.Name; position = [int]$sheet.Index - 1; newPosition = [int]$sheet.Index - 1; requestedPosition = [int]$position; sheetCount = $wb.Sheets.Count; sheetIndex = $sheet.Index } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "mergeCells" {
@@ -1599,10 +1666,15 @@ return }
     "setNumberFormat" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = $excel.ActiveSheet
-        $range = $sheet.Range($p.range)
-        if ($p.format) { $range.NumberFormat = $p.format }
-        Output-Json @{ success = $true; data = @{ range = $p.range; format = $p.format } }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        if ("$($p.format)" -eq "") { Output-Json @{ success = $false; error = "format must not be empty" }; return }
+        try {
+            $sheet = Resolve-Worksheet $excel $wb $p
+            $range = $sheet.Range([string]$p.range)
+            Set-ComValue $range 'NumberFormat' ([string]$p.format)
+            Output-Json @{ success = $true; data = @{ range = [string]$p.range; format = [string]$p.format; sheet = $sheet.Name } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
     "wrapText" {
