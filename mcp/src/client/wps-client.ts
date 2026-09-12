@@ -5,8 +5,6 @@
  * WPS 通信客户端 - 仅 Windows，通过 PowerShell 调用 WPS COM 接口
  */
 
-import { spawn } from 'child_process';
-import * as path from 'path';
 import {
   WpsEndpointConfig,
   WpsApiRequest,
@@ -19,12 +17,7 @@ import {
 } from '../types/wps';
 import { log, logRequest, logResponse } from '../utils/logger';
 import { errorUtils } from '../utils/error';
-
-// PowerShell脚本路径 (Windows)
-const PS_SCRIPT_PATH = path.join(__dirname, '../../scripts/wps-com.ps1');
-
-// PowerShell 默认超时（毫秒）
-const PS_TIMEOUT = 30000;
+import { comHost } from './com-host';
 
 // ==================== PPT 目标文稿锁定（避免多文稿打开时 ActivePresentation 漂移）====================
 // 通过 wps_ppt_set_active_target 设置后，所有 PRESENTATION 类调用（executeMethod 带 WpsAppType.PRESENTATION）
@@ -40,85 +33,12 @@ export function getPptTarget(): string | undefined {
 /**
  * 执行PowerShell命令 (Windows)
  */
-async function execPowerShell(action: string, params: Record<string, unknown> = {}): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    // JSON参数通过spawn args数组传递，Node自动处理Windows引号转义
-    const paramsJson = JSON.stringify(params);
-    const args = [
-      '-ExecutionPolicy', 'Bypass',
-      '-File', PS_SCRIPT_PATH,
-      '-Action', action,
-      '-Params', paramsJson
-    ];
-
-    log.debug('Executing PowerShell', { action, params });
-
-    const ps = spawn('powershell', args, {
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-
-    let stdout = '';
-    let stderr = '';
-    let killed = false;
-
-    // 超时保护：防止PowerShell进程挂起，超时时主动 SIGTERM 并记录 PID
-    const timeoutHandle = setTimeout(() => {
-      killed = true;
-      log.warn('PowerShell timeout, killing process', { pid: ps.pid, action, timeoutMs: PS_TIMEOUT });
-      ps.kill('SIGTERM');
-      reject(new Error(`PowerShell 执行超时（${PS_TIMEOUT}ms）: ${action} (PID: ${ps.pid})`));
-    }, PS_TIMEOUT);
-
-    ps.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    ps.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    ps.on('close', (code) => {
-      clearTimeout(timeoutHandle);
-      if (killed) return; // 已超时处理，忽略后续事件
-
-      if (code !== 0) {
-        // 非零退出码：分别处理 stderr 有内容 / 为空两种路径，避免空 stderr 误入 JSON.parse
-        if (stderr) {
-          log.error('PowerShell error', { stderr, code, pid: ps.pid, action });
-          reject(new Error(stderr));
-        } else {
-          log.error('PowerShell exited with non-zero code', { code, stdout: stdout.substring(0, 200), pid: ps.pid, action });
-          reject(new Error(`PowerShell 退出码 ${code}: ${stdout.substring(0, 200) || '(无输出)'}`));
-        }
-        return;
-      }
-
-      try {
-        const result = JSON.parse(stdout.trim());
-        resolve(result);
-      } catch (_e) {
-        log.error('Failed to parse PowerShell output', { stdout: stdout.substring(0, 200), pid: ps.pid, action });
-        reject(new Error(`PowerShell 输出解析失败（非有效JSON）: ${stdout.substring(0, 200)}`));
-      }
-    });
-
-    ps.on('error', (err) => {
-      clearTimeout(timeoutHandle);
-      if (killed) return;
-      log.error('PowerShell spawn error', { error: err.message, pid: ps.pid, action });
-      reject(new Error(`无法启动 PowerShell 进程: ${err.message}`));
-    });
-  });
-}
-
 /**
- * 统一执行接口 - 根据平台选择调用方式
- * Mac: 反向轮询模式（MCP Server是服务端，WPS加载项来取命令）
- * Windows: PowerShell调用COM接口
+ * 统一执行接口 - 通过常驻 COM host 调用 WPS
+ * 进程生命周期、串行化、超时与崩溃恢复由 com-host.ts 负责
  */
 async function execWpsAction(action: string, params: Record<string, unknown> = {}): Promise<unknown> {
-  return execPowerShell(action, params);
+  return comHost.invoke(action, params);
 }
 
 /**
