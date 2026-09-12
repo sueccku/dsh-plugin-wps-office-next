@@ -140,6 +140,32 @@ excel-range 12/12；8000 格读取 15ms。
 回归：test/find-replace.test.mjs 10/10，其中包含**跨应用隔离**用例：
 在 Word 文档打开的状态下执行 Excel 查找替换，Word 内容必须保持不变。
 
+### 10. PowerShell COM 稳定性加固（A 方案，已落地）
+
+先澄清一个判断：**这不是 PowerShell 版本问题**。宿主固定使用 Windows PowerShell 5.1
+（Windows 10/11 自带、全平台同版本），而踩的坑是 5.1 COM 适配器的固有语义：
+
+1. **成员绑定器按首次调用缓存** —— 同一个调用点先写字符串，之后再写数字就失败（反之亦然）。
+2. **成员集合惰性填充** —— `PSObject.Methods['X']` 在集合被枚举过之前会返回 null。
+
+也就是说，这不是"这台好、别台坏"，而是**所有机器上同一颗地雷**，因此修法是确定性的。
+
+落地措施：
+
+| 措施 | 内容 |
+|---|---|
+| COM 边界 helper | 新增 `ConvertTo-ComValue` / `Set-ComValue` / `Get-ComValue` / `Invoke-ComMethod`，统一解包类型并**枚举成员**而非索引 |
+| 解释器固定 | 宿主改用绝对路径 `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`，不再依赖 PATH |
+| 版本断言 | 宿主在 ready 帧回报 `psVersion`，非 5.x 直接拒绝启动；`__env` 控制帧暴露 psVersion/pid/exe |
+| 机器一致性自检 | `scripts/com-conformance.mjs`：在本机跑 11 项 COM 行为矩阵（数字/字符串/小数/布尔交替写同一单元格、二维矩阵往返、Word 数值参数、PPT 形状与颜色…），不符即报错 |
+| 边界 lint | `scripts/lint-com-boundary.mjs`：统计仍在边界层外的 COM 访问点（当前 value-write 63、com-call 4 待随工具修复逐步迁移；colour-write 72 恒为整数、无风险） |
+
+一个实测结论：`Range.Replace` 的 PSObject 方法查找在宿主里不可用（惰性填充），
+因此该成员保留直接调用，但**两处调用点共用同一参数签名**（全部显式 `[string]`/`[int]`/`[bool]`），
+使缓存绑定器对两者都有效。这是探针验证可行的路径。
+
+证据：本机一致性自检 11/11；全量回归全绿。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

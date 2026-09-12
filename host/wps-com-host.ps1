@@ -41,7 +41,17 @@ function Send-Response($id, $ok, $result, $ms) {
 try { $null = Invoke-WpsAction -Action '__warmup' -Params '{}' } catch { }
 $script:WpsResult = $null
 
-Write-Frame ('{"ready":true,"pid":' + $PID + ',"protocol":1,"actions":"wps-actions.ps1"}')
+# The action layer is written against Windows PowerShell 5.1 semantics. Spawning the absolute
+# path already pins the version; this assertion is the belt to that suspenders: if a different
+# PowerShell is somehow used, fail loudly instead of misbehaving subtly.
+$psVersion = $PSVersionTable.PSVersion.ToString()
+$psMajor = [int]$PSVersionTable.PSVersion.Major
+if ($psMajor -ne 5) {
+    Write-Frame ('{"ready":false,"protocol":1,"error":"unsupported PowerShell ' + $psVersion + '; this host requires Windows PowerShell 5.1"}')
+    exit 1
+}
+
+Write-Frame ('{"ready":true,"pid":' + $PID + ',"protocol":1,"psVersion":"' + $psVersion + '","actions":"wps-actions.ps1"}')
 
 while ($true) {
     $line = [Console]::In.ReadLine()
@@ -57,6 +67,16 @@ while ($true) {
     if ($null -ne $req.id) { $id = $req.id }
     $action = [string]$req.action
     if (-not $action) { Send-Response $id $false @{ success = $false; error = 'missing action' } 0; continue }
+    if ($action -eq '__env') {
+        Send-Response $id $true @{ success = $true; data = @{
+            psVersion = $PSVersionTable.PSVersion.ToString()
+            psMajor = [int]$PSVersionTable.PSVersion.Major
+            pid = $PID
+            exe = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+        } } 0
+        continue
+    }
+
     if ($action -eq '__shutdown') { Send-Response $id $true @{ success = $true; data = @{ message = 'shutdown' } } 0; break }
 
     $paramsJson = '{}'

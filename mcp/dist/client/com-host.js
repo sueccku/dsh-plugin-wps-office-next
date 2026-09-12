@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.comHost = exports.ComHost = exports.HOST_SCRIPT = void 0;
+exports.comHost = exports.ComHost = exports.POWERSHELL_EXE = exports.HOST_SCRIPT = void 0;
 /**
  * Input: WPS action name and parameters
  * Output: WPS action result
@@ -65,6 +65,13 @@ const LONG_ACTIONS = new Set([
 const DEFAULT_TIMEOUT_MS = Number(process.env.WPS_OFFICE_TIMEOUT_MS || 60000);
 const LONG_TIMEOUT_MS = Number(process.env.WPS_OFFICE_LONG_TIMEOUT_MS || 300000);
 const STARTUP_TIMEOUT_MS = Number(process.env.WPS_OFFICE_STARTUP_TIMEOUT_MS || 60000);
+/**
+ * Absolute path to Windows PowerShell 5.1. The action layer depends on 5.1 COM adapter
+ * semantics, so the host is pinned to the in-box interpreter instead of whatever 'powershell'
+ * resolves to on PATH.
+ */
+exports.POWERSHELL_EXE = process.env.WPS_OFFICE_POWERSHELL ||
+    path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 function timeoutFor(action) {
     return LONG_ACTIONS.has(action) ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
 }
@@ -149,7 +156,7 @@ class ComHost {
             this.stdoutBuffer = '';
             let child;
             try {
-                child = (0, child_process_1.spawn)('powershell', ['-NoProfile', '-NoLogo', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', exports.HOST_SCRIPT], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+                child = (0, child_process_1.spawn)(exports.POWERSHELL_EXE, ['-NoProfile', '-NoLogo', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', exports.HOST_SCRIPT], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
             }
             catch (error) {
                 this.failReady(new Error('COM host spawn failed: ' + error.message));
@@ -188,9 +195,18 @@ class ComHost {
             logger_1.log.warn('COM host wrote a non-JSON stdout line', { line: line.slice(0, 200) });
             return;
         }
-        if (frame.ready) {
-            logger_1.log.info('Resident COM host ready', { pid: frame.pid });
+        if (frame.ready === true) {
+            const major = Number(String(frame.psVersion || '').split('.')[0]);
+            if (frame.psVersion && major !== 5) {
+                this.killChild(new Error('resident COM host reported PowerShell ' + frame.psVersion + '; this host requires Windows PowerShell 5.1 at ' + exports.POWERSHELL_EXE));
+                return;
+            }
+            logger_1.log.info('Resident COM host ready', { pid: frame.pid, psVersion: frame.psVersion, exe: exports.POWERSHELL_EXE });
             this.failReady(null);
+            return;
+        }
+        if (frame.ready === false) {
+            this.killChild(new Error(String(frame.error || 'resident COM host refused to start')));
             return;
         }
         const inflight = this.inflight;

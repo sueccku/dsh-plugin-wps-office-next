@@ -173,6 +173,38 @@ function Replace-InShapeTree($shape, [string]$findText, [string]$replaceText) {
     return $cnt
 }
 
+# ==================== COM boundary helpers ====================
+# PowerShell caches the COM binder for a member after its first use, so one call site fails as
+# soon as the value type changes (Int32 vs String). Every COM member written by the action
+# layer must go through these helpers: they re-bind on each call and normalise the value.
+function ConvertTo-ComValue($value) {
+    if ($null -eq $value) { return $null }
+    if ($value -is [bool]) { return [bool]$value }
+    if ($value -is [int] -or $value -is [long] -or $value -is [double] -or $value -is [decimal]) { return [double]$value }
+    return [string]$value
+}
+function Set-ComValue($target, [string]$member, $value) {
+    if ($null -eq $target) { throw ('Set-ComValue: null target for member ' + $member) }
+    # A COM adapter's member collection is populated lazily: an indexed lookup can return null
+    # until the collection has been enumerated once, so enumerate instead of indexing.
+    $prop = $target.PSObject.Properties | Where-Object { $_.Name -eq $member } | Select-Object -First 1
+    if ($null -eq $prop) { throw ('Set-ComValue: member not found: ' + $member) }
+    $prop.Value = ConvertTo-ComValue $value
+}
+function Get-ComValue($target, [string]$member) {
+    if ($null -eq $target) { throw ('Get-ComValue: null target for member ' + $member) }
+    $prop = $target.PSObject.Properties | Where-Object { $_.Name -eq $member } | Select-Object -First 1
+    if ($null -eq $prop) { throw ('Get-ComValue: member not found: ' + $member) }
+    return $prop.Value
+}
+function Invoke-ComMethod($target, [string]$method, [object[]]$arguments) {
+    if ($null -eq $target) { throw ('Invoke-ComMethod: null target for method ' + $method) }
+    $m = $target.PSObject.Methods | Where-Object { $_.Name -eq $method } | Select-Object -First 1
+    if ($null -eq $m) { throw ('Invoke-ComMethod: method not found: ' + $method) }
+    if ($null -eq $arguments) { $arguments = @() }
+    return $m.Invoke($arguments)
+}
+
 function Output-Json($obj) {
     $obj | ConvertTo-Json -Depth 10 -Compress
 }
@@ -350,7 +382,7 @@ switch ($Action) {
         if ($null -ne $excel) {
             try {
                 $sel = $excel.Selection
-                $sel.Value2 = $text
+                Set-ComValue $sel 'Value2' $text
                 Output-Json @{ success = $true }
             } catch {
                 Output-Json @{ success = $false; error = "Excel selection not available" }
@@ -693,7 +725,7 @@ switch ($Action) {
             switch ($op) {
                 "trim" {
                     foreach ($cell in $range) {
-                        if ($cell.Value2 -is [string]) { $cell.Value2 = $cell.Value2.Trim() }
+                        if ($cell.Value2 -is [string]) { Set-ComValue $cell 'Value2' ($cell.Value2.Trim()) }
                     }
                     $message = "已去除前后空格"
                 }
@@ -709,7 +741,7 @@ switch ($Action) {
                         try {
                             if ($cell.Value2) {
                                 $dt = [DateTime]::FromOADate($cell.Value2)
-                                $cell.Value2 = $dt.ToString("yyyy-MM-dd")
+                                Set-ComValue $cell 'Value2' $dt.ToString("yyyy-MM-dd")
                             }
                         } catch {}
                     }
@@ -1752,7 +1784,9 @@ switch ($Action) {
         $sheet = $excel.ActiveSheet
         $searchRange = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
         $lookAt = if ($p.matchCase) { 1 } else { 2 }
-        $replaced = $searchRange.Replace($p.searchText, $p.replaceText, $lookAt)
+        # Signature is deliberately identical to the findReplaceExcel call site: PowerShell caches a COM
+        # member's binder after its first use, so every Range.Replace call must look the same.
+        $replaced = $searchRange.Replace([string]$p.searchText, [string]$p.replaceText, [int]$lookAt, 1, $false, $false)
         Output-Json @{ success = $true; data = @{ searchText = $p.searchText; replaceText = $p.replaceText; success = $replaced } }
     }
 
@@ -1788,7 +1822,8 @@ switch ($Action) {
         $sheet = $excel.ActiveSheet
         $range = $sheet.Range($p.range)
         $startCell = $range.Cells.Item(1, 1)
-        $startCell.Value2 = if ($null -ne $p.startValue) { $p.startValue } else { 1 }
+        $startValue = if ($null -ne $p.startValue) { $p.startValue } else { 1 }
+        Set-ComValue $startCell 'Value2' $startValue
         $typeMap = @{ linear = 0; growth = 1; date = 2; autoFill = 3 }
         $fillType = $typeMap[$p.type]
         if ($null -eq $fillType) { $fillType = 0 }
@@ -4563,7 +4598,7 @@ switch ($Action) {
             for ($r = 0; $r -lt $p.data.Count; $r++) {
                 $rowData = $p.data[$r]
                 for ($c = 0; $c -lt $rowData.Count; $c++) {
-                    $dataSheet.Cells.Item($r + 1, $c + 1).Value2 = $rowData[$c]
+                    Set-ComValue $dataSheet.Cells.Item($r + 1, $c + 1) 'Value2' $rowData[$c]
                 }
             }
         }
@@ -5183,12 +5218,7 @@ switch ($Action) {
             }
             $didReplace = $false
             if ($cells -gt 0) {
-                $replaceMethod = $scope.PSObject.Methods['Replace']
-                if ($null -ne $replaceMethod) {
-                    $didReplace = $replaceMethod.Invoke(@($findText, $replaceText, $lookAt, 1, $matchCase, $false))
-                } else {
-                    $didReplace = $scope.Replace($findText, $replaceText, $lookAt, 1, $matchCase, $false)
-                }
+                $didReplace = $scope.Replace([string]$findText, [string]$replaceText, [int]$lookAt, 1, [bool]$matchCase, $false)
             }
             Output-Json @{ success = $true; data = @{ cells = $cells; find = $findText; replace = $replaceText; sheet = $sheet.Name; changed = [bool]$didReplace } }
         } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }

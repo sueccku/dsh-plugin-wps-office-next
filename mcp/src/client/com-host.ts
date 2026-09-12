@@ -34,6 +34,15 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.WPS_OFFICE_TIMEOUT_MS || 60000);
 const LONG_TIMEOUT_MS = Number(process.env.WPS_OFFICE_LONG_TIMEOUT_MS || 300000);
 const STARTUP_TIMEOUT_MS = Number(process.env.WPS_OFFICE_STARTUP_TIMEOUT_MS || 60000);
 
+/**
+ * Absolute path to Windows PowerShell 5.1. The action layer depends on 5.1 COM adapter
+ * semantics, so the host is pinned to the in-box interpreter instead of whatever 'powershell'
+ * resolves to on PATH.
+ */
+export const POWERSHELL_EXE =
+  process.env.WPS_OFFICE_POWERSHELL ||
+  path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+
 /** Action result as produced by the COM layer: success plus data or error. */
 export interface WpsActionOutcome {
   success: boolean;
@@ -49,6 +58,8 @@ interface HostFrame {
   ms?: number;
   ready?: boolean;
   pid?: number;
+  psVersion?: string;
+  error?: string;
 }
 
 function timeoutFor(action: string): number {
@@ -146,7 +157,7 @@ export class ComHost {
       let child: ChildProcess;
       try {
         child = spawn(
-          'powershell',
+          POWERSHELL_EXE,
           ['-NoProfile', '-NoLogo', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', HOST_SCRIPT],
           { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }
         );
@@ -190,9 +201,20 @@ export class ComHost {
       return;
     }
 
-    if (frame.ready) {
-      log.info('Resident COM host ready', { pid: frame.pid });
+    if (frame.ready === true) {
+      const major = Number(String(frame.psVersion || '').split('.')[0]);
+      if (frame.psVersion && major !== 5) {
+        this.killChild(
+          new Error('resident COM host reported PowerShell ' + frame.psVersion + '; this host requires Windows PowerShell 5.1 at ' + POWERSHELL_EXE)
+        );
+        return;
+      }
+      log.info('Resident COM host ready', { pid: frame.pid, psVersion: frame.psVersion, exe: POWERSHELL_EXE });
       this.failReady(null);
+      return;
+    }
+    if (frame.ready === false) {
+      this.killChild(new Error(String(frame.error || 'resident COM host refused to start')));
       return;
     }
 

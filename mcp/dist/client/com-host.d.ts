@@ -1,5 +1,11 @@
 /** Path to the resident host script; overridable for tests and relocated installs. */
 export declare const HOST_SCRIPT: string;
+/**
+ * Absolute path to Windows PowerShell 5.1. The action layer depends on 5.1 COM adapter
+ * semantics, so the host is pinned to the in-box interpreter instead of whatever 'powershell'
+ * resolves to on PATH.
+ */
+export declare const POWERSHELL_EXE: string;
 /** Action result as produced by the COM layer: success plus data or error. */
 export interface WpsActionOutcome {
     success: boolean;
