@@ -205,6 +205,47 @@ function Resolve-Worksheet($excel, $wb, $p, [switch]$RequireName) {
     return $excel.ActiveSheet
 }
 
+function Resolve-ImageFilePath($value) {
+    # WPS resolves picture paths against its own working directory, so a relative path that looks
+    # right from the caller's shell fails with a bare E_FAIL. Resolve it here and report a missing
+    # file as such.
+    if ($null -eq $value -or "$value" -eq "") { return $null }
+    $candidate = [string]$value
+    if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+        $candidate = [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $candidate))
+    }
+    if (-not (Test-Path -LiteralPath $candidate)) { return $null }
+    return $candidate
+}
+
+function Get-RowRefList($p) {
+    # The tool layer may pass rows, row (+count), or startRow/endRow. Normalise to row refs.
+    $rows = @()
+    if ($null -ne $p.rows) { $rows = @($p.rows) }
+    elseif ($null -ne $p.startRow -and $null -ne $p.endRow) { $rows = @("$($p.startRow):$($p.endRow)") }
+    elseif ($null -ne $p.row) {
+        if ($null -ne $p.count -and [int]$p.count -gt 1) { $rows = @("$($p.row):$([int]$p.row + [int]$p.count - 1)") }
+        else { $rows = @([string]$p.row) }
+    }
+    return , $rows
+}
+
+function Get-ColumnRefList($p) {
+    $cols = @()
+    if ($null -ne $p.columns) { $cols = @($p.columns) }
+    elseif ($null -ne $p.startColumn -and $null -ne $p.endColumn) { $cols = @("$($p.startColumn):$($p.endColumn)") }
+    elseif ($null -ne $p.column) {
+        if ($null -ne $p.count -and [int]$p.count -gt 1) {
+            $first = $p.column
+            if ($first -is [int]) { $first = Convert-ColumnNumberToLetter([int]$first) }
+            $last = $p.column
+            if ($last -is [int]) { $last = Convert-ColumnNumberToLetter([int]$last + [int]$p.count - 1) }
+            $cols = @([string]$first + ":" + [string]$last)
+        } else { $cols = @($p.column) }
+    }
+    return , $cols
+}
+
 function Get-WorksheetByParam($excel, $p) {
     # Most Excel actions are documented to accept a target worksheet but silently operated on
     # whichever sheet happened to be active. Only $p.sheet is read here: in several actions "name"
@@ -367,11 +408,11 @@ $script:ActionParamKeys = @{
     'addAnimation' = @('effect', 'presentationName', 'shapeName', 'slideIndex')
     'addAnimationPreset' = @('delayIncrement', 'presentationName', 'preset', 'slideIndex')
     'addArrow' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
-    'addCellComment' = @('cell', 'sheet', 'text', 'visible')
+    'addCellComment' = @('cell', 'comment', 'sheet', 'text', 'visible')
     'addComment' = @('comment', 'text')
-    'addConditionalFormat' = @('backgroundColor', 'colorScaleType', 'fontColor', 'operator', 'range', 'sheet', 'type', 'value', 'value1', 'value2')
+    'addConditionalFormat' = @('backgroundColor', 'colorScaleType', 'condition', 'fontColor', 'format', 'operator', 'range', 'sheet', 'type', 'value', 'value1', 'value2')
     'addConnector' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
-    'addDataValidation' = @('errorMessage', 'errorTitle', 'formula1', 'formula2', 'inputMessage', 'inputTitle', 'list', 'operator', 'range', 'sheet', 'showDropdown', 'validationType')
+    'addDataValidation' = @('errorMessage', 'errorTitle', 'formula', 'formula1', 'formula2', 'inputMessage', 'inputTitle', 'list', 'operator', 'range', 'sheet', 'showDropdown', 'type', 'validationType')
     'addEmphasisAnimation' = @('duration', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
     'addMasterElement' = @('color', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
     'addPageIndicator' = @('dark', 'left', 'presentationName', 'slideIndex', 'top')
@@ -385,7 +426,7 @@ $script:ActionParamKeys = @{
     'applyStyle' = @('range', 'styleName')
     'applyTransitionToAll' = @('duration', 'presentationName', 'transition')
     'autoBeautifySlide' = @('presentationName', 'slideIndex', 'style')
-    'autoFilter' = @('criteria', 'field', 'range', 'sheet')
+    'autoFilter' = @('column', 'criteria', 'field', 'range', 'sheet')
     'autoFitAll' = @('range', 'sheet')
     'autoFitColumn' = @('column', 'range', 'sheet')
     'autoFitRow' = @('range', 'row', 'sheet')
@@ -404,7 +445,7 @@ $script:ActionParamKeys = @{
     'convertFormat' = @('outputPath', 'presentationName', 'targetFormat')
     'convertToPDF' = @('outputPath', 'presentationName')
     'copyFormat' = @('sheet', 'source', 'target')
-    'copyRange' = @('range', 'sheet')
+    'copyRange' = @('destination', 'range', 'sheet', 'source')
     'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
     'create3DText' = @('depth', 'fontColor', 'fontSize', 'height', 'left', 'presentationName', 'rotationX', 'rotationY', 'slideIndex', 'text', 'top', 'width')
     'createChart' = @('chartType', 'chartTypeName', 'dataRange', 'left', 'position', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
@@ -443,13 +484,13 @@ $script:ActionParamKeys = @{
     'exportChartAsImage' = @('chartName', 'format', 'outputPath', 'path', 'sheet')
     'exportRangeAsImage' = @('format', 'outputPath', 'path', 'range', 'sheet')
     'exportSlideAsImage' = @('format', 'height', 'outputPath', 'path', 'presentationName', 'slideIndex', 'width')
-    'fillSeries' = @('range', 'sheet', 'startValue', 'step', 'type')
+    'fillSeries' = @('direction', 'range', 'sheet', 'sourceRange', 'startValue', 'step', 'targetRange', 'type')
     'findInDocument' = @('findText', 'matchCase', 'matchWholeWord', 'maxResults')
     'findInSheet' = @('matchCase', 'range', 'searchText', 'sheet')
     'findPptText' = @('presentationName', 'text')
     'findReplace' = @('find', 'findText', 'matchCase', 'matchWholeWord', 'replace', 'replaceAll', 'replaceMode', 'replaceText')
     'findReplaceExcel' = @('find', 'findText', 'matchCase', 'matchWholeWord', 'range', 'replace', 'replaceText', 'sheet')
-    'freezePanes' = @('cell', 'column', 'row', 'sheet')
+    'freezePanes' = @('cell', 'column', 'freeze', 'row', 'sheet')
     'generateTOC' = @('includePageNumbers', 'levels', 'position')
     'getActiveDocument' = @()
     'getActivePresentation' = @('presentationName')
@@ -457,7 +498,7 @@ $script:ActionParamKeys = @{
     'getAnimations' = @('presentationName', 'slideIndex')
     'getAppInfo' = @()
     'getBookmarks' = @()
-    'getCellComments' = @('sheet')
+    'getCellComments' = @('range', 'sheet')
     'getCellInfo' = @('cell', 'sheet')
     'getCellValue' = @('col', 'row', 'sheet')
     'getComments' = @()
@@ -489,11 +530,11 @@ $script:ActionParamKeys = @{
     'groupColumns' = @('endColumn', 'sheet', 'startColumn')
     'groupRows' = @('endRow', 'sheet', 'startRow')
     'groupShapes' = @('names', 'presentationName', 'slideIndex')
-    'hideColumns' = @('column', 'columns', 'sheet')
-    'hideRows' = @('row', 'rows', 'sheet')
+    'hideColumns' = @('column', 'columns', 'count', 'endColumn', 'hide', 'sheet', 'startColumn')
+    'hideRows' = @('count', 'endRow', 'hide', 'row', 'rows', 'sheet', 'startRow')
     'insertBookmark' = @('name')
     'insertColumns' = @('column', 'count', 'sheet', 'startColumn')
-    'insertExcelImage' = @('height', 'left', 'path', 'sheet', 'top', 'width')
+    'insertExcelImage' = @('cell', 'height', 'left', 'path', 'sheet', 'top', 'width')
     'insertFooter' = @('alignment', 'includePageNumber', 'text')
     'insertHeader' = @('alignment', 'text')
     'insertHyperlink' = @('address', 'displayText', 'text', 'url')
@@ -517,8 +558,8 @@ $script:ActionParamKeys = @{
     'openWorkbook' = @('path', 'readOnly', 'updateLinks')
     'pasteRange' = @('destination', 'pasteType', 'sheet')
     'ping' = @()
-    'protectSheet' = @('contents', 'drawingObjects', 'password', 'scenarios', 'sheet')
-    'protectWorkbook' = @('password', 'structure', 'windows')
+    'protectSheet' = @('contents', 'drawingObjects', 'password', 'protect', 'scenarios', 'sheet')
+    'protectWorkbook' = @('password', 'protect', 'structure', 'windows')
     'refreshLinks' = @()
     'removeAnimation' = @('index', 'presentationName', 'slideIndex')
     'removeConditionalFormat' = @('index', 'range', 'sheet')
@@ -542,14 +583,14 @@ $script:ActionParamKeys = @{
     'setBackgroundColor' = @('applyToAll', 'color', 'presentationName', 'slideIndex')
     'setBackgroundGradient' = @('color1', 'color2', 'presentationName', 'slideIndex')
     'setBackgroundImage' = @('path', 'presentationName', 'slideIndex')
-    'setBorder' = @('color', 'position', 'range', 'sheet', 'style')
-    'setCellStyle' = @('backgroundColor', 'bold', 'border', 'borderColor', 'fontColor', 'fontName', 'fontSize', 'horizontalAlignment', 'italic', 'range', 'sheet', 'verticalAlignment')
+    'setBorder' = @('borderStyle', 'color', 'position', 'range', 'sheet', 'style')
+    'setCellStyle' = @('backgroundColor', 'bold', 'border', 'borderColor', 'fontColor', 'fontName', 'fontSize', 'horizontalAlignment', 'italic', 'range', 'sheet', 'style', 'verticalAlignment')
     'setCellValue' = @('col', 'row', 'sheet', 'value')
     'setColumnWidth' = @('column', 'sheet', 'width')
     'setFont' = @('bold', 'color', 'fontName', 'fontSize', 'italic', 'range', 'underline')
     'setFontColor' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setFormula' = @('col', 'formula', 'range', 'row', 'sheet')
-    'setHyperlink' = @('address', 'cell', 'screenTip', 'sheet', 'subAddress', 'textToDisplay')
+    'setHyperlink' = @('address', 'cell', 'screenTip', 'sheet', 'subAddress', 'text', 'textToDisplay', 'url')
     'setImageStyle' = @('height', 'left', 'name', 'presentationName', 'rotation', 'shapeIndex', 'slideIndex', 'top', 'width')
     'setLineSpacing' = @('lineSpacing', 'paragraphIndex')
     'setMasterBackground' = @('color', 'color1', 'color2', 'gradient', 'presentationName')
@@ -593,20 +634,20 @@ $script:ActionParamKeys = @{
     'setTextBoxText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
     'setTextColor' = @('color', 'range')
     'setZoom' = @('percent', 'sheet')
-    'showColumns' = @('column', 'columns', 'sheet')
-    'showRows' = @('row', 'rows', 'sheet')
+    'showColumns' = @('column', 'columns', 'count', 'endColumn', 'sheet', 'startColumn')
+    'showRows' = @('count', 'endRow', 'row', 'rows', 'sheet', 'startRow')
     'smartDistribute' = @('direction', 'presentationName', 'shapes', 'slideIndex')
     'smartFillField' = @('fillMode', 'keyword', 'value')
-    'sortRange' = @('keyColumn', 'order', 'range', 'sheet')
+    'sortRange' = @('ascending', 'column', 'keyColumn', 'order', 'range', 'sheet')
     'startSlideShow' = @('presentationName')
-    'subtotal' = @('function', 'groupBy', 'range', 'replace', 'sheet', 'totalColumn', 'totalColumns')
+    'subtotal' = @('columns', 'function', 'groupBy', 'range', 'replace', 'sheet', 'totalColumn', 'totalColumns')
     'switchDocument' = @('index', 'name')
     'switchPresentation' = @('index', 'name')
     'switchSheet' = @('name', 'oldName', 'sheet')
     'switchSlide' = @('index', 'presentationName', 'slideIndex')
     'switchWorkbook' = @('index', 'name')
     'textToColumns' = @('delimiter', 'range', 'sheet')
-    'transpose' = @('destinationCell', 'sheet', 'sourceRange', 'targetCell')
+    'transpose' = @('destination', 'destinationCell', 'sheet', 'source', 'sourceRange', 'targetCell')
     'unfreezePanes' = @()
     'unifyFont' = @('fontName', 'presentationName', 'slideIndex', 'style')
     'unmergeCells' = @('range', 'sheet')
@@ -1266,6 +1307,17 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
+        # The tool schema also offers a named style; assign it through Excel's own Style property so
+        # the workbook's real style definitions apply.
+        $appliedStyle = $null
+        if ($null -ne $p.style -and "$($p.style)" -ne "") {
+            $appliedStyle = [string]$p.style
+            try {
+                Set-ComValue $range "Style" $appliedStyle
+            } catch {
+                Output-Json @{ success = $false; error = ("unknown cell style '" + $appliedStyle + "': " + $_.Exception.Message) }
+return }
+        }
         if ($p.fontSize) { $range.Font.Size = $p.fontSize }
         if ($null -ne $p.bold) { $range.Font.Bold = [bool]$p.bold }
         if ($null -ne $p.italic) { $range.Font.Italic = [bool]$p.italic }
@@ -1295,7 +1347,7 @@ return }
                 if ($null -ne $bc) { $range.Borders.Color = $bc }
             }
         }
-        Output-Json @{ success = $true; data = @{ range = $p.range } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; style = $appliedStyle } }
     }
 
     "setBorder" {
@@ -1304,7 +1356,8 @@ return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $styleMap = @{ thin = 1; medium = 2; thick = 4; double = 6; none = 0 }
-        $style = $styleMap[$p.style]
+        $styleName = if ($null -ne $p.style) { $p.style } else { $p.borderStyle }
+        $style = $styleMap[$styleName]
         if ($null -eq $style) { $style = 1 }
         $position = if ($p.position) { $p.position } else { "all" }
         $borders = @()
@@ -1326,7 +1379,7 @@ return }
             }
             if ($null -ne $colorValue) { $border.Color = $colorValue }
         }
-        Output-Json @{ success = $true; data = @{ range = $p.range; style = $p.style; position = $position } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; style = $styleName; position = $position; borders = $borders.Count } }
     }
 
     "copyFormat" {
@@ -1356,21 +1409,71 @@ return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $formatType = if ($p.type) { $p.type } else { "cellValue" }
+        # The tool schema passes a condition string (">100", "between(1,10)") and a named format,
+        # neither of which this action used to read.
+        $condOperator = $p.operator
+        $condValue1 = if ($null -ne $p.value1) { $p.value1 } else { $p.value }
+        $condValue2 = $p.value2
+        if ($null -ne $p.condition -and "$($p.condition)" -ne "") {
+            $conditionText = "$($p.condition)".Trim()
+            $pairMatch = [regex]::Match($conditionText, "^[^,()]+\(?\s*([^,()]+)\s*,\s*([^,()]+)\s*\)?$")
+            $compareMatch = [regex]::Match($conditionText, "^(>=|<=|<>|!=|>|<|=)\s*(.+)$")
+            if ($conditionText -match "^between" -and $pairMatch.Success) {
+                $condOperator = "between"
+                $condValue1 = $pairMatch.Groups[1].Value.Trim()
+                $condValue2 = $pairMatch.Groups[2].Value.Trim()
+            } elseif ($compareMatch.Success) {
+                $symbolMap = @{ ">" = "greaterThan"; "<" = "lessThan"; ">=" = "greaterThanOrEqual"; "<=" = "lessThanOrEqual"; "<>" = "notEqual"; "!=" = "notEqual"; "=" = "equal" }
+                $condOperator = $symbolMap[$compareMatch.Groups[1].Value]
+                $rest = $compareMatch.Groups[2].Value.Trim()
+                $pair = [regex]::Match($rest, "^([^,]+)\s*,\s*(.+)$")
+                if ($pair.Success) { $condValue1 = $pair.Groups[1].Value.Trim(); $condValue2 = $pair.Groups[2].Value.Trim() }
+                else { $condValue1 = $rest }
+            } else {
+                $condOperator = "equal"
+                $condValue1 = $conditionText
+            }
+        }
+        $bgName = $p.backgroundColor
+        $fgName = $p.fontColor
+        $makeBold = $false
+        if ($null -ne $p.format -and "$($p.format)" -ne "") {
+            $fmtMap = @{
+                red_fill    = @{ backgroundColor = "#FFC7CE"; fontColor = "#9C0006" }
+                green_fill  = @{ backgroundColor = "#C6EFCE"; fontColor = "#006100" }
+                yellow_fill = @{ backgroundColor = "#FFEB9C"; fontColor = "#9C6500" }
+                red_font    = @{ fontColor = "#FF0000" }
+                green_font  = @{ fontColor = "#006100" }
+                bold        = @{ bold = $true }
+            }
+            $preset = $fmtMap["$($p.format)"]
+            if ($null -ne $preset) {
+                if ($preset.backgroundColor -and -not $bgName) { $bgName = $preset.backgroundColor }
+                if ($preset.fontColor -and -not $fgName) { $fgName = $preset.fontColor }
+                if ($preset.bold) { $makeBold = $true }
+            } elseif ("$($p.format)" -match "^#[0-9A-Fa-f]{6}$") {
+                $bgName = "$($p.format)"
+            } else {
+                Output-Json @{ success = $false; error = ("unknown conditional format '" + "$($p.format)" + "'; use red_fill/green_fill/yellow_fill/red_font/green_font/bold or a #RRGGBB colour") }
+return }
+        }
         if ($formatType -eq "cellValue") {
             $operatorMap = @{ greater = 5; greaterThan = 5; less = 6; lessThan = 6; equal = 3; notEqual = 4; greaterEqual = 7; greaterThanOrEqual = 7; lessEqual = 8; lessThanOrEqual = 8; between = 1 }
-            $op = $operatorMap[$p.operator]
+            $op = $operatorMap[$condOperator]
             if ($null -eq $op) { $op = 3 }
-            $val1 = if ($null -ne $p.value1) { $p.value1 } else { $p.value }
-            $val2 = $p.value2
+            $val1 = $condValue1
+            $val2 = $condValue2
+            if ($null -eq $val1) { Output-Json @{ success = $false; error = "condition/value1 is required for a cell-value conditional format" }; return }
             $cf = $range.FormatConditions.Add(1, $op, $val1, $val2)
-            if ($null -ne $cf -and $p.backgroundColor) {
-                $bg = Convert-HexColorToRgbInt([string]$p.backgroundColor)
+            if ($null -ne $cf -and $bgName) {
+                $bg = Convert-HexColorToRgbInt([string]$bgName)
                 if ($null -ne $bg) { $cf.Interior.Color = $bg }
             }
-            if ($null -ne $cf -and $p.fontColor) {
-                $fc = Convert-HexColorToRgbInt([string]$p.fontColor)
+            if ($null -ne $cf -and $fgName) {
+                $fc = Convert-HexColorToRgbInt([string]$fgName)
                 if ($null -ne $fc) { $cf.Font.Color = $fc }
             }
+            if ($null -ne $cf -and $makeBold) { $cf.Font.Bold = $true }
         } elseif ($formatType -eq "colorScale") {
             $scaleType = if ($p.colorScaleType) { $p.colorScaleType } else { 3 }
             $range.FormatConditions.AddColorScale($scaleType)
@@ -1413,11 +1516,12 @@ return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $typeMap = @{ list = 3; whole = 1; decimal = 2; date = 4; time = 5; textLength = 6; custom = 7 }
-        $validationType = $typeMap[$p.validationType]
+        $typeName = if ($null -ne $p.validationType) { $p.validationType } else { $p.type }
+        $validationType = $typeMap[$typeName]
         if ($null -eq $validationType) { $validationType = 3 }
         $range.Validation.Delete()
-        if ($p.validationType -eq "list") {
-            $listFormula = if ($p.formula1) { $p.formula1 } elseif ($p.list) { ($p.list -join ",") } else { "" }
+        if ($typeName -eq "list") {
+            $listFormula = if ($p.formula1) { $p.formula1 } elseif ($p.list) { ($p.list -join ",") } elseif ($p.formula) { $p.formula } else { "" }
             $range.Validation.Add($validationType, 1, 1, $listFormula)
             if ($null -ne $p.showDropdown -and -not [bool]$p.showDropdown) {
                 $range.Validation.InCellDropdown = $false
@@ -1428,7 +1532,9 @@ return }
             $operatorMap = @{ between = 1; notBetween = 2; equal = 3; notEqual = 4; greater = 5; less = 6; greaterEqual = 7; lessEqual = 8 }
             $op = $operatorMap[$p.operator]
             if ($null -eq $op) { $op = 1 }
-            $range.Validation.Add($validationType, 1, $op, $p.formula1, $p.formula2)
+            $formula1 = if ($null -ne $p.formula1) { $p.formula1 } else { $p.formula }
+            if ($null -eq $formula1) { Output-Json @{ success = $false; error = "formula1/formula required for validation type '$typeName'" }; return }
+            $range.Validation.Add($validationType, 1, $op, $formula1, $p.formula2)
         }
         if ($p.inputTitle -or $p.inputMessage) {
             $range.Validation.InputTitle = if ($p.inputTitle) { $p.inputTitle } else { "" }
@@ -1438,7 +1544,7 @@ return }
             $range.Validation.ErrorTitle = if ($p.errorTitle) { $p.errorTitle } else { "" }
             $range.Validation.ErrorMessage = if ($p.errorMessage) { $p.errorMessage } else { "" }
         }
-        Output-Json @{ success = $true; data = @{ range = $p.range; type = $p.validationType } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; type = $typeName } }
     }
 
     "removeDataValidation" {
@@ -1591,8 +1697,13 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
-        $keyCol = $sheet.Range($p.keyColumn)
-        $order = if ($p.order -eq "desc") { 2 } else { 1 }
+        # The tool schema passes a 1-based column number and a boolean; this action's own keys are
+        # a key range and an order string.
+        $keyRef = if ($null -ne $p.keyColumn) { $p.keyColumn } else { $p.column }
+        if ($null -eq $keyRef) { Output-Json @{ success = $false; error = "keyColumn/column required" }; return }
+        $keyCol = if ($keyRef -is [int]) { $range.Cells(1, [int]$keyRef) } else { $sheet.Range([string]$keyRef) }
+        $descending = ($p.order -eq "desc") -or ($null -ne $p.ascending -and -not [bool]$p.ascending)
+        $order = if ($descending) { 2 } else { 1 }
         $range.Sort($keyCol, $order)
         Output-Json @{ success = $true }
     }
@@ -1602,12 +1713,14 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
-        if ($p.criteria) {
-            $range.AutoFilter($p.field, $p.criteria)
+        $field = if ($null -ne $p.field) { $p.field } else { $p.column }
+        if ($null -ne $p.criteria) {
+            if ($null -eq $field) { Output-Json @{ success = $false; error = "field/column is required when criteria is given" }; return }
+            $range.AutoFilter($field, $p.criteria)
         } else {
             $range.AutoFilter()
         }
-        Output-Json @{ success = $true }
+        Output-Json @{ success = $true; data = @{ range = $p.range; field = $field; criteria = $p.criteria } }
     }
 
     "createChart" {
@@ -2088,52 +2201,64 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $rows = if ($p.rows) { $p.rows } elseif ($p.row) { @($p.row) } else { @() }
-        if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows required" }; return }
-        foreach ($r in $rows) { $sheet.Range("${r}:${r}").Hidden = $true }
-        Output-Json @{ success = $true; data = @{ hiddenRows = $rows } }
+        $rows = Get-RowRefList $p
+        if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows/startRow+endRow required" }; return }
+        # The tool offers hide=false to show rows again.
+        $hide = if ($null -ne $p.hide) { [bool]$p.hide } else { $true }
+        # Range("2:2").Hidden raises E_FAIL on WPS; the Rows collection works.
+        foreach ($r in $rows) {
+            $target = if ("$r" -match ":") { "$r" } else { "$($r):$($r)" }
+            $sheet.Rows($target).Hidden = $hide
+        }
+        Output-Json @{ success = $true; data = @{ rows = $rows; hidden = $hide } }
     }
 
     "hideColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $cols = if ($p.columns) { $p.columns } elseif ($p.column) { @($p.column) } else { @() }
-        if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns required" }; return }
-        $hidden = @()
+        $cols = Get-ColumnRefList $p
+        if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns/startColumn+endColumn required" }; return }
+        $hide = if ($null -ne $p.hide) { [bool]$p.hide } else { $true }
+        $applied = @()
         foreach ($c in $cols) {
-            $col = $c
-            if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
-            $sheet.Range("${col}:${col}").Hidden = $true
-            $hidden += $col
+            $ref = $c
+            if ($ref -is [int]) { $ref = Convert-ColumnNumberToLetter([int]$ref) }
+            $target = if ("$ref" -match ":") { "$ref" } else { "$($ref):$($ref)" }
+            $sheet.Columns($target).Hidden = $hide
+            $applied += $ref
         }
-        Output-Json @{ success = $true; data = @{ hiddenColumns = $hidden } }
+        Output-Json @{ success = $true; data = @{ columns = $applied; hidden = $hide } }
     }
 
     "showRows" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $rows = if ($p.rows) { $p.rows } elseif ($p.row) { @($p.row) } else { @() }
-        if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows required" }; return }
-        foreach ($r in $rows) { $sheet.Range("${r}:${r}").Hidden = $false }
-        Output-Json @{ success = $true; data = @{ shownRows = $rows } }
+        $rows = Get-RowRefList $p
+        if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "row/rows/startRow+endRow required" }; return }
+        foreach ($r in $rows) {
+            $target = if ("$r" -match ":") { "$r" } else { "$($r):$($r)" }
+            $sheet.Rows($target).Hidden = $false
+        }
+        Output-Json @{ success = $true; data = @{ rows = $rows; hidden = $false } }
     }
 
     "showColumns" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $cols = if ($p.columns) { $p.columns } elseif ($p.column) { @($p.column) } else { @() }
-        if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns required" }; return }
-        $shown = @()
+        $cols = Get-ColumnRefList $p
+        if ($cols.Count -eq 0) { Output-Json @{ success = $false; error = "column/columns/startColumn+endColumn required" }; return }
+        $applied = @()
         foreach ($c in $cols) {
-            $col = $c
-            if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
-            $sheet.Range("${col}:${col}").Hidden = $false
-            $shown += $col
+            $ref = $c
+            if ($ref -is [int]) { $ref = Convert-ColumnNumberToLetter([int]$ref) }
+            $target = if ("$ref" -match ":") { "$ref" } else { "$($ref):$($ref)" }
+            $sheet.Columns($target).Hidden = $false
+            $applied += $ref
         }
-        Output-Json @{ success = $true; data = @{ shownColumns = $shown } }
+        Output-Json @{ success = $true; data = @{ columns = $applied; hidden = $false } }
     }
 
     "groupRows" {
@@ -2162,15 +2287,26 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
+        # freeze=false is how the tool asks to unfreeze.
+        if ($null -ne $p.freeze -and -not [bool]$p.freeze) {
+            $excel.ActiveWindow.FreezePanes = $false
+            Output-Json @{ success = $true; data = @{ frozen = $false; message = "窗格已取消冻结" } }
+return }
+        # "freeze through row N / column N" means the split sits after them, so the cell one past
+        # the last frozen row/column is the one to select.
+        $cellRef = $null
         if ($p.cell) {
-            $sheet.Range($p.cell).Select()
-        } elseif ($p.row -and $p.column) {
-            $col = $p.column
-            if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
-            $sheet.Range("$col$($p.row)").Select()
+            $cellRef = [string]$p.cell
+        } else {
+            $splitRow = if ($null -ne $p.row) { [int]$p.row + 1 } else { 1 }
+            $splitCol = 1
+            if ($null -ne $p.column) { $splitCol = [int]$p.column + 1 }
+            $cellRef = (Convert-ColumnNumberToLetter($splitCol)) + [string]$splitRow
         }
+        $null = $sheet.Activate()
+        $sheet.Range($cellRef).Select()
         $excel.ActiveWindow.FreezePanes = $true
-        Output-Json @{ success = $true; data = @{ message = "窗格已冻结" } }
+        Output-Json @{ success = $true; data = @{ frozen = $true; cell = $cellRef; message = "窗格已冻结" } }
     }
 
     "unfreezePanes" {
@@ -2217,9 +2353,19 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $range = $sheet.Range($p.range)
-        $range.Copy()
-        Output-Json @{ success = $true; data = @{ range = $p.range; message = "已复制到剪贴板" } }
+        # The tool schema is source/destination. The old body only ever copied "range" to the
+        # clipboard, so source and destination were dropped and nothing was pasted anywhere.
+        $sourceRef = if ($null -ne $p.source) { $p.source } else { $p.range }
+        if ($null -eq $sourceRef) { Output-Json @{ success = $false; error = "source/range required" }; return }
+        $sourceRange = $sheet.Range([string]$sourceRef)
+        $destRef = if ($null -ne $p.destination) { [string]$p.destination } else { $null }
+        if ($null -eq $destRef -or $destRef -eq "") {
+            $sourceRange.Copy()
+            Output-Json @{ success = $true; data = @{ source = $sourceRef; message = "已复制到剪贴板" } }
+return }
+        $sourceRange.Copy($sheet.Range($destRef))
+        $excel.CutCopyMode = $false
+        Output-Json @{ success = $true; data = @{ source = $sourceRef; destination = $destRef } }
     }
 
     "pasteRange" {
@@ -2243,6 +2389,14 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
+        # wps_excel_auto_fill sends sourceRange/targetRange and means "extend the source pattern".
+        if ($null -ne $p.sourceRange -and $null -ne $p.targetRange) {
+            $srcRange = $sheet.Range([string]$p.sourceRange)
+            $tgtRange = $sheet.Range([string]$p.targetRange)
+            $srcRange.AutoFill($tgtRange, 0)
+            Output-Json @{ success = $true; data = @{ sourceRange = $p.sourceRange; targetRange = $p.targetRange } }
+return }
+        if ($null -eq $p.range -or "$($p.range)" -eq "") { Output-Json @{ success = $false; error = "range or sourceRange+targetRange is required" }; return }
         $range = $sheet.Range($p.range)
         $startCell = $range.Cells.Item(1, 1)
         $startValue = if ($null -ne $p.startValue) { $p.startValue } else { 1 }
@@ -2251,22 +2405,32 @@ return }
         $fillType = $typeMap[$p.type]
         if ($null -eq $fillType) { $fillType = 0 }
         $step = if ($null -ne $p.step) { $p.step } else { 1 }
+        # The tool schema carries a direction (down/right/up/left). Filling the other way is the
+        # same series with a negated step.
+        $direction = if ($null -ne $p.direction) { [string]$p.direction } else { $null }
+        if ($null -ne $direction -and ($direction -eq "up" -or $direction -eq "left")) {
+            $step = -1 * [double]$step
+        }
+        # Rowcol must stay null so WPS infers the axis from the range shape. Passing 1 (xlRows) for a
+        # vertical range silently fills nothing on this build, while 2 and null both work.
         $range.DataSeries($null, -4132, $fillType, $step)
-        Output-Json @{ success = $true; data = @{ range = $p.range; type = $p.type } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; type = $p.type; direction = $direction; step = $step } }
     }
 
     "transpose" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $sourceRange = $sheet.Range($p.sourceRange)
-        $destCell = if ($p.destinationCell) { $p.destinationCell } elseif ($p.targetCell) { $p.targetCell } else { $null }
+        $sourceRef = if ($null -ne $p.sourceRange) { $p.sourceRange } else { $p.source }
+        if ($null -eq $sourceRef) { Output-Json @{ success = $false; error = "sourceRange/source required" }; return }
+        $sourceRange = $sheet.Range($sourceRef)
+        $destCell = if ($p.destinationCell) { $p.destinationCell } elseif ($p.targetCell) { $p.targetCell } elseif ($p.destination) { $p.destination } else { $null }
         if ($null -eq $destCell) { Output-Json @{ success = $false; error = "destinationCell/targetCell required" }; return }
         $destRange = $sheet.Range($destCell)
         $sourceRange.Copy()
         $destRange.PasteSpecial(-4163, -4142, $false, $true)
         $excel.CutCopyMode = $false
-        Output-Json @{ success = $true; data = @{ source = $p.sourceRange; destination = $destCell } }
+        Output-Json @{ success = $true; data = @{ source = $sourceRef; destination = $destCell } }
     }
 
     "textToColumns" {
@@ -2295,6 +2459,7 @@ return }
         if ($null -eq $func) { $func = 9 }
         $totalCols = $p.totalColumns
         if ($null -eq $totalCols) { $totalCols = $p.totalColumn }
+        if ($null -eq $totalCols) { $totalCols = $p.columns }
         if ($totalCols -isnot [System.Array]) { $totalCols = @($totalCols) }
         $replace = if ($null -ne $p.replace) { [bool]$p.replace } else { $true }
         $range.Subtotal([int]$p.groupBy, $func, $totalCols, $replace, $false, $true)
@@ -2339,11 +2504,15 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $cell = $sheet.Range($p.cell)
+        if ($null -eq $p.cell -or "$($p.cell)" -eq "") { Output-Json @{ success = $false; error = "cell is required to add a comment" }; return }
+        # The tool schema calls this parameter comment; accept both spellings.
+        $commentText = if ($null -ne $p.comment) { [string]$p.comment } elseif ($null -ne $p.text) { [string]$p.text } else { "" }
+        if ($commentText -eq "") { Output-Json @{ success = $false; error = "comment text is required" }; return }
+        $cell = $sheet.Range([string]$p.cell)
         if ($cell.Comment) { $cell.Comment.Delete() }
-        $cell.AddComment($p.text)
+        $cell.AddComment($commentText)
         if ($p.visible) { $cell.Comment.Visible = $true }
-        Output-Json @{ success = $true; data = @{ cell = $p.cell; text = $p.text } }
+        Output-Json @{ success = $true; data = @{ cell = $p.cell; sheet = $sheet.Name; text = $commentText } }
     }
 
     "deleteCellComment" {
@@ -2359,13 +2528,24 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
+        # The tool may narrow the result to a range; without it every comment on the sheet is returned.
+        $filter = $null
+        if ($null -ne $p.range -and "$($p.range)" -ne "") { $filter = $sheet.Range([string]$p.range) }
         $comments = @()
         for ($i = 1; $i -le $sheet.Comments.Count; $i++) {
             $c = $sheet.Comments.Item($i)
             $addr = $c.Parent.Address()
-            $comments += @{ cell = ($addr -replace "\$", ""); text = $c.Text(); author = if ($c.Author) { $c.Author } else { "" } }
+            $flat = ($addr -replace "\$", "")
+            if ($null -ne $filter) {
+                $target = $sheet.Range($flat)
+                if ($target.Row -lt $filter.Row) { continue }
+                if ($target.Row -gt ($filter.Row + $filter.Rows.Count - 1)) { continue }
+                if ($target.Column -lt $filter.Column) { continue }
+                if ($target.Column -gt ($filter.Column + $filter.Columns.Count - 1)) { continue }
+            }
+            $comments += @{ cell = $flat; text = $c.Text(); author = if ($c.Author) { $c.Author } else { "" } }
         }
-        Output-Json @{ success = $true; data = @{ comments = $comments; count = $comments.Count } }
+        Output-Json @{ success = $true; data = @{ comments = $comments; count = $comments.Count; range = $p.range } }
     }
 
     "protectSheet" {
@@ -2373,8 +2553,14 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
         $password = if ($p.password) { $p.password } else { "" }
-        $sheet.Protect($password, $p.drawingObjects, $p.contents, $p.scenarios)
-        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; protected = $true } }
+        # protect=false is how the tool asks to remove protection.
+        $wantProtect = if ($null -ne $p.protect) { [bool]$p.protect } else { $true }
+        if ($wantProtect) {
+            $sheet.Protect($password, $p.drawingObjects, $p.contents, $p.scenarios)
+        } else {
+            $sheet.Unprotect($password)
+        }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; protected = $wantProtect } }
     }
 
     "unprotectSheet" {
@@ -2392,21 +2578,37 @@ return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
         $password = if ($p.password) { $p.password } else { "" }
-        $structure = if ($null -ne $p.structure) { [bool]$p.structure } else { $true }
-        $wb.Protect($password, $structure, $p.windows)
-        Output-Json @{ success = $true; data = @{ workbook = $wb.Name; protected = $true } }
+        $wantProtect = if ($null -ne $p.protect) { [bool]$p.protect } else { $true }
+        if ($wantProtect) {
+            $structure = if ($null -ne $p.structure) { [bool]$p.structure } else { $true }
+            $wb.Protect($password, $structure, $p.windows)
+        } else {
+            $wb.Unprotect($password)
+        }
+        Output-Json @{ success = $true; data = @{ workbook = $wb.Name; protected = $wantProtect } }
     }
 
     "insertExcelImage" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $left = if ($null -ne $p.left) { $p.left } else { 100 }
-        $top = if ($null -ne $p.top) { $p.top } else { 100 }
+        # Anchoring at a cell is what the tool schema promises; explicit left/top still win.
+        $anchorLeft = $null
+        $anchorTop = $null
+        if ($null -ne $p.cell -and "$($p.cell)" -ne "") {
+            $anchor = $sheet.Range([string]$p.cell)
+            $anchorLeft = $anchor.Left
+            $anchorTop = $anchor.Top
+        }
+        $left = if ($null -ne $p.left) { $p.left } elseif ($null -ne $anchorLeft) { $anchorLeft } else { 100 }
+        $top = if ($null -ne $p.top) { $p.top } elseif ($null -ne $anchorTop) { $anchorTop } else { 100 }
         $width = if ($null -ne $p.width) { $p.width } else { -1 }
         $height = if ($null -ne $p.height) { $p.height } else { -1 }
-        $pic = $sheet.Shapes.AddPicture($p.path, $false, $true, $left, $top, $width, $height)
-        Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $p.path } }
+        if ($null -eq $p.path -or "$($p.path)" -eq "") { Output-Json @{ success = $false; error = "path is required to insert an image" }; return }
+        $imagePath = Resolve-ImageFilePath $p.path
+        if ($null -eq $imagePath) { Output-Json @{ success = $false; error = ("image file not found: " + "$($p.path)") }; return }
+        $pic = $sheet.Shapes.AddPicture($imagePath, $false, $true, $left, $top, $width, $height)
+        Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $imagePath; left = $left; top = $top } }
     }
 
     "setHyperlink" {
@@ -2414,10 +2616,11 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.cell)
-        $address = if ($p.address) { $p.address } else { "" }
+        # The tool schema spells these url/text; accept both spellings so neither layer is dropped.
+        $address = if ($p.address) { $p.address } elseif ($p.url) { $p.url } else { "" }
         $subAddress = if ($p.subAddress) { $p.subAddress } else { "" }
         $screenTip = if ($p.screenTip) { $p.screenTip } else { "" }
-        $textToDisplay = if ($p.textToDisplay) { $p.textToDisplay } else { "" }
+        $textToDisplay = if ($p.textToDisplay) { $p.textToDisplay } elseif ($p.text) { $p.text } else { "" }
         $sheet.Hyperlinks.Add($range, $address, $subAddress, $screenTip, $textToDisplay)
         Output-Json @{ success = $true; data = @{ cell = $p.cell; address = $address } }
     }

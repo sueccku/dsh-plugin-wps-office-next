@@ -137,10 +137,6 @@ export const createChartDefinition: ToolDefinition = {
         type: 'string',
         description: '工作表名称，不填则使用当前活动工作表',
       },
-      has_header: {
-        type: 'boolean',
-        description: '数据第一行是否为表头，默认true',
-      },
       show_legend: {
         type: 'boolean',
         description: '是否显示图例，默认true',
@@ -163,7 +159,6 @@ export const createChartHandler: ToolHandler = async (
     title,
     position,
     sheet,
-    has_header = true,
     show_legend = true,
     show_data_labels = false,
   } = args as {
@@ -177,7 +172,6 @@ export const createChartHandler: ToolHandler = async (
       height?: number;
     };
     sheet?: string;
-    has_header?: boolean;
     show_legend?: boolean;
     show_data_labels?: boolean;
   };
@@ -237,7 +231,6 @@ export const createChartHandler: ToolHandler = async (
           height: position?.height || 300,
         },
         sheet,
-        hasHeader: has_header,
         showLegend: show_legend,
         showDataLabels: show_data_labels,
       },

@@ -10,7 +10,7 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 | --- | --- |
 | tools in the full catalog | 254 |
 | tool/action pairs checked | 212 |
-| **A. handler sends a parameter the bridge never reads** | **85** |
+| **A. handler sends a parameter the bridge never reads** | **61** |
 | B. schema advertises a parameter the handler never uses | 0 |
 | actions with no key table (guard skipped) | 1 |
 | handlers whose arguments are not statically readable | 25 |
@@ -25,30 +25,6 @@ is either an alias to reconcile or a capability to implement.
 | --- | --- | --- | --- |
 | `wps_convert_to_pdf` | `convertToPDF` | `path`, `filePath`, `openAfterExport` | `outputPath`, `presentationName` |
 | `wps_convert_format` | `convertFormat` | `path`, `filePath` | `outputPath`, `presentationName`, `targetFormat` |
-| `wps_excel_create_chart` | `createChart` | `hasHeader` | `chartType`, `chartTypeName`, `dataRange`, `left`, `position`, `sheet`, `showDataLabels`, `showLegend`, `title`, `top` |
-| `wps_excel_get_cell_comments` | `getCellComments` | `range` | `sheet` |
-| `wps_excel_insert_excel_image` | `insertExcelImage` | `filePath`, `imagePath`, `cell` | `height`, `left`, `path`, `sheet`, `top`, `width` |
-| `wps_excel_set_hyperlink` | `setHyperlink` | `url`, `text` | `address`, `cell`, `screenTip`, `sheet`, `subAddress`, `textToDisplay` |
-| `wps_excel_auto_filter` | `autoFilter` | `column` | `criteria`, `field`, `range`, `sheet` |
-| `wps_excel_copy_range` | `copyRange` | `source`, `destination` | `range`, `sheet` |
-| `wps_excel_fill_series` | `fillSeries` | `direction` | `range`, `sheet`, `startValue`, `step`, `type` |
-| `wps_excel_transpose` | `transpose` | `source`, `destination` | `destinationCell`, `sheet`, `sourceRange`, `targetCell` |
-| `wps_excel_subtotal` | `subtotal` | `columns` | `function`, `groupBy`, `range`, `replace`, `sheet`, `totalColumn`, `totalColumns` |
-| `wps_excel_sort_range` | `sortRange` | `column`, `ascending` | `keyColumn`, `order`, `range`, `sheet` |
-| `wps_excel_add_comment` | `addComment` | `cell` | `comment`, `text` |
-| `wps_excel_protect_sheet` | `protectSheet` | `protect` | `contents`, `drawingObjects`, `password`, `scenarios`, `sheet` |
-| `wps_excel_set_conditional_format` | `addConditionalFormat` | `condition`, `format` | `backgroundColor`, `colorScaleType`, `fontColor`, `operator`, `range`, `sheet`, `type`, `value`, `value1`, `value2` |
-| `wps_excel_protect_workbook` | `protectWorkbook` | `protect` | `password`, `structure`, `windows` |
-| `wps_excel_set_cell_style` | `setCellStyle` | `style` | `backgroundColor`, `bold`, `border`, `borderColor`, `fontColor`, `fontName`, `fontSize`, `horizontalAlignment`, `italic`, `range`, `sheet`, `verticalAlignment` |
-| `wps_excel_set_border` | `setBorder` | `borderStyle` | `color`, `position`, `range`, `sheet`, `style` |
-| `wps_excel_hide_row` | `hideRows` | `count`, `hide` | `row`, `rows`, `sheet` |
-| `wps_excel_set_data_validation` | `addDataValidation` | `type`, `formula` | `errorMessage`, `errorTitle`, `formula1`, `formula2`, `inputMessage`, `inputTitle`, `list`, `operator`, `range`, `sheet`, `showDropdown`, `validationType` |
-| `wps_excel_hide_rows` | `hideRows` | `startRow`, `endRow` | `row`, `rows`, `sheet` |
-| `wps_excel_show_rows` | `showRows` | `startRow`, `endRow` | `row`, `rows`, `sheet` |
-| `wps_excel_show_columns` | `showColumns` | `startColumn`, `endColumn` | `column`, `columns`, `sheet` |
-| `wps_excel_freeze_panes` | `freezePanes` | `freeze` | `cell`, `column`, `row`, `sheet` |
-| `wps_excel_auto_fill` | `fillSeries` | `sourceRange`, `targetRange` | `range`, `sheet`, `startValue`, `step`, `type` |
-| `wps_excel_hide_column` | `hideColumns` | `count`, `hide` | `column`, `columns`, `sheet` |
 | `wps_ppt_add_animation` | `addAnimation` | `shapeIndex`, `trigger` | `effect`, `presentationName`, `shapeName`, `slideIndex` |
 | `wps_ppt_remove_animation` | `removeAnimation` | `animationIndex` | `index`, `presentationName`, `slideIndex` |
 | `wps_ppt_set_animation_order` | `setAnimationOrder` | `animationIndex`, `newOrder` | `from`, `presentationName`, `slideIndex`, `to` |

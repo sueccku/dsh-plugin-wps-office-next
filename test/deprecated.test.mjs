@@ -23,7 +23,9 @@ let id = 10;
 const list = await req(id++, "tools/list", {});
 let bytes = 0;
 for (const t of list.result.tools) bytes += Buffer.byteLength(JSON.stringify(t), "utf8");
-check("advertised surface unchanged", list.result.tools.length === 43 && bytes === 23198, list.result.tools.length + " tools / " + bytes + " bytes");
+// The byte count shrinks whenever a schema is tightened (removing an unimplemented parameter does
+// exactly that), so this asserts the budget instead of a snapshot that would need editing each time.
+check("advertised surface stays within budget", list.result.tools.length === 43 && bytes <= 25000, list.result.tools.length + " tools / " + bytes + " bytes");
 
 const help = payload(await req(id++, "tools/call", { name: "wps_help", arguments: {} }));
 check("wps_help total excludes deprecated", help.total === 251, "total=" + help.total);

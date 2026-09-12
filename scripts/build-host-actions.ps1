@@ -45,6 +45,8 @@ $helperKeys = @{
     'Resolve-Worksheet'    = @('sheet', 'name', 'oldName')
     'Get-TargetPres'       = @('presentationName')
     'Get-WorksheetByParam' = @('sheet')
+    'Get-RowRefList'       = @('rows', 'row', 'count', 'startRow', 'endRow')
+    'Get-ColumnRefList'    = @('columns', 'column', 'count', 'startColumn', 'endColumn')
 }
 $dynamicPatterns = @('\$p\.\$', '\$p\[', '\$p\.PSObject', "Get-PropOrNull\s+\`$p\s+(?!')")
 $paramKeys = @{}

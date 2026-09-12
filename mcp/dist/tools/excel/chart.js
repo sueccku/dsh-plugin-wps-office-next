@@ -131,10 +131,6 @@ exports.createChartDefinition = {
                 type: 'string',
                 description: '工作表名称，不填则使用当前活动工作表',
             },
-            has_header: {
-                type: 'boolean',
-                description: '数据第一行是否为表头，默认true',
-            },
             show_legend: {
                 type: 'boolean',
                 description: '是否显示图例，默认true',
@@ -148,7 +144,7 @@ exports.createChartDefinition = {
     },
 };
 const createChartHandler = async (args) => {
-    const { data_range, chart_type = ChartType.COLUMN_CLUSTERED, title, position, sheet, has_header = true, show_legend = true, show_data_labels = false, } = args;
+    const { data_range, chart_type = ChartType.COLUMN_CLUSTERED, title, position, sheet, show_legend = true, show_data_labels = false, } = args;
     // 校验数据范围格式
     if (!data_range || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(data_range)) {
         return {
@@ -193,7 +189,6 @@ const createChartHandler = async (args) => {
                 height: position?.height || 300,
             },
             sheet,
-            hasHeader: has_header,
             showLegend: show_legend,
             showDataLabels: show_data_labels,
         }, wps_1.WpsAppType.SPREADSHEET);

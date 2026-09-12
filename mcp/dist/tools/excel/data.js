@@ -465,7 +465,7 @@ exports.addCommentDefinition = {
 const addCommentHandler = async (args) => {
     const { cell, comment } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('addComment', { cell, comment }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('addCellComment', { cell, comment }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `添加批注失败: ${response.error}` }], error: response.error };
         }

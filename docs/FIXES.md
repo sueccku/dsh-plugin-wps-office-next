@@ -263,6 +263,62 @@ excel-range 12/12；8000 格读取 15ms。
 回归：test/find-replace.test.mjs 14/14，其中新增
 **「纯查找不得删除命中内容」**与「无命中时报 0 次」两项。
 
+### 15. Excel 参数契约批次：25 处「工具发了、桥不读」全部修掉（已修）
+
+第 13 条的闸门把 Excel 侧的错配一次列全，共 25 处。按性质分三类处理：
+
+**一、工具发的键名与桥不同（桥接受两种拼写）**
+
+| 工具 | 工具发的 | 桥原本读的 |
+| --- | --- | --- |
+| set_hyperlink | url / text | address / textToDisplay |
+| auto_filter | column | field |
+| transpose | source / destination | sourceRange / destinationCell |
+| subtotal | columns | totalColumns |
+| sort_range | column / ascending | keyColumn / order |
+| set_border | borderStyle | style |
+| set_data_validation | type / formula | validationType / formula1 |
+| hide_row / hide_column | count / hide | （没有对应能力） |
+| hide_rows / show_rows | startRow / endRow | row / rows |
+| show_columns | startColumn / endColumn | column / columns |
+| freeze_panes | freeze | （没有取消冻结） |
+| protect_sheet / protect_workbook | protect | （没有取消保护） |
+| fill_series | direction | （没有方向） |
+| auto_fill | sourceRange / targetRange | （没有自动填充） |
+| set_conditional_format | condition / format | operator / value / 颜色 |
+| set_cell_style | style（具名样式） | 逐个属性 |
+
+**二、能力确实缺失，补实现**
+
+- `copy_range` 只把 `range` 复制到剪贴板，`source`/`destination` 被丢弃，**从未粘贴到任何地方**；
+  改为真正的 `source→destination` 复制；
+- `get_cell_comments` 的 `range` 被忽略，总是返回整表批注，现按范围过滤；
+- `insert_excel_image` 的 `cell` 被忽略，图片位置参数失效；现按单元格锚定；
+- `add_comment` **是 Word 的 action**（用 `$word.Selection.Range`），
+  所以 `wps_excel_add_comment` 一直把批注写进**当前 Word 文档**；
+  改指向 Excel 自己的 `addCellComment`（原本就存在，只是没人调用），并接受工具公开的 `comment` 键；
+- 58 处 Excel action 的兜底工作表改为读 `sheet`（第 13 条），
+  其中采用 `Get-WorksheetByParam`，只认 `sheet`、不把 `name` 当表名，
+  因为 `set_named_range` 等 action 的 `name` 另有含义。
+
+**三、schema 宣称了却无法实现，删掉**
+
+- `wps_excel_create_chart` 的 `has_header`：桥从未读取，且 Excel 图表没有「首行是否表头」开关，
+  无法兑现。删掉比留着假装支持更诚实（schema 因此少 92 字节）。
+
+回归：test/excel-contract-fixes.test.mjs **35 项**，全部在真实 WPS 上写→改→回读，
+其中包含「批注落在 Excel 而不是 Word」的跨应用检查。
+
+### 本轮实测到的 WPS 与 Office 差异（新增）
+
+- **`Range("2:2").Hidden` 在 WPS 上恒抛 E_FAIL**，`Rows("2:3").Hidden` / `Columns("B:C").Hidden` 正常。
+  上游四个隐藏/显示工具在 WPS 上**从来没有生效过**，现改用 Rows/Columns；
+- **`Range.DataSeries` 的 Rowcol 必须留空**：纵向区域传 1（xlRows）静默不填充，
+  传 2 或留空（自动判断）才填。上游留空是对的，我一度改成 1 反而弄坏，已回退并加注释；
+- **`Shapes.AddPicture` 只接受绝对路径**：相对路径抛裸 E_FAIL。
+  桥现在解析相对路径并校验存在性，缺文件时报明确错误；
+- **`Hyperlinks.Add` 不会覆盖已有单元格的值**：`TextToDisplay` 只在空单元格上写入。
+  测试据此改在空单元格上验证 `url`/`text` 确实传到了桥；
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -288,7 +344,9 @@ excel-range 12/12；8000 格读取 15ms。
 
 | test/close-safety.test.mjs | 14 | 关闭文档不得弹模态框、不得泄漏工作簿/演示文稿 |
 
-合计 151 项，加 node scripts/verify.mjs 22 项门禁（含 45 工具 / 25,000 字节预算）。
+| test/excel-contract-fixes.test.mjs | 35 | 25 处参数错配逐个真实验证、跨应用批注污染 |
+
+合计 186 项，加 node scripts/verify.mjs 22 项门禁（含 45 工具 / 25,000 字节预算）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 212 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。它不参与通过/失败门禁（当前仍有 85 处待修），

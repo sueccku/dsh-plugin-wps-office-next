@@ -253,10 +253,11 @@ export const insertExcelImageHandler: ToolHandler = async (
     sheet?: string;
   };
   try {
-    // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path/imagePath 别名
+    // The bridge reads "path"; the removed filePath/imagePath aliases carried the same value and
+    // were never read, which the parameter guard now rejects outright.
     const response = await wpsClient.executeMethod<{ message: string }>(
       'insertExcelImage',
-      { filePath, path: filePath, imagePath: filePath, cell, width, height, sheet },
+      { path: filePath, cell, width, height, sheet },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {

@@ -563,7 +563,7 @@ export const addCommentHandler: ToolHandler = async (
   const { cell, comment } = args as { cell: string; comment: string };
   try {
     const response = await wpsClient.executeMethod<{ message: string }>(
-      'addComment',
+      'addCellComment',
       { cell, comment },
       WpsAppType.SPREADSHEET
     );
