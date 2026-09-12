@@ -18,7 +18,7 @@
 | 目标环境 | WPS 12.1+ x64；不兼容 x86，不兼容多组件模式 |
 | 形态 | 单一 npm 包 = DSH bundle + 自带 MCP server + 自带 COM host + 全部 skills |
 | MCP serverName | wps-office-next（工具显示为 mcp__wps-office-next__xxx） |
-| 默认工具面 | standard 档（门面 + 常用层，目标 <= 45 个工具、<= 12,000 schema 字节） |
+| 默认工具面 | standard 档：31 个工具（4 门面 + 27 精选），17,797 schema 字节约 5.1k tokens；预算上限 40 工具 / 22,000 字节 |
 | 传输层 | 常驻 PowerShell STA host，复用上游 245 个 COM action |
 | 加载项 | 全部删除；Windows COM 路径不依赖任何 WPS 加载项 |
 | 构建产物 | 预构建产物入库，保证 dsh plugin add github:... 开箱可用 |

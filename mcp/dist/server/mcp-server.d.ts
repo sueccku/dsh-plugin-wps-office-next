@@ -36,6 +36,11 @@ export declare class WpsMcpServer {
      */
     registerBuiltinTools(): void;
     /**
+     * 注册门面工具 - 常驻广告的四个入口
+     * wps_call 让全部已注册工具保持可用，而 tools/list 只广告一小部分
+     */
+    registerFacadeTools(): void;
+    /**
      * 启动服务器
      */
     start(): Promise<void>;

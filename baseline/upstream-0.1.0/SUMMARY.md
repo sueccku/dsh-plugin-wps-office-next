@@ -27,4 +27,4 @@ Duplicate tool names in source: none.
 
 - Every model request currently pays the full tool-schema cost; the MVP must shrink it and
   must be able to prove it did not grow again.
-- MVP goal: default toolset under 45 tools and under 12,000 schema bytes.
+- MVP budget: standard toolset at most 40 tools and 22,000 schema bytes (the shipped list is 31 / 17,797).

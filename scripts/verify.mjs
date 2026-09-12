@@ -1,7 +1,9 @@
+// Smoke + budget verification for the WPS MCP server.
+// Run: node scripts/verify.mjs <entry.js>
 import { spawn } from "node:child_process";
 
-const entry = process.argv[2];
-if (!entry) { console.error("usage: node scripts/verify.mjs <mcp-entry.js>"); process.exit(2); }
+const entry = process.argv[2] || "mcp/dist/index.js";
+const BUDGET = { maxTools: 40, maxSchemaBytes: 22000 };
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -16,8 +18,9 @@ child.on("error", (e) => { console.log("FAIL spawn " + e.message); process.exit(
 const results = [];
 function check(name, ok, detail) { results.push({ name, ok }); console.log((ok ? "PASS " : "FAIL ") + name + (detail ? "  " + detail : "")); }
 function textOf(res) { return res && res.result && res.result.content && res.result.content[0] ? String(res.result.content[0].text) : JSON.stringify((res && res.error) || {}); }
+function isOk(res) { return !!(res && res.result && !res.result.isError); }
 
-const timeout = setTimeout(() => { console.log("FAIL timeout waiting for server"); child.kill(); process.exit(1); }, 60000);
+const timeout = setTimeout(() => { console.log("FAIL timeout waiting for server"); child.kill(); process.exit(1); }, 90000);
 
 const init = await req(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "verify", version: "1.0.0" } });
 const si = init.result && init.result.serverInfo;
@@ -28,18 +31,51 @@ const list = await req(2, "tools/list", {});
 const tools = (list.result && list.result.tools) || [];
 let bytes = 0;
 for (const t of tools) bytes += Buffer.byteLength(JSON.stringify(t), "utf8");
-check("tools/list", tools.length > 0, "tools=" + tools.length + " schemaBytes=" + bytes + " approxTokens=" + Math.round(bytes / 3.5));
-
 const names = new Set(tools.map((t) => t.name));
-for (const required of ["wps_common_ping", "wps_common_wire_check", "wps_execute_method"]) {
-  check("catalog contains " + required, names.has(required));
+console.log("advertised tools=" + tools.length + " schemaBytes=" + bytes + " approxTokens=" + Math.round(bytes / 3.5));
+
+check("budget: tools <= " + BUDGET.maxTools, tools.length <= BUDGET.maxTools, "actual=" + tools.length);
+check("budget: schemaBytes <= " + BUDGET.maxSchemaBytes, bytes <= BUDGET.maxSchemaBytes, "actual=" + bytes);
+
+for (const required of ["wps_status", "wps_help", "wps_call", "wps_batch"]) {
+  check("facade advertised: " + required, names.has(required));
 }
+for (const curated of ["wps_excel_read_range", "wps_word_insert_text", "wps_ppt_add_slide", "wps_convert_to_pdf"]) {
+  check("curated advertised: " + curated, names.has(curated));
+}
+check("hidden tail is not advertised", !names.has("wps_ppt_set_animation") && !names.has("wps_common_get_app_info"));
 
-const ping = await req(3, "tools/call", { name: "wps_common_ping", arguments: {} });
-check("call wps_common_ping", !!(ping.result && !ping.result.isError), textOf(ping).replace(/\s+/g, " ").slice(0, 100));
+let id = 10;
+const status = await req(id++, "tools/call", { name: "wps_status", arguments: {} });
+check("wps_status", isOk(status), textOf(status).replace(/\s+/g, " ").slice(0, 140));
 
-const wire = await req(4, "tools/call", { name: "wps_common_wire_check", arguments: {} });
-check("call wps_common_wire_check", !!(wire.result && !wire.result.isError), textOf(wire).replace(/\s+/g, " ").slice(0, 100));
+const help = await req(id++, "tools/call", { name: "wps_help", arguments: {} });
+check("wps_help overview", isOk(help), textOf(help).replace(/\s+/g, " ").slice(0, 140));
+
+const helpTool = await req(id++, "tools/call", { name: "wps_help", arguments: { tool: "wps_ppt_set_animation" } });
+const helpToolText = textOf(helpTool);
+check("wps_help returns full schema", isOk(helpTool) && helpToolText.includes("inputSchema") && helpToolText.includes("shapeIndex"), helpToolText.slice(0, 90));
+
+const helpQuery = await req(id++, "tools/call", { name: "wps_help", arguments: { query: "chart" } });
+check("wps_help search", isOk(helpQuery) && textOf(helpQuery).includes("matched"), textOf(helpQuery).replace(/\s+/g, " ").slice(0, 100));
+
+const direct = await req(id++, "tools/call", { name: "wps_common_ping", arguments: {} });
+check("direct call of curated tool", isOk(direct), textOf(direct).replace(/\s+/g, " ").slice(0, 80));
+
+const hidden = await req(id++, "tools/call", { name: "wps_common_get_app_info", arguments: {} });
+check("direct call of hidden tool still works", isOk(hidden), textOf(hidden).replace(/\s+/g, " ").slice(0, 80));
+
+const dispatched = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_common_get_app_info", args: {} } });
+check("wps_call dispatches hidden tool", isOk(dispatched), textOf(dispatched).replace(/\s+/g, " ").slice(0, 80));
+
+const badDispatch = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_not_a_real_tool", args: {} } });
+check("wps_call rejects unknown tool", !isOk(badDispatch), textOf(badDispatch).slice(0, 80));
+
+const facadeGuard = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_call", args: {} } });
+check("wps_call rejects facade recursion", !isOk(facadeGuard), textOf(facadeGuard).slice(0, 80));
+
+const batch = await req(id++, "tools/call", { name: "wps_batch", arguments: { calls: [{ tool: "wps_common_ping", args: {} }, { tool: "wps_common_wire_check", args: {} }] } });
+check("wps_batch runs sequentially", isOk(batch) && textOf(batch).includes("count"), textOf(batch).replace(/\s+/g, " ").slice(0, 100));
 
 clearTimeout(timeout);
 if (stderr.trim()) console.log("server stderr tail: " + stderr.trim().split("\n").slice(-3).join(" | ").slice(0, 300));

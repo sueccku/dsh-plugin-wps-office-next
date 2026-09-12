@@ -15,6 +15,7 @@ const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const tool_registry_1 = require("./tool-registry");
 const wps_client_1 = require("../client/wps-client");
 const tools_1 = require("../types/tools");
+const toolset_1 = require("./toolset");
 const tools_2 = require("../tools");
 const logger_1 = require("../utils/logger");
 const error_1 = require("../utils/error");
@@ -67,12 +68,15 @@ class WpsMcpServer {
         // 处理 tools/list 请求
         this.server.setRequestHandler(types_js_1.ListToolsRequestSchema, async () => {
             logger.debug('Handling tools/list request');
+            // 工具面收敛：只广告当前档位选择的工具，其余仍可通过 wps_call 调用
+            const mode = (0, toolset_1.resolveMode)(process.env.WPS_OFFICE_TOOLSET);
             const { tools } = this.registry.listTools();
-            logger.info(`Returning ${tools.length} tools`);
+            const advertised = (0, toolset_1.selectTools)(mode, tools);
+            logger.info('Returning ' + advertised.length + '/' + tools.length + ' tools (mode=' + mode + ')');
             return {
-                tools: tools.map((tool) => ({
+                tools: advertised.map((tool) => ({
                     name: tool.name,
-                    description: tool.description,
+                    description: mode === 'full' ? tool.description : (0, toolset_1.compactDescription)(tool.description),
                     inputSchema: tool.inputSchema,
                 })),
             };
@@ -557,6 +561,189 @@ class WpsMcpServer {
         logger.info(`Registered ${this.registry.size} built-in tools`);
     }
     /**
+     * 注册门面工具 - 常驻广告的四个入口
+     * wps_call 让全部已注册工具保持可用，而 tools/list 只广告一小部分
+     */
+    registerFacadeTools() {
+        const currentMode = () => (0, toolset_1.resolveMode)(process.env.WPS_OFFICE_TOOLSET);
+        const text = (value) => ({
+            id: '',
+            success: true,
+            content: [{ type: 'text', text: JSON.stringify(value) }],
+        });
+        const failure = (message) => ({
+            id: '',
+            success: false,
+            content: [{ type: 'text', text: message }],
+            error: message,
+        });
+        const callable = (name) => !!name && !toolset_1.FACADE_TOOLS.includes(name) && this.registry.hasTool(name);
+        // 状态总览
+        this.registry.register({
+            name: 'wps_status',
+            description: '查看 WPS 连接状态、当前活动应用与所选工具面；编辑前先调用它',
+            inputSchema: { type: 'object', properties: {} },
+            category: tools_1.ToolCategory.COMMON,
+        }, async () => {
+            const started = Date.now();
+            let connected = false;
+            let appInfo = null;
+            let note = '';
+            try {
+                const ping = await wps_client_1.wpsClient.executeMethod('ping');
+                connected = ping.success === true;
+            }
+            catch (error) {
+                note = error instanceof Error ? error.message : String(error);
+            }
+            if (connected) {
+                try {
+                    const info = await wps_client_1.wpsClient.executeMethod('getAppInfo');
+                    appInfo = info.success ? (info.data || null) : null;
+                }
+                catch (error) {
+                    note = error instanceof Error ? error.message : String(error);
+                }
+            }
+            const all = this.registry.listTools().tools;
+            const advertised = (0, toolset_1.selectTools)(currentMode(), all);
+            return text({
+                connected,
+                appInfo,
+                toolset: currentMode(),
+                advertisedTools: advertised.length,
+                registeredTools: all.length,
+                hiddenTools: all.length - advertised.length,
+                note: note || undefined,
+                latencyMs: Date.now() - started,
+            });
+        });
+        // 目录与 schema 查询
+        this.registry.register({
+            name: 'wps_help',
+            description: '查询未直接广告的工具：无参看分组概览，传 app 或 query 查目录，传 tool 取完整参数 schema',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    app: { type: 'string', description: '应用：excel / word / ppt / common' },
+                    query: { type: 'string', description: '按名称或描述搜索关键字' },
+                    tool: { type: 'string', description: '工具名，返回完整 inputSchema' },
+                },
+            },
+            category: tools_1.ToolCategory.COMMON,
+        }, async (args) => {
+            const all = this.registry.listTools().tools;
+            const wanted = typeof args.tool === 'string' ? args.tool.trim() : '';
+            if (wanted) {
+                const exact = all.find((tool) => tool.name === wanted);
+                const found = exact || all.find((tool) => tool.name.endsWith(wanted));
+                if (!found)
+                    return failure('未找到工具 ' + wanted + '，请先用 wps_help 查询目录');
+                return text({ name: found.name, description: found.description, inputSchema: found.inputSchema });
+            }
+            const app = typeof args.app === 'string' ? args.app.trim().toLowerCase() : '';
+            const query = typeof args.query === 'string' ? args.query.trim().toLowerCase() : '';
+            if (!app && !query) {
+                const groups = {};
+                for (const tool of all) {
+                    const match = /^wps_(excel|word|ppt)_/.exec(tool.name);
+                    const key = match ? match[1] : (/^wps_(common|convert)_/.test(tool.name) ? 'common' : 'builtin');
+                    groups[key] = (groups[key] || 0) + 1;
+                }
+                return text({
+                    toolset: currentMode(),
+                    groups,
+                    total: all.length,
+                    usage: 'wps_help 传 app 查某应用目录，传 query 搜索，传 tool 取参数 schema，然后用 wps_call 执行',
+                });
+            }
+            let pool = all;
+            if (app) {
+                pool = pool.filter((tool) => tool.name.startsWith('wps_' + app + '_'));
+            }
+            if (query) {
+                pool = pool.filter((tool) => tool.name.toLowerCase().includes(query) || (tool.description || '').toLowerCase().includes(query));
+            }
+            const shown = pool.slice(0, 60).map((tool) => ({
+                name: tool.name,
+                description: (0, toolset_1.compactDescription)(tool.description, 80),
+            }));
+            return text({ matched: pool.length, shown: shown.length, truncated: pool.length > shown.length, tools: shown });
+        });
+        // 通用派发
+        this.registry.register({
+            name: 'wps_call',
+            description: '执行任意已注册但未直接广告的 WPS 工具；先用 wps_help 取到工具名与参数',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    tool: { type: 'string', description: '完整工具名，如 wps_ppt_set_animation' },
+                    args: { type: 'object', description: '该工具的参数对象' },
+                },
+                required: ['tool'],
+            },
+            category: tools_1.ToolCategory.COMMON,
+        }, async (args) => {
+            const name = typeof args.tool === 'string' ? args.tool.trim() : '';
+            if (!name)
+                return failure('缺少 tool 参数');
+            if (toolset_1.FACADE_TOOLS.includes(name))
+                return failure('门面工具 ' + name + ' 不能通过 wps_call 调用');
+            if (!this.registry.hasTool(name))
+                return failure('未知工具 ' + name + '，请先用 wps_help 查询');
+            const inner = args.args && typeof args.args === 'object' ? args.args : {};
+            return this.registry.callTool(tool_registry_1.ToolRegistry.createRequest(name, inner));
+        });
+        // 批量执行
+        this.registry.register({
+            name: 'wps_batch',
+            description: '按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    calls: {
+                        type: 'array',
+                        description: '调用列表，每项为 {tool, args}',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                tool: { type: 'string' },
+                                args: { type: 'object' },
+                            },
+                            required: ['tool'],
+                        },
+                    },
+                },
+                required: ['calls'],
+            },
+            category: tools_1.ToolCategory.COMMON,
+        }, async (args) => {
+            const raw = Array.isArray(args.calls) ? args.calls : [];
+            if (raw.length === 0)
+                return failure('calls 不能为空');
+            if (raw.length > 50)
+                return failure('单次批量最多 50 项');
+            const results = [];
+            for (const item of raw) {
+                const entry = (item || {});
+                const tool = typeof entry.tool === 'string' ? entry.tool : '';
+                if (!callable(tool)) {
+                    results.push({ tool, success: false, error: '无效或不可调用的工具名' });
+                    continue;
+                }
+                const inner = entry.args && typeof entry.args === 'object' ? entry.args : {};
+                const outcome = await this.registry.callTool(tool_registry_1.ToolRegistry.createRequest(tool, inner));
+                const blocks = Array.isArray(outcome.content) ? outcome.content : [];
+                const joined = blocks
+                    .map((block) => (block && typeof block === 'object' && 'text' in block ? String(block.text || '') : ''))
+                    .join('\n');
+                results.push({ tool, success: outcome.success, result: joined.slice(0, 2000) });
+            }
+            return text({ count: results.length, results });
+        });
+        logger.info('Registered facade tools', { tools: toolset_1.FACADE_TOOLS });
+    }
+    /**
      * 启动服务器
      */
     async start() {
@@ -567,6 +754,8 @@ class WpsMcpServer {
         logger.info('Starting MCP Server...');
         // 注册内置Tools
         this.registerBuiltinTools();
+        // 注册门面工具（status / help / call / batch）
+        this.registerFacadeTools();
         // 注册Excel、Word、PPT专业Tools - 这才是老王的核心功能
         this.registry.registerAll(tools_2.allTools);
         logger.info(`Registered ${tools_2.allTools.length} professional tools (Excel/Word/PPT)`);
