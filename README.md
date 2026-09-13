@@ -236,7 +236,7 @@
 | plugin.js | DSH 入口：发布包内绝对路径、注册 4 个技能 |
 | mcp/src | MCP server（TypeScript）与工具实现、参数闸门、弃用表 |
 | mcp/src/spec | **操作规格（唯一真源）**：工具名 ↔ 桥 action ↔ 参数/类型/必填/效果 |
-| spec/ | 由 spec 生成的产物（入库、CI 漂移检查）：工具面、action 键表、广告集、紧凑签名索引 |
+| spec/ | 由 spec 生成的产物（入库、CI 漂移检查）：工具面、action 键表、广告集、紧凑签名索引、别名/容器/辅助键/动态动作声明 |
 | mcp/dist | 预构建产物（已入库，安装即用） |
 | mcp/scripts/wps-com.ps1 | **桥的唯一真源**：259 个 COM action |
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改，改桥源码后重跑生成器） |

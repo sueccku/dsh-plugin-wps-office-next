@@ -861,6 +861,33 @@ handler 自己改名时桥侧不需要声明；handler **原样传公开名**时
 **三张人手表的状态**：aliases ✅ 归零（数据进 spec）、containers ✅ 归零、`$helperKeys` **仍在**
 ——它是"从桥源码推导键表"的辅助信息，只有把键表本身也改成 spec 产出才会消失（那是 P1-5 的伴生工作）。
 
+### 37. P1-5：第三张手写表进 spec，动态 action 未声明就失败（已落地）
+
+P1 收尾。`build-host-actions.ps1` 里的 `$helperKeys`（8 条：共享解析函数各读哪些键）是最后一张手写表。
+它决定守卫接受哪些键，所以搬进 spec 时必须证明行为不变：
+
+- 新增 `mcp/src/spec/bridge-helpers.ts`（一次性从手写表导入）→ 生成器产出 `spec/param-helpers.json`
+  → 宿主生成器改读 JSON；
+- **验收仍是「宿主产物逐字节未变」**：`git diff --numstat host/wps-actions.ps1` 为空，计数一致
+  （`exit_remaining=0 switch_cases=231 functions=48 param_aliases=17 containers=12`）。
+
+**同时给「读不出参数的 action」上了闸**：过去生成器遇到静态提取不出的 action 就静默跳过（今天 1 个：
+`setCellFormat`），于是它**不受守卫保护**而没人知道。现在例外必须写进 `mcp/src/spec/aliases.ts` 的
+`dynamicParamActions`（带原因），产出 `spec/param-dynamic.json`；**未声明的动态 action 会让生成器直接失败**。
+负向验证：把声明清空后，生成器报
+`dynamic actions missing from spec/param-dynamic.json: setCellFormat - declare each one (with a reason) in mcp/src/spec/aliases.ts`。
+验收里那条硬编码的例外清单也改成从 spec 读取。
+
+**一条值得记住的失败**：我原本想**从函数体自动推导**这 8 条键（那样连声明都不需要）。JS 原型显示
+8 条里只有 6 条能精确复现——`Resolve-Worksheet` 的键藏在一个
+`foreach ($key in @('sheet','name','oldName'))` 数组里；移植到 PowerShell 时我连犯三个错：
+两次切错替换区域，一次在循环里复用了 `$body` 这个变量名，**把生成器正在拼装的 dispatch 主体覆盖掉了**。
+最后是生成器自己的计数器 `exit_remaining=505` 把它抓住的（正常应为 0）。
+教训：**当"更聪明的自动化"反复出错时，先用已验证过的机制把目标达成**（这里就是"数据进 spec"），
+把自动推导留作有测试保护的后续改进。
+
+**三张人手表状态**：aliases ✅、containers ✅、helperKeys ✅ —— 全部归零，每一次都以宿主产物逐字节未变作证。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

@@ -7,7 +7,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P1 状态。
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.paramContainers = exports.paramAliases = void 0;
+exports.paramContainers = exports.dynamicParamActions = exports.paramAliases = void 0;
 /** 公开参数名 -> 桥读取的键。含工具 schema 没有声明、但历史上被接受的兼容拼写。 */
 exports.paramAliases = {
     "removeAnimation": {
@@ -65,6 +65,14 @@ exports.paramAliases = {
     "insertPptChart": {
         "chartType": "type"
     }
+};
+/**
+ * 参数键无法静态提取的 action：生成器会拒绝为它们写键表，也就意味着守卫对它们不生效。
+ * 这是一份**有账的例外**：只有在这里声明过的 action 才允许被跳过；出现未声明的动态 action，
+ * 生成器直接失败——过去它是静默跳过的，于是「改了但没生效」和「改好了」在结果上无法区分。
+ */
+exports.dynamicParamActions = {
+    "setCellFormat": "参数键在运行时按 format 对象动态组装（工具侧允许任意键），静态提取给不出键表",
 };
 /** 需要展平的嵌套容器名（其属性会被并到该 action 的扁平键集合上）。 */
 exports.paramContainers = {

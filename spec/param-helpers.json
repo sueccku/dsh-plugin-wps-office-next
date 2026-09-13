@@ -1,0 +1,46 @@
+{
+ "Resolve-Worksheet": [
+  "sheet",
+  "name",
+  "oldName"
+ ],
+ "Get-TargetPres": [
+  "presentationName"
+ ],
+ "Get-WorksheetByParam": [
+  "sheet"
+ ],
+ "Get-RowRefList": [
+  "rows",
+  "row",
+  "count",
+  "startRow",
+  "endRow"
+ ],
+ "Get-ColumnRefList": [
+  "columns",
+  "column",
+  "count",
+  "startColumn",
+  "endColumn"
+ ],
+ "Resolve-PictureIndex": [
+  "name",
+  "shapeName",
+  "shapeIndex",
+  "imageIndex"
+ ],
+ "Resolve-TextBoxIndex": [
+  "name",
+  "shapeName",
+  "shapeIndex",
+  "textboxIndex"
+ ],
+ "Get-PptBackgroundSpec": [
+  "background",
+  "type",
+  "color",
+  "colors",
+  "imagePath"
+ ]
+}

@@ -14,6 +14,11 @@ const require = createRequire(import.meta.url);
 const { operations } = require(resolve('mcp/dist/spec/operations.js'));
 // The bridge-side compatibility tables live in the spec now, not in the host generator.
 const { paramAliases, paramContainers } = require(resolve('mcp/dist/spec/aliases.js'));
+// Keys read by the shared resolvers: the host generator needs them to work out which keys an action
+// really accepts (an action that hands its bare $p to one of those resolvers inherits their keys).
+const { helperKeys } = require(resolve('mcp/dist/spec/bridge-helpers.js'));
+// Actions whose parameter keys cannot be read statically. Declared, not silently skipped.
+const { dynamicParamActions } = require(resolve('mcp/dist/spec/aliases.js'));
 
 function paramSchema(p) {
   if (p.schema) return p.schema;
@@ -84,6 +89,8 @@ write('signatures.json', signatures);
 // consumed by scripts/build-host-actions.ps1 (Windows PowerShell 5.1 has ConvertFrom-Json but no YAML)
 write('param-aliases.json', paramAliases);
 write('param-containers.json', paramContainers);
+write('param-helpers.json', helperKeys);
+write('param-dynamic.json', dynamicParamActions);
 
 const rawSchema = operations.reduce((n, op) => n + Object.values(op.params).filter((p) => p.schema).length, 0);
 const aliased = operations.filter((op) => op.aliases).length;

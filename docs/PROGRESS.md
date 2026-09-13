@@ -184,7 +184,13 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
   新增不变量「每个 pass-through 改名都要在桥侧有声明」（16 处检查过、2 条兼容拼写有账）。
   三张人手表：aliases ✅、containers ✅、`$helperKeys` 仍在（随 P1-5 键表改造消失）。
 
-下一步：**P1-5**（键表也由 spec 产出，`$helperKeys` 随之消失；`param-contract` 退化为相等断言）
-→ 进 **P2 Excel 做深**（第一波：挂出 20 个已实现却无出口的 Excel action）。
+- **P1-5（FIXES 37，P1 收尾）**：最后一张手写表 `$helperKeys` 也进 spec（`mcp/src/spec/bridge-helpers.ts`
+  → `spec/param-helpers.json`），宿主产物**逐字节未变**；同时给"读不出参数的 action"上闸——
+  例外必须写进 spec 的 `dynamicParamActions`，未声明就让生成器失败（负向验证过）。
+  **三张人手表全部归零**，P1 完成。
+
+下一步：**P2 Excel 做深** —— 第一波：挂出 20 个已实现却无出口的 Excel action（named range / 条件格式 /
+数据验证的读与删、autofit、wrapText、groupColumns、findInSheet、refreshLinks…）+ used range 一等公民；
+之后 ListObject 全族。
 
 

@@ -72,16 +72,19 @@ $paramContainers = @{}
 $containerJson = Get-Content (Join-Path $specDir 'param-containers.json') -Raw | ConvertFrom-Json
 foreach ($action in $containerJson.PSObject.Properties) { $paramContainers[$action.Name] = @($action.Value) }
 
-$helperKeys = @{
-    'Resolve-Worksheet'    = @('sheet', 'name', 'oldName')
-    'Get-TargetPres'       = @('presentationName')
-    'Get-WorksheetByParam' = @('sheet')
-    'Get-RowRefList'       = @('rows', 'row', 'count', 'startRow', 'endRow')
-    'Get-ColumnRefList'    = @('columns', 'column', 'count', 'startColumn', 'endColumn')
-    'Resolve-PictureIndex' = @('name', 'shapeName', 'shapeIndex', 'imageIndex')
-    'Resolve-TextBoxIndex' = @('name', 'shapeName', 'shapeIndex', 'textboxIndex')
-    'Get-PptBackgroundSpec' = @('background', 'type', 'color', 'colors', 'imagePath')
-}
+# Keys read by the shared resolvers (Resolve-Worksheet, Get-RowRefList, ...). An action that hands
+# its bare $p to one of them inherits those keys, so the guard must accept them too. The table now
+# comes from the operation spec (mcp/src/spec/bridge-helpers.ts) instead of being hand-written here.
+$helperKeys = @{}
+$helperJson = Get-Content (Join-Path $specDir 'param-helpers.json') -Raw | ConvertFrom-Json
+foreach ($helper in $helperJson.PSObject.Properties) { $helperKeys[$helper.Name] = @($helper.Value) }
+
+# Actions whose parameter keys cannot be read statically are declared in the spec. Anything dynamic
+# that is NOT declared makes this generator fail: a silently skipped action means the guard does not
+# apply to it, and "changed but did nothing" then looks exactly like "changed correctly".
+$dynamicDeclared = @{}
+$dynamicJson = Get-Content (Join-Path $specDir 'param-dynamic.json') -Raw | ConvertFrom-Json
+foreach ($item in $dynamicJson.PSObject.Properties) { $dynamicDeclared[$item.Name] = [string]$item.Value }
 $dynamicPatterns = @('\$p\.\$', '\$p\[', '\$p\.PSObject', "Get-PropOrNull\s+\`$p\s+(?!')")
 $paramKeys = @{}
 $dynamicActions = New-Object System.Collections.Generic.List[string]
@@ -128,6 +131,12 @@ for ($i = 0; $i -lt $caseHits.Count; $i++) {
     if ($isDynamic) { [void]$dynamicActions.Add($caseName) }
     else { $paramKeys[$caseName] = @($keys | Sort-Object) }
 }
+# Fail loudly on an undeclared dynamic action: skipping it silently would leave it unguarded.
+$undeclaredDynamic = @($dynamicActions | Where-Object { -not $dynamicDeclared.ContainsKey($_) } | Sort-Object)
+if ($undeclaredDynamic.Count -gt 0) {
+    throw ('dynamic actions missing from spec/param-dynamic.json: ' + ($undeclaredDynamic -join ', ') + ' - declare each one (with a reason) in mcp/src/spec/aliases.ts')
+}
+
 $tableLines = foreach ($k in ($paramKeys.Keys | Sort-Object)) {
     $vals = ($paramKeys[$k] | ForEach-Object { "'$_'" }) -join ', '
     ("    '" + $k + "' = @(" + $vals + ")")
