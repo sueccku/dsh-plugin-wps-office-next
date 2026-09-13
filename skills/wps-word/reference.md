@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 文字工具（32）
+## WPS 文字工具（34）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -28,6 +28,8 @@
 | wps_word_get_open_documents | wps_call | 获取当前WPS Writer中所有已打开的文档列表。 |
 | wps_word_switch_document | wps_call | 切换到指定名称的文档。 |
 | wps_word_open_document | 直达 | 打开指定路径的Word文档。 |
+| wps_word_create_document | 直达 | 新建一个空白 Word 文档（不是打开已有文件）。 |
+| wps_word_close_document | wps_call | 关闭 Word 文档，可选是否保存。 |
 | wps_word_get_document_text | 直达 | 获取当前Word文档的文本内容。 |
 | wps_word_insert_header | wps_call | 设置页眉内容。 |
 | wps_word_insert_footer | wps_call | 设置页脚内容。 |

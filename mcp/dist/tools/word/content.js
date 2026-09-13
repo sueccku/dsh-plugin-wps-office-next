@@ -341,10 +341,24 @@ const getActiveDocumentHandler = async (_args) => {
         const response = await wps_client_1.wpsClient.executeMethod('getActiveDocument', {}, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const d = response.data;
+            // Report only what the bridge actually returned: the old fixed template printed
+            // "页数: undefined" whenever WPS could not compute a page count, and called the
+            // document name a "路径" for a document that has never been saved.
+            const lines = [`当前文档: ${d.name || '(未命名文档)'}`];
+            const onDisk = typeof d.path === 'string' && d.path.includes('\\');
+            lines.push(`路径: ${onDisk ? d.path : '(尚未保存到磁盘)'}`);
+            if (typeof d.pageCount === 'number')
+                lines.push(`页数: ${d.pageCount}`);
+            if (typeof d.paragraphCount === 'number')
+                lines.push(`段落数: ${d.paragraphCount}`);
+            if (typeof d.characterCount === 'number')
+                lines.push(`字符数: ${d.characterCount}`);
+            if (typeof d.wordCount === 'number')
+                lines.push(`单词数: ${d.wordCount}`);
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [{ type: 'text', text: `当前文档: ${d.name}\n路径: ${d.path}\n页数: ${d.pageCount}\n字数: ${d.wordCount}` }],
+                content: [{ type: 'text', text: lines.join('\n') }],
             };
         }
         return {

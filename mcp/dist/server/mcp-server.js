@@ -678,7 +678,23 @@ class WpsMcpServer {
                 pool = pool.filter((tool) => tool.name.startsWith('wps_' + app + '_'));
             }
             if (query) {
-                pool = pool.filter((tool) => tool.name.toLowerCase().includes(query) || (tool.description || '').toLowerCase().includes(query));
+                // Free-text search: score per token (plus CJK bigrams) instead of testing the whole
+                // phrase as one substring, which answered "matched: 0" for natural multi-word asks.
+                const tokens = (0, toolset_1.tokenizeHelpQuery)(query);
+                pool = pool
+                    .map((tool) => ({ tool, score: (0, toolset_1.scoreToolHelpMatch)(tool.name, tool.description || '', query, tokens) }))
+                    .filter((entry) => entry.score > 0)
+                    .sort((a, b) => b.score - a.score || a.tool.name.localeCompare(b.tool.name))
+                    .map((entry) => entry.tool);
+            }
+            if (query && pool.length === 0) {
+                return text({
+                    matched: 0,
+                    shown: 0,
+                    truncated: false,
+                    tools: [],
+                    hint: '没有匹配的工具。改试 wps_help {app:"excel"|"word"|"ppt"} 列该应用目录，或 wps_help {tool:"完整工具名"} 取参数 schema。',
+                });
             }
             const shown = pool.slice(0, 60).map((tool) => ({
                 name: tool.name,

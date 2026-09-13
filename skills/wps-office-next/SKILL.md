@@ -31,10 +31,10 @@ whenToUse: 用户要求读取、创建、编辑、排版、分析、导出 WPS �
 
 ## 工具面
 
-默认 standard 档直接广告 43 个工具，其余工具仍然完全可用：
+默认 standard 档直接广告 44 个工具，其余工具仍然完全可用：
 
 - 直接广告的工具见各应用技能与同目录 reference.md。
-- 未广告的工具：先 wps_help {app:"ppt"} 查目录，或 wps_help {query:"chart"} 搜索，再用 wps_help {tool:"wps_ppt_set_animation"} 取完整参数 schema，最后用 wps_call {tool, args} 执行。
+- 未广告的工具：先 wps_help {app:"ppt"} 查目录，或 wps_help {query:"chart"} 搜索（支持中文与中英混排，例如 query:"关闭工作簿"、query:"新建 文档 create new"），再用 wps_help {tool:"wps_ppt_set_animation"} 取完整参数 schema，最后用 wps_call {tool, args} 执行。搜不到时结果会带 hint，别把「没搜到」当成「没有这个能力」。
 - 多个连续操作可用 wps_batch 一次提交，最多 50 项。
 - 未广告的工具也可以按全名直接调用，wps_help 只负责让你发现它们。
 
@@ -50,7 +50,8 @@ whenToUse: 用户要求读取、创建、编辑、排版、分析、导出 WPS �
 
 ## 保存、关闭与转换
 
-- **关闭不会弹模态框**：三个 close 工具（表格/演示有对应工具，文字用 wps_call 调 closeDocument）都会关闭对话框保护。对**从未落盘**的文档，即使要求 save=true 也会改为不保存关闭，并在结果里返回 warning——此时要如实告诉用户文件没有写盘，必要时改用 save_as。
+- **新建**：表格 `wps_excel_create_workbook`、文字 `wps_word_create_document`（在广告位）、演示 `wps_ppt_create_presentation`；表格与演示这两个不在广告位，用 wps_call 调用。要起草新内容就先新建，不要去找一个并不存在的文件打开。
+- **关闭不会弹模态框**：`wps_excel_close_workbook` / `wps_word_close_document` / `wps_ppt_close_presentation` 三个都不在广告位、用 wps_call 调，且都做了对话框保护。对**从未落盘**的文档，即使要求 save=true 也会改为不保存关闭，并在结果里返回 warning——此时要如实告诉用户文件没有写盘，必要时改用 save_as。
 - **wps_common_save_as 的路径键是 filePath**，另存为失败或未写盘时不要报告成功。
 - **转换要指定应用**：wps_convert_to_pdf / wps_convert_format 支持 app_type（excel/word/ppt）。不指定时按 Excel → Word → PPT 取第一个正在运行的文档——**Excel 常开着会让"把 Word 转成 PDF"导出工作簿**，所以转换前显式传 app_type。指定了却没有对应文档会明确报错，不会退回别的应用。
 - openAfterExport=true 时导出后会自动打开文件，结果里回报 opened / failed。

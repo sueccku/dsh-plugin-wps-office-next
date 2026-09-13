@@ -73,7 +73,21 @@ const getOpenWorkbooksHandler = async (_args) => {
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `获取工作簿列表失败: ${response.error}` }], error: response.error };
         }
-        const list = response.data?.workbooks || [];
+        // The bridge returns one object per workbook ({name, path, sheets, active}); joining them
+        // straight into the text printed "[object Object]" for every open workbook.
+        const list = (response.data?.workbooks || []).map((entry) => {
+            if (typeof entry === 'string')
+                return entry;
+            const parts = [entry?.name || '(未命名工作簿)'];
+            // An unsaved workbook reports its name as its FullName; showing it twice reads like a bug.
+            if (entry?.path && entry.path !== entry.name)
+                parts.push(entry.path);
+            if (typeof entry?.sheets === 'number')
+                parts.push(`${entry.sheets} 个工作表`);
+            if (entry?.active)
+                parts.push('当前活动');
+            return parts.join(' | ');
+        });
         return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `已打开的工作簿 (${list.length}个):\n${list.join('\n') || '无'}` }] };
     }
     catch (error) {

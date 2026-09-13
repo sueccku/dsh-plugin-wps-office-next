@@ -30,16 +30,20 @@ let bytes = 0;
 for (const t of list.result.tools) bytes += Buffer.byteLength(JSON.stringify(t), "utf8");
 // The byte count shrinks whenever a schema is tightened (removing an unimplemented parameter does
 // exactly that), so this asserts the budget instead of a snapshot that would need editing each time.
-check("advertised surface stays within budget", list.result.tools.length === 43 && bytes <= 25000, list.result.tools.length + " tools / " + bytes + " bytes");
+// Budget: <= 45 advertised tools / <= 25000 bytes of tool schema (see docs/FIXES.md).
+const ADVERTISED_TOOL_BUDGET = 45;
+const ADVERTISED_BYTE_BUDGET = 25000;
+check("advertised surface stays within budget", list.result.tools.length <= ADVERTISED_TOOL_BUDGET && bytes <= ADVERTISED_BYTE_BUDGET, list.result.tools.length + " tools / " + bytes + " bytes");
 
 const help = payload(await req(id++, "tools/call", { name: "wps_help", arguments: {} }));
 // Derived from the merge table instead of a frozen number: the total moves every time a duplicate
 // is collapsed, and a snapshot would just need editing again.
 const deprecatedCount = Object.keys(DEPRECATED_TOOLS).length;
-// 235 = the 254 catalog tools minus the 19 scenario wrappers that moved to skills/wps-ppt as
-// recipes (KPI 卡片/时间线/流程图/仪表盘/环形图/进度条/... 见 SKILL.md 的组合配方一节).
-const registeredCount = 235;
-check("wps_help total excludes deprecated", help.total === registeredCount - deprecatedCount, "total=" + help.total + " registered=" + registeredCount + " deprecated=" + deprecatedCount);
+// The registered count comes from the running server (wps_status), not from a frozen number nor
+// from allTools (which does not see the facade tools the server registers itself): adding a tool
+// kept breaking a snapshot that carries no meaning of its own.
+const status = payload(await req(id++, "tools/call", { name: "wps_status", arguments: {} }));
+check("wps_help total excludes deprecated", help.total === status.registeredTools - deprecatedCount, "total=" + help.total + " registered=" + status.registeredTools + " deprecated=" + deprecatedCount);
 
 const search = payload(await req(id++, "tools/call", { name: "wps_help", arguments: { query: "zoom" } }));
 const searchNames = (search.tools || []).map((t) => t.name);
@@ -48,7 +52,6 @@ check("deprecated hidden from search", !searchNames.includes("wps_excel_zoom"), 
 const explicit = payload(await req(id++, "tools/call", { name: "wps_help", arguments: { tool: "wps_excel_zoom" } }));
 check("explicit lookup reports deprecation", explicit.deprecated === true && explicit.canonical === "wps_excel_set_zoom", JSON.stringify(explicit).slice(0, 140));
 
-const status = payload(await req(id++, "tools/call", { name: "wps_status", arguments: {} }));
 check("wps_status reports merged count", status.deprecatedTools === deprecatedCount, "deprecatedTools=" + status.deprecatedTools + " expected=" + deprecatedCount);
 
 const created = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_excel_create_workbook", args: {} } });

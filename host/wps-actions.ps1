@@ -536,6 +536,33 @@ function Convert-HexColorToRgbInt([string]$hex) {
     return $r + ($g * 256) + ($b * 65536)
 }
 
+# Parse an A1-style address ("D1:D2", "$D$1:$E$2", "D1") into its top-left cell and span.
+# Needed where WPS's range geometry (Range.Row/Column/Rows.Count) misbehaves in the resident host.
+function Get-AddressSpan([string]$address) {
+    if (-not $address) { return $null }
+    $clean = $address.Replace('$', '').Replace(' ', '')
+    if ($clean -notmatch '^[A-Za-z]+[0-9]+(:[A-Za-z]+[0-9]+)?$') { return $null }
+    $parts = $clean.Split(':')
+    $null = $parts[0] -match '^([A-Za-z]+)([0-9]+)$'
+    $firstCol = Convert-ColumnLetterToNumber $matches[1]
+    $firstRow = [int]$matches[2]
+    if ($parts.Count -eq 2) {
+        $null = $parts[1] -match '^([A-Za-z]+)([0-9]+)$'
+        $lastCol = Convert-ColumnLetterToNumber $matches[1]
+        $lastRow = [int]$matches[2]
+    } else {
+        $lastCol = $firstCol
+        $lastRow = $firstRow
+    }
+    if ($null -eq $firstCol -or $null -eq $lastCol) { return $null }
+    return @{
+        Row = [Math]::Min($firstRow, $lastRow)
+        Column = [Math]::Min($firstCol, $lastCol)
+        RowCount = [Math]::Abs($lastRow - $firstRow) + 1
+        ColumnCount = [Math]::Abs($lastCol - $firstCol) + 1
+    }
+}
+
 function Get-RangeFromAddress($workbook, [string]$address) {
     if ($address -match "^(?<sheet>[^!]+)!(?<range>.+)$") {
         $sheetName = $matches.sheet.Trim("'")
@@ -1071,8 +1098,16 @@ return }
     "createDocument" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $word.Documents.Add() | Out-Null
-        Output-Json @{ success = $true }
+        $created = $null
+        $createError = $null
+        try { $created = $word.Documents.Add() } catch { $createError = $_.Exception.Message }
+        if ($null -ne $createError) { Output-Json @{ success = $false; error = ("cannot create a document: " + $createError) }; return }
+        $data = @{}
+        try {
+            $newDoc = if ($null -ne $created) { $created } else { $word.ActiveDocument }
+            if ($null -ne $newDoc) { $data.name = [string]$newDoc.Name }
+        } catch { Add-WpsWarning ("could not read the new document name: " + $_.Exception.Message) }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "createPresentation" {
@@ -1490,8 +1525,38 @@ return }
         $wb = $excel.ActiveWorkbook
         $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
         $range = if ($p.range) { $sheet.Range($p.range) } else { $sheet.Cells.Item($p.row, $p.col) }
-        $range.Formula = $p.formula
-        Output-Json @{ success = $true }
+        $cellCount = $range.Cells.Count
+        $span = Get-AddressSpan ([string]$p.range)
+        if ($cellCount -eq 1) {
+            $range.Formula = $p.formula
+        } else {
+            # A multi-cell target needs a different route, measured against the resident host:
+            # assigning Formula on a multi-cell Range fails there ("this object has no property
+            # Formula") where Excel broadcasts, and Range geometry (Row/Column/Rows.Count) plus
+            # the one-argument Range.Cells.Item(index) also failed there. Parse the address and
+            # write every cell through the worksheet's two-argument Cells accessor.
+            if ($null -eq $span) {
+                Output-Json @{ success = $false; error = ("cannot broadcast a formula over multiple cells for range '" + [string]$p.range + "'; use an A1 range or set one cell at a time") }
+return }
+            for ($r = 0; $r -lt $span.RowCount; $r++) {
+                for ($c = 0; $c -lt $span.ColumnCount; $c++) {
+                    $sheet.Cells.Item($span.Row + $r, $span.Column + $c).Formula = $p.formula
+                }
+            }
+        }
+        $setFormulaData = @{ formula = [string]$p.formula; cellCount = $cellCount }
+        # A multi-cell range reads back as a 2D array, so read the target's first cell explicitly:
+        # a value nobody read must not end up reported as null.
+        try {
+            $value = $null
+            if ($null -ne $span) {
+                $value = $sheet.Cells.Item($span.Row, $span.Column).Value2
+            } elseif ($cellCount -eq 1) {
+                $value = $range.Value2
+            }
+            if ($null -ne $value) { $setFormulaData.value = $value }
+        } catch { Add-WpsWarning ("could not read back the computed value: " + $_.Exception.Message) }
+        Output-Json @{ success = $true; data = $setFormulaData }
     }
 
     "setCellFormat" {
@@ -2964,6 +3029,9 @@ return }
         Output-Json @{ success = $true; data = @{
             name = $doc.Name; path = $doc.FullName
             paragraphCount = $doc.Paragraphs.Count; wordCount = $doc.Words.Count; characterCount = $doc.Characters.Count
+            # wdStatisticPages = 2. Not every WPS build answers this; a failed call warns instead of
+            # reporting a page count nobody computed.
+            pageCount = $(try { [int]$doc.ComputeStatistics(2) } catch { Add-WpsWarning ("page count unavailable: " + $_.Exception.Message); $null })
         }}
     }
 

@@ -9,6 +9,8 @@
  * - wps_word_get_open_documents: 获取所有已打开的文档列表
  * - wps_word_switch_document: 切换到指定文档
  * - wps_word_open_document: 打开指定路径的文档
+ * - wps_word_create_document: 新建空白文档
+ * - wps_word_close_document: 关闭文档（可选保存）
  * - wps_word_get_document_text: 获取文档文本内容
  * - wps_word_insert_header: 设置页眉内容
  * - wps_word_insert_footer: 设置页脚内容
@@ -716,12 +718,114 @@ export const setLineSpacingHandler: ToolHandler = async (
 };
 
 /**
+ * 新建空白文档
+ */
+export const createDocumentDefinition: ToolDefinition = {
+  name: 'wps_word_create_document',
+  description: `新建一个空白 Word 文档（不是打开已有文件）。
+
+使用场景：
+- "新建一个 Word 文档"
+- "把结论写进一个新文档里"
+- 需要从零起草，而不是编辑现有文档时
+
+新建后用 wps_word_insert_text 写内容，用 wps_common_save_as 保存到磁盘。`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+export const createDocumentHandler: ToolHandler = async (
+  _args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  try {
+    const response = await wpsClient.executeMethod<{ name?: string }>(
+      'createDocument',
+      {},
+      WpsAppType.WRITER
+    );
+    if (response.success) {
+      const name = response.data?.name;
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [{ type: 'text', text: `已新建空白文档${name ? ': ' + name : ''}` }],
+      };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `新建文档失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `新建文档出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 关闭文档
+ */
+export const closeDocumentDefinition: ToolDefinition = {
+  name: 'wps_word_close_document',
+  description: `关闭 Word 文档，可选是否保存。
+
+使用场景：
+- "关掉这个文档，别留着"
+- 一批任务收尾时清理打开的文档
+
+从未保存到磁盘的文档不会被强制保存（不会弹出保存对话框），此时结果里会带 warning 说明。`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: '要关闭的文档名称；不填则关闭当前活动文档' },
+      save: { type: 'boolean', description: '是否保存后关闭，默认 true' },
+    },
+  },
+};
+
+export const closeDocumentHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { name, save } = args as { name?: string; save?: boolean };
+  try {
+    const response = await wpsClient.executeMethod<{
+      closed: string;
+      saved: boolean;
+      saveRequested?: boolean;
+      warning?: string;
+    }>('closeDocument', { name, save }, WpsAppType.WRITER);
+    if (response.success && response.data) {
+      const d = response.data;
+      const lines = [`文档已关闭: ${d.closed}（${d.saved ? '已保存' : '未保存'}）`];
+      if (d.warning) lines.push('注意: ' + d.warning);
+      return { id: uuidv4(), success: true, content: [{ type: 'text', text: lines.join('\n') }] };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `关闭文档失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `关闭文档出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
  * 导出所有文档管理相关的Tools
  */
 export const documentTools: RegisteredTool[] = [
   { definition: getOpenDocumentsDefinition, handler: getOpenDocumentsHandler },
   { definition: switchDocumentDefinition, handler: switchDocumentHandler },
   { definition: openDocumentDefinition, handler: openDocumentHandler },
+  { definition: createDocumentDefinition, handler: createDocumentHandler },
+  { definition: closeDocumentDefinition, handler: closeDocumentHandler },
   { definition: getDocumentTextDefinition, handler: getDocumentTextHandler },
   { definition: insertHeaderDefinition, handler: insertHeaderHandler },
   { definition: insertFooterDefinition, handler: insertFooterHandler },

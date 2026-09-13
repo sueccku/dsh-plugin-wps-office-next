@@ -52,7 +52,7 @@ wps_excel_get_sheet_list、wps_excel_read_range、wps_excel_write_range、wps_ex
 1. wps_excel_get_open_workbooks 或 wps_excel_get_sheet_list 确认目标工作簿与工作表。
 2. 写入前先 read_range 看现有内容，避免覆盖用户数据。
 3. 写入用 write_range 一次提交整块数据。
-4. 公式用 set_formula，单元格地址必须是有效的 A1 记法。
+4. 公式用 set_formula，单元格地址必须是有效的 A1 记法。**给区域设公式会把同一个公式字符串写进每个单元格**（与 Excel 的 Formula 赋值一致，不会按行/列调整相对引用）——需要逐行递增的引用就逐格调用，或直接用 write_range 写入数值。
 5. 图表与透视表的源区域必须包含表头行、数据连续无空行。
 6. 写回后用 read_range 复验，再 wps_common_save。
 
@@ -64,5 +64,6 @@ wps_excel_get_sheet_list、wps_excel_read_range、wps_excel_write_range、wps_ex
 - 插入图片的路径可以是相对路径（按当前工作目录解析），文件不存在会明确报 image file not found。
 - create_chart 没有 has_header 参数（此前宣称但无法实现，已移除）；图表类型用 chart_type。
 - 全列引用如 A:A 在公式里代价高，尽量写成 A1:A1000 这类有界区域。
+- set_formula 写区域时**不做相对引用调整**：对 B2:B5 一次写入 `=SUMIF(明细!$A$2:$A$13,A2,明细!$C$2:$C$13)`，B2:B5 会全部引用 A2，看起来像公式算错。结果文本里会带这条提示；要逐行公式请逐格调用 set_formula。
 - generate_formula 需要 description 参数，不传会校验失败。
 - 导出图片依赖剪贴板，并发或无人值守时可能失败，失败信息要如实上报。

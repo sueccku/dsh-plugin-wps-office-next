@@ -23,6 +23,30 @@ import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
 
 /**
+ * Render the computed value the bridge read back after a formula write.
+ * The bridge reads it only for a single-cell target, so anything else must not be
+ * reported as "计算结果: null" — that reads as a failed calculation.
+ */
+function describeFormulaValue(data: { value?: unknown; cellCount?: number } | undefined): string {
+  const cellCount = typeof data?.cellCount === 'number' ? data.cellCount : 1;
+  const parts: string[] = [];
+  if (data && Object.prototype.hasOwnProperty.call(data, 'value')) {
+    parts.push(`\n计算结果${cellCount > 1 ? '（区域首格）' : ''}: ${JSON.stringify(data.value)}`);
+  } else {
+    parts.push('\n计算结果: 未回读（可用 wps_excel_read_range 复验）');
+  }
+  if (cellCount > 1) {
+    // Excel broadcasts one formula string to the whole target without shifting relative
+    // references, and a caller who expects per-row results reads the trap as a broken SUMIF.
+    parts.push(
+      `\n注意: 已向 ${cellCount} 个单元格写入同一个公式（与 Excel 一致，不做相对引用调整）；` +
+        '需要逐行/逐列递增的公式时，请逐格调用 wps_excel_set_formula，或直接用 wps_excel_write_range 写入数值。'
+    );
+  }
+  return parts.join('');
+}
+
+/**
  * 设置公式到指定单元格
  * 公式功能的执行端，负责将生成的公式写入单元格
  */
@@ -70,7 +94,7 @@ export const setFormulaHandler: ToolHandler = async (
   }
 
   try {
-    const response = await wpsClient.executeMethod(
+    const response = await wpsClient.executeMethod<{ value?: unknown; cellCount?: number }>(
       'setFormula',
       { range, formula, sheet },
       WpsAppType.SPREADSHEET
@@ -83,7 +107,9 @@ export const setFormulaHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `公式设置成功！\n单元格: ${range}\n公式: ${formula}\n计算结果: ${JSON.stringify(response.data ?? null)}`,
+            // Only claim a computed value when the bridge read one back; the old line
+            // printed "计算结果: null" for every multi-cell range, which read as a failure.
+            text: `公式设置成功！\n单元格: ${range}\n公式: ${formula}${describeFormulaValue(response.data)}`,
           },
         ],
       };

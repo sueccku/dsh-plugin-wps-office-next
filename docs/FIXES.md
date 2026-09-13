@@ -582,6 +582,82 @@ align_shapes 的 shapeIndices 变可选。
 技能同步：`skills/wps-office-next/SKILL.md` 的失败处理一节增加一条——结果里可能出现 `warnings`，
 涉及本次操作时要如实转述给用户，不要因为它 `success` 为真就忽略。
 
+### 24. 第一次真实端到端验证：一次任务暴露 5 个缺陷（已修）
+
+前 23 条都是读代码或单点测试找出来的。为了知道**模型真的用起来是什么样**，跑了一次真实端到端：
+新建 headless profile（`dsh --profile wpse2e --from-default-profile headless`）→
+`dsh plugin --profile wpse2e add D:\dsh\a` → 给一个跨应用任务，事后把会话日志逐帧解码，
+复盘每一次工具调用（`$DSH_HOME/sessions/--D-dsh-a--/session-*.jsonl.zstd` 是**追加式拼接的
+多个 zstd 帧**，Node 只解第一帧，必须按帧边界切分才能拿到全部事件）。
+
+**任务**：打开 `sales.xlsx`（12 行明细）→ 按「地区」汇总写入新工作表「汇总」并降序 →
+画簇状柱形图 → 新建 Word 文档写结论另存为 `结论.docx` → 保存并关闭这两个文件。
+
+**结果**：72 秒，exit 0。两个产物**另起 COM 会话独立复核**：「汇总」A1:B5 = 华北 330 / 华南 280 /
+华东 240 / 西南 165；图表 ChartType=51（簇状柱形）、带标题、无图例、1 个系列；`结论.docx` 3 段
+（标题 1 + 正文）145 字符；收尾后已打开工作簿 0、文档 0。
+
+**模型侧表现**（这部分是本轮最想知道的）：3 个技能按需触发（router → excel → word）；
+用 `wps_help {tool:...}` 取隐藏工具 schema；用 `wps_batch` 合并调用；用
+`export_chart_as_image` + `read_image` **自己导出图片看图表画对没有**；全程没自写 COM 脚本；
+最终报告的数字与实测一致。19 次工具调用，其中 7 次 `wps_help`、6 次 `wps_call`。
+
+它自报的 4 处异常里，有 4 条都指向真问题：`wps_help` 分词不中、Word 没有「新建文档」直达工具、
+`get_open_workbooks` 打印 `[object Object]`、`set_formula` 回读 `null`。下面 5 条即这些问题的修复。
+
+### 25. wps_help 自由文本检索：整串子串 → 分词 + CJK 二元组（已修）
+
+`wps_help` 的 `query` 把整条查询当成一个子串去 `name/description.includes(query)`，于是模型最自然的
+两种问法都返回 0 命中：`"新建 文档 create new"`、`"close workbook 关闭"`。它只能退回 grep 技能文档找工具名，
+多花了 4 次调用才够到目标。
+
+现在按 token 打分（名称命中 4 分 / 描述命中 2 分 / 整串命中 10–12 分），并对中文再走一遍**二元组覆盖率**
+（≥50% 才计分）：中文没有空格，`"关闭工作簿"` 并不是描述 `"关闭指定的Excel工作簿，可选是否保存"` 的子串，
+但 4 个二元组命中 3 个。命中 0 时返回 `hint` 指路，而不是把「没搜到」当成「不存在」。
+
+验证：`test/word-lifecycle.test.mjs` 前 5 项（中英混排、无空格中文、精确名排第一、0 命中带 hint）。
+
+### 26. get_open_workbooks 输出 `[object Object]`（已修）
+
+桥返回的是对象数组（`{name,path,sheets,active}`），工具层却声明成 `string[]` 直接 `join('\n')`，
+于是**每一个已打开的工作簿都显示成 `[object Object]`**，这个工具实际上无法用。
+现在逐项格式化成 `名称 | 完整路径 | N 个工作表 | 当前活动`；未落盘的工作簿 FullName 等于名字，只显示一次。
+
+### 27. get_active_document 输出 `undefined`，并把文档名当路径（已修）
+
+固定模板 `页数: ${d.pageCount}` 必然打印 `页数: undefined`（桥从来不返回 pageCount），
+未保存的文档 `FullName` 其实是它的名字 `文字文稿1`，却被打上「路径」标签。
+现在只打印桥真正返回的字段，并补上真实 `pageCount`（`ComputeStatistics(2)`，失败则记 warning 而不是编一个数），
+未落盘文档显示 `路径: (尚未保存到磁盘)`。
+
+### 28. set_formula：回读 `null` + 多格广播在常驻宿主里直接失败（已修）
+
+两件事：
+
+1. 桥只回 `{success:true}`，工具层却写 `计算结果: ${JSON.stringify(data ?? null)}`——**每一次**公式写入
+   都显示「计算结果: null」，读起来像算错了。现在单格回读真实值，多格明确标注「（区域首格）」。
+2. 顺手加的回归测试立刻抓出更硬的问题：`Range("D1:D2").Formula = x` 在**常驻宿主**里直接失败
+   （`在此对象上找不到属性"Formula"`），而 Excel 会把它广播到整个区域。实测三种取格方式在宿主里都不可靠
+   （一参 `Range.Cells.Item(i)` 报「索引超出了数组界限」，`Range.Row/Column/Rows.Count` 报「值不在预期的范围内」），
+   最终改为**自己解析 A1 地址**（新增 `Get-AddressSpan`）+ 工作表双参 `Cells.Item(r,c)` 逐格写入。
+
+值得记下的一条经验：同一个 COM 调用在进程内 `New-Object` 与常驻宿主里的行为**不一样**——
+探针脚本跑通不等于宿主里跑通。三处失败里有两处只在宿主里出现。
+
+验证：`word-lifecycle.test.mjs` 的 2 项公式检查（单格 10、多格「区域首格: 10」，且结果不含 `null`）。
+
+### 29. Word 缺少「新建/关闭文档」工具（已修）
+
+Excel 有 `create_workbook`/`close_workbook`、PPT 有 `create_presentation`，**Word 连隐藏的建/关工具都没有**：
+桥里的 `createDocument`/`closeDocument` 两个 action 只能靠 `wps_execute_method` 拼 COM 方法名去够。
+e2e 里模型正是这么绕过去的。
+
+现在补上 `wps_word_create_document` 与 `wps_word_close_document`；前者**加入 standard 广告位**
+（Word 是第 2 优先级，而它是唯一连隐藏工具都查不到的路径），后者保持隐藏、由修好的 `wps_help` 检索得到。
+桥侧 `createDocument` 同时改为回报新文档名、失败时明确报错，不再只回一个 `{success:true}`。
+
+预算：广告面 43 → **44 工具 / 23,593 字节**（上限 45 / 25,000），注册目录 235 → 237，桥 action 仍 259。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -610,9 +686,13 @@ align_shapes 的 shapeIndices 变可选。
 | test/excel-contract-fixes.test.mjs | 35 | 25 处参数错配逐个真实验证、跨应用批注污染 |
 
 | test/file-ops.test.mjs | 11 | 另存/打开的路径、按应用转换、页眉页脚分节 |
+| test/merged-tools.test.mjs | 31 | 合并后的转发、参数改名与隐藏 |
+| test/warnings.test.mjs | 7 | warnings 机制：尽力而为的失败如实回传 |
+| test/ppt-contract-fixes.test.mjs | 57 | PPT 参数契约逐项修复 |
+| test/word-lifecycle.test.mjs | 17 | e2e 暴露的 5 个缺陷（第 24～29 条） |
 
-合计 197 项，加 node scripts/verify.mjs 22 项门禁（含 45 工具 / 25,000 字节预算）。
+合计 **309 项**（16 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 45 工具 / 25,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 212 对工具/action 的参数契约对账一遍，
-结果写入 docs/param-contract.md。它不参与通过/失败门禁（当前仍有 85 处待修），
-但把「还有多少静默失效」变成了一个随时可查、只会变小的数字。
+另有 node scripts/param-contract.mjs：零副作用地把 211 对工具/action 的参数契约对账一遍，
+结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
+动态键闸门跳过）与 9 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

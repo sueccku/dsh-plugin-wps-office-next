@@ -9,6 +9,8 @@
  * - wps_word_get_open_documents: 获取所有已打开的文档列表
  * - wps_word_switch_document: 切换到指定文档
  * - wps_word_open_document: 打开指定路径的文档
+ * - wps_word_create_document: 新建空白文档
+ * - wps_word_close_document: 关闭文档（可选保存）
  * - wps_word_get_document_text: 获取文档文本内容
  * - wps_word_insert_header: 设置页眉内容
  * - wps_word_insert_footer: 设置页脚内容
@@ -62,6 +64,16 @@ export declare const insertSectionBreakHandler: ToolHandler;
  */
 export declare const setLineSpacingDefinition: ToolDefinition;
 export declare const setLineSpacingHandler: ToolHandler;
+/**
+ * 新建空白文档
+ */
+export declare const createDocumentDefinition: ToolDefinition;
+export declare const createDocumentHandler: ToolHandler;
+/**
+ * 关闭文档
+ */
+export declare const closeDocumentDefinition: ToolDefinition;
+export declare const closeDocumentHandler: ToolHandler;
 /**
  * 导出所有文档管理相关的Tools
  */

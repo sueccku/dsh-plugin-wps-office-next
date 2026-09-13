@@ -51,6 +51,7 @@ export const STANDARD_TOOLS: string[] = [
   'wps_word_generate_toc',
   'wps_word_smart_fill_field',
   'wps_word_open_document',
+  'wps_word_create_document',
   // Presentation
   'wps_ppt_get_slide_count',
   'wps_ppt_get_slide_info',
@@ -103,4 +104,62 @@ export function compactDescription(text: string, max = 110): string {
   const stop = flat.search(/[。.!?]/);
   if (stop >= 0 && stop + 1 <= max) return flat.slice(0, stop + 1);
   return flat.slice(0, max - 1) + '…';
+}
+
+/**
+ * Split a wps_help free-text query into searchable tokens.
+ * Whitespace and punctuation separate tokens; CJK runs stay whole because there is
+ * nothing to split on, and the bigram path below covers those.
+ */
+export function tokenizeHelpQuery(query: string): string[] {
+  return (query || '')
+    .toLowerCase()
+    .split(/[\s,，、;；:：/|+()（）\[\]【】"'“”]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+}
+
+/**
+ * Relevance score for a wps_help query against one tool; 0 means "not a match".
+ *
+ * A model asks in whatever words fit its task ("close workbook 关闭", "新建 文档 create
+ * new"), so a whole-phrase substring test answered "matched: 0" for queries a human would
+ * call obvious. Score per token instead, and give CJK queries a bigram path: a space-less
+ * query like "关闭工作簿" is not a substring of "关闭指定的Excel工作簿" but shares three of
+ * its four bigrams.
+ */
+export function scoreToolHelpMatch(
+  name: string,
+  description: string,
+  query: string,
+  tokens: string[]
+): number {
+  const toolName = (name || '').toLowerCase();
+  const toolDescription = (description || '').toLowerCase();
+  const phrase = (query || '').trim().toLowerCase();
+  if (!phrase) return 0;
+
+  let score = 0;
+  if (toolName.includes(phrase)) score += 12;
+  else if (toolDescription.includes(phrase)) score += 10;
+
+  for (const token of tokens) {
+    if (token.length < 2) continue;
+    if (toolName.includes(token)) score += 4;
+    else if (toolDescription.includes(token)) score += 2;
+  }
+
+  const cjk = [...phrase].filter((char) => /[\u3400-\u9fff]/.test(char));
+  if (cjk.length >= 2) {
+    const bigrams = new Set<string>();
+    for (let i = 0; i + 1 < cjk.length; i++) bigrams.add(cjk[i] + cjk[i + 1]);
+    let hits = 0;
+    for (const bigram of bigrams) {
+      if (toolName.includes(bigram) || toolDescription.includes(bigram)) hits++;
+    }
+    const coverage = hits / bigrams.size;
+    if (coverage >= 0.5) score += 6 * coverage;
+  }
+
+  return score;
 }
