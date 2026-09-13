@@ -50,7 +50,7 @@
 
 | # | 参数 | **决定** |
 |---|---|---|
-| D1 | 广告面预算 | **60 个 / ~32,000 字节**（上限同步调整） |
+| D1 | 广告面预算 | **70 个 / 40,000 字节**（2026-09-13 二次上抬；见 FIXES 42） |
 | D2 | Word 长尾边界 | **全都要**：表格/修订/页码/水印/文档属性/批注读删 + 内容控件/脚注尾注/分栏 + 邮件合并/索引/交叉引用 |
 | D3 | PPT 放弃清单 | **确认放弃**：媒体(视频/音频)、SmartArt、讲义、3D 族、美化族；**保留**：版式列表、主题、尺寸、母版、节 |
 | D4 | 兼容窗口 | **确认**：18 个废弃名保留一个发布周期（改为派发别名，不占注册位）；12 个 builtin 立即删 |
@@ -123,7 +123,7 @@
 | P2-1（**已完成**：18 个已挂，FIXES 38/39） | 挂出已有能力（零 COM 成本） | 21 个 Excel 缺口全部挂工具：named range get/delete、条件格式 get/remove、数据验证 get/remove、autofit×3、wrapText、groupColumns、unfreezePanes、findInSheet/replaceInSheet、copyFormat/clearFormats、refreshLinks、consolidate、calculateSheet、getExcelContext、getActiveWorkbook、openFile；**used range / sheet info 升为一等公民**（范围地址、行列数、表头、可见性、标签色） |
 | P2-2（**已完成**，FIXES 40） | ListObject 全族（新桥代码） | 从区域建表、列表/读取结构、增删行、总计行、表格样式、转回区域、resize、结构化引用、表内自动筛选 |
 | P2-3（**已完成**，FIXES 41） | 数据与打印族 | CSV/文本导入导出、页面设置（方向/纸张/边距/缩放/居中）、页眉页脚、打印标题、打印预览、工作表标签色与隐藏/显示、分级显示(Outline)、公式审计（依赖/被依赖/数组公式）、合并计算 |
-| P2-4 | 高级项（按实测） | 透视表删除/缓存/刷新、单变量求解(goalseek)、场景管理器、外部数据刷新、迷你图、切片器、图表删除与系列级设置 |
+| P2-4（**已完成**，FIXES 43） | 高级项（按实测） | 透视表删除/缓存/刷新、单变量求解(goalseek)、场景管理器、外部数据刷新、迷你图、切片器、图表删除与系列级设置 |
 | P2-5 | Excel 重场景 e2e | 新增一个真实 Excel 任务进一键 e2e（第二场景），覆盖 ListObject + 条件格式 + 打印设置 |
 
 ### P3 Word 做深
@@ -149,7 +149,7 @@
 | ID | 内容 |
 |---|---|
 | P5-1 | `execute_method` 去留决策（覆盖达标后收窄或删除） |
-| P5-2 | 重定广告面与预算（**D1 已在 P2 第一波提前生效：60 / 32,000**，此处只做最终复测），重生成 `wps_help` 紧凑索引 |
+| P5-2 | 重定广告面与预算（**D1 已两次提前生效：70 / 40,000**，此处只做最终复测），重生成 `wps_help` 紧凑索引 |
 | P5-3 | 文档同步：README 工具面、FIXES、PROGRESS、技能 `reference.md` 全部重生成 |
 | P5-4 | 发布准备：CHANGELOG、tag、Release、npm（真正要发时再做） |
 

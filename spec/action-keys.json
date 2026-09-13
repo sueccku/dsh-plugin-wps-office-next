@@ -30,6 +30,13 @@
   "table",
   "values"
  ],
+ "addSparkline": [
+  "dataRange",
+  "location",
+  "markers",
+  "sheet",
+  "sparklineType"
+ ],
  "autoFilter": [
   "column",
   "criteria",
@@ -67,10 +74,18 @@
   "range",
   "sheet"
  ],
+ "clearPivotTable": [
+  "pivotTable",
+  "sheet"
+ ],
  "clearRange": [
   "range",
   "sheet",
   "type"
+ ],
+ "clearSparkline": [
+  "location",
+  "sheet"
  ],
  "closeWorkbook": [
   "name",
@@ -133,6 +148,10 @@
  "createWorkbook": [],
  "deleteCellComment": [
   "cell",
+  "sheet"
+ ],
+ "deleteChart": [
+  "chart",
   "sheet"
  ],
  "deleteColumns": [
@@ -239,12 +258,21 @@
  ],
  "getNamedRanges": [],
  "getOpenWorkbooks": [],
+ "getPivotTables": [
+  "sheet"
+ ],
  "getSelection": [],
  "getExcelContext": [
   "sheet"
  ],
  "getSheetList": [],
  "getSheetSettings": [
+  "sheet"
+ ],
+ "goalSeek": [
+  "cell",
+  "changingCell",
+  "goal",
   "sheet"
  ],
  "groupColumns": [
@@ -321,7 +349,12 @@
   "range",
   "sheet"
  ],
+ "refreshAllData": [],
  "refreshLinks": [],
+ "refreshPivotTables": [
+  "pivotTable",
+  "sheet"
+ ],
  "removeConditionalFormat": [
   "index",
   "range",
@@ -376,6 +409,13 @@
   "row",
   "sheet",
   "value"
+ ],
+ "setChartLabels": [
+  "categoryAxisTitle",
+  "chart",
+  "sheet",
+  "title",
+  "valueAxisTitle"
  ],
  "setColumnWidth": [
   "column",

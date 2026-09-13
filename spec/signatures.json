@@ -80,6 +80,11 @@
   "effect": "read"
  },
  {
+  "tool": "wps_excel_add_sparkline",
+  "signature": "excel_add_sparkline(dataRange*, location*, sparklineType?, markers?, sheet?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_excel_auto_filter",
   "signature": "excel_auto_filter(range*, column?, criteria?, sheet?)",
   "effect": "write"
@@ -120,8 +125,18 @@
   "effect": "delete"
  },
  {
+  "tool": "wps_excel_clear_pivot_table",
+  "signature": "excel_clear_pivot_table(pivotTable*, sheet?)",
+  "effect": "delete"
+ },
+ {
   "tool": "wps_excel_clear_range",
   "signature": "excel_clear_range(range*, sheet?, type?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_clear_sparkline",
+  "signature": "excel_clear_sparkline(location*, sheet?)",
   "effect": "delete"
  },
  {
@@ -177,6 +192,11 @@
  {
   "tool": "wps_excel_delete_cell_comment",
   "signature": "excel_delete_cell_comment(cell*, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_delete_chart",
+  "signature": "excel_delete_chart(chart?, sheet?)",
   "effect": "delete"
  },
  {
@@ -300,6 +320,11 @@
   "effect": "lifecycle"
  },
  {
+  "tool": "wps_excel_get_pivot_tables",
+  "signature": "excel_get_pivot_tables(sheet?)",
+  "effect": "read"
+ },
+ {
   "tool": "wps_excel_get_selection",
   "signature": "excel_get_selection()",
   "effect": "read"
@@ -318,6 +343,11 @@
   "tool": "wps_excel_get_sheet_settings",
   "signature": "excel_get_sheet_settings(sheet?)",
   "effect": "read"
+ },
+ {
+  "tool": "wps_excel_goal_seek",
+  "signature": "excel_goal_seek(cell*, goal*, changingCell*, sheet?)",
+  "effect": "write"
  },
  {
   "tool": "wps_excel_group_columns",
@@ -395,8 +425,18 @@
   "effect": "read"
  },
  {
+  "tool": "wps_excel_refresh_all_data",
+  "signature": "excel_refresh_all_data()",
+  "effect": "write"
+ },
+ {
   "tool": "wps_excel_refresh_links",
   "signature": "excel_refresh_links()",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_refresh_pivot_tables",
+  "signature": "excel_refresh_pivot_tables(pivotTable?, sheet?)",
   "effect": "write"
  },
  {
@@ -452,6 +492,11 @@
  {
   "tool": "wps_excel_set_cell_value",
   "signature": "excel_set_cell_value(sheet*, row*, col*, value*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_chart_labels",
+  "signature": "excel_set_chart_labels(title?, categoryAxisTitle?, valueAxisTitle?, chart?, sheet?)",
   "effect": "write"
  },
  {

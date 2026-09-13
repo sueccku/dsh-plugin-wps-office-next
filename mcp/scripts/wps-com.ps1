@@ -674,11 +674,16 @@ function Get-ListObjectInfo($lo, [string]$sheetName, [string]$fallback) {
 }
 
 function Get-RangeFromAddress($workbook, [string]$address) {
+    # The leading comma on each return is load-bearing: PowerShell enumerates an enumerable return
+    # value, and a multi-cell Range IS enumerable (A1:C7 comes back as 21 single-cell ranges).
+    # Callers then handed that array to COM APIs - which is exactly why createPivotTable failed with
+    # HRESULT 0x800A03EC at "createCache" in the resident host while the same call worked from a fresh
+    # shell (FIXES 43). ",$range" emits the Range itself, not its cells.
     if ($address -match "^(?<sheet>[^!]+)!(?<range>.+)$") {
         $sheetName = $matches.sheet.Trim("'")
-        return $workbook.Sheets.Item($sheetName).Range($matches.range)
+        return ,$workbook.Sheets.Item($sheetName).Range($matches.range)
     }
-    return $workbook.ActiveSheet.Range($address)
+    return ,$workbook.ActiveSheet.Range($address)
 }
 
 function Get-AppTypeByExtension([string]$filePath) {
@@ -1238,35 +1243,50 @@ switch ($Action) {
         $destSheet = if ($p.destinationSheet) { $wb.Sheets.Item($p.destinationSheet) } else { $excel.ActiveSheet }
         $destCell = $destSheet.Range($p.destinationCell)
         $pivotName = if ($p.tableName) { $p.tableName } else { "PivotTable" + [Guid]::NewGuid().ToString("N").Substring(0, 6) }
-        $cache = $wb.PivotCaches().Create(1, $sourceRange)
-        $table = $cache.CreatePivotTable($destCell, $pivotName)
-        foreach ($fieldName in $p.rowFields) {
-            $field = $table.PivotFields($fieldName)
-            $field.Orientation = 1
-            $field.Position = 1
-        }
-        if ($p.columnFields) {
-            foreach ($fieldName in $p.columnFields) {
+        # 每一步都记下来：这个 action 以前没有任何 try/catch，出错只剩一个 HRESULT，没法定位。
+        $step = "createCache"
+        try {
+            $cache = $wb.PivotCaches().Create(1, $sourceRange)
+            $step = "createTable"
+            $table = $cache.CreatePivotTable($destCell, $pivotName)
+            $step = "rowFields"
+            foreach ($fieldName in $p.rowFields) {
                 $field = $table.PivotFields($fieldName)
-                $field.Orientation = 2
+                $field.Orientation = 1
                 $field.Position = 1
             }
-        }
-        if ($p.filterFields) {
-            foreach ($fieldName in $p.filterFields) {
-                $field = $table.PivotFields($fieldName)
-                $field.Orientation = 3
-                $field.Position = 1
+            if ($p.columnFields) {
+                $step = "columnFields"
+                foreach ($fieldName in $p.columnFields) {
+                    $field = $table.PivotFields($fieldName)
+                    $field.Orientation = 2
+                    $field.Position = 1
+                }
             }
+            if ($p.filterFields) {
+                $step = "filterFields"
+                foreach ($fieldName in $p.filterFields) {
+                    $field = $table.PivotFields($fieldName)
+                    $field.Orientation = 3
+                    $field.Position = 1
+                }
+            }
+            $step = "valueFields"
+            foreach ($vf in $p.valueFields) {
+                $field = $table.PivotFields($vf.field)
+                $funcMap = @{ SUM = -4157; COUNT = -4112; AVERAGE = -4106; MAX = -4136; MIN = -4139 }
+                $func = $funcMap[$vf.aggregation]
+                if ($null -eq $func) { $func = -4157 }
+                $table.AddDataField($field, $vf.field, $func) | Out-Null
+            }
+            $step = "readBack"
+            $rowCount = [int]$table.RowRange.Rows.Count
+            $columnCount = [int]$table.TableRange1.Columns.Count
+            $location = $destCell.Address()
+        } catch {
+            Output-Json @{ success = $false; error = ($step + ": " + $_.Exception.Message) }; exit
         }
-        foreach ($vf in $p.valueFields) {
-            $field = $table.PivotFields($vf.field)
-            $funcMap = @{ SUM = -4157; COUNT = -4112; AVERAGE = -4106; MAX = -4136; MIN = -4139 }
-            $func = $funcMap[$vf.aggregation]
-            if ($null -eq $func) { $func = -4157 }
-            $table.AddDataField($field, $vf.field, $func) | Out-Null
-        }
-        Output-Json @{ success = $true; data = @{ pivotTableName = $pivotName; location = $destCell.Address(); rowCount = $table.RowRange.Rows.Count; columnCount = $table.TableRange1.Columns.Count } }
+        Output-Json @{ success = $true; data = @{ pivotTableName = $pivotName; location = $location; rowCount = $rowCount; columnCount = $columnCount } }
     }
 
     "updatePivotTable" {
@@ -2836,6 +2856,207 @@ switch ($Action) {
             sheet = $sheet.Name; cell = [string]$p.cell; formula = $formula; hasFormula = $hasFormula
             precedents = $pre; dependents = $dep; directPrecedents = $direct
             precedentAddress = $preAddr; dependentAddress = $depAddr
+        } }
+    }
+
+# ==================== Excel 高级项：透视表 / 单变量求解 / 迷你图 / 图表（P2-4）====================
+    # 全部先用裸 COM 量过支持面。刻意推迟两项（都写进 FIXES 43）：
+    #   切片器：SlicerCaches.Add2 能建出缓存，但 Slicers.Count 仍是 0，用户可见效果不确定；
+    #   场景管理器：WPS 把 Worksheet.Scenarios 暴露成一个方法（$s.Scenarios() 才拿到集合），语义含糊。
+
+    "getPivotTables" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $targets = @()
+        if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $targets += $wb.Sheets.Item($p.sheet) }
+        else { for ($i = 1; $i -le $wb.Sheets.Count; $i++) { $targets += $wb.Sheets.Item($i) } }
+        $tables = @()
+        foreach ($sheet in $targets) {
+            $count = 0
+            try { $count = [int]$sheet.PivotTables.Count } catch { $count = 0 }
+            for ($i = 1; $i -le $count; $i++) {
+                $pt = $null
+                try { $pt = $sheet.PivotTables($i) } catch { continue }
+                $name = ""; try { $name = [string]$pt.Name } catch { $name = "" }
+                $range = ""; try { $range = Get-RangeAddressSafe $pt.TableRange2 "" } catch { $range = "" }
+                $rowField = ""; try { if ([int]$pt.RowFields().Count -ge 1) { $rowField = [string]$pt.RowFields(1).Name } } catch { $rowField = "" }
+                $dataField = ""; try { if ([int]$pt.DataFields().Count -ge 1) { $dataField = [string]$pt.DataFields(1).Name } } catch { $dataField = "" }
+                $tables += @{ sheet = $sheet.Name; index = $i; name = $name; range = $range; rowField = $rowField; dataField = $dataField }
+            }
+        }
+        Output-Json @{ success = $true; data = @{ tables = $tables; count = $tables.Count } }
+    }
+
+    "refreshPivotTables" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $targets = @()
+        if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $targets += $wb.Sheets.Item($p.sheet) }
+        else { for ($i = 1; $i -le $wb.Sheets.Count; $i++) { $targets += $wb.Sheets.Item($i) } }
+        $refreshed = 0
+        $names = @()
+        try {
+            foreach ($sheet in $targets) {
+                if ($null -ne $p.pivotTable -and "$($p.pivotTable)" -ne "") {
+                    $pt = $sheet.PivotTables([string]$p.pivotTable)
+                    $pt.RefreshTable() | Out-Null
+                    $refreshed = $refreshed + 1
+                    $names += [string]$pt.Name
+                } else {
+                    $count = [int]$sheet.PivotTables.Count
+                    for ($i = 1; $i -le $count; $i++) {
+                        $pt = $sheet.PivotTables($i)
+                        $pt.RefreshTable() | Out-Null
+                        $refreshed = $refreshed + 1
+                        $names += [string]$pt.Name
+                    }
+                }
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; exit
+        }
+        Output-Json @{ success = $true; data = @{ refreshed = $refreshed; names = $names } }
+    }
+
+    "clearPivotTable" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = Get-WorksheetByParam $excel $p
+        if (-not $p.pivotTable) { Output-Json @{ success = $false; error = "pivotTable required" }; exit }
+        $pt = $null
+        try { $pt = $sheet.PivotTables([string]$p.pivotTable) } catch { $pt = $null }
+        if ($null -eq $pt) { Output-Json @{ success = $false; error = "pivot table not found on this sheet" }; exit }
+        $name = ""; try { $name = [string]$pt.Name } catch { $name = "" }
+        $rangeBefore = ""; try { $rangeBefore = Get-RangeAddressSafe $pt.TableRange2 "" } catch { $rangeBefore = "" }
+        try { $pt.TableRange2.Clear() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        # WPS 清掉报表后 PivotTable 对象仍留在集合里（再读 TableRange2 会 E_FAIL），所以不谎报“已删除”。
+        $remaining = 0
+        try { $remaining = [int]$sheet.PivotTables.Count } catch { $remaining = 0 }
+        Output-Json @{ success = $true; data = @{
+            sheet = $sheet.Name; name = $name; rangeBefore = $rangeBefore; remaining = $remaining
+            message = "透视表报表已清除；WPS 的 PivotTable 对象会留到保存/重开，期间集合里仍能看到它"
+        } }
+    }
+
+    "refreshAllData" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        try { $wb.RefreshAll() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        Output-Json @{ success = $true; data = @{ workbook = $wb.Name; message = "已刷新工作簿的全部外部数据与透视表" } }
+    }
+
+    "goalSeek" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = Get-WorksheetByParam $excel $p
+        if (-not $p.cell) { Output-Json @{ success = $false; error = "cell required" }; exit }
+        if (-not $p.changingCell) { Output-Json @{ success = $false; error = "changingCell required" }; exit }
+        $target = $sheet.Range([string]$p.cell)
+        $changing = $sheet.Range([string]$p.changingCell)
+        $goal = [double]$p.goal
+        $solved = $false
+        try { $solved = [bool]$target.GoalSeek($goal, $changing) } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        $achieved = ""
+        try { $achieved = $changing.Value2 } catch { $achieved = "" }
+        $resultValue = ""
+        try { $resultValue = $target.Value2 } catch { $resultValue = "" }
+        Output-Json @{ success = $true; data = @{
+            sheet = $sheet.Name; cell = [string]$p.cell; goal = $goal; changingCell = [string]$p.changingCell
+            solved = $solved; changingValue = $achieved; resultValue = $resultValue
+        } }
+    }
+
+    "addSparkline" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = Get-WorksheetByParam $excel $p
+        if (-not $p.dataRange) { Output-Json @{ success = $false; error = "dataRange required" }; exit }
+        if (-not $p.location) { Output-Json @{ success = $false; error = "location required" }; exit }
+        # xlSparkLine=1 xlSparkColumn=2 xlSparkColumnStacked100=3（实测 1/2/3 都接受）
+        $typeMap = @{ line = 1; column = 2; stacked = 3; winloss = 3 }
+        $typeName = if ($p.sparklineType) { "$($p.sparklineType)".ToLower() } else { "line" }
+        $sparkType = $typeMap[$typeName]
+        if ($null -eq $sparkType) { Output-Json @{ success = $false; error = ("unknown sparklineType: " + $p.sparklineType) }; exit }
+        $target = $sheet.Range([string]$p.location)
+        try { $group = $target.SparklineGroups.Add($sparkType, [string]$p.dataRange) } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        if ($null -ne $p.markers -and [bool]$p.markers) {
+            try { $group.Points.Markers.Visible = $true } catch { Add-WpsWarning ("markers failed: " + $_.Exception.Message) }
+        }
+        $count = 0
+        try { $count = [int]$target.SparklineGroups.Count } catch { $count = 0 }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; location = [string]$p.location; dataRange = [string]$p.dataRange; sparklineType = $typeName; groups = $count } }
+    }
+
+    "clearSparkline" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = Get-WorksheetByParam $excel $p
+        if (-not $p.location) { Output-Json @{ success = $false; error = "location required" }; exit }
+        try { $sheet.Range([string]$p.location).SparklineGroups.Clear() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        $count = 0
+        try { $count = [int]$sheet.Range([string]$p.location).SparklineGroups.Count } catch { $count = 0 }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; location = [string]$p.location; groups = $count } }
+    }
+
+    "deleteChart" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = Get-WorksheetByParam $excel $p
+        $target = $null
+        $label = ""
+        if ($null -ne $p.chart -and "$($p.chart)" -ne "") {
+            $label = "$($p.chart)"
+            if ($label -match '^\d+$') { try { $target = $sheet.ChartObjects([int]$label) } catch { $target = $null } }
+            else { try { $target = $sheet.ChartObjects([string]$label) } catch { $target = $null } }
+        } else {
+            $count = 0
+            try { $count = [int]$sheet.ChartObjects().Count } catch { $count = 0 }
+            if ($count -eq 1) { try { $target = $sheet.ChartObjects(1); $label = [string]$target.Name } catch { $target = $null } }
+        }
+        if ($null -eq $target) { Output-Json @{ success = $false; error = "chart not found on this sheet（给 chart 名称，或在只有一张图时省略）" }; exit }
+        $name = ""; try { $name = [string]$target.Name } catch { $name = $label }
+        try { $target.Delete() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        $remaining = 0
+        try { $remaining = [int]$sheet.ChartObjects().Count } catch { $remaining = 0 }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; deleted = $name; remaining = $remaining } }
+    }
+
+    "setChartLabels" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = Get-WorksheetByParam $excel $p
+        $target = $null
+        if ($null -ne $p.chart -and "$($p.chart)" -ne "") {
+            $label = "$($p.chart)"
+            if ($label -match '^\d+$') { try { $target = $sheet.ChartObjects([int]$label) } catch { $target = $null } }
+            else { try { $target = $sheet.ChartObjects([string]$label) } catch { $target = $null } }
+        } else {
+            $count = 0
+            try { $count = [int]$sheet.ChartObjects().Count } catch { $count = 0 }
+            if ($count -eq 1) { try { $target = $sheet.ChartObjects(1) } catch { $target = $null } }
+        }
+        if ($null -eq $target) { Output-Json @{ success = $false; error = "chart not found on this sheet" }; exit }
+        $chart = $target.Chart
+        $applied = @()
+        try {
+            if ($null -ne $p.title) { $chart.HasTitle = $true; $chart.ChartTitle.Text = [string]$p.title; $applied += "title" }
+            if ($null -ne $p.categoryAxisTitle) { $chart.Axes(1).HasTitle = $true; $chart.Axes(1).AxisTitle.Text = [string]$p.categoryAxisTitle; $applied += "categoryAxisTitle" }
+            if ($null -ne $p.valueAxisTitle) { $chart.Axes(2).HasTitle = $true; $chart.Axes(2).AxisTitle.Text = [string]$p.valueAxisTitle; $applied += "valueAxisTitle" }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; exit
+        }
+        $title = ""; try { if ([bool]$chart.HasTitle) { $title = [string]$chart.ChartTitle.Text } } catch { $title = "" }
+        $cat = ""; try { if ([bool]$chart.Axes(1).HasTitle) { $cat = [string]$chart.Axes(1).AxisTitle.Text } } catch { $cat = "" }
+        $val = ""; try { if ([bool]$chart.Axes(2).HasTitle) { $val = [string]$chart.Axes(2).AxisTitle.Text } } catch { $val = "" }
+        Output-Json @{ success = $true; data = @{
+            sheet = $sheet.Name; chart = [string]$target.Name; applied = $applied
+            title = $title; categoryAxisTitle = $cat; valueAxisTitle = $val
         } }
     }
 

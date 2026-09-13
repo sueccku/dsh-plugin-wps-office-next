@@ -8,8 +8,8 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 
 | metric | count |
 | --- | --- |
-| tools in the full catalog | 243 |
-| tool/action pairs checked | 231 |
+| tools in the full catalog | 252 |
+| tool/action pairs checked | 240 |
 | **A. handler sends a parameter the bridge never reads** | **0** |
 | B. schema advertises a parameter the handler never uses | 0 |
 | **C. nested object carries a property the action never reads** | **0** |

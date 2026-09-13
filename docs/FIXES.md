@@ -1047,6 +1047,78 @@ DataBodyRange/HeaderRowRange/TotalsRowRange、TableStyle 赋值、Resize、Unlis
 
 **数字**：桥 action 239 → **247**、注册工具 235 → **243**、广告面 54 → **56 工具 / 30,885 字节**
 （离 D1 上限 32,000 只剩 1,115 字节——P5-2 的重定已经不是可选项）。
+### 42. D1 上限第二次上抬：60 / 32,000 → 70 / 40,000（用户决定）
+
+P2-3 结束时广告面是 **56 工具 / 30,885 字节**，离 D1 的上限只剩 1,115 字节，而后面还有 P2-4（高级项）、
+P3（Word 长尾，档位是「全都要」）与 P4。把选择摆出来之后（A 抬上限 / B 守住 60 并降级低频工具 /
+C 新工具一律不广告），用户选了 **A**。
+
+- 新上限：**70 工具 / 40,000 字节**（`scripts/verify.mjs` 与 `test/deprecated.test.mjs` 同步）；
+- 理由沿用 D1 当初的推理：广告面是「一站式」的瓶颈，请求前缀可被 prompt cache 复用，边际成本低；
+  `minimal` 档继续留给成本敏感场景（4 工具 / 1,348 字节）；
+- P5-2 仍然负责「最终复测」，但不再需要在这一轮做取舍。
+
+这条本身是小改动，但它是一次**有意识的放宽**：门禁数字跟着决定走，每次变动都留档——
+下次有人看到 70 这个数，能查到它是怎么来的、为什么不是 60。
+### 43. P2-4：高级项 9 个工具，并修好一个「一直建不出透视表」的既有工具
+
+P2-4 依旧先量后写（每一族都用裸 COM 试过支持面）：
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_excel_get_pivot_tables` | getPivotTables | 列出透视表：名字、区域、行字段、数据字段 |
+| `wps_excel_refresh_pivot_tables` | refreshPivotTables | 刷新一张，或一张表上的全部 |
+| `wps_excel_clear_pivot_table` | clearPivotTable | 清除报表区域（见下：刻意不说成「删除」） |
+| `wps_excel_refresh_all_data` | refreshAllData | 工作簿全部刷新（外部数据 + 透视表） |
+| `wps_excel_goal_seek` | goalSeek | 单变量求解 |
+| `wps_excel_add_sparkline` / `_clear_sparkline` | addSparkline / clearSparkline | 迷你图（line/column/winloss，可标点） |
+| `wps_excel_delete_chart` | deleteChart | 按名或序号删图表；只有一张时可省略 |
+| `wps_excel_set_chart_labels` | setChartLabels | 图表标题 + 横轴/纵轴标题 |
+
+**最大的收获不是新工具，而是一个既有工具其实从来没工作过。** 写验收要先建一张透视表，用的是
+**本来就存在、而且还在广告面里**的 `wps_excel_create_pivot_table`——它报 `HRESULT 0x800A03EC`；
+而同一串调用在**裸 COM 里完全正常**。逐步定位后，根因在桥里的一个 helper：
+
+```powershell
+function Get-RangeFromAddress($workbook, [string]$address) {
+    return $workbook.ActiveSheet.Range($address)   # ← 这里
+}
+```
+
+`Range` 是**可枚举**的：多格 Range 在函数返回时经过 PowerShell 输出流会被**展开成单格数组**
+（A1:C7 → 21 个 range）。于是 `PivotCaches().Create(1, $range)` 拿到的是 21 元素的 `System.Object[]`，
+WPS 回 `0x800A03EC`。加前置逗号 `return ,$range` 才会把 Range 本身返回。
+验证方式是三种形状并排试：不经函数返回的 `$wb.ActiveSheet.Range(...)` 成功、带 Version 参数的失败；
+修完后同一个 `Create` 立刻给出**有意义的**业务错误（探针数据没写表头），说明 Range 已被正确接受。
+
+为什么一直没人发现：这个 helper **只被** `createPivotTable` 调用，而透视表工具**没有任何测试**。
+这和 P2 里那三个「从未生效的 action」是同一类问题——**没有断言真实输出效果的测试，就没有人会知道**。
+现在 `test/excel-advanced.test.mjs` 会真的建一张透视表并读回它的行字段。
+
+**顺手补上错误上报**：`createPivotTable` 原本没有 try/catch，出错只剩一个 HRESULT；现在按步骤名
+上报（`createCache: …` / `rowFields: …`），正是靠它把范围缩到 `Create` 那一行的。
+
+**两处刻意推迟**（按实测，不是遗漏）：
+
+- **切片器**：`SlicerCaches.Add2` 能建出缓存（名字如「切片器_Region」）也能 Delete，但
+  `SlicerCaches(1).Slicers.Count` 始终是 0——用户可见的切片器并没有真的出现，接上去只会是
+  「成功但没效果」。
+- **场景管理器**：WPS 把 `Worksheet.Scenarios` 暴露成一个**方法**（要写 `$s.Scenarios()` 才拿到集合，
+  直接 `$s.Scenarios.Add` 会报「PSMethod 不含 Add」）。集合本身能用，但默认方案与 Show 的效果在 COM 上
+  读不干净。
+
+两者的探针脚本都留在 `test/.artifacts/e2e/p24-probe*.ps1`，要接的时候不用重新摸。
+
+**另一处诚实的措辞**：`clear_pivot_table` 不叫 delete——WPS 清掉 `TableRange2` 之后 PivotTable 对象
+**仍留在集合里**（再读它会 E_FAIL），所以工具报告「报表已清除，对象会留到保存/重开」并回读剩余数量，
+不谎称删除。
+
+**验收**：`test/excel-advanced.test.mjs` **24 项**（真实 WPS）：建表 → 列表（含行字段）→ 刷新
+（单张/全部/错名被拒）→ 清除（含剩余对象数）→ 全部刷新 → 单变量求解（A10=25、B10=50，并回读）→
+迷你图（加 line/column、清、缺参数被拒）→ 图表标题三件套 → 删图 → 再删被拒。
+
+**数字**：桥 action 247 → **256**、注册工具 243 → **252**、广告面 56 → **59 工具 / 32,924 字节**
+（`goal_seek`、`clear_pivot_table`、`set_chart_labels` 进精选档）。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1092,9 +1164,10 @@ DataBodyRange/HeaderRowRange/TotalsRowRange、TableStyle 赋值、Resize、Unlis
 | test/excel-missing-halves-2.test.mjs | 30 | P2 第一波余项：格式刷/清格式、条件格式与数据验证读删、重算、外部链接、合并计算、列分组、分类汇总 |
 | test/excel-list-object.test.mjs | 25 | P2-2 表（ListObject）：建表/读结构/增删行/总计行/样式/改名/范围/转回区域 |
 | test/excel-page-setup.test.mjs | 24 | P2-3 页面设置/打印标题/页眉页脚/外观/分级显示/分页符/公式审计 |
+| test/excel-advanced.test.mjs | 24 | P2-4 透视表列表/刷新/清除、全部刷新、单变量求解、迷你图、图表标题与删除 |
 
-合计 **419 项**（20 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
+合计 **443 项**（21 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 231 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 240 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

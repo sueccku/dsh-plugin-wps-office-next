@@ -366,6 +366,48 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_add_sparkline",
+    "action": "addSparkline",
+    "app": "excel",
+    "summary": "在单元格区域里加迷你图（单元格内的微型图表）：dataRange 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。使用场景：在表格旁边一行一个小趋势图，不占地方。",
+    "params": {
+      "dataRange": {
+        "type": "string",
+        "description": "数据区域，如 B2:B5（每个单元格一条迷你图时按列给）",
+        "required": true
+      },
+      "location": {
+        "type": "string",
+        "description": "放置位置，如 C2:C5；形状要与 dataRange 一致",
+        "required": true
+      },
+      "sparklineType": {
+        "type": "string",
+        "description": "迷你图类型，默认 line",
+        "enum": [
+          "line",
+          "column",
+          "winloss"
+        ]
+      },
+      "markers": {
+        "type": "boolean",
+        "description": "是否标出数据点（折线图）"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "required": [
+      "dataRange",
+      "location"
+    ],
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_auto_filter",
     "action": "autoFilter",
     "app": "excel",
@@ -574,6 +616,29 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_clear_pivot_table",
+    "action": "clearPivotTable",
+    "app": "excel",
+    "summary": "清除透视表在表上的报表区域（数据源不动）。注意：WPS 清掉报表后透视表对象会留到保存/重开，期间它仍出现在透视表列表里——工具会如实报告剩余数量，不谎称已删除。使用场景：把临时透视表从工作表上拿掉。",
+    "params": {
+      "pivotTable": {
+        "type": "string",
+        "description": "要清除的透视表名",
+        "required": true
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "delete",
+    "advertised": true,
+    "required": [
+      "pivotTable"
+    ],
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_clear_range",
     "action": "clearRange",
     "app": "excel",
@@ -602,6 +667,29 @@ export const operations: OperationSpec[] = [
     "advertised": false,
     "required": [
       "range"
+    ],
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_clear_sparkline",
+    "action": "clearSparkline",
+    "app": "excel",
+    "summary": "清除指定区域上的迷你图（数据不动）。使用场景：不想要这些微型图了。",
+    "params": {
+      "location": {
+        "type": "string",
+        "description": "迷你图所在区域，如 C2:C5",
+        "required": true
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "delete",
+    "advertised": false,
+    "required": [
+      "location"
     ],
     "engine": "bridge"
   }),
@@ -1059,6 +1147,25 @@ export const operations: OperationSpec[] = [
     "required": [
       "cell"
     ],
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_delete_chart",
+    "action": "deleteChart",
+    "app": "excel",
+    "summary": "删除工作表上的图表（不删它引用的数据）。给 chart 名字或序号；表上只有一张图时可以省略。使用场景：清掉临时图表。",
+    "params": {
+      "chart": {
+        "type": "string",
+        "description": "图表名（如 Chart 1）或该表上的序号；只有一张图时可省略"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "delete",
+    "advertised": false,
     "engine": "bridge"
   }),
   op({
@@ -1684,6 +1791,21 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_get_pivot_tables",
+    "action": "getPivotTables",
+    "app": "excel",
+    "summary": "列出工作簿（或指定工作表）上的透视表：名字、所在区域，以及（能读到时）行字段与数据字段。使用场景：先看清有哪几张透视表、它们叫什么，再刷新或清除。",
+    "params": {
+      "sheet": {
+        "type": "string",
+        "description": "只看这张工作表；不填则列出整个工作簿"
+      }
+    },
+    "effect": "read",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_get_selection",
     "action": "getSelection",
     "app": "excel",
@@ -1731,6 +1853,41 @@ export const operations: OperationSpec[] = [
     },
     "effect": "read",
     "advertised": true,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_goal_seek",
+    "action": "goalSeek",
+    "app": "excel",
+    "summary": "单变量求解：反复调整 changingCell，直到 cell 的公式结果等于 goal。cell 必须是带公式的单元格。使用场景：\"要利润到 100 万，销量得多少\"。结果是近似解，工具会回读调整后的取值。",
+    "params": {
+      "cell": {
+        "type": "string",
+        "description": "带公式的目标单元格，如 B4",
+        "required": true
+      },
+      "goal": {
+        "type": "number",
+        "description": "希望目标单元格达到的值",
+        "required": true
+      },
+      "changingCell": {
+        "type": "string",
+        "description": "被反复调整的单元格（不能有公式），如 B2",
+        "required": true
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": true,
+    "required": [
+      "cell",
+      "goal",
+      "changingCell"
+    ],
     "engine": "bridge"
   }),
   op({
@@ -2160,11 +2317,40 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_refresh_all_data",
+    "action": "refreshAllData",
+    "app": "excel",
+    "summary": "刷新整个工作簿的外部数据连接与透视表（相当于 Excel 的「全部刷新」）。使用场景：多个数据源都要更新一次。",
+    "params": {},
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_refresh_links",
     "action": "refreshLinks",
     "app": "excel",
     "summary": "刷新工作簿引用的全部外部链接并报告条数。使用场景：数据源文件更新了，把引用拉一遍。没有链接时如实报告 0 条。",
     "params": {},
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_refresh_pivot_tables",
+    "action": "refreshPivotTables",
+    "app": "excel",
+    "summary": "刷新透视表：给 pivotTable 只刷新那一张，不给就刷新目标工作表上的全部。使用场景：源数据改了，透视表还是旧数字。",
+    "params": {
+      "pivotTable": {
+        "type": "string",
+        "description": "透视表名；不填则刷新目标工作表上的全部透视表"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
     "effect": "write",
     "advertised": false,
     "engine": "bridge"
@@ -2566,6 +2752,37 @@ export const operations: OperationSpec[] = [
       "col",
       "value"
     ],
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_set_chart_labels",
+    "action": "setChartLabels",
+    "app": "excel",
+    "summary": "给图表加标题与坐标轴标题（分类轴 = 横轴，数值轴 = 纵轴）。使用场景：裸图没人看得懂，补上「月度销售」「月份」「金额」。",
+    "params": {
+      "title": {
+        "type": "string",
+        "description": "图表标题"
+      },
+      "categoryAxisTitle": {
+        "type": "string",
+        "description": "分类轴（横轴）标题"
+      },
+      "valueAxisTitle": {
+        "type": "string",
+        "description": "数值轴（纵轴）标题"
+      },
+      "chart": {
+        "type": "string",
+        "description": "图表名（如 Chart 1）或该表上的序号；只有一张图时可省略"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": true,
     "engine": "bridge"
   }),
   op({
@@ -4973,7 +5190,7 @@ export const operations: OperationSpec[] = [
     "params": {
       "slideIndex": {
         "type": "number",
-        "description": "幻��片页码（从1开始）",
+        "description": "幻灯片页码（从1开始）",
         "required": true
       },
       "shapeIndex": {

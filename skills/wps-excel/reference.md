@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 表格工具（109）
+## WPS 表格工具（118）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -116,3 +116,12 @@
 | wps_excel_set_outline_levels | wps_call | 控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇 |
 | wps_excel_reset_page_breaks | wps_call | 清除工作表上的手动分页符，恢复按内容自动分页。 |
 | wps_excel_get_formula_audit | wps_call | 审计一个单元格的公式依赖：它引用了谁（precedents）、谁引用了它（dependents）、直接引用几处，并可选在界面上画出追踪箭头。 |
+| wps_excel_get_pivot_tables | wps_call | 列出工作簿（或指定工作表）上的透视表：名字、所在区域，以及（能读到时）行字段与数据字段。 |
+| wps_excel_refresh_pivot_tables | wps_call | 刷新透视表：给 pivotTable 只刷新那一张，不给就刷新目标工作表上的全部。 |
+| wps_excel_clear_pivot_table | 直达 | 清除透视表在表上的报表区域（数据源不动）。 |
+| wps_excel_refresh_all_data | wps_call | 刷新整个工作簿的外部数据连接与透视表（相当于 Excel 的「全部刷新」）。 |
+| wps_excel_goal_seek | 直达 | 单变量求解：反复调整 changingCell，直到 cell 的公式结果等于 goal。 |
+| wps_excel_add_sparkline | wps_call | 在单元格区域里加迷你图（单元格内的微型图表）：dataRange 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。 |
+| wps_excel_clear_sparkline | wps_call | 清除指定区域上的迷你图（数据不动）。 |
+| wps_excel_delete_chart | wps_call | 删除工作表上的图表（不删它引用的数据）。 |
+| wps_excel_set_chart_labels | 直达 | 给图表加标题与坐标轴标题（分类轴 = 横轴，数值轴 = 纵轴）。 |

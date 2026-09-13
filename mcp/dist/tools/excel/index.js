@@ -24,6 +24,7 @@ const comment_protect_1 = require("./comment-protect");
 const missing_halves_1 = require("./missing-halves");
 const list_object_1 = require("./list-object");
 const sheet_settings_1 = require("./sheet-settings");
+const advanced_1 = require("./advanced");
 /**
  * 所有Excel相关的Tools
  * 包含：
@@ -41,6 +42,8 @@ const sheet_settings_1 = require("./sheet-settings");
  *   update_list_object, set_list_object_totals, resize_list_object, unlist_list_object
  * - 页面与打印Tools（P2-3）: get_sheet_settings, set_sheet_page_setup, set_sheet_print_titles,
  *   set_sheet_header_footer, set_sheet_appearance, set_outline_levels, reset_page_breaks, get_formula_audit
+ * - 高级项Tools（P2-4）: get_pivot_tables, refresh_pivot_tables, clear_pivot_table, refresh_all_data,
+ *   goal_seek, add_sparkline, clear_sparkline, delete_chart, set_chart_labels
  */
 exports.excelTools = [
     ...formula_1.formulaTools,
@@ -56,6 +59,7 @@ exports.excelTools = [
     ...missing_halves_1.missingHalfTools,
     ...list_object_1.listObjectTools,
     ...sheet_settings_1.sheetSettingsTools,
+    ...advanced_1.advancedTools,
 ];
 // 分别导出，方便按需使用
 var formula_2 = require("./formula");

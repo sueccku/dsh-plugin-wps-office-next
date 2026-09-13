@@ -51,6 +51,9 @@ export const STANDARD_TOOLS: string[] = [
   'wps_excel_add_list_row',
   'wps_excel_get_sheet_settings',
   'wps_excel_set_sheet_page_setup',
+  'wps_excel_goal_seek',
+  'wps_excel_clear_pivot_table',
+  'wps_excel_set_chart_labels',
   // Word
   'wps_word_get_active_document',
   'wps_word_get_document_text',

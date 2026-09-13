@@ -11,14 +11,15 @@ import { readFileSync } from "node:fs";
 const argv = process.argv.slice(2);
 const staticOnly = argv.includes("--static");
 const entry = argv.find((arg) => !arg.startsWith("--")) || "mcp/dist/index.js";
-// D1 (locked 2026-09-13, docs/tool-roadmap.md): the advertised surface is allowed 60 tools / ~32,000
-// bytes. It was 45 / 25,000 before Excel started going deep in P2; the ceiling moves with the decision,
-// and this gate is what makes the next growth a deliberate edit instead of a drift.
-const BUDGET = { maxTools: 60, maxSchemaBytes: 32000 };
+// D1 (locked 2026-09-13, docs/tool-roadmap.md): the advertised surface is allowed 70 tools / 40,000
+// bytes. It was 45 / 25,000, then 60 / 32,000; P2-3 ended at 56 / 30,885 - 1,115 bytes short of the
+// ceiling - with P2-4, P3 and P4 still ahead, so the user raised it again (FIXES 42). The number moves
+// with the decision, and this gate is what makes the next growth a deliberate edit instead of a drift.
+const BUDGET = { maxTools: 70, maxSchemaBytes: 40000 };
 // Snapshot of how many actions the bridge dispatches. Ad-hoc source edits have silently dropped a
 // whole case before (a patch script swallowed "slide.unifyFont"), and nothing noticed because every
 // remaining action still worked. Update this number deliberately when adding or removing an action.
-const EXPECTED_ACTIONS = 247;
+const EXPECTED_ACTIONS = 256;
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
