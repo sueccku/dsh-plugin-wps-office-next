@@ -67,6 +67,20 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 - 文档与代码不一致（auto_fit 声明但不存在；tools/index.ts 计数有误）
 - 高层场景封装（KPI 卡片/时间线/流程图等）从工具层下沉到技能层
 
+## P4 修复进度（PPT）
+
+参数契约 sweep 的 A/B/C 三类全部归零（212 对工具/action）：A=工具发了桥不读、B=schema 宣称 handler 不用、
+C=嵌套对象里多写属性。详见 docs/FIXES.md 第 18 条。
+
+PPT 侧新增两张由生成器产出的表——别名表（20 条，公开名→规范键）与容器表（13 条，嵌套对象展开），
+并据此修好此前完全不可用的切换效果/动画整族（名称→数值映射）、3D 旋转类型、背景对象、类别序号等。
+
+同时删掉 5 个无法实现的参数（环形图多段 data、组织架构 data、图表 data、渐变 angle/type、页码 startFrom），
+原因都写进 schema 与文档。新增两道门禁：生成器拒绝写出无法解析的模块；verify 断言 action 数量三方一致。
+
+待办：test/ppt-contract-fixes.test.mjs（41 项）已写好但本机 WPS 演示 COM 僵死（Presentations 为 null），
+待环境恢复后跑通再提交。
+
 ## P4 修复进度（续）
 
 第 12～14 条已落地，详见 docs/FIXES.md：

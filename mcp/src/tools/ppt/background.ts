@@ -297,10 +297,6 @@ export const setSlideNumberDefinition: ToolDefinition = {
         type: 'boolean',
         description: '是否显示页码',
       },
-      startFrom: {
-        type: 'number',
-        description: '页码起始编号，默认为1',
-      },
     },
     required: ['show'],
   },
@@ -309,9 +305,8 @@ export const setSlideNumberDefinition: ToolDefinition = {
 export const setSlideNumberHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { show, startFrom } = args as {
+  const { show } = args as {
     show: boolean;
-    startFrom?: number;
   };
 
   try {
@@ -320,15 +315,14 @@ export const setSlideNumberHandler: ToolHandler = async (
       message: string;
     }>(
       'setSlideNumber',
-      { show, startFrom },
+      { show },
       WpsAppType.PRESENTATION
     );
 
     if (response.success) {
-      let text = `幻灯片页码设置成功！\n显示状态: ${show ? '显示' : '隐藏'}`;
-      if (startFrom !== undefined) {
-        text += `\n起始编号: ${startFrom}`;
-      }
+      // The slide-number start is not exposed by the presentation object model, so the parameter
+      // was removed rather than reported as applied while nothing changed.
+      const text = `幻灯片页码设置成功！\n显示状态: ${show ? '显示' : '隐藏'}`;
 
       return {
         id: uuidv4(),

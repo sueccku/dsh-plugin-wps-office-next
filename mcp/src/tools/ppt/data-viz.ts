@@ -302,22 +302,29 @@ export const createDonutChartDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      data: {
-        type: 'array',
-        description: '数据数组，如 [{label:"产品A",value:40},{label:"产品B",value:30},{label:"其他",value:30}]',
-        items: { type: 'object' },
+      value: {
+        type: 'number',
+        description: '要显示的占比，0-1 的小数或 0-100 的百分数',
       },
+      title: { type: 'string', description: '图表标题' },
+      centerText: { type: 'string', description: '圆环中心的文字，不填则显示百分比' },
+      color: { type: 'string', description: '圆环颜色，如 #0d47a1' },
     },
-    required: ['slideIndex', 'data'],
+    // A multi-slice distribution is not drawn: WPS's pie shape exposes a single adjustment and
+    // assigning it hung the resident host, so the parameter was removed rather than silently dropped.
+    required: ['slideIndex', 'value'],
   },
 };
 
 export const createDonutChartHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, data } = args as {
+  const { slideIndex, value, title, centerText, color } = args as {
     slideIndex: number;
-    data: Array<Record<string, unknown>>;
+    value: number;
+    title?: string;
+    centerText?: string;
+    color?: string;
   };
 
   try {
@@ -327,7 +334,7 @@ export const createDonutChartHandler: ToolHandler = async (
       shapeId?: number;
     }>(
       'createDonutChart',
-      { slideIndex, data },
+      { slideIndex, value, title, centerText, color },
       WpsAppType.PRESENTATION
     );
 
@@ -338,7 +345,7 @@ export const createDonutChartHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `环形图创建成功！\n幻灯片: 第 ${slideIndex} 页\n数据项: ${data.length} 个`,
+            text: `环形图创建成功！\n幻灯片: 第 ${slideIndex} 页\n占比: ${value}`,
           },
         ],
       };

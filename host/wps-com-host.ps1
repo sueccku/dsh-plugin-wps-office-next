@@ -86,12 +86,14 @@ while ($true) {
         if ($null -ne $req.params.keys) { $given = @($req.params.keys) }
         $unknown = @()
         if ($null -ne $accepted) { $unknown = @($given | Where-Object { $accepted -notcontains $_ }) }
+        $containers = $script:ActionNestedParams[$target]
         Send-Response $id $true @{ success = $true; data = @{
             action = $target
             validated = ($null -ne $accepted)
             accepted = @($accepted)
             given = $given
             unknown = $unknown
+            containers = @($containers)
         } } 0
         continue
     }

@@ -381,9 +381,9 @@ export const setShapeGradientDefinition: ToolDefinition = {
   description: `设置幻灯片中指定形状的渐变填充效果。
 
 gradient对象属性：
-- type: 渐变类型，"linear"(线性) 或 "radial"(径向)
-- angle: 渐变角度（0-360，仅线性渐变）
-- stops: 渐变色标数组 [{color: "#FF0000", position: 0}, {color: "#0000FF", position: 1}]
+gradient对象属性：
+- stops: 渐变色标数组 [{color: "#FF0000", position: 0}, {color: "#0000FF", position: 1}]（当前仅支持两个色标）
+注意：渐变角度与类型在 WPS 上不可设置（会挂起 COM 调用），因此不再提供 angle/type 参数。
 
 使用场景：
 - "给形状加渐变色"
@@ -404,8 +404,6 @@ gradient对象属性：
         type: 'object',
         description: '渐变配置对象',
         properties: {
-          type: { type: 'string', description: '渐变类型: linear 或 radial', enum: ['linear', 'radial'] },
-          angle: { type: 'number', description: '渐变角度（0-360）' },
           stops: {
             type: 'array',
             description: '渐变色标数组',

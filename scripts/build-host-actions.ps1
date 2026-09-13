@@ -41,12 +41,59 @@ $crlf = [string][char]13 + [string][char]10
 # Extract them from the source rather than keeping a second hand-written list that would drift.
 # An action whose parameter access cannot be read statically is left out of the table and thereby
 # skips the check, so the guard can never reject a key that is genuinely read.
+# Public tool parameter name -> the key this script reads. Only aliases whose meaning is
+# identical belong here; a parameter that needs real work must be implemented instead.
+$paramAliases = @{
+    'removeAnimation'      = @{ 'animationIndex' = 'index' }
+    'setAnimationOrder'    = @{ 'animationIndex' = 'from'; 'newOrder' = 'to' }
+    'setShapeZOrder'       = @{ 'order' = 'zOrder' }
+    'addAnimation'         = @{ 'animationType' = 'effect'; 'shapeIndex' = 'shapeName' }
+    'setBackgroundImage'   = @{ 'imagePath' = 'path'; 'filePath' = 'path' }
+    'insertPptImage'       = @{ 'imagePath' = 'path'; 'filePath' = 'path' }
+    'replacePptImage'      = @{ 'imagePath' = 'path' }
+    'openPresentation'     = @{ 'filePath' = 'path' }
+    'alignShapes'          = @{ 'shapeIndices' = 'names' }
+    'distributeShapes'     = @{ 'shapeIndices' = 'names' }
+    'groupShapes'          = @{ 'shapeIndices' = 'names' }
+    'smartDistribute'      = @{ 'shapeIndices' = 'shapes' }
+    'setSlideNumber'       = @{ 'show' = 'visible' }
+    'setPptDateTime'       = @{ 'show' = 'visible' }
+    'createProgressBar'    = @{ 'value' = 'progress' }
+    'applyTransitionToAll' = @{ 'effect' = 'transition' }
+    'setSlideTransition'   = @{ 'transition' = 'effect' }
+    'addPptHyperlink'      = @{ 'url' = 'address' }
+    'createKpiCards'       = @{ 'data' = 'cards' }
+    'insertPptChart'       = @{ 'chartType' = 'type' }
+}
+
+# Nested containers some tools send while the action reads flat keys, merged before the check.
+# A container's properties that the action does not read still fail loudly, because the accepted-key
+# check runs after the merge.
+$paramContainers = @{
+    'setShapeShadow'       = @('shadow')
+    'setShapeBorder'       = @('border')
+    'setShapeGradient'     = @('gradient')
+    'setBackgroundGradient' = @('gradient')
+    'addMasterElement'     = @('element')
+    'set3DRotation'        = @('rotation')
+    'create3DText'         = @('style')
+    'setImageStyle'        = @('style')
+    'setTextBoxStyle'      = @('style')
+    'setPptChartStyle'     = @('style')
+    'setPptTableStyle'     = @('style')
+    'setPptTableCellStyle' = @('style')
+    'setPptTableRowStyle'  = @('style')
+}
+
 $helperKeys = @{
     'Resolve-Worksheet'    = @('sheet', 'name', 'oldName')
     'Get-TargetPres'       = @('presentationName')
     'Get-WorksheetByParam' = @('sheet')
     'Get-RowRefList'       = @('rows', 'row', 'count', 'startRow', 'endRow')
     'Get-ColumnRefList'    = @('columns', 'column', 'count', 'startColumn', 'endColumn')
+    'Resolve-PictureIndex' = @('name', 'shapeName', 'shapeIndex', 'imageIndex')
+    'Resolve-TextBoxIndex' = @('name', 'shapeName', 'shapeIndex', 'textboxIndex')
+    'Get-PptBackgroundSpec' = @('background', 'type', 'color', 'colors', 'imagePath')
 }
 $dynamicPatterns = @('\$p\.\$', '\$p\[', '\$p\.PSObject', "Get-PropOrNull\s+\`$p\s+(?!')")
 $paramKeys = @{}
@@ -82,6 +129,15 @@ for ($i = 0; $i -lt $caseHits.Count; $i++) {
         elseif ($callee -ne 'return') { $isDynamic = $true }
     }
 
+    # An alias is a parameter the action does accept, because the alias table feeds it through.
+    if ($paramAliases.ContainsKey($caseName)) {
+        foreach ($alias in $paramAliases[$caseName].Keys) { [void]$keys.Add($alias) }
+    }
+    # Likewise a container key: its properties are merged onto the parameter set before the check.
+    if ($paramContainers.ContainsKey($caseName)) {
+        foreach ($container in $paramContainers[$caseName]) { [void]$keys.Add($container) }
+    }
+
     if ($isDynamic) { [void]$dynamicActions.Add($caseName) }
     else { $paramKeys[$caseName] = @($keys | Sort-Object) }
 }
@@ -89,21 +145,47 @@ $tableLines = foreach ($k in ($paramKeys.Keys | Sort-Object)) {
     $vals = ($paramKeys[$k] | ForEach-Object { "'$_'" }) -join ', '
     ("    '" + $k + "' = @(" + $vals + ")")
 }
+$containerLines = foreach ($k in ($paramContainers.Keys | Sort-Object)) {
+    $vals = ($paramContainers[$k] | ForEach-Object { "'$_'" }) -join ', '
+    ("    '" + $k + "' = @(" + $vals + ")")
+}
+$aliasLines = foreach ($k in ($paramAliases.Keys | Sort-Object)) {
+    $pairs = foreach ($alias in ($paramAliases[$k].Keys | Sort-Object)) { "'" + $alias + "' = '" + $paramAliases[$k][$alias] + "'" }
+    ("    '" + $k + "' = @{ " + ($pairs -join '; ') + " }")
+}
 $keyTable = '# Accepted parameter names per action, derived from the switch below by the generator.' + $crlf +
-            '$script:ActionParamKeys = @{' + $crlf + ($tableLines -join $crlf) + $crlf + '}' + $crlf + $crlf
+            '$script:ActionParamKeys = @{' + $crlf + ($tableLines -join $crlf) + $crlf + '}' + $crlf + $crlf +
+            '# Public tool parameter name -> the key the action reads, applied before the check.' + $crlf +
+            '$script:ActionParamAliases = @{' + $crlf + ($aliasLines -join $crlf) + $crlf + '}' + $crlf + $crlf +
+            '# Container parameters whose properties are merged onto the flat key set.' + $crlf +
+            '$script:ActionNestedParams = @{' + $crlf + ($containerLines -join $crlf) + $crlf + '}' + $crlf + $crlf
 
 # Reject parameters the action does not read, right after $p is materialised.
-$guard = '    $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]' + $crlf +
+$guard = '    $p = Add-WpsParamAliases $Action $p' + $crlf +
+         '    $p = Expand-WpsNestedParams $Action $p' + $crlf +
+         '    $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]' + $crlf +
          '    if ($null -ne $__paramError) { Output-Json @{ success = $false; error = $__paramError }; return }' + $crlf
+# Anchor on the dispatch switch, not on "the first newline": the source's line endings must not be
+# able to decide where the guard lands. A previous LF-only source made this split a line in half.
 $guardBoundary = 'try { $p = $Params | ConvertFrom-Json }'
 if ($body.IndexOf($guardBoundary) -lt 0) { throw 'parameter guard boundary not found - upstream layout changed' }
-$firstNl = $body.IndexOf($crlf)
-$body = $body.Substring(0, $firstNl + $crlf.Length) + $guard + $body.Substring($firstNl + $crlf.Length)
+$switchAt = $body.IndexOf('switch ($Action)')
+if ($switchAt -lt 0) { throw 'dispatch switch not found - upstream layout changed' }
+$body = $body.Substring(0, $switchAt) + $guard + $body.Substring($switchAt)
 
 $header = '# GENERATED by scripts/build-host-actions.ps1 - do not edit by hand.' + $crlf +
           '# Source: mcp/scripts/wps-com.ps1 (upstream lc2panda/wps-skills).' + $crlf + $crlf
 $wrapperOpen = 'function Invoke-WpsAction {' + $crlf + '    param([string]$Action, [string]$Params = ''{}'')' + $crlf + $crlf
 $module = $header + $head + $keyTable + $wrapperOpen + $body + $crlf + '}' + $crlf
+
+# Tokenize() happily accepts a malformed hash literal, so parse the module for real before
+# writing it: a generated file that does not load takes every action down with it.
+$parseErrors = $null
+$null = [System.Management.Automation.Language.Parser]::ParseInput($module, [ref]$null, [ref]$parseErrors)
+if ($parseErrors -and $parseErrors.Count -gt 0) {
+    $first = $parseErrors[0]
+    throw ('generated module has ' + $parseErrors.Count + ' parse error(s); first: line ' + $first.Extent.StartLineNumber + ' ' + $first.Message)
+}
 
 $enc = New-Object System.Text.UTF8Encoding($true)
 [System.IO.File]::WriteAllText($OutFile, $module, $enc)
@@ -124,3 +206,4 @@ $paramsInHead = ([regex]::Matches($head, '\$Action\b|\$Params\b')).Count
 'param_keys=' + $paramKeys.Count + ' dynamic=' + $dynamicActions.Count
 if ($dynamicActions.Count -gt 0) { 'param_keys_skipped=' + (($dynamicActions | Sort-Object) -join ',') }
 'guard_installed=' + ([regex]::Matches($text, 'Test-WpsActionParamKeys \$Action')).Count
+'param_aliases=' + $paramAliases.Count + ' containers=' + $paramContainers.Count

@@ -357,6 +357,61 @@ excel-range 12/12；8000 格读取 15ms。
 
 - 会新建文档的 5 个测试都加了收尾（Word 没有 close 工具，统一走 `wps_call` 门面）；
 - 实测跑完全量后 **leftover workbooks=0 / word docs=0 / presentations=0**。
+### 18. PPT 参数契约批次：55 处归零，并新增两张生成表（已修）
+
+第 13 条的闸门把 PPT 侧一次性列全 55 处。其中大量是**同一个形状的键名不同**，
+逐个改 case 会写出 20 份重复逻辑，于是改为两张由生成器产出的表：
+
+- **别名表**（ActionParamAliases，20 条）：公开参数名 → 该 action 真正读取的键，
+  在参数校验之前把值搬到规范键上。别名同时并入「接受的键」集合，因此不可能绕过校验；
+- **容器表**（ActionNestedParams，13 条）：工具发的是嵌套对象（style/shadow/border/
+  gradient/element/rotation），action 读的是平铺键。展开后再做键校验——
+  嵌套里多写一个 action 不读的属性，同样会明确报错。
+
+实际修好的能力：
+
+- **切换效果与动画整族此前完全不可用**：EntryEffect/AddEffect 要的是 PpEntryEffect /
+  MsoAnimEffect 数值，而工具传的是 fade/fadeIn 之类的名字，赋值直接抛「索引超出了数组界限」。
+  现在有两张名称→数值表，未知名明确报错，并支持直接传数值；
+- 动画触发器 trigger、退出类动画（fadeOut/flyOut）、按 shapeIndex 只给一个形状加动画
+  （此前 addAnimationPreset 给整页每个形状都加）；
+- 仪表盘 max、进度条 value、页码指示器 position、母版/幻灯片背景对象
+  （solid/gradient/image，缺色或未知类型明确报错）；
+- 3D 旋转：ThreeD.RotationX 是 Single，传 Int32 报「指定的转换无效」，现显式转换；
+- 页脚 show、日期时间 autoUpdate/format、配色 slideIndex、统一字体 includeTitle/includeBody、
+  复制幻灯片 targetIndex、标题装饰 style 的 5 种样式；
+- 图片/文本框的**类别序号**：imageIndex 数图片、textboxIndex 数文本框，与 shapeIndex
+  （任意形状）语义不同，因此按类别解析而不是当别名，否则会删错对象；
+- wps_ppt_insert_slide_image 原本指向 **Word 的 insertImage**，插图片插进了 Word 文档，改指 insertPptImage；
+- 迷你图表 data（sparkline 序列→末值+趋势）、流程图 nodes/connections、组织架构 data（树→层级）
+  此前都是「发了不读」。
+
+### 本轮实测到的 WPS 限制（据此删掉参数，而不是假装支持）
+
+- **Adjustments.Item(1) = x 会挂住常驻宿主**：PowerShell 无法给带参数的属性赋值，
+  而 WPS 的扇形只暴露 1 个 adjustment，多段环形图因此无法实现；
+- **渐变角度 GradientAngle 同样挂起宿主**；
+- **组织架构图传入自定义节点会 60s 超时**；
+- **图表数据无法安全注入**：需要打开图表内嵌工作簿，常驻宿主可能留下隐藏文档。
+
+对应参数从 schema 移除并写明原因（环形图多段 data、组织架构 data、图表 data、
+渐变 angle/type、页码 startFrom），而不是保留一个静默失效的入口。
+
+### 新增的两道门禁
+
+- 生成器写文件前用 Parser::ParseInput 真正解析生成的模块，任一语法错误即拒绝写出
+  （此前 Tokenize 放过了坏文件，导致全部 action 一起失效）；
+- verify.mjs 断言桥的 action 数量（259）在源文件与生成产物之间一致——
+  补丁脚本曾静默吞掉一个 case（slide.unifyFont），当时没有任何检查发现。
+
+### 状态
+
+参数契约 sweep：**A=0、B=0、C=0**（212 对工具/action 全部一致），验证门禁 23 项通过。
+
+PPT 端到端测试（test/ppt-contract-fixes.test.mjs，41 项）已写好但**尚未提交**：
+本机 WPS 演示的 COM 目前僵死（Kwpp.Application 的 Presentations 为 null，新建实例也一样），
+而同一组用例在本轮早期是通过的，因此判断为环境问题而非代码回归。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

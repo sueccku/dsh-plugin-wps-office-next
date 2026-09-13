@@ -49,14 +49,17 @@ export const createPresentationHandler: ToolHandler = async (
 ): Promise<ToolCallResult> => {
   try {
     const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      name: string;
+      created?: boolean;
+      slideCount?: number;
+      needsSlides?: boolean;
     }>(
       'createPresentation',
       {},
       WpsAppType.PRESENTATION
     );
+
+    // A fresh WPS deck has zero slides and the action reports no name, so the message must not
+    // depend on a payload field: it used to print "名称: undefined".
 
     if (response.success && response.data) {
       return {
@@ -65,7 +68,9 @@ export const createPresentationHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `新建演示文稿成功！\n名称: ${response.data.name}`,
+            text: response.data.slideCount
+              ? `新建演示文稿成功！\n幻灯片数: ${response.data.slideCount}`
+              : '新建演示文稿成功！（新文稿暂无幻灯片，请先 add_slide）',
           },
         ],
       };
@@ -591,13 +596,14 @@ export const insertSlideImageHandler: ToolHandler = async (
   };
 
   try {
-    // 跨平台参数对齐：底层 insertImage handler 读取 path/filePath，需同时发送别名
+    // "insertImage" is the Word action, so this used to insert the picture into the Word document
+    // instead of the slide. insertPptImage is the presentation one.
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
     }>(
-      'insertImage',
-      { slideIndex, imagePath, path: imagePath, filePath: imagePath, left, top },
+      'insertPptImage',
+      { slideIndex, path: imagePath, left, top },
       WpsAppType.PRESENTATION
     );
 

@@ -10,8 +10,9 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 | --- | --- |
 | tools in the full catalog | 254 |
 | tool/action pairs checked | 226 |
-| **A. handler sends a parameter the bridge never reads** | **55** |
+| **A. handler sends a parameter the bridge never reads** | **0** |
 | B. schema advertises a parameter the handler never uses | 0 |
+| **C. nested object carries a property the action never reads** | **0** |
 | actions with no key table (guard skipped) | 1 |
 | handlers whose arguments are not statically readable | 11 |
 
@@ -23,63 +24,15 @@ is either an alias to reconcile or a capability to implement.
 
 | tool | action | parameter(s) dropped | bridge reads |
 | --- | --- | --- | --- |
-| `wps_ppt_add_animation` | `addAnimation` | `shapeIndex`, `trigger` | `effect`, `presentationName`, `shapeName`, `slideIndex` |
-| `wps_ppt_remove_animation` | `removeAnimation` | `animationIndex` | `index`, `presentationName`, `slideIndex` |
-| `wps_ppt_set_animation_order` | `setAnimationOrder` | `animationIndex`, `newOrder` | `from`, `presentationName`, `slideIndex`, `to` |
-| `wps_ppt_add_animation_preset` | `addAnimationPreset` | `shapeIndex` | `delayIncrement`, `presentationName`, `preset`, `slideIndex` |
-| `wps_ppt_set_slide_transition` | `setSlideTransition` | `duration`, `sound` | `effect`, `presentationName`, `slideIndex` |
-| `wps_ppt_apply_transition_to_all` | `applyTransitionToAll` | `effect` | `duration`, `presentationName`, `transition` |
-| `wps_ppt_set_slide_background` | `setSlideBackground` | `background` | `color`, `fontName`, `imagePath`, `includeBody`, `includeTitle`, `presentationName`, `slideIndex` |
-| `wps_ppt_set_background_image` | `setBackgroundImage` | `imagePath`, `filePath` | `path`, `presentationName`, `slideIndex` |
-| `wps_ppt_set_slide_number` | `setSlideNumber` | `show`, `startFrom` | `presentationName`, `visible` |
-| `wps_ppt_set_ppt_footer` | `setPptFooter` | `show` | `presentationName`, `text` |
-| `wps_ppt_set_ppt_date_time` | `setPptDateTime` | `show`, `autoUpdate`, `format` | `presentationName`, `text`, `useFixed`, `visible` |
-| `wps_ppt_set_shape_z_order` | `setShapeZOrder` | `order` | `name`, `presentationName`, `shapeIndex`, `slideIndex`, `zOrder` |
-| `wps_ppt_apply_color_scheme` | `applyColorScheme` | `slideIndex` | `colorScheme`, `presentationName`, `scheme` |
-| `wps_ppt_create_kpi_cards` | `createKpiCards` | `data` | `cardHeight`, `cards`, `cardWidth`, `gap`, `presentationName`, `slideIndex`, `startX`, `startY` |
-| `wps_ppt_add_title_decoration` | `addTitleDecoration` | `style` | `color`, `height`, `left`, `presentationName`, `slideIndex`, `top`, `width` |
-| `wps_ppt_add_page_indicator` | `addPageIndicator` | `position` | `dark`, `left`, `presentationName`, `slideIndex`, `top` |
-| `wps_ppt_set_background_gradient` | `setBackgroundGradient` | `gradient` | `color1`, `color2`, `presentationName`, `slideIndex` |
-| `wps_ppt_insert_ppt_chart` | `insertPptChart` | `chartType`, `data` | `height`, `left`, `presentationName`, `slideIndex`, `top`, `type`, `width` |
-| `wps_ppt_set_ppt_chart_style` | `setPptChartStyle` | `style` | `chartIndex`, `chartName`, `hasLegend`, `presentationName`, `slideIndex`, `title` |
-| `wps_ppt_create_flow_chart` | `createFlowChart` | `nodes`, `connections` | `boxHeight`, `boxWidth`, `direction`, `gap`, `presentationName`, `slideIndex`, `startX`, `startY`, `steps` |
-| `wps_ppt_create_org_chart` | `createOrgChart` | `data` | `boxHeight`, `boxWidth`, `levelGap`, `nodes`, `presentationName`, `slideIndex`, `startY` |
-| `wps_ppt_create_progress_bar` | `createProgressBar` | `value` | `bgColor`, `color`, `height`, `label`, `left`, `presentationName`, `progress`, `slideIndex`, `top`, `width` |
-| `wps_ppt_create_gauge` | `createGauge` | `max` | `centerX`, `centerY`, `presentationName`, `radius`, `slideIndex`, `title`, `value` |
-| `wps_ppt_create_mini_charts` | `createMiniCharts` | `data` | `gap`, `items`, `itemWidth`, `presentationName`, `slideIndex`, `startX`, `startY` |
-| `wps_ppt_create_donut_chart` | `createDonutChart` | `data` | `centerText`, `centerX`, `centerY`, `color`, `presentationName`, `radius`, `slideIndex`, `title`, `value` |
-| `wps_ppt_smart_distribute` | `smartDistribute` | `shapeIndices` | `direction`, `presentationName`, `shapes`, `slideIndex` |
-| `wps_ppt_insert_ppt_image` | `insertPptImage` | `filePath`, `imagePath` | `height`, `left`, `path`, `presentationName`, `slideIndex`, `top`, `width` |
-| `wps_ppt_delete_ppt_image` | `deletePptImage` | `imageIndex` | `name`, `presentationName`, `shapeIndex`, `slideIndex` |
-| `wps_ppt_set_image_style` | `setImageStyle` | `imageIndex`, `style` | `height`, `left`, `name`, `presentationName`, `rotation`, `shapeIndex`, `slideIndex`, `top`, `width` |
-| `wps_ppt_replace_ppt_image` | `replacePptImage` | `imagePath` | `filePath`, `name`, `path`, `presentationName`, `shapeIndex`, `slideIndex` |
-| `wps_ppt_set_master_background` | `setMasterBackground` | `background` | `color`, `color1`, `color2`, `gradient`, `presentationName` |
-| `wps_ppt_add_master_element` | `addMasterElement` | `element` | `color`, `fontSize`, `height`, `left`, `presentationName`, `shapeType`, `text`, `top`, `type`, `width` |
-| `wps_ppt_set_3d_rotation` | `set3DRotation` | `rotation` | `presentationName`, `preset`, `rotationX`, `rotationY`, `rotationZ`, `shapeIndex`, `shapeName`, `slideIndex` |
-| `wps_ppt_create_3d_text` | `create3DText` | `style` | `depth`, `fontColor`, `fontSize`, `height`, `left`, `presentationName`, `rotationX`, `rotationY`, `slideIndex`, `text`, `top`, `width` |
-| `wps_ppt_add_ppt_hyperlink` | `addPptHyperlink` | `url` | `address`, `presentationName`, `shapeIndex`, `shapeName`, `slideIndex`, `subAddress` |
-| `wps_ppt_start_slide_show` | `startSlideShow` | `fromSlide` | `presentationName` |
-| `wps_ppt_open_presentation` | `openPresentation` | `filePath` | `path` |
-| `wps_ppt_copy_slide` | `duplicateSlide` | `targetIndex` | `index`, `presentationName`, `slideIndex` |
-| `wps_ppt_insert_slide_image` | `insertImage` | `slideIndex`, `imagePath`, `left`, `top` | `filePath`, `height`, `path`, `scale`, `width` |
-| `wps_ppt_set_shape_shadow` | `setShapeShadow` | `shadow` | `blur`, `color`, `name`, `offsetX`, `offsetY`, `presentationName`, `shapeIndex`, `slideIndex`, `transparency` |
-| `wps_ppt_set_shape_gradient` | `setShapeGradient` | `gradient` | `color1`, `color2`, `name`, `presentationName`, `shapeIndex`, `slideIndex` |
-| `wps_ppt_set_shape_border` | `setShapeBorder` | `border` | `color`, `name`, `presentationName`, `shapeIndex`, `slideIndex`, `width` |
-| `wps_ppt_align_shapes` | `alignShapes` | `shapeIndices` | `alignment`, `names`, `presentationName`, `slideIndex` |
-| `wps_ppt_distribute_shapes` | `distributeShapes` | `shapeIndices` | `direction`, `names`, `presentationName`, `slideIndex` |
-| `wps_ppt_group_shapes` | `groupShapes` | `shapeIndices` | `names`, `presentationName`, `slideIndex` |
-| `wps_ppt_set_animation` | `addAnimation` | `shapeIndex`, `animationType` | `effect`, `presentationName`, `shapeName`, `slideIndex` |
-| `wps_ppt_set_transition` | `setSlideTransition` | `transition` | `effect`, `presentationName`, `slideIndex` |
-| `wps_ppt_add_chart` | `insertPptChart` | `chartType`, `data` | `height`, `left`, `presentationName`, `slideIndex`, `top`, `type`, `width` |
-| `wps_ppt_unify_font` | `unifyFont` | `includeTitle`, `includeBody` | `fontName`, `presentationName`, `slideIndex`, `style` |
-| `wps_ppt_set_table_style` | `setPptTableStyle` | `style` | `height`, `left`, `presentationName`, `slideIndex`, `tableIndex`, `tableName`, `top`, `width` |
-| `wps_ppt_set_table_cell_style` | `setPptTableCellStyle` | `style` | `backgroundColor`, `bold`, `col`, `fontColor`, `fontSize`, `presentationName`, `row`, `slideIndex`, `tableIndex`, `tableName` |
-| `wps_ppt_set_table_row_style` | `setPptTableRowStyle` | `style` | `backgroundColor`, `bold`, `fontColor`, `fontSize`, `presentationName`, `row`, `slideIndex`, `tableIndex`, `tableName` |
-| `wps_ppt_delete_textbox` | `deleteTextBox` | `textboxIndex` | `name`, `presentationName`, `shapeIndex`, `slideIndex` |
-| `wps_ppt_set_textbox_text` | `setTextBoxText` | `textboxIndex` | `name`, `presentationName`, `shapeIndex`, `slideIndex`, `text` |
-| `wps_ppt_set_textbox_style` | `setTextBoxStyle` | `textboxIndex`, `style` | `alignment`, `bold`, `color`, `fontName`, `fontSize`, `italic`, `name`, `presentationName`, `shapeIndex`, `slideIndex` |
 
 ## B. Advertised by the schema, never used by the handler
+
+None.
+
+## C. Nested object properties the action never reads
+
+The bridge merges a nested container onto the flat key set before checking, so these property
+names are part of the contract too - and the tool schema is the only place they are declared.
 
 None.
 

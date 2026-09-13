@@ -2,8 +2,14 @@
 // Run: node scripts/verify.mjs <entry.js>
 import { spawn } from "node:child_process";
 
+import { readFileSync } from "node:fs";
+
 const entry = process.argv[2] || "mcp/dist/index.js";
 const BUDGET = { maxTools: 45, maxSchemaBytes: 25000 };
+// Snapshot of how many actions the bridge dispatches. Ad-hoc source edits have silently dropped a
+// whole case before (a patch script swallowed "slide.unifyFont"), and nothing noticed because every
+// remaining action still worked. Update this number deliberately when adding or removing an action.
+const EXPECTED_ACTIONS = 259;
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -36,6 +42,18 @@ console.log("advertised tools=" + tools.length + " schemaBytes=" + bytes + " app
 
 check("budget: tools <= " + BUDGET.maxTools, tools.length <= BUDGET.maxTools, "actual=" + tools.length);
 check("budget: schemaBytes <= " + BUDGET.maxSchemaBytes, bytes <= BUDGET.maxSchemaBytes, "actual=" + bytes);
+
+// Guardrail: the generated dispatcher must still carry every action of the source of truth.
+try {
+  const src = readFileSync("mcp/scripts/wps-com.ps1", "utf8");
+  const generated = readFileSync("host/wps-actions.ps1", "utf8");
+  const caseRe = /^ {4}"([A-Za-z][A-Za-z0-9_.]*)" \{\s*$/gm;
+  const srcCount = (src.match(caseRe) || []).length;
+  const genCount = (generated.match(caseRe) || []).length;
+  check("bridge action count matches the source", srcCount === EXPECTED_ACTIONS && genCount === EXPECTED_ACTIONS, "source=" + srcCount + " generated=" + genCount + " expected=" + EXPECTED_ACTIONS);
+} catch (e) {
+  check("bridge action count matches the source", false, e instanceof Error ? e.message : String(e));
+}
 
 for (const required of ["wps_status", "wps_help", "wps_call", "wps_batch"]) {
   check("facade advertised: " + required, names.has(required));

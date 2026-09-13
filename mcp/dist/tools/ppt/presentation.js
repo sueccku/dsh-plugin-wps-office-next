@@ -41,6 +41,8 @@ exports.createPresentationDefinition = {
 const createPresentationHandler = async (_args) => {
     try {
         const response = await wps_client_1.wpsClient.executeMethod('createPresentation', {}, wps_1.WpsAppType.PRESENTATION);
+        // A fresh WPS deck has zero slides and the action reports no name, so the message must not
+        // depend on a payload field: it used to print "名称: undefined".
         if (response.success && response.data) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -48,7 +50,9 @@ const createPresentationHandler = async (_args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `新建演示文稿成功！\n名称: ${response.data.name}`,
+                        text: response.data.slideCount
+                            ? `新建演示文稿成功！\n幻灯片数: ${response.data.slideCount}`
+                            : '新建演示文稿成功！（新文稿暂无幻灯片，请先 add_slide）',
                     },
                 ],
             };
@@ -484,8 +488,9 @@ exports.insertSlideImageDefinition = {
 const insertSlideImageHandler = async (args) => {
     const { slideIndex, imagePath, left, top } = args;
     try {
-        // 跨平台参数对齐：底层 insertImage handler 读取 path/filePath，需同时发送别名
-        const response = await wps_client_1.wpsClient.executeMethod('insertImage', { slideIndex, imagePath, path: imagePath, filePath: imagePath, left, top }, wps_1.WpsAppType.PRESENTATION);
+        // "insertImage" is the Word action, so this used to insert the picture into the Word document
+        // instead of the slide. insertPptImage is the presentation one.
+        const response = await wps_client_1.wpsClient.executeMethod('insertPptImage', { slideIndex, path: imagePath, left, top }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             return {
                 id: (0, uuid_1.v4)(),

@@ -60,9 +60,9 @@ export const insertPptChartDefinition: ToolDefinition = {
         type: 'string',
         description: '图表类型',
       },
-      data: {
-        type: 'object',
-        description: '图表数据，包含 categories（类别数组）和 series（系列数组，每个系列含 name 和 values）',
+      title: {
+        type: 'string',
+        description: '图表标题',
       },
       left: {
         type: 'number',
@@ -73,17 +73,19 @@ export const insertPptChartDefinition: ToolDefinition = {
         description: '图表上边距（磅），默认自动居中',
       },
     },
-    required: ['slideIndex', 'chartType', 'data'],
+    // Chart data is not injectable: filling a chart means opening its embedded workbook, which a
+    // resident COM host can leave behind. The parameter was removed rather than silently ignored.
+    required: ['slideIndex', 'chartType'],
   },
 };
 
 export const insertPptChartHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, chartType, data, left, top } = args as {
+  const { slideIndex, chartType, title, left, top } = args as {
     slideIndex: number;
     chartType: string;
-    data: Record<string, unknown>;
+    title?: string;
     left?: number;
     top?: number;
   };
@@ -95,7 +97,7 @@ export const insertPptChartHandler: ToolHandler = async (
       chartIndex: number;
     }>(
       'insertPptChart',
-      { slideIndex, chartType, data, left, top },
+      { slideIndex, chartType, title, left, top },
       WpsAppType.PRESENTATION
     );
 
@@ -457,21 +459,17 @@ data 对象格式（树形结构）：
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      data: {
-        type: 'object',
-        description: '组织架构数据（树形结构），含 name、title、children 字段',
-      },
     },
-    required: ['slideIndex', 'data'],
+    // Custom nodes timed out inside WPS (60s COM timeout), so only the built-in skeleton is built.
+    required: ['slideIndex'],
   },
 };
 
 export const createOrgChartHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, data } = args as {
+  const { slideIndex } = args as {
     slideIndex: number;
-    data: Record<string, unknown>;
   };
 
   try {
@@ -482,7 +480,7 @@ export const createOrgChartHandler: ToolHandler = async (
       levelCount: number;
     }>(
       'createOrgChart',
-      { slideIndex, data },
+      { slideIndex },
       WpsAppType.PRESENTATION
     );
 

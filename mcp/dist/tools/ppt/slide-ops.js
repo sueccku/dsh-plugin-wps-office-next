@@ -1444,25 +1444,19 @@ exports.addChartDefinition = {
                 type: 'string',
                 description: '图表类型，如 bar, line, pie, scatter, area, doughnut',
             },
-            data: {
-                type: 'array',
-                description: '图表数据数组，每项包含标签和数值',
-                items: {
-                    type: 'object',
-                    properties: {
-                        label: { type: 'string', description: '数据标签' },
-                        value: { type: 'number', description: '数据值' },
-                    },
-                },
+            title: {
+                type: 'string',
+                description: '图表标题',
             },
         },
-        required: ['slideIndex', 'chartType', 'data'],
+        // See wps_ppt_insert_ppt_chart: chart data cannot be injected safely, so the parameter is gone.
+        required: ['slideIndex', 'chartType'],
     },
 };
 const addChartHandler = async (args) => {
-    const { slideIndex, chartType, data } = args;
+    const { slideIndex, chartType, title } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertPptChart', { slideIndex, chartType, data }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('insertPptChart', { slideIndex, chartType, title }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             const chartNameMap = {
                 bar: '柱形图', line: '折线图', pie: '饼图', scatter: '散点图',
@@ -1474,7 +1468,7 @@ const addChartHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `图表插入成功！\n幻灯片: 第 ${slideIndex} 页\n图表类型: ${chartNameMap[chartType] || chartType}\n数据点数: ${data.length}`,
+                        text: `图表插入成功！\n幻灯片: 第 ${slideIndex} 页\n图表类型: ${chartNameMap[chartType] || chartType}\n提示: 图表数据请在 WPS 中填写（工具不注入图表数据）`,
                     },
                 ],
             };

@@ -217,7 +217,7 @@ function Open-ExportedFile($path, $flag) {
     }
 }
 
-function Resolve-ImageFilePath($value) {
+function Resolve-InputFilePath($value) {
     # WPS resolves picture paths against its own working directory, so a relative path that looks
     # right from the caller's shell fails with a bare E_FAIL. Resolve it here and report a missing
     # file as such.
@@ -269,6 +269,136 @@ function Get-WorksheetByParam($excel, $p) {
         if ($null -ne $wb) { return $wb.Sheets.Item($name) }
     }
     return $excel.ActiveSheet
+}
+
+function Get-PptBackgroundSpec($p) {
+    # The tool sends one background object; flat keys are accepted too. Returns a spec with either
+    # rgb1/rgb2/imagePath filled in or a human-readable error, so both callers stay short.
+    $bg = Get-PropOrNull $p 'background'
+    $kind = if ($null -ne $bg -and $bg.type) { [string]$bg.type } elseif ($null -ne $p.type) { [string]$p.type } else { "solid" }
+    $color = if ($null -ne $bg -and $bg.color) { [string]$bg.color } elseif ($null -ne $p.color) { [string]$p.color } else { $null }
+    $colors = @()
+    if ($null -ne $bg -and $null -ne $bg.colors) { $colors = @($bg.colors) } elseif ($null -ne $p.colors) { $colors = @($p.colors) }
+    $image = if ($null -ne $bg -and $bg.imagePath) { [string]$bg.imagePath } elseif ($null -ne $p.imagePath) { [string]$p.imagePath } else { $null }
+    $spec = @{ kind = $kind; color = $color; colors = $colors; imagePath = $image; error = $null }
+    if ($kind -eq "solid") {
+        if ($null -eq $color -or $color -eq "") { $spec.error = "a solid background needs a color" }
+        elseif ($null -eq (Convert-HexColorToRgbInt $color)) { $spec.error = ("unrecognized color '" + $color + "'") }
+        else { $spec.rgb1 = Convert-HexColorToRgbInt $color }
+    } elseif ($kind -eq "gradient") {
+        if ($colors.Count -lt 2) { $spec.error = "a gradient background needs two colors in colors" }
+        else {
+            $spec.rgb1 = Convert-HexColorToRgbInt ([string]$colors[0])
+            $spec.rgb2 = Convert-HexColorToRgbInt ([string]$colors[1])
+        }
+    } elseif ($kind -eq "image") {
+        if ($null -eq $image -or $image -eq "") { $spec.error = "an image background needs imagePath" }
+        else {
+            $resolved = Resolve-InputFilePath $image
+            if ($null -eq $resolved) { $spec.error = ("background image not found: " + $image) } else { $spec.imagePath = $resolved }
+        }
+    } else { $spec.error = ("unknown background type '" + $kind + "'; use solid/gradient/image") }
+    return $spec
+}
+
+function Set-PptBackgroundFill($fill, $spec) {
+    if ($spec.kind -eq "solid") { $fill.Solid(); $fill.ForeColor.RGB = $spec.rgb1; return }
+    if ($spec.kind -eq "gradient") { $fill.TwoColorGradient(1, 1); $fill.ForeColor.RGB = $spec.rgb1; $fill.BackColor.RGB = $spec.rgb2; return }
+    $fill.UserPicture($spec.imagePath)
+}
+
+function Get-PptEntryEffect($value) {
+    # PpEntryEffect constants. The tools name the transition; COM needs the number, and assigning a
+    # string raised a bare index-out-of-range error from WPS instead of saying what was wrong.
+    $map = @{
+        none = 0; cut = 257; fade = 1793; dissolve = 1537
+        push = 3840; wipe = 2561; split = 1281; reveal = 2049; cover = 3854; curtains = 3586
+    }
+    if ($null -eq $value) { return 1793 }
+    $key = ([string]$value).ToLower()
+    if ($map.ContainsKey($key)) { return $map[$key] }
+    $numeric = 0
+    if ([int]::TryParse($key, [ref]$numeric)) { return $numeric }
+    return $null
+}
+
+function Get-PptAnimEffect($value) {
+    # MsoAnimEffect constants, plus the Exit variants the tools also offer.
+    $map = @{
+        appear = 1; flyin = 2; blinds = 3; box = 4; checkerboard = 5; circle = 6; crawl = 7; diamond = 8
+        dissolve = 9; fadein = 10; fade = 10; flashonce = 11; peeko = 12; plus = 13; randombars = 14
+        spiral = 15; split = 16; stretch = 17; stripc = 18; swirl = 19; wheel = 20; wipein = 22; wipe = 22
+        zoomin = 23; zoom = 23; bouncein = 26; bounce = 26; spinin = 61; spin = 61; flyout = 2; fadeout = 10
+    }
+    if ($null -eq $value) { return 10 }
+    $key = ([string]$value).ToLower()
+    if ($map.ContainsKey($key)) { return $map[$key] }
+    $numeric = 0
+    if ([int]::TryParse($key, [ref]$numeric)) { return $numeric }
+    return $null
+}
+
+function Resolve-ShapeByKind($slide, $p, [string]$kind, $ordinal) {
+    # name/shapeName/shapeIndex address any shape directly. The kind-specific ordinals count only
+    # pictures or only text boxes, which is what the tool schemas promise (imageIndex 1 means the
+    # first picture, not shape 1 - aliasing it to shapeIndex deleted the wrong shape).
+    if ($null -ne $p.name -and "$($p.name)" -ne "") { return $p.name }
+    if ($null -ne $p.shapeName -and "$($p.shapeName)" -ne "") { return $p.shapeName }
+    if ($null -ne $p.shapeIndex) { return $p.shapeIndex }
+    if ($null -eq $ordinal) { return $null }
+    $seen = 0
+    for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
+        $shape = $slide.Shapes.Item($i)
+        $isWanted = $false
+        try {
+            if ($kind -eq "picture") { $isWanted = ([int]$shape.Type -eq 13) } else { $isWanted = ([int]$shape.HasTextFrame -eq -1) }
+        } catch { $isWanted = $false }
+        if (-not $isWanted) { continue }
+        $seen++
+        if ($seen -eq [int]$ordinal) { return $i }
+    }
+    return $null
+}
+
+function Resolve-PictureIndex($slide, $p) { return Resolve-ShapeByKind $slide $p "picture" (Get-PropOrNull $p 'imageIndex') }
+
+function Resolve-TextBoxIndex($slide, $p) { return Resolve-ShapeByKind $slide $p "textbox" (Get-PropOrNull $p 'textboxIndex') }
+
+function Expand-WpsNestedParams($Action, $Params) {
+    # Some tools hand over a nested object (style/shadow/border/gradient/element/rotation) while the
+    # actions read flat keys. Merge the nested properties onto the parameter set. The accepted-key
+    # check runs afterwards, so a nested property the action never reads still fails loudly.
+    if ($null -eq $Params) { return $Params }
+    $containers = $script:ActionNestedParams[$Action]
+    if ($null -eq $containers) { return $Params }
+    foreach ($container in $containers) {
+        $obj = Get-PropOrNull $Params $container
+        if ($null -eq $obj) { continue }
+        foreach ($prop in @($obj.PSObject.Properties)) {
+            if ($null -ne (Get-PropOrNull $Params $prop.Name)) { continue }
+            Add-Member -InputObject $Params -NotePropertyName $prop.Name -NotePropertyValue $prop.Value -Force
+        }
+    }
+    return $Params
+}
+
+function Add-WpsParamAliases($Action, $Params) {
+    # The tool layer's public parameter names and this script's internal keys do not always match
+    # (shapeIndex vs shapeName, order vs zOrder, url vs address ...). Rather than teach every case
+    # two spellings, the generator emits one explicit alias table and the alias value is copied onto
+    # the canonical key before the action runs. The same table feeds the accepted-key check, so an
+    # alias can never be added here without the guard knowing about it.
+    if ($null -eq $Params) { return $Params }
+    $map = $script:ActionParamAliases[$Action]
+    if ($null -eq $map) { return $Params }
+    foreach ($alias in $map.Keys) {
+        $canonical = $map[$alias]
+        if ($null -ne (Get-PropOrNull $Params $canonical)) { continue }
+        $value = Get-PropOrNull $Params $alias
+        if ($null -eq $value) { continue }
+        Add-Member -InputObject $Params -NotePropertyName $canonical -NotePropertyValue $value -Force
+    }
+    return $Params
 }
 
 function Test-WpsActionParamKeys($Action, $Params, $Accepted) {
@@ -417,8 +547,8 @@ function Get-PptSaveFormat([string]$format) {
 
 # Accepted parameter names per action, derived from the switch below by the generator.
 $script:ActionParamKeys = @{
-    'addAnimation' = @('effect', 'presentationName', 'shapeName', 'slideIndex')
-    'addAnimationPreset' = @('delayIncrement', 'presentationName', 'preset', 'slideIndex')
+    'addAnimation' = @('animationType', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'trigger')
+    'addAnimationPreset' = @('delayIncrement', 'presentationName', 'preset', 'shapeIndex', 'shapeName', 'slideIndex')
     'addArrow' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
     'addCellComment' = @('cell', 'comment', 'sheet', 'text', 'visible')
     'addComment' = @('comment', 'text')
@@ -426,17 +556,17 @@ $script:ActionParamKeys = @{
     'addConnector' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
     'addDataValidation' = @('errorMessage', 'errorTitle', 'formula', 'formula1', 'formula2', 'inputMessage', 'inputTitle', 'list', 'operator', 'range', 'sheet', 'showDropdown', 'type', 'validationType')
     'addEmphasisAnimation' = @('duration', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
-    'addMasterElement' = @('color', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
-    'addPageIndicator' = @('dark', 'left', 'presentationName', 'slideIndex', 'top')
-    'addPptHyperlink' = @('address', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress')
+    'addMasterElement' = @('color', 'element', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
+    'addPageIndicator' = @('dark', 'left', 'position', 'presentationName', 'slideIndex', 'top')
+    'addPptHyperlink' = @('address', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress', 'url')
     'addShape' = @('fillColor', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'type', 'width')
     'addSlide' = @('content', 'layout', 'position', 'presentationName', 'title')
     'addTextBox' = @('fontName', 'fontSize', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'width')
-    'addTitleDecoration' = @('color', 'height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
-    'alignShapes' = @('alignment', 'names', 'presentationName', 'slideIndex')
-    'applyColorScheme' = @('colorScheme', 'presentationName', 'scheme')
+    'addTitleDecoration' = @('color', 'height', 'left', 'presentationName', 'slideIndex', 'style', 'top', 'width')
+    'alignShapes' = @('alignment', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
+    'applyColorScheme' = @('colorScheme', 'presentationName', 'scheme', 'slideIndex')
     'applyStyle' = @('range', 'styleName')
-    'applyTransitionToAll' = @('duration', 'presentationName', 'transition')
+    'applyTransitionToAll' = @('duration', 'effect', 'presentationName', 'transition')
     'autoBeautifySlide' = @('presentationName', 'slideIndex', 'style')
     'autoFilter' = @('column', 'criteria', 'field', 'range', 'sheet')
     'autoFitAll' = @('range', 'sheet')
@@ -459,20 +589,20 @@ $script:ActionParamKeys = @{
     'copyFormat' = @('sheet', 'source', 'target')
     'copyRange' = @('destination', 'range', 'sheet', 'source')
     'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
-    'create3DText' = @('depth', 'fontColor', 'fontSize', 'height', 'left', 'presentationName', 'rotationX', 'rotationY', 'slideIndex', 'text', 'top', 'width')
+    'create3DText' = @('depth', 'fontColor', 'fontSize', 'height', 'left', 'presentationName', 'rotationX', 'rotationY', 'slideIndex', 'style', 'text', 'top', 'width')
     'createChart' = @('chartType', 'chartTypeName', 'dataRange', 'left', 'position', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
     'createDocument' = @()
     'createDonutChart' = @('centerText', 'centerX', 'centerY', 'color', 'presentationName', 'radius', 'slideIndex', 'title', 'value')
-    'createFlowChart' = @('boxHeight', 'boxWidth', 'direction', 'gap', 'presentationName', 'slideIndex', 'startX', 'startY', 'steps')
-    'createGauge' = @('centerX', 'centerY', 'presentationName', 'radius', 'slideIndex', 'title', 'value')
+    'createFlowChart' = @('boxHeight', 'boxWidth', 'connections', 'direction', 'gap', 'nodes', 'presentationName', 'slideIndex', 'startX', 'startY', 'steps')
+    'createGauge' = @('centerX', 'centerY', 'max', 'presentationName', 'radius', 'slideIndex', 'title', 'value')
     'createGrid' = @('borderColor', 'cellColor', 'cols', 'gap', 'margin', 'presentationName', 'rows', 'slideIndex')
-    'createKpiCards' = @('cardHeight', 'cards', 'cardWidth', 'gap', 'presentationName', 'slideIndex', 'startX', 'startY')
-    'createMiniCharts' = @('gap', 'items', 'itemWidth', 'presentationName', 'slideIndex', 'startX', 'startY')
+    'createKpiCards' = @('cardHeight', 'cards', 'cardWidth', 'data', 'gap', 'presentationName', 'slideIndex', 'startX', 'startY')
+    'createMiniCharts' = @('data', 'gap', 'items', 'itemWidth', 'presentationName', 'slideIndex', 'startX', 'startY')
     'createNamedRange' = @('name', 'range', 'sheet')
-    'createOrgChart' = @('boxHeight', 'boxWidth', 'levelGap', 'nodes', 'presentationName', 'slideIndex', 'startY')
+    'createOrgChart' = @('boxHeight', 'boxWidth', 'data', 'levelGap', 'nodes', 'presentationName', 'slideIndex', 'startY')
     'createPivotTable' = @('columnFields', 'destinationCell', 'destinationSheet', 'filterFields', 'rowFields', 'sourceRange', 'tableName', 'valueFields')
     'createPresentation' = @()
-    'createProgressBar' = @('bgColor', 'color', 'height', 'label', 'left', 'presentationName', 'progress', 'slideIndex', 'top', 'width')
+    'createProgressBar' = @('bgColor', 'color', 'height', 'label', 'left', 'presentationName', 'progress', 'slideIndex', 'top', 'value', 'width')
     'createSheet' = @('name', 'position')
     'createStyledTable' = @('cols', 'data', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'style', 'top', 'width')
     'createTimeline' = @('dotColor', 'events', 'lineColor', 'lineLength', 'presentationName', 'slideIndex', 'startX', 'startY')
@@ -480,16 +610,16 @@ $script:ActionParamKeys = @{
     'deleteCellComment' = @('cell', 'sheet')
     'deleteColumns' = @('column', 'count', 'sheet', 'startColumn')
     'deleteNamedRange' = @('name')
-    'deletePptImage' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'deletePptImage' = @('imageIndex', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
     'deleteRows' = @('count', 'row', 'sheet', 'startRow')
     'deleteShape' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
     'deleteSheet' = @('name', 'oldName', 'sheet')
     'deleteSlide' = @('index', 'presentationName', 'slideIndex')
-    'deleteTextBox' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'deleteTextBox' = @('name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'textboxIndex')
     'diagnoseFormula' = @('cell', 'sheet')
-    'distributeShapes' = @('direction', 'names', 'presentationName', 'slideIndex')
+    'distributeShapes' = @('direction', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
     'duplicateShape' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
-    'duplicateSlide' = @('index', 'presentationName', 'slideIndex')
+    'duplicateSlide' = @('index', 'presentationName', 'slideIndex', 'targetIndex')
     'enableTrackChanges' = @('enable')
     'endSlideShow' = @()
     'evaluateFormula' = @('formula')
@@ -541,7 +671,7 @@ $script:ActionParamKeys = @{
     'getTrackChangesStatus' = @()
     'groupColumns' = @('endColumn', 'sheet', 'startColumn')
     'groupRows' = @('endRow', 'sheet', 'startRow')
-    'groupShapes' = @('names', 'presentationName', 'slideIndex')
+    'groupShapes' = @('names', 'presentationName', 'shapeIndices', 'slideIndex')
     'hideColumns' = @('column', 'columns', 'count', 'endColumn', 'hide', 'sheet', 'startColumn')
     'hideRows' = @('count', 'endRow', 'hide', 'row', 'rows', 'sheet', 'startRow')
     'insertBookmark' = @('name')
@@ -552,8 +682,8 @@ $script:ActionParamKeys = @{
     'insertHyperlink' = @('address', 'displayText', 'text', 'url')
     'insertImage' = @('filePath', 'height', 'path', 'scale', 'width')
     'insertPageBreak' = @('type')
-    'insertPptChart' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'type', 'width')
-    'insertPptImage' = @('height', 'left', 'path', 'presentationName', 'slideIndex', 'top', 'width')
+    'insertPptChart' = @('chartType', 'height', 'left', 'presentationName', 'slideIndex', 'title', 'top', 'type', 'width')
+    'insertPptImage' = @('filePath', 'height', 'imagePath', 'left', 'path', 'presentationName', 'slideIndex', 'top', 'width')
     'insertPptTable' = @('cols', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'top', 'width')
     'insertRows' = @('count', 'row', 'sheet', 'startRow')
     'insertSectionBreak' = @('breakType')
@@ -566,14 +696,14 @@ $script:ActionParamKeys = @{
     'moveSlide' = @('from', 'fromIndex', 'presentationName', 'to', 'toIndex')
     'openDocument' = @('path')
     'openFile' = @('appType', 'path')
-    'openPresentation' = @('path')
+    'openPresentation' = @('filePath', 'path')
     'openWorkbook' = @('path', 'readOnly', 'updateLinks')
     'pasteRange' = @('destination', 'pasteType', 'sheet')
     'ping' = @()
     'protectSheet' = @('contents', 'drawingObjects', 'password', 'protect', 'scenarios', 'sheet')
     'protectWorkbook' = @('password', 'protect', 'structure', 'windows')
     'refreshLinks' = @()
-    'removeAnimation' = @('index', 'presentationName', 'slideIndex')
+    'removeAnimation' = @('animationIndex', 'index', 'presentationName', 'slideIndex')
     'removeConditionalFormat' = @('index', 'range', 'sheet')
     'removeDataValidation' = @('range', 'sheet')
     'removeDuplicates' = @('columns', 'hasHeader', 'range', 'sheet')
@@ -582,19 +712,19 @@ $script:ActionParamKeys = @{
     'renameSheet' = @('name', 'newName', 'oldName', 'sheet')
     'replaceBookmarkContent' = @('name', 'text')
     'replaceInSheet' = @('matchCase', 'range', 'replaceText', 'searchText', 'sheet')
-    'replacePptImage' = @('filePath', 'name', 'path', 'presentationName', 'shapeIndex', 'slideIndex')
+    'replacePptImage' = @('filePath', 'imagePath', 'name', 'path', 'presentationName', 'shapeIndex', 'slideIndex')
     'replacePptText' = @('find', 'findText', 'presentationName', 'replace', 'replaceText')
     'replaceRange' = @('endPos', 'startPos', 'text')
     'save' = @()
     'saveAs' = @('appType', 'format', 'path')
     'set3DDepth' = @('depth', 'depthColor', 'lighting', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
     'set3DMaterial' = @('material', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
-    'set3DRotation' = @('presentationName', 'preset', 'rotationX', 'rotationY', 'rotationZ', 'shapeIndex', 'shapeName', 'slideIndex')
-    'setAnimationOrder' = @('from', 'presentationName', 'slideIndex', 'to')
+    'set3DRotation' = @('presentationName', 'preset', 'rotation', 'rotationX', 'rotationY', 'rotationZ', 'shapeIndex', 'shapeName', 'slideIndex')
+    'setAnimationOrder' = @('animationIndex', 'from', 'newOrder', 'presentationName', 'slideIndex', 'to')
     'setArrayFormula' = @('formula', 'range', 'sheet')
     'setBackgroundColor' = @('applyToAll', 'color', 'presentationName', 'slideIndex')
-    'setBackgroundGradient' = @('color1', 'color2', 'presentationName', 'slideIndex')
-    'setBackgroundImage' = @('path', 'presentationName', 'slideIndex')
+    'setBackgroundGradient' = @('color1', 'color2', 'gradient', 'presentationName', 'slideIndex')
+    'setBackgroundImage' = @('filePath', 'imagePath', 'path', 'presentationName', 'slideIndex')
     'setBorder' = @('borderStyle', 'color', 'position', 'range', 'sheet', 'style')
     'setCellStyle' = @('backgroundColor', 'bold', 'border', 'borderColor', 'fontColor', 'fontName', 'fontSize', 'horizontalAlignment', 'italic', 'range', 'sheet', 'style', 'verticalAlignment')
     'setCellValue' = @('col', 'row', 'sheet', 'value')
@@ -603,55 +733,55 @@ $script:ActionParamKeys = @{
     'setFontColor' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setFormula' = @('col', 'formula', 'range', 'row', 'sheet')
     'setHyperlink' = @('address', 'cell', 'screenTip', 'sheet', 'subAddress', 'text', 'textToDisplay', 'url')
-    'setImageStyle' = @('height', 'left', 'name', 'presentationName', 'rotation', 'shapeIndex', 'slideIndex', 'top', 'width')
+    'setImageStyle' = @('border', 'cropBottom', 'cropLeft', 'cropRight', 'cropTop', 'height', 'imageIndex', 'left', 'name', 'opacity', 'presentationName', 'rotation', 'shadow', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'top', 'width')
     'setLineSpacing' = @('lineSpacing', 'paragraphIndex')
-    'setMasterBackground' = @('color', 'color1', 'color2', 'gradient', 'presentationName')
+    'setMasterBackground' = @('background', 'color', 'colors', 'imagePath', 'presentationName', 'type')
     'setNumberFormat' = @('format', 'name', 'oldName', 'range', 'sheet')
     'setPageSetup' = @('bottomMargin', 'leftMargin', 'orientation', 'paperSize', 'rightMargin', 'topMargin')
     'setParagraph' = @('alignment', 'firstLineIndent', 'leftIndent', 'lineSpacing', 'range', 'rightIndent', 'spaceAfter', 'spaceBefore')
     'setPptChartData' = @('chartIndex', 'chartName', 'data', 'presentationName', 'slideIndex')
-    'setPptChartStyle' = @('chartIndex', 'chartName', 'hasLegend', 'presentationName', 'slideIndex', 'title')
-    'setPptDateTime' = @('presentationName', 'text', 'useFixed', 'visible')
-    'setPptFooter' = @('presentationName', 'text')
+    'setPptChartStyle' = @('chartIndex', 'chartName', 'hasLegend', 'presentationName', 'slideIndex', 'style', 'title')
+    'setPptDateTime' = @('autoUpdate', 'format', 'presentationName', 'show', 'text', 'useFixed', 'visible')
+    'setPptFooter' = @('presentationName', 'show', 'text')
     'setPptTableCell' = @('col', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName', 'text', 'value')
-    'setPptTableCellStyle' = @('backgroundColor', 'bold', 'col', 'fontColor', 'fontSize', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName')
-    'setPptTableRowStyle' = @('backgroundColor', 'bold', 'fontColor', 'fontSize', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName')
-    'setPptTableStyle' = @('height', 'left', 'presentationName', 'slideIndex', 'tableIndex', 'tableName', 'top', 'width')
+    'setPptTableCellStyle' = @('backgroundColor', 'bold', 'col', 'fontColor', 'fontSize', 'presentationName', 'row', 'slideIndex', 'style', 'tableIndex', 'tableName')
+    'setPptTableRowStyle' = @('backgroundColor', 'bold', 'fontColor', 'fontSize', 'presentationName', 'row', 'slideIndex', 'style', 'tableIndex', 'tableName')
+    'setPptTableStyle' = @('height', 'left', 'presentationName', 'slideIndex', 'style', 'tableIndex', 'tableName', 'top', 'width')
     'setPrintArea' = @('range', 'sheet')
     'setRangeData' = @('data', 'range', 'sheet')
     'setRowHeight' = @('height', 'row', 'sheet')
     'setSelectedText' = @('text')
-    'setShapeBorder' = @('color', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'width')
+    'setShapeBorder' = @('border', 'color', 'enabled', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'style', 'weight', 'width')
     'setShapeFill' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setShapeFullStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
-    'setShapeGradient' = @('color1', 'color2', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'setShapeGradient' = @('color1', 'color2', 'gradient', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'stops')
     'setShapePosition' = @('height', 'left', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'top', 'width')
     'setShapeRoundness' = @('name', 'presentationName', 'roundness', 'shapeIndex', 'slideIndex')
-    'setShapeShadow' = @('blur', 'color', 'name', 'offsetX', 'offsetY', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
+    'setShapeShadow' = @('blur', 'color', 'enabled', 'name', 'offsetX', 'offsetY', 'opacity', 'presentationName', 'shadow', 'shapeIndex', 'slideIndex', 'transparency')
     'setShapeStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
     'setShapeText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
     'setShapeTransparency' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
-    'setShapeZOrder' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'zOrder')
-    'setSlideBackground' = @('color', 'fontName', 'imagePath', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex')
+    'setShapeZOrder' = @('name', 'order', 'presentationName', 'shapeIndex', 'slideIndex', 'zOrder')
+    'setSlideBackground' = @('background', 'color', 'colors', 'fontName', 'imagePath', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex', 'type')
     'setSlideContent' = @('content', 'presentationName', 'slideIndex')
     'setSlideLayout' = @('index', 'layout', 'presentationName', 'slideIndex')
     'setSlideNotes' = @('content', 'index', 'layout', 'notes', 'position', 'presentationName', 'slideIndex', 'title')
-    'setSlideNumber' = @('presentationName', 'visible')
+    'setSlideNumber' = @('presentationName', 'show', 'visible')
     'setSlideSize' = @('height', 'presentationName', 'width')
     'setSlideSubtitle' = @('presentationName', 'slideIndex', 'subtitle')
     'setSlideTheme' = @('presentationName', 'theme')
     'setSlideTitle' = @('presentationName', 'slideIndex', 'title')
-    'setSlideTransition' = @('effect', 'presentationName', 'slideIndex')
-    'setTextBoxStyle' = @('alignment', 'bold', 'color', 'fontName', 'fontSize', 'italic', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
-    'setTextBoxText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
+    'setSlideTransition' = @('duration', 'effect', 'presentationName', 'slideIndex', 'sound', 'transition')
+    'setTextBoxStyle' = @('alignment', 'bold', 'color', 'fontName', 'fontSize', 'italic', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'textboxIndex')
+    'setTextBoxText' = @('name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'text', 'textboxIndex')
     'setTextColor' = @('color', 'range')
     'setZoom' = @('percent', 'sheet')
     'showColumns' = @('column', 'columns', 'count', 'endColumn', 'sheet', 'startColumn')
     'showRows' = @('count', 'endRow', 'row', 'rows', 'sheet', 'startRow')
-    'smartDistribute' = @('direction', 'presentationName', 'shapes', 'slideIndex')
+    'smartDistribute' = @('direction', 'presentationName', 'shapeIndices', 'shapes', 'slideIndex')
     'smartFillField' = @('fillMode', 'keyword', 'value')
     'sortRange' = @('ascending', 'column', 'keyColumn', 'order', 'range', 'sheet')
-    'startSlideShow' = @('presentationName')
+    'startSlideShow' = @('fromSlide', 'presentationName')
     'subtotal' = @('columns', 'function', 'groupBy', 'range', 'replace', 'sheet', 'totalColumn', 'totalColumns')
     'switchDocument' = @('index', 'name')
     'switchPresentation' = @('index', 'name')
@@ -661,7 +791,7 @@ $script:ActionParamKeys = @{
     'textToColumns' = @('delimiter', 'range', 'sheet')
     'transpose' = @('destination', 'destinationCell', 'sheet', 'source', 'sourceRange', 'targetCell')
     'unfreezePanes' = @()
-    'unifyFont' = @('fontName', 'presentationName', 'slideIndex', 'style')
+    'unifyFont' = @('fontName', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex', 'style')
     'unmergeCells' = @('range', 'sheet')
     'unprotectSheet' = @('password', 'sheet')
     'updateChart' = @('chartIndex', 'chartName', 'chartType', 'colors', 'dataRange', 'legendPosition', 'sheet', 'showDataLabels', 'showLegend', 'title')
@@ -670,13 +800,56 @@ $script:ActionParamKeys = @{
     'wrapText' = @('range', 'sheet', 'wrap')
 }
 
+# Public tool parameter name -> the key the action reads, applied before the check.
+$script:ActionParamAliases = @{
+    'addAnimation' = @{ 'animationType' = 'effect'; 'shapeIndex' = 'shapeName' }
+    'addPptHyperlink' = @{ 'url' = 'address' }
+    'alignShapes' = @{ 'shapeIndices' = 'names' }
+    'applyTransitionToAll' = @{ 'effect' = 'transition' }
+    'createKpiCards' = @{ 'data' = 'cards' }
+    'createProgressBar' = @{ 'value' = 'progress' }
+    'distributeShapes' = @{ 'shapeIndices' = 'names' }
+    'groupShapes' = @{ 'shapeIndices' = 'names' }
+    'insertPptChart' = @{ 'chartType' = 'type' }
+    'insertPptImage' = @{ 'filePath' = 'path'; 'imagePath' = 'path' }
+    'openPresentation' = @{ 'filePath' = 'path' }
+    'removeAnimation' = @{ 'animationIndex' = 'index' }
+    'replacePptImage' = @{ 'imagePath' = 'path' }
+    'setAnimationOrder' = @{ 'animationIndex' = 'from'; 'newOrder' = 'to' }
+    'setBackgroundImage' = @{ 'filePath' = 'path'; 'imagePath' = 'path' }
+    'setPptDateTime' = @{ 'show' = 'visible' }
+    'setShapeZOrder' = @{ 'order' = 'zOrder' }
+    'setSlideNumber' = @{ 'show' = 'visible' }
+    'setSlideTransition' = @{ 'transition' = 'effect' }
+    'smartDistribute' = @{ 'shapeIndices' = 'shapes' }
+}
+
+# Container parameters whose properties are merged onto the flat key set.
+$script:ActionNestedParams = @{
+    'addMasterElement' = @('element')
+    'create3DText' = @('style')
+    'set3DRotation' = @('rotation')
+    'setBackgroundGradient' = @('gradient')
+    'setImageStyle' = @('style')
+    'setPptChartStyle' = @('style')
+    'setPptTableCellStyle' = @('style')
+    'setPptTableRowStyle' = @('style')
+    'setPptTableStyle' = @('style')
+    'setShapeBorder' = @('border')
+    'setShapeGradient' = @('gradient')
+    'setShapeShadow' = @('shadow')
+    'setTextBoxStyle' = @('style')
+}
+
 function Invoke-WpsAction {
     param([string]$Action, [string]$Params = '{}')
 
 try { $p = $Params | ConvertFrom-Json } catch { $p = @{} }
+
+    $p = Add-WpsParamAliases $Action $p
+    $p = Expand-WpsNestedParams $Action $p
     $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]
     if ($null -ne $__paramError) { Output-Json @{ success = $false; error = $__paramError }; return }
-
 switch ($Action) {
 
     # ==================== Common ====================
@@ -868,8 +1041,8 @@ return }
     }
 
     "createPresentation" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        # NOTE: the result must not be dereferenced - WPS's Presentations.Add() returns null, and its
+        # new deck can have zero slides. Whether a deck is usable is answered by addSlide/getSlideCount.
         $ppt.Presentations.Add() | Out-Null
         Output-Json @{ success = $true }
     }
@@ -2634,7 +2807,7 @@ return }
         $width = if ($null -ne $p.width) { $p.width } else { -1 }
         $height = if ($null -ne $p.height) { $p.height } else { -1 }
         if ($null -eq $p.path -or "$($p.path)" -eq "") { Output-Json @{ success = $false; error = "path is required to insert an image" }; return }
-        $imagePath = Resolve-ImageFilePath $p.path
+        $imagePath = Resolve-InputFilePath $p.path
         if ($null -eq $imagePath) { Output-Json @{ success = $false; error = ("image file not found: " + "$($p.path)") }; return }
         $pic = $sheet.Shapes.AddPicture($imagePath, $false, $true, $left, $top, $width, $height)
         Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $imagePath; left = $left; top = $top } }
@@ -3452,6 +3625,13 @@ return }
         $slide = $pres.Slides.Item($index)
         $newSlide = $slide.Duplicate()
         $newIndex = $newSlide.Item(1).SlideIndex
+        if ($null -ne $p.targetIndex) {
+            $target = [int]$p.targetIndex
+            if ($target -lt 1 -or $target -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "targetIndex is out of range" }; return }
+            # Move the fresh copy to the requested position instead of leaving it next to the source.
+            $pres.Slides.Item($newIndex).MoveTo($target)
+            $newIndex = $target
+        }
         Output-Json @{ success = $true; data = @{ sourceIndex = $index; newIndex = $newIndex } }
     }
 
@@ -3657,9 +3837,11 @@ return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $textboxIndex = Resolve-TextBoxIndex $slide $p
+        if ($null -eq $textboxIndex) { Output-Json @{ success = $false; error = "no text box matched textboxIndex/shapeIndex/name" }; return }
+        $shape = $slide.Shapes.Item($textboxIndex)
         $shape.Delete()
-        Output-Json @{ success = $true; data = @{ deleted = $(if ($p.name) { $p.name } else { $p.shapeIndex }) } }
+        Output-Json @{ success = $true; data = @{ deleted = $textboxIndex; deletedShape = $shape.Name } }
     }
 
     "getTextBoxes" {
@@ -3686,7 +3868,9 @@ return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $textboxIndex = Resolve-TextBoxIndex $slide $p
+        if ($null -eq $textboxIndex) { Output-Json @{ success = $false; error = "no text box matched textboxIndex/shapeIndex/name" }; return }
+        $shape = $slide.Shapes.Item($textboxIndex)
         $shape.TextFrame.TextRange.Text = if ($p.text) { $p.text } else { "" }
         Output-Json @{ success = $true; data = @{ name = $shape.Name; text = $p.text } }
     }
@@ -3697,7 +3881,9 @@ return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $textboxIndex = Resolve-TextBoxIndex $slide $p
+        if ($null -eq $textboxIndex) { Output-Json @{ success = $false; error = "no text box matched textboxIndex/shapeIndex/name" }; return }
+        $shape = $slide.Shapes.Item($textboxIndex)
         $tr = $shape.TextFrame.TextRange
         if ($p.fontSize) { $tr.Font.Size = $p.fontSize }
         if ($p.fontName) { $tr.Font.Name = $p.fontName }
@@ -3884,9 +4070,11 @@ return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $pictureIndex = Resolve-PictureIndex $slide $p
+        if ($null -eq $pictureIndex) { Output-Json @{ success = $false; error = "no picture matched imageIndex/shapeIndex/name" }; return }
+        $shape = $slide.Shapes.Item($pictureIndex)
         $shape.Delete()
-        Output-Json @{ success = $true; data = @{ deleted = $(if ($p.name) { $p.name } else { $p.shapeIndex }) } }
+        Output-Json @{ success = $true; data = @{ deleted = $pictureIndex; deletedShape = $shape.Name } }
     }
 
     "replacePptImage" {
@@ -3918,13 +4106,50 @@ return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $pictureIndex = Resolve-PictureIndex $slide $p
+        if ($null -eq $pictureIndex) { Output-Json @{ success = $false; error = "no picture matched imageIndex/shapeIndex/name" }; return }
+        $shape = $slide.Shapes.Item($pictureIndex)
         if ($null -ne $p.left) { $shape.Left = $p.left }
         if ($null -ne $p.top) { $shape.Top = $p.top }
         if ($null -ne $p.width) { $shape.Width = $p.width }
         if ($null -ne $p.height) { $shape.Height = $p.height }
         if ($null -ne $p.rotation) { $shape.Rotation = $p.rotation }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
+        # style carries the border/shadow/opacity/crop vocabulary; each piece is applied or reported.
+        $styleErrors = @()
+        if ($null -ne $p.border) {
+            $border = $p.border
+            $borderOn = if ($null -ne $border.enabled) { [bool]$border.enabled } else { $true }
+            try {
+                $shape.Line.Visible = $(if ($borderOn) { -1 } else { 0 })
+                if ($borderOn -and $null -ne $border.weight) { $shape.Line.Weight = [single]$border.weight }
+                if ($borderOn -and $null -ne $border.color) {
+                    $borderRgb = Convert-HexColorToRgbInt ([string]$border.color)
+                    if ($null -ne $borderRgb) { $shape.Line.ForeColor.RGB = $borderRgb }
+                }
+            } catch { $styleErrors += ("border: " + $_.Exception.Message) }
+        }
+        if ($null -ne $p.shadow) {
+            $shadowSpec = $p.shadow
+            $shadowOn = if ($null -ne $shadowSpec.enabled) { [bool]$shadowSpec.enabled } else { $true }
+            try {
+                $shape.Shadow.Visible = $(if ($shadowOn) { -1 } else { 0 })
+                if ($shadowOn -and $null -ne $shadowSpec.blur) { $shape.Shadow.Blur = [single]$shadowSpec.blur }
+                if ($shadowOn -and $null -ne $shadowSpec.offsetX) { $shape.Shadow.OffsetX = [single]$shadowSpec.offsetX }
+                if ($shadowOn -and $null -ne $shadowSpec.offsetY) { $shape.Shadow.OffsetY = [single]$shadowSpec.offsetY }
+            } catch { $styleErrors += ("shadow: " + $_.Exception.Message) }
+        }
+        if ($null -ne $p.opacity) {
+            try { $shape.Fill.Transparency = [double]$p.opacity } catch { $styleErrors += ("opacity: " + $_.Exception.Message) }
+        }
+        try {
+            $cropHeight = [double]$shape.Height
+            if ($null -ne $p.cropTop) { Set-ComValue $shape.PictureFormat "CropTop" ([double]$p.cropTop * $cropHeight) }
+            if ($null -ne $p.cropBottom) { Set-ComValue $shape.PictureFormat "CropBottom" ([double]$p.cropBottom * $cropHeight) }
+            if ($null -ne $p.cropLeft) { Set-ComValue $shape.PictureFormat "CropLeft" ([double]$p.cropLeft * [double]$shape.Width) }
+            if ($null -ne $p.cropRight) { Set-ComValue $shape.PictureFormat "CropRight" ([double]$p.cropRight * [double]$shape.Width) }
+        } catch { $styleErrors += ("crop: " + $_.Exception.Message) }
+        if ($styleErrors.Count -gt 0) { Output-Json @{ success = $false; error = ("some image style properties failed: " + ($styleErrors -join "; ")) }; return }
+        Output-Json @{ success = $true; data = @{ name = $shape.Name; left = $shape.Left; top = $shape.Top; width = $shape.Width; height = $shape.Height } }
     }
 
     "exportSlideAsImage" {
@@ -4137,6 +4362,8 @@ return }
         if ($null -ne $p.blur) { $shape.Shadow.Blur = $p.blur }
         if ($null -ne $p.offsetX) { $shape.Shadow.OffsetX = $p.offsetX }
         if ($null -ne $p.offsetY) { $shape.Shadow.OffsetY = $p.offsetY }
+        if ($null -ne $p.enabled) { $shape.Shadow.Visible = $(if ([bool]$p.enabled) { -1 } else { 0 }) }
+        if ($null -ne $p.opacity) { $shape.Shadow.Transparency = [double]$p.opacity }
         Output-Json @{ success = $true; data = @{ name = $shape.Name } }
     }
 
@@ -4176,6 +4403,15 @@ return }
             $c2 = Convert-HexColorToRgbInt([string]$p.color2)
             if ($null -ne $c2) { $shape.Fill.BackColor.RGB = $c2 }
         }
+        # The tool may describe the fill with stops instead of two colours, and may ask for an angle.
+        if ($null -ne $p.stops) {
+            $stops = @($p.stops)
+            if ($stops.Count -ne 2) { Output-Json @{ success = $false; error = ("only two gradient stops are supported; got " + $stops.Count) }; return }
+            $c1 = Convert-HexColorToRgbInt ([string]$stops[0].color)
+            $c2 = Convert-HexColorToRgbInt ([string]$stops[1].color)
+            if ($null -ne $c1) { $shape.Fill.ForeColor.RGB = $c1 }
+            if ($null -ne $c2) { $shape.Fill.BackColor.RGB = $c2 }
+        }
         Output-Json @{ success = $true; data = @{ name = $shape.Name } }
     }
 
@@ -4191,6 +4427,14 @@ return }
             if ($null -ne $borderColor) { $shape.Line.ForeColor.RGB = $borderColor }
         }
         if ($p.width) { $shape.Line.Weight = $p.width }
+        if ($null -ne $p.enabled) { $shape.Line.Visible = $(if ([bool]$p.enabled) { -1 } else { 0 }) }
+        if ($null -ne $p.weight) { $shape.Line.Weight = [single]$p.weight }
+        if ($null -ne $p.style) {
+            $dashMap = @{ solid = 1; dash = 4; dot = 3; dash_dot = 5; dash_dot_dot = 6 }
+            $dash = $dashMap[[string]$p.style]
+            if ($null -eq $dash) { Output-Json @{ success = $false; error = ("unknown border style '" + $p.style + "'; use solid/dash/dot/dash_dot/dash_dot_dot") }; return }
+            $shape.Line.DashStyle = $dash
+        }
         Output-Json @{ success = $true; data = @{ name = $shape.Name } }
     }
 
@@ -4305,28 +4549,50 @@ return }
         $width = if ($p.width) { $p.width } else { 400 }
         $height = if ($p.height) { $p.height } else { 300 }
         $shape = $slide.Shapes.AddChart($p.type, $left, $top, $width, $height)
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
+        # Chart data is not injected: doing so means opening the chart's embedded workbook, which can
+        # leave a hidden document behind in a resident host. The tool says so instead of pretending.
+        $titleError = $null
+        if ($null -ne $p.title -and "$($p.title)" -ne "") {
+            try { $shape.Chart.HasTitle = $true; $shape.Chart.ChartTitle.Text = [string]$p.title } catch { $titleError = $_.Exception.Message }
+        }
+        Output-Json @{ success = $true; data = @{ name = $shape.Name; chartType = $p.type; title = $p.title; titleError = $titleError } }
     }
 
     "addAnimation" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($p.shapeName)
-        $slide.TimeLine.MainSequence.AddEffect($shape, $p.effect, 1)
-        Output-Json @{ success = $true }
+        if ($null -eq $p.shapeName -and $null -eq $p.shapeIndex) { Output-Json @{ success = $false; error = "shapeIndex/shapeName is required" }; return }
+        $shape = $slide.Shapes.Item($(if ($null -ne $p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
+        $effect = Get-PptAnimEffect $p.effect
+        if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown animation '" + $p.effect + "'; use fadeIn/flyIn/wipeIn/zoomIn/bounceIn/spinIn/fadeOut/flyOut or a MsoAnimEffect number") }; return }
+        # trigger maps to MsoAnimTriggerType: onClick=1, withPrevious=2, afterPrevious=3.
+        $triggerMap = @{ onClick = 1; withPrevious = 2; afterPrevious = 3 }
+        $trigger = if ($null -ne $p.trigger -and $triggerMap[[string]$p.trigger]) { $triggerMap[[string]$p.trigger] } else { 1 }
+        $effectObject = $slide.TimeLine.MainSequence.AddEffect($shape, $effect, 1, $trigger)
+        $exitNames = @("fadeout", "flyout")
+        if ($null -ne $p.effect -and $exitNames -contains ([string]$p.effect).ToLower()) {
+            try { $effectObject.Exit = -1 } catch { }
+        }
+        Output-Json @{ success = $true; data = @{ shape = $shape.Name; effect = $effect; trigger = $trigger; isExit = ($exitNames -contains ([string]$p.effect).ToLower()) } }
     }
 
     "setSlideTransition" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
-        $slide.SlideShowTransition.EntryEffect = $p.effect
-        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; effect = $p.effect } }
+        $effect = Get-PptEntryEffect $p.effect
+        if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown transition '" + $p.effect + "'; use none/cut/fade/dissolve/push/wipe/split/reveal/cover/curtains or a PpEntryEffect number") }; return }
+        $slide.SlideShowTransition.EntryEffect = $effect
+        if ($null -ne $p.duration) { $slide.SlideShowTransition.Duration = [single]$p.duration }
+        if ($null -ne $p.sound -and "$($p.sound)" -ne "") {
+            $soundPath = Resolve-InputFilePath $p.sound
+            if ($null -eq $soundPath) { Output-Json @{ success = $false; error = ("sound file not found: " + "$($p.sound)") }; return }
+            $slide.SlideShowTransition.SoundEffect.ImportFromFile($soundPath)
+        }
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; effect = $p.effect; entryEffect = $effect; duration = $p.duration } }
     }
 
     "setSlideBackground" {
@@ -4335,15 +4601,11 @@ return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        if ($p.color) {
-            $colorValue = Convert-HexColorToRgbInt([string]$p.color)
-            if ($null -ne $colorValue) { $slide.Background.Fill.ForeColor.RGB = $colorValue }
-        }
-        if ($p.imagePath) {
-            $slide.FollowMasterBackground = $false
-            $slide.Background.Fill.UserPicture($p.imagePath)
-        }
-        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex } }
+        $spec = Get-PptBackgroundSpec $p
+        if ($null -ne $spec.error) { Output-Json @{ success = $false; error = $spec.error }; return }
+        $slide.FollowMasterBackground = $false
+        Set-PptBackgroundFill $slide.Background.Fill $spec
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; type = $spec.kind } }
     }
 
     "slide.unifyFont" {
@@ -4413,7 +4675,11 @@ return }
         $scheme = $schemes[$schemeKey]
         if ($null -eq $scheme) { $scheme = $schemes["business"] }
         $count = 0
-        for ($i = 1; $i -le $pres.Slides.Count; $i++) {
+        # slideIndex restricts the scheme to one slide; without it every slide is recoloured.
+        $firstSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        $lastSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { $pres.Slides.Count }
+        if ($firstSlide -lt 1 -or $lastSlide -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
+        for ($i = $firstSlide; $i -le $lastSlide; $i++) {
             $slide = $pres.Slides.Item($i)
             for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
                 $shape = $slide.Shapes.Item($j)
@@ -4563,15 +4829,36 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
 
-        $left = if ($p.left) { $p.left } else { 50 }
-        $top = if ($p.top) { $p.top } else { 130 }
-        $width = if ($p.width) { $p.width } else { 200 }
-        $height = if ($p.height) { $p.height } else { 5 }
+        # style was advertised but never read: every decoration came out as the same underline.
+        $style = if ($null -ne $p.style) { [string]$p.style } else { "underline" }
+        $left = if ($null -ne $p.left) { $p.left } else { 50 }
+        $top = if ($null -ne $p.top) { $p.top } else { 130 }
+        $width = if ($null -ne $p.width) { $p.width } else { 200 }
+        $height = if ($null -ne $p.height) { $p.height } else { 5 }
+        switch ($style) {
+            "underline" { }
+            "block" { $top = $top - 30; $height = 40 }
+            "sidebar" { $width = 6; $height = 60; $top = $top - 20 }
+            "bracket" { }
+            "gradient_bar" { $height = 8 }
+            default { Output-Json @{ success = $false; error = ("unknown title decoration '" + $style + "'; use underline/block/sidebar/bracket/gradient_bar") }; return }
+        }
         $colorValue = Convert-HexColorToRgbInt([string]$(if ($p.color) { $p.color } else { "#1a365d" }))
         $bar = $slide.Shapes.AddShape(1, $left, $top, $width, $height)
-        if ($null -ne $colorValue) { $bar.Fill.Solid(); $bar.Fill.ForeColor.RGB = $colorValue }
+        if ($style -eq "gradient_bar") {
+            $bar.Fill.TwoColorGradient(1, 1)
+            if ($null -ne $colorValue) { $bar.Fill.ForeColor.RGB = $colorValue }
+        } elseif ($null -ne $colorValue) {
+            $bar.Fill.Solid()
+            $bar.Fill.ForeColor.RGB = $colorValue
+        }
         $bar.Line.Visible = $false
-        Output-Json @{ success = $true; data = @{ name = $bar.Name } }
+        if ($style -eq "bracket") {
+            $second = $slide.Shapes.AddShape(1, $left, $top + $height + 24, $width, $height)
+            if ($null -ne $colorValue) { $second.Fill.Solid(); $second.Fill.ForeColor.RGB = $colorValue }
+            $second.Line.Visible = $false
+        }
+        Output-Json @{ success = $true; data = @{ name = $bar.Name; style = $style } }
     }
 
     "addPageIndicator" {
@@ -4584,8 +4871,11 @@ return }
         $total = $pres.Slides.Count
         $current = $slideIndex
         $text = "$current / $total"
-        $left = if ($p.left) { $p.left } else { 880 }
-        $top = if ($p.top) { $p.top } else { 500 }
+        # position was advertised but never read; it picks the corner when left/top are absent.
+        $position = if ($null -ne $p.position) { [string]$p.position } else { "bottom-right" }
+        $defaultLeft = if ($position -eq "bottom-left") { 40 } elseif ($position -eq "bottom-center") { 440 } elseif ($position -eq "bottom-right") { 880 } else { Output-Json @{ success = $false; error = ("unknown indicator position '" + $position + "'") }; return }
+        $left = if ($null -ne $p.left) { $p.left } else { $defaultLeft }
+        $top = if ($null -ne $p.top) { $p.top } else { 500 }
         $box = $slide.Shapes.AddTextbox(1, $left, $top, 80, 30)
         $box.TextFrame.TextRange.Text = $text
         $box.TextFrame.TextRange.Font.Size = 12
@@ -4670,7 +4960,11 @@ return }
         $centerX = if ($p.centerX) { $p.centerX } else { 360 }
         $centerY = if ($p.centerY) { $p.centerY } else { 300 }
         $radius = if ($p.radius) { $p.radius } else { 100 }
-        $value = if ($null -ne $p.value) { [double]$p.value } else { 0.5 }
+        # value is the reading and max is the top of the scale; the gauge draws the fraction.
+        $rawValue = if ($null -ne $p.value) { [double]$p.value } else { 50 }
+        $maxValue = if ($null -ne $p.max) { [double]$p.max } else { 100 }
+        if ($maxValue -le 0) { Output-Json @{ success = $false; error = "max must be greater than 0" }; return }
+        $value = $rawValue / $maxValue
         if ($value -lt 0) { $value = 0 }
         if ($value -gt 1) { $value = 1 }
         $title = if ($p.title) { $p.title } else { "" }
@@ -4709,7 +5003,19 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
 
-        $items = if ($p.items) { $p.items } else { @() }
+        $items = if ($p.items) { @($p.items) } else { @() }
+        if ($null -ne $p.data) {
+            # The tool sends sparkline-style items (label + values); this action draws one value per
+            # item, so use the latest value and derive the trend from the series.
+            $items = @()
+            foreach ($d in @($p.data)) {
+                $values = if ($null -ne $d.values) { @($d.values) } else { @() }
+                $last = if ($values.Count -gt 0) { [double]$values[$values.Count - 1] } else { 0 }
+                $first = if ($values.Count -gt 0) { [double]$values[0] } else { 0 }
+                $trend = if ($last -ge $first) { "up" } else { "down" }
+                $items += @{ label = $d.label; value = [string]$last; trend = $trend }
+            }
+        }
         $startX = if ($p.startX) { $p.startX } else { 50 }
         $startY = if ($p.startY) { $p.startY } else { 400 }
         $itemWidth = if ($p.itemWidth) { $p.itemWidth } else { 100 }
@@ -4750,46 +5056,42 @@ return }
     }
 
     "createDonutChart" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
-
         $centerX = if ($p.centerX) { $p.centerX } else { 360 }
         $centerY = if ($p.centerY) { $p.centerY } else { 280 }
         $radius = if ($p.radius) { $p.radius } else { 80 }
         $value = if ($null -ne $p.value) { [double]$p.value } else { 0.75 }
+        if ($value -gt 1) { $value = $value / 100 }
         if ($value -lt 0) { $value = 0 }
         if ($value -gt 1) { $value = 1 }
         $title = if ($p.title) { $p.title } else { "" }
-        $centerText = if ($p.centerText) { $p.centerText } else { "{0}%" -f ([Math]::Round($value * 100)) }
-
+        $centerText = if ($p.centerText) { [string]$p.centerText } else { "{0}%" -f ([Math]::Round($value * 100)) }
+        # Multi-slice wedges are not drawn: WPS's pie shape exposes a single adjustment, and assigning
+        # its angle hung the host. The ring shows one share; use a chart for a full distribution.
         $outerCircle = $slide.Shapes.AddShape(9, $centerX - $radius, $centerY - $radius, $radius * 2, $radius * 2)
         $outerColor = Convert-HexColorToRgbInt([string]$(if ($p.color) { $p.color } else { "#0d47a1" }))
         if ($null -ne $outerColor) { $outerCircle.Fill.Solid(); $outerCircle.Fill.ForeColor.RGB = $outerColor }
         $outerCircle.Line.Visible = $false
-
         $innerRadius = $radius * 0.6
         $innerCircle = $slide.Shapes.AddShape(9, $centerX - $innerRadius, $centerY - $innerRadius, $innerRadius * 2, $innerRadius * 2)
         $innerColor = Convert-HexColorToRgbInt([string]"#ffffff")
         if ($null -ne $innerColor) { $innerCircle.Fill.Solid(); $innerCircle.Fill.ForeColor.RGB = $innerColor }
         $innerCircle.Line.Visible = $false
-
         $textBox = $slide.Shapes.AddTextbox(1, $centerX - 40, $centerY - 15, 80, 30)
         $textBox.TextFrame.TextRange.Text = $centerText
         $textBox.TextFrame.TextRange.Font.Size = 18
         $textBox.TextFrame.TextRange.Font.Bold = $true
         $textBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-
         if ($title) {
             $titleBox = $slide.Shapes.AddTextbox(1, $centerX - 60, $centerY + $radius + 15, 120, 25)
             $titleBox.TextFrame.TextRange.Text = $title
             $titleBox.TextFrame.TextRange.Font.Size = 12
             $titleBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
         }
-
-        Output-Json @{ success = $true; data = @{ donut = $outerCircle.Name; value = $value } }
+        Output-Json @{ success = $true; data = @{ donut = $outerCircle.Name; value = $value; centerText = $centerText } }
     }
 
     "autoLayout" {
@@ -4958,7 +5260,19 @@ return }
         if ($null -eq $config) { $config = $presets["fadeIn"] }
         $animatedCount = 0
 
-        for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
+        # shapeIndex/shapeName animates one shape; without either the preset hits every shape.
+        $onlyShape = $null
+        if ($null -ne $p.shapeName -and "$($p.shapeName)" -ne "") { $onlyShape = $p.shapeName }
+        elseif ($null -ne $p.shapeIndex) { $onlyShape = $p.shapeIndex }
+        $firstShape = 1
+        $lastShape = $slide.Shapes.Count
+        if ($null -ne $onlyShape) {
+            $firstShape = [int]$onlyShape
+            $lastShape = [int]$onlyShape
+            if ($firstShape -lt 1 -or $firstShape -gt $slide.Shapes.Count) { Output-Json @{ success = $false; error = "shapeIndex is out of range" }; return }
+        }
+
+        for ($i = $firstShape; $i -le $lastShape; $i++) {
             $shape = $slide.Shapes.Item($i)
             try {
                 $effect = $timeline.MainSequence.AddEffect($shape, $config.effect, 0, 1)
@@ -4969,7 +5283,7 @@ return }
             } catch {}
         }
 
-        Output-Json @{ success = $true; data = @{ preset = $preset; animatedShapes = $animatedCount } }
+        Output-Json @{ success = $true; data = @{ preset = $preset; animatedShapes = $animatedCount; shapeIndex = $onlyShape } }
     }
 
     "addEmphasisAnimation" {
@@ -4998,7 +5312,15 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
 
-        $steps = if ($p.steps) { $p.steps } else { @("开始", "步骤1", "步骤2", "结束") }
+        $steps = if ($p.steps) { @($p.steps) } else { @() }
+        if ($null -ne $p.nodes) {
+            # The tool sends nodes with id/text/type; this action draws a linear chain.
+            $steps = @()
+            foreach ($node in @($p.nodes)) {
+                if ($node.text) { $steps += [string]$node.text } elseif ($node.id) { $steps += [string]$node.id }
+            }
+        }
+        if ($steps.Count -eq 0) { $steps = @("开始", "步骤1", "步骤2", "结束") }
         $direction = if ($p.direction) { $p.direction } else { "horizontal" }
         $startX = if ($p.startX) { $p.startX } else { 80 }
         $startY = if ($p.startY) { $p.startY } else { 250 }
@@ -5053,7 +5375,9 @@ return }
             }
         }
 
-        Output-Json @{ success = $true; data = @{ steps = $steps.Count; shapes = $shapes } }
+        # connections were advertised; the drawing is the implicit chain, so report that instead of dropping it.
+        $requestedConnections = if ($null -ne $p.connections) { @($p.connections).Count } else { 0 }
+        Output-Json @{ success = $true; data = @{ steps = $steps.Count; shapes = $shapes; requestedConnections = $requestedConnections; connectionMode = "sequential" } }
     }
 
     "createOrgChart" {
@@ -5063,7 +5387,21 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
 
-        $nodes = if ($p.nodes) { $p.nodes } else { @(@{ name = "CEO"; level = 0 }, @{ name = "技术总监"; level = 1 }, @{ name = "市场总监"; level = 1 }, @{ name = "财务总监"; level = 1 }) }
+        $nodes = if ($p.nodes) { @($p.nodes) } else { @() }
+        if ($null -ne $p.data) {
+            # The tool sends a tree (name/title/children); this action groups nodes by level.
+            $nodes = @()
+            $queue = @(@{ node = $p.data; level = 0 })
+            while ($queue.Count -gt 0) {
+                $current = $queue[0]
+                $queue = @($queue | Select-Object -Skip 1)
+                $node = $current.node
+                $label = if ($node.name) { [string]$node.name } elseif ($node.title) { [string]$node.title } else { "" }
+                $nodes += @{ name = $label; level = [int]$current.level }
+                foreach ($child in @($node.children)) { $queue += @{ node = $child; level = [int]$current.level + 1 } }
+            }
+        }
+        if ($nodes.Count -eq 0) { $nodes = @(@{ name = "CEO"; level = 0 }, @{ name = "技术总监"; level = 1 }, @{ name = "市场总监"; level = 1 }, @{ name = "财务总监"; level = 1 }) }
         $centerX = 360
         $startY = if ($p.startY) { $p.startY } else { 80 }
         $boxWidth = if ($p.boxWidth) { $p.boxWidth } else { 100 }
@@ -5184,18 +5522,10 @@ return }
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $master = $pres.SlideMaster
-        if ($p.gradient) {
-            $master.Background.Fill.TwoColorGradient(1, 1)
-            $color1 = Convert-HexColorToRgbInt([string]$(if ($p.color1) { $p.color1 } else { "#1a365d" }))
-            $color2 = Convert-HexColorToRgbInt([string]$(if ($p.color2) { $p.color2 } else { "#2d5a87" }))
-            if ($null -ne $color1) { $master.Background.Fill.GradientStops.Item(1).Color.RGB = $color1 }
-            if ($null -ne $color2) { $master.Background.Fill.GradientStops.Item(2).Color.RGB = $color2 }
-        } else {
-            $master.Background.Fill.Solid()
-            $colorValue = Convert-HexColorToRgbInt([string]$(if ($p.color) { $p.color } else { "#ffffff" }))
-            if ($null -ne $colorValue) { $master.Background.Fill.ForeColor.RGB = $colorValue }
-        }
-        Output-Json @{ success = $true; data = @{ message = "母版背景已更新" } }
+        $spec = Get-PptBackgroundSpec $p
+        if ($null -ne $spec.error) { Output-Json @{ success = $false; error = $spec.error }; return }
+        Set-PptBackgroundFill $master.Background.Fill $spec
+        Output-Json @{ success = $true; data = @{ type = $spec.kind } }
     }
 
     "addMasterElement" {
@@ -5417,17 +5747,15 @@ return }
     }
 
     "applyTransitionToAll" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
-        $transitionMap = @{ none = 0; fade = 1; push = 2; wipe = 3; split = 4; reveal = 5; random = 6 }
-        $transition = if ($transitionMap[$p.transition]) { $transitionMap[$p.transition] } else { if ($p.transition) { $p.transition } else { 1 } }
+        $effect = Get-PptEntryEffect $p.transition
+        if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown transition '" + $p.transition + "'; use none/cut/fade/dissolve/push/wipe/split/reveal/cover/curtains or a PpEntryEffect number") }; return }
         for ($i = 1; $i -le $pres.Slides.Count; $i++) {
             $slide = $pres.Slides.Item($i)
-            $slide.SlideShowTransition.EntryEffect = $transition
-            if ($p.duration) { $slide.SlideShowTransition.Duration = $p.duration }
+            $slide.SlideShowTransition.EntryEffect = $effect
+            if ($null -ne $p.duration) { $slide.SlideShowTransition.Duration = [single]$p.duration }
         }
-        Output-Json @{ success = $true; data = @{ transition = $p.transition; appliedTo = $pres.Slides.Count } }
+        Output-Json @{ success = $true; data = @{ transition = $p.transition; entryEffect = $effect; appliedTo = $pres.Slides.Count } }
     }
 
     "setBackgroundColor" {
@@ -5500,9 +5828,11 @@ return }
         $ppt = Get-WpsPpt
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
-        $pres.SlideMaster.HeadersFooters.Footer.Visible = $true
+        # show was advertised but never read, so the footer could not be hidden again.
+        $visible = if ($null -ne $p.show) { [bool]$p.show } else { $true }
+        $pres.SlideMaster.HeadersFooters.Footer.Visible = $visible
         $pres.SlideMaster.HeadersFooters.Footer.Text = if ($p.text) { $p.text } else { "" }
-        Output-Json @{ success = $true; data = @{ text = $p.text } }
+        Output-Json @{ success = $true; data = @{ text = $p.text; visible = $visible } }
     }
 
     "setPptDateTime" {
@@ -5510,11 +5840,27 @@ return }
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $pres.SlideMaster.HeadersFooters.DateAndTime.Visible = if ($p.visible -ne $null) { $p.visible } else { $true }
-        if ($p.useFixed) {
-            $pres.SlideMaster.HeadersFooters.DateAndTime.UseFormat = $false
-            $pres.SlideMaster.HeadersFooters.DateAndTime.Text = if ($p.text) { $p.text } else { "" }
+        $dateTime = $pres.SlideMaster.HeadersFooters.DateAndTime
+        # autoUpdate=true means the application refreshes the date itself; false pins the text.
+        $useFixed = $null
+        if ($null -ne $p.useFixed) { $useFixed = [bool]$p.useFixed }
+        elseif ($null -ne $p.autoUpdate) { $useFixed = -not [bool]$p.autoUpdate }
+        if ($null -ne $p.format -and "$($p.format)" -ne "") {
+            # The tool passes a display format such as YYYY-MM-DD, not the COM format enum, so render it.
+            $pattern = "$($p.format)".ToUpper().Replace("YYYY", "yyyy").Replace("DD", "dd")
+            try {
+                $dateTime.UseFormat = $false
+                $dateTime.Text = (Get-Date).ToString($pattern)
+                $dateTime.Visible = $true
+            } catch {
+                Output-Json @{ success = $false; error = ("unsupported date format '" + "$($p.format)" + "': " + $_.Exception.Message) }
+return }
         }
-        Output-Json @{ success = $true; data = @{ visible = if ($p.visible -ne $null) { $p.visible } else { $true } } }
+        if ($useFixed) {
+            $dateTime.UseFormat = $false
+            $dateTime.Text = if ($p.text) { $p.text } else { "" }
+        }
+        Output-Json @{ success = $true; data = @{ visible = $dateTime.Visible; useFixed = $useFixed; text = $dateTime.Text } }
     }
 
     "findPptText" {
@@ -5564,6 +5910,12 @@ return }
         $ppt = Get-WpsPpt
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
+        if ($null -ne $p.fromSlide) {
+            $from = [int]$p.fromSlide
+            if ($from -lt 1 -or $from -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "fromSlide is out of range" }; return }
+            # Run() takes no start argument; the slide show settings carry it.
+            $pres.SlideShowSettings.StartingSlide = $from
+        }
         $pres.SlideShowSettings.Run()
         Output-Json @{ success = $true }
     }
@@ -5580,15 +5932,25 @@ return }
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $fontName = if ($p.fontName) { $p.fontName } else { "微软雅黑" }
+        $includeTitle = if ($null -ne $p.includeTitle) { [bool]$p.includeTitle } else { $true }
+        $includeBody = if ($null -ne $p.includeBody) { [bool]$p.includeBody } else { $true }
+        $firstSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        $lastSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { $pres.Slides.Count }
+        if ($firstSlide -lt 1 -or $lastSlide -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $count = 0
-        for ($i = 1; $i -le $pres.Slides.Count; $i++) {
+        for ($i = $firstSlide; $i -le $lastSlide; $i++) {
             $slide = $pres.Slides.Item($i)
             for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
                 $shape = $slide.Shapes.Item($j)
                 try {
                     if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
-                        $shape.TextFrame.TextRange.Font.Name = $fontName
-                        $count++
+                        # Title placeholders are ppPlaceholderTitle(13)/ppPlaceholderCenterTitle(14).
+                        $isTitle = $false
+                        try { $phType = [int]$shape.PlaceholderFormat.Type; $isTitle = ($phType -eq 13 -or $phType -eq 14) } catch { $isTitle = $false }
+                        if (($isTitle -and $includeTitle) -or ((-not $isTitle) -and $includeBody)) {
+                            $shape.TextFrame.TextRange.Font.Name = $fontName
+                            $count++
+                        }
                     }
                 } catch {}
             }
@@ -5643,30 +6005,25 @@ return }
     }
 
     "set3DRotation" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } elseif ($p.shapeIndex) { [int]$p.shapeIndex } else { 1 }))
-        $rotX = if ($null -ne $p.rotationX) { [double]$p.rotationX } else { 0 }
-        $rotY = if ($null -ne $p.rotationY) { [double]$p.rotationY } else { 0 }
-        $rotZ = if ($null -ne $p.rotationZ) { [double]$p.rotationZ } else { 0 }
-        if ($p.preset) {
-            $presets = @{
-                isometric   = @{ x = 45; y = 45; z = 0 }
-                perspective = @{ x = 30; y = 30; z = 0 }
-                oblique     = @{ x = 20; y = 60; z = 0 }
-                tiltLeft    = @{ x = 0;  y = -30; z = 0 }
-                tiltRight   = @{ x = 0;  y = 30; z = 0 }
-            }
-            $pr = $presets[$p.preset]
-            if ($null -ne $pr) { $rotX = $pr.x; $rotY = $pr.y; $rotZ = $pr.z }
+        $shape = $slide.Shapes.Item($(if ($null -ne $p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
+        # ThreeD angles are Single; handing the binder an Int32 raised "invalid cast".
+        $x = if ($null -ne $p.rotationX) { [single]$p.rotationX } else { 0 }
+        $y = if ($null -ne $p.rotationY) { [single]$p.rotationY } else { 0 }
+        $z = if ($null -ne $p.rotationZ) { [single]$p.rotationZ } else { 0 }
+        if ($null -ne $p.preset) {
+            $presets = @{ isometric = @{ x = 45; y = 45; z = 0 }; perspective = @{ x = 30; y = 30; z = 0 }; oblique = @{ x = 20; y = 60; z = 0 }; tiltLeft = @{ x = 0; y = -30; z = 0 }; tiltRight = @{ x = 0; y = 30; z = 0 } }
+            $preset = $presets[[string]$p.preset]
+            if ($null -eq $preset) { Output-Json @{ success = $false; error = ("unknown 3D preset '" + $p.preset + "'; use isometric/perspective/oblique/tiltLeft/tiltRight") }; return }
+            $x = [single]$preset.x; $y = [single]$preset.y; $z = [single]$preset.z
         }
-        $shape.ThreeD.RotationX = $rotX
-        $shape.ThreeD.RotationY = $rotY
-        $shape.ThreeD.RotationZ = $rotZ
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; rotationX = $rotX; rotationY = $rotY; rotationZ = $rotZ } }
+        Set-ComValue $shape.ThreeD "RotationX" $x
+        Set-ComValue $shape.ThreeD "RotationY" $y
+        Set-ComValue $shape.ThreeD "RotationZ" $z
+        Output-Json @{ success = $true; data = @{ shape = $shape.Name; rotationX = $x; rotationY = $y; rotationZ = $z } }
     }
 
     "set3DDepth" {

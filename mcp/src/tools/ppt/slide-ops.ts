@@ -1743,29 +1743,23 @@ export const addChartDefinition: ToolDefinition = {
         type: 'string',
         description: '图表类型，如 bar, line, pie, scatter, area, doughnut',
       },
-      data: {
-        type: 'array',
-        description: '图表数据数组，每项包含标签和数值',
-        items: {
-          type: 'object',
-          properties: {
-            label: { type: 'string', description: '数据标签' },
-            value: { type: 'number', description: '数据值' },
-          },
-        },
+      title: {
+        type: 'string',
+        description: '图表标题',
       },
     },
-    required: ['slideIndex', 'chartType', 'data'],
+    // See wps_ppt_insert_ppt_chart: chart data cannot be injected safely, so the parameter is gone.
+    required: ['slideIndex', 'chartType'],
   },
 };
 
 export const addChartHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, chartType, data } = args as {
+  const { slideIndex, chartType, title } = args as {
     slideIndex: number;
     chartType: string;
-    data: Array<{ label: string; value: number }>;
+    title?: string;
   };
 
   try {
@@ -1775,7 +1769,7 @@ export const addChartHandler: ToolHandler = async (
       chartId?: string;
     }>(
       'insertPptChart',
-      { slideIndex, chartType, data },
+      { slideIndex, chartType, title },
       WpsAppType.PRESENTATION
     );
 
@@ -1791,7 +1785,7 @@ export const addChartHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `图表插入成功！\n幻灯片: 第 ${slideIndex} 页\n图表类型: ${chartNameMap[chartType] || chartType}\n数据点数: ${data.length}`,
+            text: `图表插入成功！\n幻灯片: 第 ${slideIndex} 页\n图表类型: ${chartNameMap[chartType] || chartType}\n提示: 图表数据请在 WPS 中填写（工具不注入图表数据）`,
           },
         ],
       };

@@ -162,38 +162,57 @@ await host.waitReady();
 
 // Cache the bridge answer per action: one hop per action, not per tool.
 const bridgeCache = new Map();
-async function bridgeAccepts(action) {
+async function bridgeInfo(action) {
   if (bridgeCache.has(action)) return bridgeCache.get(action);
   const res = await host.invoke("__validateParams", { action, keys: [] });
   const data = res && res.result && res.result.data;
-  const answer = data && data.validated ? new Set(data.accepted) : null;
+  const answer = data && data.validated
+    ? { accepted: new Set(data.accepted), containers: data.containers || [] }
+    : null;
   bridgeCache.set(action, answer);
   return answer;
+}
+async function bridgeAccepts(action) {
+  const info = await bridgeInfo(action);
+  return info ? info.accepted : null;
 }
 
 const classA = []; // handler sends what the bridge never reads
 const classB = []; // schema advertises what the handler never sends
+const classC = []; // a nested object carries properties the action never reads
 const unvalidated = [];
 let checked = 0;
 
 for (const [toolName, info] of TOOLS) {
   const tool = tools.get(toolName);
   if (!tool) continue;
-  const accepted = await bridgeAccepts(info.action);
-  if (!accepted) { unvalidated.push({ tool: toolName, action: info.action }); continue; }
+  const bridge = await bridgeInfo(info.action);
+  if (!bridge) { unvalidated.push({ tool: toolName, action: info.action }); continue; }
+  const accepted = bridge.accepted;
   checked++;
   const ignored = info.keys.filter((k) => !accepted.has(k));
   if (ignored.length) classA.push({ tool: toolName, action: info.action, ignored, accepted: [...accepted] });
   const schema = Object.keys((tool.inputSchema && tool.inputSchema.properties) || {});
   const dropped = schema.filter((k) => !info.mentioned(k));
   if (dropped.length) classB.push({ tool: toolName, action: info.action, dropped, sent: info.keys });
+
+  // Nested objects are merged onto the flat key set before the check, so their property names are
+  // part of the contract too - and the tool schemas are the only place they are declared.
+  const props = (tool.inputSchema && tool.inputSchema.properties) || {};
+  for (const container of bridge.containers) {
+    const declaration = props[container];
+    if (!declaration || declaration.type !== "object" || !declaration.properties) continue;
+    const subKeys = Object.keys(declaration.properties);
+    const unknown = subKeys.filter((k) => !accepted.has(k));
+    if (unknown.length) classC.push({ tool: toolName, action: info.action, container, unknown, accepted: [...accepted] });
+  }
 }
 
 await host.invoke("__shutdown", {});
 host.child.kill();
 server.child.kill();
 
-const report = { tools: tools.size, checked, classA, classB, unvalidated, unparsed };
+const report = { tools: tools.size, checked, classA, classB, classC, unvalidated, unparsed };
 
 // The doc is generated so the remaining work is always the real, current list.
 const doc = [
@@ -211,6 +230,7 @@ const doc = [
   "| tool/action pairs checked | " + checked + " |",
   "| **A. handler sends a parameter the bridge never reads** | **" + classA.length + "** |",
   "| B. schema advertises a parameter the handler never uses | " + classB.length + " |",
+  "| **C. nested object carries a property the action never reads** | **" + classC.length + "** |",
   "| actions with no key table (guard skipped) | " + unvalidated.length + " |",
   "| handlers whose arguments are not statically readable | " + unparsed.length + " |",
   "",
@@ -228,6 +248,14 @@ const doc = [
   "",
   classB.length === 0 ? "None." : "| tool | action | parameter(s) unused |",
   ...(classB.length === 0 ? [] : ["| --- | --- | --- |", ...classB.map((m) => "| `" + m.tool + "` | `" + m.action + "` | " + m.dropped.map((k) => "`" + k + "`").join(", ") + " |")]),
+  "",
+  "## C. Nested object properties the action never reads",
+  "",
+  "The bridge merges a nested container onto the flat key set before checking, so these property",
+  "names are part of the contract too - and the tool schema is the only place they are declared.",
+  "",
+  classC.length === 0 ? "None." : "| tool | action | container | unused property |",
+  ...(classC.length === 0 ? [] : ["| --- | --- | --- | --- |", ...classC.map((m) => "| `" + m.tool + "` | `" + m.action + "` | `" + m.container + "` | " + m.unknown.map((k) => "`" + k + "`").join(", ") + " |")]),
   "",
   "## Not checked",
   "",
@@ -249,9 +277,12 @@ else {
   console.log("B. schema ADVERTISES a parameter the handler NEVER USES  (silent no-op): " + classB.length);
   for (const m of classB) console.log("  " + m.tool + " -> " + m.action + "\n      advertised-but-unused: " + m.dropped.join(", ") + "\n      object sent to the bridge: " + m.sent.join(", "));
   console.log("");
+  console.log("C. nested object carries a property the action NEVER READS: " + classC.length);
+  for (const m of classC) console.log("  " + m.tool + " -> " + m.action + "  [" + m.container + "]\n      unused: " + m.unknown.join(", "));
+  console.log("");
   console.log("UNVALIDATED (bridge has no key table for the action): " + unvalidated.length);
   for (const u of unvalidated) console.log("  " + u.tool + " -> " + u.action);
   console.log("UNPARSED (handler arguments not statically readable): " + unparsed.length);
   for (const u of unparsed) console.log("  " + u.tool + " (" + u.reason + ")");
 }
-process.exit(classA.length + classB.length === 0 ? 0 : 1);
+process.exit(classA.length + classB.length + classC.length === 0 ? 0 : 1);
