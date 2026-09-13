@@ -243,6 +243,7 @@
 | 文档 | 内容 |
 |---|---|
 | [docs/FIXES.md](docs/FIXES.md) | 29 条修复记录，每条都带可复跑的验证方法与实测数字 |
+| [docs/tool-roadmap.md](docs/tool-roadmap.md) | 工具面路线图：能力审计、缺口/冗余清单、分阶段任务表（P0–P5） |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | 分阶段进度与当前状态 |
 | [baseline/known-defects.md](baseline/known-defects.md) | 上游 28 行缺陷清单 + 本仓库逐条状态 |
 | [docs/param-contract.md](docs/param-contract.md) | 211 对工具/action 参数契约对账（生成物） |
