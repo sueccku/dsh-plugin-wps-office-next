@@ -19,7 +19,7 @@ MVP 完成并已在真实 DSH 上端到端验证（P0 基线、P1 合仓、P2 �
 
 从 GitHub（建议固定 commit）：
 
-    dsh plugin --profile <name> add github:CatNebulaaaa/dsh-plugin-wps-office-next#<sha>
+    dsh plugin --profile <name> add github:sueccku/dsh-plugin-wps-office-next#<sha>
 
 随后正常启动该 profile 即可。**不需要任何环境变量**：plugin.js 会在加载时自行解析包内的 MCP 入口与
 COM 宿主脚本路径，不再需要上游时代的 WPS_SKILLS_ROOT / WPS_OFFICE_MCP_ENTRY 配置。
