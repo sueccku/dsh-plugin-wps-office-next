@@ -838,6 +838,29 @@ P1 第一步量出的 58 处「参数名 ≠ 桥键」里，有一大半不是�
 
 工具面仍逐字节复现（209 schema / 121,308 字节 / 广告集 44），验收 **11 项全绿**。
 
+### 36. P1-4b：两张手写表搬进 spec，宿主产物逐字节未变（已落地）
+
+先试了"机械改名把 62 处别名对齐"，dry-run 立刻暴露两个**不能用改名处理**的情况：
+`setBackgroundImage` 一个桥键对两个公开名（`imagePath`/`filePath`）、`addAnimation` 的
+`shapeName`/`shapeIndex` 有语义纠缠（桥两者都读，含义不同）。**于是放弃机械改名，改做更根本的事**：
+把手写表的数据搬进 spec，由生成器产出——行为不变，但真源变了。
+
+- 新增 `mcp/src/spec/aliases.ts`：声明式地记录「公开参数名 → 桥读取的键」与「嵌套容器名」
+  （由一次性脚本从生成器的两张表导入，含那些 schema 没声明、但历史上被接受的兼容拼写）。
+- `gen-tool-surface.mjs` 产出 `spec/param-aliases.json` 与 `spec/param-containers.json`；
+- `build-host-actions.ps1` 删掉两张手写表，改读这两个 JSON（PS 5.1 有 `ConvertFrom-Json`）。
+
+**验收是「宿主产物逐字节未变」**：重新生成 `host/wps-actions.ps1` 后 `git diff` 为空，
+生成器计数也一致（`param_aliases=17 containers=12`、`switch_cases=231`、`guard_installed=1`）。
+这证明搬家没有改变任何运行时行为——比"测试还绿"更强的证据。
+
+**新增一条不变量**（验收 12 项）：两种改名机制不许混淆——
+handler 自己改名时桥侧不需要声明；handler **原样传公开名**时，桥侧必须有声明。
+现在 16 处 pass-through 改名全部有声明，另有 2 条"没人发送的兼容拼写"被显式记账。
+
+**三张人手表的状态**：aliases ✅ 归零（数据进 spec）、containers ✅ 归零、`$helperKeys` **仍在**
+——它是"从桥源码推导键表"的辅助信息，只有把键表本身也改成 spec 产出才会消失（那是 P1-5 的伴生工作）。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

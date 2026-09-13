@@ -10,6 +10,10 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const { analyseToolSource } = await import(pathToFileURL(resolve('scripts/lib/tool-action-map.mjs')).href);
+const { map: TOOL_MAP } = analyseToolSource();
 
 const require = createRequire(import.meta.url);
 const generated = JSON.parse(readFileSync('spec/tool-definitions.json', 'utf8'));
@@ -136,6 +140,40 @@ check('every parameter has a declared destination', unresolved === 0, unresolved
 check('every bridge parameter lands on a key the bridge reads', keyMismatch.length === 0, keyMismatch.length ? keyMismatch.slice(0, 6).join(', ') : aliased + ' of them differ only by name');
 check('alias debt did not grow (P1-4 target: 0)', aliased <= ALIAS_DEBT, aliased + ' of ' + ALIAS_DEBT + ' recorded');
 check('untooled-action backlog did not grow (P2 target: down to 0)', untooled.length <= UNTOOLED_ACTIONS, untooled.length + ' of ' + UNTOOLED_ACTIONS + ' recorded (autoFit*, named ranges, conditional formats, getComments, getBookmarks, ...)');
+
+// The bridge-side compatibility table is declared in the spec (mcp/src/spec/aliases.ts) and emitted as
+// spec/param-aliases.json; the per-tool analysis view lives in operations.ts. They describe the same
+// mapping from two angles, so they must agree.
+// Two mechanisms perform a rename, and they must not be confused:
+//   - the handler renames in code, so nothing is needed on the bridge side;
+//   - the handler passes the public name through, and the bridge renames it via paramAliases.
+// Only the second case requires a declared entry, so that is what is asserted. Declared entries whose
+// public name no tool sends are legal too: they are the compatibility spellings kept on purpose.
+const { paramAliases } = require(resolve('mcp/dist/spec/aliases.js'));
+const missingDeclared = [];
+let passedThrough = 0;
+let legacyOnly = 0;
+const sentToAction = new Set();
+for (const op of spec.operations) {
+  if (!op.action) continue;
+  const sent = TOOL_MAP.get(op.tool);
+  for (const key of (sent && sent.keys) || []) sentToAction.add(op.action + '.' + key);
+}
+for (const op of spec.operations) {
+  if (!op.action || !op.aliases) continue;
+  const declared = paramAliases[op.action] || {};
+  const sent = new Set(((TOOL_MAP.get(op.tool) || {}).keys) || []);
+  for (const [name, bridgeKey] of Object.entries(op.aliases)) {
+    if (sent.has(name)) {
+      passedThrough++;
+      if (declared[name] !== bridgeKey) missingDeclared.push(op.action + '.' + name + ' (bridge declares ' + JSON.stringify(declared[name]) + ', needs ' + bridgeKey + ')');
+    }
+  }
+}
+for (const [action, map] of Object.entries(paramAliases)) {
+  for (const name of Object.keys(map)) if (!sentToAction.has(action + '.' + name)) legacyOnly++;
+}
+check('every pass-through rename is declared on the bridge side', missingDeclared.length === 0, missingDeclared.length ? missingDeclared.slice(0, 5).join(', ') : passedThrough + ' pass-through renames checked, ' + legacyOnly + ' legacy spelling(s) declared');
 
 console.log('');
 console.log('--- informational: keys the bridge reads that no tool sends: ' + readButNotSent.length);

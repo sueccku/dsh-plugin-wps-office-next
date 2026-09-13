@@ -56,45 +56,21 @@ $crlf = [string][char]13 + [string][char]10
 # Extract them from the source rather than keeping a second hand-written list that would drift.
 # An action whose parameter access cannot be read statically is left out of the table and thereby
 # skips the check, so the guard can never reject a key that is genuinely read.
-# Public tool parameter name -> the key this script reads. Only aliases whose meaning is
-# identical belong here; a parameter that needs real work must be implemented instead.
-$paramAliases = @{
-    'removeAnimation'      = @{ 'animationIndex' = 'index' }
-    'setAnimationOrder'    = @{ 'animationIndex' = 'from'; 'newOrder' = 'to' }
-    'setShapeZOrder'       = @{ 'order' = 'zOrder' }
-    'addAnimation'         = @{ 'animationType' = 'effect'; 'shapeIndex' = 'shapeName' }
-    'setBackgroundImage'   = @{ 'imagePath' = 'path'; 'filePath' = 'path' }
-    'insertPptImage'       = @{ 'imagePath' = 'path'; 'filePath' = 'path' }
-    'replacePptImage'      = @{ 'imagePath' = 'path' }
-    'openPresentation'     = @{ 'filePath' = 'path' }
-    'alignShapes'          = @{ 'shapeIndices' = 'names' }
-    'distributeShapes'     = @{ 'shapeIndices' = 'names' }
-    'groupShapes'          = @{ 'shapeIndices' = 'names' }
-    'setSlideNumber'       = @{ 'show' = 'visible' }
-    'setPptDateTime'       = @{ 'show' = 'visible' }
-    'applyTransitionToAll' = @{ 'effect' = 'transition' }
-    'setSlideTransition'   = @{ 'transition' = 'effect' }
-    'addPptHyperlink'      = @{ 'url' = 'address' }
-    'insertPptChart'       = @{ 'chartType' = 'type' }
+# Public tool parameter name -> the key this action reads, applied before the accepted-key check,
+# plus the nested containers whose properties get merged onto the flat key set. Both used to be
+# hand-written here; they now come from the operation spec (see mcp/src/spec/aliases.ts) so the
+# bridge convention and the model-facing surface cannot drift apart.
+$specDir = Join-Path $PSScriptRoot '..\spec'
+$paramAliases = @{}
+$aliasJson = Get-Content (Join-Path $specDir 'param-aliases.json') -Raw | ConvertFrom-Json
+foreach ($action in $aliasJson.PSObject.Properties) {
+    $map = @{}
+    foreach ($pair in $action.Value.PSObject.Properties) { $map[$pair.Name] = [string]$pair.Value }
+    $paramAliases[$action.Name] = $map
 }
-
-# Nested containers some tools send while the action reads flat keys, merged before the check.
-# A container's properties that the action does not read still fail loudly, because the accepted-key
-# check runs after the merge.
-$paramContainers = @{
-    'setShapeShadow'       = @('shadow')
-    'setShapeBorder'       = @('border')
-    'setShapeGradient'     = @('gradient')
-    'setBackgroundGradient' = @('gradient')
-    'addMasterElement'     = @('element')
-    'set3DRotation'        = @('rotation')
-    'setImageStyle'        = @('style')
-    'setTextBoxStyle'      = @('style')
-    'setPptChartStyle'     = @('style')
-    'setPptTableStyle'     = @('style')
-    'setPptTableCellStyle' = @('style')
-    'setPptTableRowStyle'  = @('style')
-}
+$paramContainers = @{}
+$containerJson = Get-Content (Join-Path $specDir 'param-containers.json') -Raw | ConvertFrom-Json
+foreach ($action in $containerJson.PSObject.Properties) { $paramContainers[$action.Name] = @($action.Value) }
 
 $helperKeys = @{
     'Resolve-Worksheet'    = @('sheet', 'name', 'oldName')

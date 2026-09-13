@@ -178,7 +178,13 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
   并把「每个 bridge 参数都落在桥真正读的键上」变成**严格断言**；新增棘轮：别名 62（目标 0）。
   验收从 9 项扩到 **11 项**，工具面仍逐字节复现。
 
-下一步：**P1-4b**（把 62 处别名对齐、12 个容器形态收进 spec 生成，公开名 = 桥键）
-→ P1-5（`param-contract` 退化为相等断言）→ 进 P2 Excel 做深。
+- **P1-4b（FIXES 36）**：把生成器里两张手写表（别名 17 条、容器 12 条）搬进 `mcp/src/spec/aliases.ts`，
+  由生成器产出 `spec/param-aliases.json`/`param-containers.json`，宿主生成器改读它们——
+  **宿主产物逐字节未变**（`git diff` 空 + 计数一致），证明搬家不改变行为。验收扩到 **12 项**，
+  新增不变量「每个 pass-through 改名都要在桥侧有声明」（16 处检查过、2 条兼容拼写有账）。
+  三张人手表：aliases ✅、containers ✅、`$helperKeys` 仍在（随 P1-5 键表改造消失）。
+
+下一步：**P1-5**（键表也由 spec 产出，`$helperKeys` 随之消失；`param-contract` 退化为相等断言）
+→ 进 **P2 Excel 做深**（第一波：挂出 20 个已实现却无出口的 Excel action）。
 
 

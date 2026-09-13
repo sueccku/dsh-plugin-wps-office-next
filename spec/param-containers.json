@@ -1,0 +1,38 @@
+{
+ "setShapeShadow": [
+  "shadow"
+ ],
+ "setShapeBorder": [
+  "border"
+ ],
+ "setShapeGradient": [
+  "gradient"
+ ],
+ "setBackgroundGradient": [
+  "gradient"
+ ],
+ "addMasterElement": [
+  "element"
+ ],
+ "set3DRotation": [
+  "rotation"
+ ],
+ "setImageStyle": [
+  "style"
+ ],
+ "setTextBoxStyle": [
+  "style"
+ ],
+ "setPptChartStyle": [
+  "style"
+ ],
+ "setPptTableStyle": [
+  "style"
+ ],
+ "setPptTableCellStyle": [
+  "style"
+ ],
+ "setPptTableRowStyle": [
+  "style"
+ ]
+}

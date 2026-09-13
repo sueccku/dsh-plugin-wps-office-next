@@ -198,7 +198,8 @@
 1. `npm ci` + `tsc` 构建，再断言 `mcp/dist` 与源码一致（dist 是入库的，不许过期）；
 2. 跑宿主生成器，再断言 `host/wps-actions.ps1` 与桥源码一致（生成器自带解析校验）；
 3. 由操作规格重生成工具面，再断言 `spec/*.json` 与 spec 一致；跑 `test/spec-reproduction.test.mjs`
-   —— 11 项，含「209 个 schema 与序列化字节数与活体完全一致」以及「每个参数都有明确去向」；
+   —— 12 项，含「209 个 schema 与序列化字节数与活体完全一致」「每个参数都有明确去向」
+   以及「每个 pass-through 改名都在桥侧有声明」；
 4. 重生成技能参考表，再断言 `skills/**/reference.md` 与注册表一致；
 5. `node scripts/verify.mjs --static` —— 18 项：广告面、预算、桥 action 数量、`wps_help` 检索与派发守卫；
 6. 参数契约对账，再断言 `docs/param-contract.md` 一致；
