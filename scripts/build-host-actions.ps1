@@ -25,7 +25,22 @@ $head = $src.Substring(0, $idx)
 $body = $src.Substring($idx)
 
 $beforeHead = $head
-$head = $head -replace '(?s)function Output-Json\(\$obj\)\s*\{.*?\}', 'function Output-Json($obj) { $script:WpsResult = $obj }'
+# Literal (not -replace) so the replacement's $ signs stay literal.
+$nl = [string][char]13 + [string][char]10
+$oldOutputJson = 'function Output-Json($obj) {' + $nl + '    $obj | ConvertTo-Json -Depth 10 -Compress' + $nl + '}'
+$newOutputJson = @'
+function Output-Json($obj) {
+    if ($null -ne $script:WpsWarnings -and $script:WpsWarnings.Count -gt 0 -and $obj -is [hashtable]) {
+        $obj['warnings'] = @($script:WpsWarnings)
+        if ($obj.ContainsKey('data') -and $obj['data'] -is [hashtable]) { $obj['data']['warnings'] = @($script:WpsWarnings) }
+    }
+    $script:WpsResult = $obj
+}
+'@
+# the here-string uses LF; keep the generated module uniformly CRLF
+$newOutputJson = $newOutputJson.Replace([string][char]10, $nl).TrimEnd([char]13, [char]10)
+if (-not $head.Contains($oldOutputJson)) { throw 'Output-Json not found - upstream layout changed' }
+$head = $head.Replace($oldOutputJson, $newOutputJson)
 if ($head -eq $beforeHead) { throw 'Output-Json not found - upstream layout changed' }
 
 $body = $body -replace '(?m)^\s*exit\s*}\s*$', 'return }'
@@ -161,7 +176,8 @@ $keyTable = '# Accepted parameter names per action, derived from the switch belo
             '$script:ActionNestedParams = @{' + $crlf + ($containerLines -join $crlf) + $crlf + '}' + $crlf + $crlf
 
 # Reject parameters the action does not read, right after $p is materialised.
-$guard = '    $p = Add-WpsParamAliases $Action $p' + $crlf +
+$guard = '    Clear-WpsWarnings' + $crlf +
+         '    $p = Add-WpsParamAliases $Action $p' + $crlf +
          '    $p = Expand-WpsNestedParams $Action $p' + $crlf +
          '    $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]' + $crlf +
          '    if ($null -ne $__paramError) { Output-Json @{ success = $false; error = $__paramError }; return }' + $crlf

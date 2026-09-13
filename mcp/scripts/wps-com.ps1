@@ -86,6 +86,19 @@ function Get-WpsApp([string]$kind) {
     }
     return $null
 }
+$script:WpsWarnings = New-Object System.Collections.ArrayList
+
+function Add-WpsWarning([string]$message) {
+    # Collect a best-effort failure instead of swallowing it. Anything collected is attached to the
+    # action's result, so a partially applied change is visible to the caller instead of looking clean.
+    if ($null -eq $script:WpsWarnings) { $script:WpsWarnings = New-Object System.Collections.ArrayList }
+    $null = $script:WpsWarnings.Add($message)
+}
+
+function Clear-WpsWarnings() {
+    $script:WpsWarnings = New-Object System.Collections.ArrayList
+}
+
 function Get-WpsExcel { return Get-WpsApp 'excel' }
 
 function Get-WpsWord { return Get-WpsApp 'word' }
@@ -158,25 +171,25 @@ function Replace-InShapeTree($shape, [string]$findText, [string]$replaceText) {
     $cnt = 0
     try {
         $isGroup = $false
-        try { if ($shape.Type -eq 6) { $isGroup = $true } } catch {}
+        try { if ($shape.Type -eq 6) { $isGroup = $true } } catch { Add-WpsWarning $_.Exception.Message }
         if ($isGroup) {
             for ($gi = 1; $gi -le $shape.GroupItems.Count; $gi++) {
                 $cnt += Replace-InShapeTree $shape.GroupItems.Item($gi) $findText $replaceText
             }
         } else {
-            try { if ($shape.HasTextFrame) { if (Replace-FrameText $shape.TextFrame $findText $replaceText) { $cnt++ } } } catch {}
+            try { if ($shape.HasTextFrame) { if (Replace-FrameText $shape.TextFrame $findText $replaceText) { $cnt++ } } } catch { Add-WpsWarning $_.Exception.Message }
             try {
                 if ($shape.HasTable) {
                     $tbl = $shape.Table
                     for ($rr = 1; $rr -le $tbl.Rows.Count; $rr++) {
                         for ($cc = 1; $cc -le $tbl.Columns.Count; $cc++) {
-                            try { if (Replace-FrameText $tbl.Cell($rr, $cc).Shape.TextFrame $findText $replaceText) { $cnt++ } } catch {}
+                            try { if (Replace-FrameText $tbl.Cell($rr, $cc).Shape.TextFrame $findText $replaceText) { $cnt++ } } catch { Add-WpsWarning $_.Exception.Message }
                         }
                     }
                 }
-            } catch {}
+            } catch { Add-WpsWarning $_.Exception.Message }
         }
-    } catch {}
+    } catch { Add-WpsWarning $_.Exception.Message }
     return $cnt
 }
 
@@ -579,21 +592,21 @@ switch ($Action) {
         $excel = Get-WpsExcel
         if ($null -ne $excel) {
             $hasSelection = $false
-            try { $hasSelection = ($null -ne $excel.Selection) } catch {}
+            try { $hasSelection = ($null -ne $excel.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             Output-Json @{ success = $true; data = @{ appType = "excel"; appName = $excel.Name; hasSelection = $hasSelection } }
             exit
         }
         $word = Get-WpsWord
         if ($null -ne $word) {
             $hasSelection = $false
-            try { $hasSelection = ($null -ne $word.Selection) } catch {}
+            try { $hasSelection = ($null -ne $word.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             Output-Json @{ success = $true; data = @{ appType = "word"; appName = $word.Name; hasSelection = $hasSelection } }
             exit
         }
         $ppt = Get-WpsPpt
         if ($null -ne $ppt) {
             $hasSelection = $false
-            try { $hasSelection = ($null -ne $ppt.ActiveWindow.Selection) } catch {}
+            try { $hasSelection = ($null -ne $ppt.ActiveWindow.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             Output-Json @{ success = $true; data = @{ appType = "ppt"; appName = $ppt.Name; hasSelection = $hasSelection } }
             exit
         }
@@ -1011,7 +1024,7 @@ switch ($Action) {
             if ($refs -ne $null) {
                 foreach ($area in $refs.Areas) { $precedents += $area.Address() }
             }
-        } catch {}
+        } catch { Add-WpsWarning $_.Exception.Message }
         Output-Json @{ success = $true; data = @{ cell = $p.cell; formula = $formula; currentValue = $value; errorType = $errorType; diagnosis = $diagnosis; suggestion = $suggestion; precedents = $precedents } }
     }
 
@@ -1047,7 +1060,7 @@ switch ($Action) {
                                 $dt = [DateTime]::FromOADate($cell.Value2)
                                 Set-ComValue $cell 'Value2' $dt.ToString("yyyy-MM-dd")
                             }
-                        } catch {}
+                        } catch { Add-WpsWarning $_.Exception.Message }
                     }
                     $message = "已统一日期格式"
                 }
@@ -1115,10 +1128,10 @@ switch ($Action) {
         $sheet = Get-WorksheetByParam $excel $p
         $table = $null
         if ($p.pivotTableName) {
-            try { $table = $sheet.PivotTables($p.pivotTableName) } catch {}
+            try { $table = $sheet.PivotTables($p.pivotTableName) } catch { Add-WpsWarning $_.Exception.Message }
         }
         if ($null -eq $table -and $p.pivotTableCell) {
-            try { $table = $sheet.Range($p.pivotTableCell).PivotTable } catch {}
+            try { $table = $sheet.Range($p.pivotTableCell).PivotTable } catch { Add-WpsWarning $_.Exception.Message }
         }
         if ($null -eq $table) { Output-Json @{ success = $false; error = "PivotTable not found" }; exit }
         $ops = @()
@@ -1180,11 +1193,11 @@ switch ($Action) {
         }
         if ($p.removeValueFields) {
             foreach ($vf in $p.removeValueFields) {
-                try { $table.DataFields($vf).Orientation = 0 } catch {}
+                try { $table.DataFields($vf).Orientation = 0 } catch { Add-WpsWarning $_.Exception.Message }
                 $ops += @{ operation = "removeValueFields"; success = $true; message = $vf }
             }
         }
-        if ($p.refresh) { try { $table.RefreshTable() | Out-Null; $ops += @{ operation = "refresh"; success = $true; message = "refreshed" } } catch {} }
+        if ($p.refresh) { try { $table.RefreshTable() | Out-Null; $ops += @{ operation = "refresh"; success = $true; message = "refreshed" } } catch { Add-WpsWarning $_.Exception.Message } }
         Output-Json @{ success = $true; data = @{ pivotTableName = $table.Name; operations = $ops } }
     }
 
@@ -1710,10 +1723,10 @@ switch ($Action) {
         $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
         $chartObj = $null
         if ($p.chartName) {
-            try { $chartObj = $sheet.ChartObjects($p.chartName) } catch {}
+            try { $chartObj = $sheet.ChartObjects($p.chartName) } catch { Add-WpsWarning $_.Exception.Message }
         }
         if ($null -eq $chartObj -and $p.chartIndex) {
-            try { $chartObj = $sheet.ChartObjects().Item([int]$p.chartIndex) } catch {}
+            try { $chartObj = $sheet.ChartObjects().Item([int]$p.chartIndex) } catch { Add-WpsWarning $_.Exception.Message }
         }
         if ($null -eq $chartObj) { Output-Json @{ success = $false; error = "Chart not found" }; exit }
         $updated = @()
@@ -1742,9 +1755,9 @@ switch ($Action) {
                 try {
                     $series = $chartObj.Chart.SeriesCollection()
                     for ($i = 1; $i -le $series.Count; $i++) {
-                        try { $series.Item($i).DataLabels().Delete() } catch {}
+                        try { $series.Item($i).DataLabels().Delete() } catch { Add-WpsWarning $_.Exception.Message }
                     }
-                } catch {}
+                } catch { Add-WpsWarning $_.Exception.Message }
             }
             $updated += "showDataLabels"
         }
@@ -1802,7 +1815,7 @@ switch ($Action) {
             Output-Json @{ success = $true; data = @{ range = $p.range; outputPath = $outputPath; format = $filterName } }
         } catch {
             # 异常清理：剪贴板冲突时回滚临时图表
-            if ($null -ne $tempChart) { try { $tempChart.Delete() } catch {} }
+            if ($null -ne $tempChart) { try { $tempChart.Delete() } catch { Add-WpsWarning $_.Exception.Message } }
             Output-Json @{ success = $false; error = "导出区域为图片失败: $($_.Exception.Message)" }
         }
     }
@@ -2627,7 +2640,7 @@ switch ($Action) {
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No workbook" }; exit }
         $name = $wb.Name
         $path = ""
-        try { $path = [string]$wb.Path } catch { }
+        try { $path = [string]$wb.Path } catch { Add-WpsWarning $_.Exception.Message }
         # Tools spell this parameter "save" while this action used to read only "saveChanges".
         # The mismatch meant save=false was silently ignored and every close asked to save.
         $saveWanted = $true
@@ -2734,7 +2747,7 @@ switch ($Action) {
         if ($null -eq $docItem) { Output-Json @{ success = $false; error = "No document" }; exit }
         $name = $docItem.Name
         $path = ""
-        try { $path = [string]$docItem.Path } catch { }
+        try { $path = [string]$docItem.Path } catch { Add-WpsWarning $_.Exception.Message }
         # Same "save" vs "saveChanges" mismatch as closeWorkbook.
         $saveWanted = $true
         if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
@@ -2773,7 +2786,7 @@ switch ($Action) {
             default { $word.Selection.TypeText($p.text) }
         }
         if ($p.style) {
-            try { $word.Selection.Range.Style = $p.style } catch {}
+            try { $word.Selection.Range.Style = $p.style } catch { Add-WpsWarning $_.Exception.Message }
         }
         Output-Json @{ success = $true; data = @{ position = $position; textLength = $p.text.Length } }
     }
@@ -3295,7 +3308,7 @@ switch ($Action) {
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         $revisionCount = 0
-        try { $revisionCount = $doc.Revisions.Count } catch {}
+        try { $revisionCount = $doc.Revisions.Count } catch { Add-WpsWarning $_.Exception.Message }
         Output-Json @{ success = $true; data = @{ trackChanges = [bool]$doc.TrackRevisions; revisionCount = $revisionCount } }
     }
 
@@ -3330,7 +3343,7 @@ switch ($Action) {
             for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
                 $shape = $slide.Shapes.Item($j)
                 $text = ""
-                try { if ($shape.HasTextFrame -and $shape.TextFrame.HasText) { $text = $shape.TextFrame.TextRange.Text.Substring(0, [Math]::Min(50, $shape.TextFrame.TextRange.Text.Length)) } } catch {}
+                try { if ($shape.HasTextFrame -and $shape.TextFrame.HasText) { $text = $shape.TextFrame.TextRange.Text.Substring(0, [Math]::Min(50, $shape.TextFrame.TextRange.Text.Length)) } } catch { Add-WpsWarning $_.Exception.Message }
                 $shapes += @{ name = $shape.Name; type = $shape.Type; text = $text }
             }
             $slides += @{ index = $i; shapeCount = $slide.Shapes.Count; shapes = $shapes }
@@ -3353,7 +3366,7 @@ switch ($Action) {
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No presentation" }; exit }
         $name = $pres.Name
         $path = ""
-        try { $path = [string]$pres.Path } catch { }
+        try { $path = [string]$pres.Path } catch { Add-WpsWarning $_.Exception.Message }
         # Same "save" vs "saveChanges" mismatch as closeWorkbook.
         $saveWanted = $true
         if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
@@ -3481,7 +3494,7 @@ switch ($Action) {
         for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
             $shape = $slide.Shapes.Item($i)
             $txt = ""
-            try { if ($shape.HasTextFrame -and $shape.TextFrame.HasText) { $txt = $shape.TextFrame.TextRange.Text } } catch {}
+            try { if ($shape.HasTextFrame -and $shape.TextFrame.HasText) { $txt = $shape.TextFrame.TextRange.Text } } catch { Add-WpsWarning $_.Exception.Message }
             try {
                 if ($shape.HasTable -and [string]::IsNullOrEmpty($txt)) {
                     $tbl = $shape.Table; $rws = @()
@@ -3489,14 +3502,14 @@ switch ($Action) {
                         $cs = @()
                         for ($cc = 1; $cc -le $tbl.Columns.Count; $cc++) {
                             $cv = ""
-                            try { $cv = $tbl.Cell($rr, $cc).Shape.TextFrame.TextRange.Text } catch {}
+                            try { $cv = $tbl.Cell($rr, $cc).Shape.TextFrame.TextRange.Text } catch { Add-WpsWarning $_.Exception.Message }
                             $cs += $cv
                         }
                         $rws += ($cs -join "|")
                     }
                     $txt = "[表格] " + ($rws -join " ;; ")
                 }
-            } catch {}
+            } catch { Add-WpsWarning $_.Exception.Message }
             $txt = ($txt -replace "[`r`n`v]", " ")
             if ($txt.Length -gt 90) { $txt = $txt.Substring(0, 90) + "…" }
             $hasTxt = $false
@@ -3574,9 +3587,9 @@ switch ($Action) {
                         if ($shape.PlaceholderFormat.Type -eq 2) {
                             $shape.TextFrame.TextRange.Text = $p.content
                         }
-                    } catch {}
+                    } catch { Add-WpsWarning $_.Exception.Message }
                 }
-            } catch {}
+            } catch { Add-WpsWarning $_.Exception.Message }
         }
         Output-Json @{ success = $true; data = @{ slideIndex = $position; layout = $layoutKey } }
     }
@@ -3600,9 +3613,9 @@ switch ($Action) {
                         if ($shape.PlaceholderFormat.Type -eq 2) {
                             $shape.TextFrame.TextRange.Text = $p.content
                         }
-                    } catch {}
+                    } catch { Add-WpsWarning $_.Exception.Message }
                 }
-            } catch {}
+            } catch { Add-WpsWarning $_.Exception.Message }
         }
         Output-Json @{ success = $true; data = @{ slideIndex = $position; layout = $layoutKey } }
     }
@@ -3651,7 +3664,7 @@ switch ($Action) {
             $shape = $slide.Shapes.Item($i)
             if ($shape.HasTextFrame) {
                 $text = ""
-                try { $text = $shape.TextFrame.TextRange.Text } catch {}
+                try { $text = $shape.TextFrame.TextRange.Text } catch { Add-WpsWarning $_.Exception.Message }
                 $textBoxes += @{ name = $shape.Name; index = $i; text = $text; left = $shape.Left; top = $shape.Top; width = $shape.Width; height = $shape.Height }
             }
         }
@@ -3731,7 +3744,7 @@ switch ($Action) {
         for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
             $shape = $slide.Shapes.Item($i)
             $placeholderType = $null
-            try { $placeholderType = $shape.PlaceholderFormat.Type } catch {}
+            try { $placeholderType = $shape.PlaceholderFormat.Type } catch { Add-WpsWarning $_.Exception.Message }
             if ($placeholderType -eq 2) {
                 $shape.TextFrame.TextRange.Text = if ($p.subtitle) { $p.subtitle } else { "" }
                 Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; subtitle = $p.subtitle } }
@@ -3751,7 +3764,7 @@ switch ($Action) {
         for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
             $shape = $slide.Shapes.Item($i)
             $placeholderType = $null
-            try { $placeholderType = $shape.PlaceholderFormat.Type } catch {}
+            try { $placeholderType = $shape.PlaceholderFormat.Type } catch { Add-WpsWarning $_.Exception.Message }
             if ($placeholderType -eq 7) {
                 $shape.TextFrame.TextRange.Text = if ($p.content) { $p.content } else { "" }
                 Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex } }
@@ -3903,10 +3916,10 @@ switch ($Action) {
         $old = $slide.Shapes.Item($sel)
         $l = $old.Left; $t = $old.Top; $w = $old.Width; $h = $old.Height
         $rot = 0
-        try { $rot = $old.Rotation } catch {}
+        try { $rot = $old.Rotation } catch { Add-WpsWarning $_.Exception.Message }
         $old.Delete()
         $pic = $slide.Shapes.AddPicture($newPath, $false, $true, $l, $t, $w, $h)
-        try { $pic.Rotation = $rot } catch {}
+        try { $pic.Rotation = $rot } catch { Add-WpsWarning $_.Exception.Message }
         Output-Json @{ success = $true; data = @{ name = $pic.Name; left = $l; top = $t; width = $w; height = $h; path = $newPath } }
     }
 
@@ -4447,7 +4460,7 @@ switch ($Action) {
         $effectObject = $slide.TimeLine.MainSequence.AddEffect($shape, $effect, 1, $trigger)
         $exitNames = @("fadeout", "flyout")
         if ($null -ne $p.effect -and $exitNames -contains ([string]$p.effect).ToLower()) {
-            try { $effectObject.Exit = -1 } catch { }
+            try { $effectObject.Exit = -1 } catch { Add-WpsWarning $_.Exception.Message }
         }
         Output-Json @{ success = $true; data = @{ shape = $shape.Name; effect = $effect; trigger = $trigger; isExit = ($exitNames -contains ([string]$p.effect).ToLower()) } }
     }
@@ -4504,13 +4517,13 @@ switch ($Action) {
                 try {
                     if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
                         $isTitle = $false
-                        try { $isTitle = $shape.PlaceholderFormat.Type -eq 1 -or $shape.PlaceholderFormat.Type -eq 3 } catch {}
+                        try { $isTitle = $shape.PlaceholderFormat.Type -eq 1 -or $shape.PlaceholderFormat.Type -eq 3 } catch { Add-WpsWarning $_.Exception.Message }
                         if (($isTitle -and $includeTitle) -or (-not $isTitle -and $includeBody)) {
                             $shape.TextFrame.TextRange.Font.Name = $fontName
                             $count++
                         }
                     }
-                } catch {}
+                } catch { Add-WpsWarning $_.Exception.Message }
             }
         }
         $slideCount = if ($p.slideIndex) { 1 } else { $pres.Slides.Count }
@@ -4571,7 +4584,7 @@ switch ($Action) {
                         if ($textRange.Font.Size -ge 24) { $textRange.Font.Color.RGB = $scheme.title } else { $textRange.Font.Color.RGB = $scheme.body }
                         $count++
                     }
-                } catch {}
+                } catch { Add-WpsWarning $_.Exception.Message }
             }
         }
         Output-Json @{ success = $true; data = @{ scheme = $schemeKey; count = $count } }
@@ -4597,7 +4610,7 @@ switch ($Action) {
                     if ($textRange.Font.Size -ge 24) { $textRange.Font.Color.RGB = $scheme.title } else { $textRange.Font.Color.RGB = $scheme.body }
                     $count++
                 }
-            } catch {}
+            } catch { Add-WpsWarning $_.Exception.Message }
         }
         Output-Json @{ success = $true; data = @{ style = $schemeKey; count = $count } }
     }
@@ -4791,7 +4804,7 @@ switch ($Action) {
                         if ($textRange.Font.Size -ge 24) { $textRange.Font.Color.RGB = $scheme.title } else { $textRange.Font.Color.RGB = $scheme.body }
                         $count++
                     }
-                } catch {}
+                } catch { Add-WpsWarning $_.Exception.Message }
             }
         }
         Output-Json @{ success = $true; data = @{ style = $schemeKey; count = $count } }
@@ -5062,7 +5075,7 @@ switch ($Action) {
 
         if ($shapeNames.Count -gt 0) {
             foreach ($name in $shapeNames) {
-                try { $shapes += $slide.Shapes.Item($name) } catch {}
+                try { $shapes += $slide.Shapes.Item($name) } catch { Add-WpsWarning $_.Exception.Message }
             }
         } else {
             for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
@@ -5178,7 +5191,7 @@ switch ($Action) {
                 $effect.Timing.TriggerDelayTime = $delay
                 $delay += $delayIncrement
                 $animatedCount++
-            } catch {}
+            } catch { Add-WpsWarning $_.Exception.Message }
         }
 
         Output-Json @{ success = $true; data = @{ preset = $preset; animatedShapes = $animatedCount; shapeIndex = $onlyShape } }
@@ -5806,7 +5819,7 @@ switch ($Action) {
                             $results += @{ slideIndex = $i; shapeName = $shape.Name; text = $text }
                         }
                     }
-                } catch {}
+                } catch { Add-WpsWarning $_.Exception.Message }
             }
         }
         Output-Json @{ success = $true; data = @{ searchText = $p.text; results = $results; count = $results.Count } }
@@ -5881,7 +5894,7 @@ switch ($Action) {
                             $count++
                         }
                     }
-                } catch {}
+                } catch { Add-WpsWarning $_.Exception.Message }
             }
         }
         Output-Json @{ success = $true; data = @{ fontName = $fontName; count = $count } }
@@ -5927,7 +5940,7 @@ switch ($Action) {
                         $ops[1].count++
                         if ($fontName) { $textRange.Font.Name = $fontName; $ops[0].count++ }
                     }
-                } catch {}
+                } catch { Add-WpsWarning $_.Exception.Message }
             }
         }
         $slideIndexOut = if ($slideIndex -eq "all") { "all" } else { ($slides | Select-Object -First 1).SlideIndex }
@@ -6047,7 +6060,7 @@ switch ($Action) {
                     else { $textRange.Font.Color.RGB = $scheme.body }
                     $count++
                 }
-            } catch {}
+            } catch { Add-WpsWarning $_.Exception.Message }
         }
         Output-Json @{ success = $true; data = @{ style = $p.style; count = $count } }
     }

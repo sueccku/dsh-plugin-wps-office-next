@@ -557,6 +557,31 @@ align_shapes 的 shapeIndices 变可选。
 结果：源码与工具面一致——工具目录 235（广告 43），桥 action 259 不变（仍可用 wps_call 调用），
 契约对账 209 对，A/B/C/D 均为 0，13 个测试文件 285 项 + verify 23 项通过，跑完无残留文档。
 
+### 23. 消灭静默 catch：49 处改为「完成操作 + 如实报告」（已修）
+
+桥里原有 **60 处 `catch { }`**。它们不一定都危险，但共同点是：出错时调用方**什么也看不到**，
+于是「改了但没生效」和「改好了」在结果上无法区分。
+
+做法不是一律改成报错——有些确实属于「尽力而为」（例如某个属性在当前 WPS 版本上不存在，
+失败不应中断整个操作）。取中间路线：**操作继续完成，但把失败收集进结果**。
+
+- 桥新增 `$script:WpsWarnings` / `Add-WpsWarning` / `Clear-WpsWarnings`；
+- 生成器在每个 action 开始前清空，`Output-Json` 在结果里附加 `warnings`，
+  并**同时写进 `data`**，这样只回传 `data` 的透传型工具也能看到；
+- 49 处转为 `catch { Add-WpsWarning $_.Exception.Message }`；
+- 保留静默的 11 处，都是**失败属预期**的：COM 实例探测（GetActiveObject / New-Object 尝试）、
+  `Visible` 设置、以及 `DisplayAlerts` 的读取与还原（还原动作本身若失败不应掩盖真正的错误）。
+
+验证：`test/warnings.test.mjs` **7 项**——用一个不存在的样式名制造真实的尽力而为失败，
+断言「操作仍然成功」+「`warnings` 非空且带错误原文」+「`data.warnings` 同样存在」+
+「下一次干净调用不带任何警告」（证明是逐调用清空）。
+
+一个顺带的发现：验证触发点时才确认，透视表/图表的两处查找**在 WPS 上是静默返回 null 而非抛错**，
+所以它们本来就不会产生警告——「没有警告」也可能意味着「根本没有失败」，两者不能混为一谈。
+
+技能同步：`skills/wps-office-next/SKILL.md` 的失败处理一节增加一条——结果里可能出现 `warnings`，
+涉及本次操作时要如实转述给用户，不要因为它 `success` 为真就忽略。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

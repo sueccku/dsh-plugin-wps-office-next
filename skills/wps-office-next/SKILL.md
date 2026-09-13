@@ -74,6 +74,9 @@ whenToUse: 用户要求读取、创建、编辑、排版、分析、导出 WPS �
 - 返回 unknown parameter(s)：工具层发给桥的键有误，按错误里列出的 accepted 名字重试，不要原样重试。
 - 返回 no presentation is open：当前没有打开的演示文稿，先 open_presentation 或 create_presentation 再 add_slide。
 - 返回 Missing required parameter: X：调用方漏了必填参数。
+- 结果里出现 `warnings`：本次操作**已经完成**，但其中某个「尽力而为」的步骤失败了。
+  涉及用户关心的结果时要如实转述（例如「文字已插入，但样式未应用：<原因>」），
+  不要因为 success 为真就当作完全成功。
 - 返回 image file not found / sound file not found：路径不存在，确认绝对路径或相对仓库根目录的路径。
 - 返回 slideIndex is out of range：页码确实越界（下界必查；上界在 WPS 计数可信时才查）。
 - 返回 unknown transition / unknown animation：名称不在支持列表，错误里会给出可用名称，也可以直接传数值。
