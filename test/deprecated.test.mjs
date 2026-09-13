@@ -2,6 +2,11 @@
 // disappear from wps_help discovery and forward to the canonical tool.
 // Run: node test/deprecated.test.mjs
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
+import path from "node:path";
+
+const require = createRequire(import.meta.url);
+const { DEPRECATED_TOOLS } = require(path.resolve("mcp/dist/tools/deprecated.js"));
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -28,7 +33,10 @@ for (const t of list.result.tools) bytes += Buffer.byteLength(JSON.stringify(t),
 check("advertised surface stays within budget", list.result.tools.length === 43 && bytes <= 25000, list.result.tools.length + " tools / " + bytes + " bytes");
 
 const help = payload(await req(id++, "tools/call", { name: "wps_help", arguments: {} }));
-check("wps_help total excludes deprecated", help.total === 251, "total=" + help.total);
+// Derived from the merge table instead of a frozen number: the total moves every time a duplicate
+// is collapsed, and a snapshot would just need editing again.
+const deprecatedCount = Object.keys(DEPRECATED_TOOLS).length;
+check("wps_help total excludes deprecated", help.total === 254 - deprecatedCount, "total=" + help.total + " deprecated=" + deprecatedCount);
 
 const search = payload(await req(id++, "tools/call", { name: "wps_help", arguments: { query: "zoom" } }));
 const searchNames = (search.tools || []).map((t) => t.name);
@@ -38,7 +46,7 @@ const explicit = payload(await req(id++, "tools/call", { name: "wps_help", argum
 check("explicit lookup reports deprecation", explicit.deprecated === true && explicit.canonical === "wps_excel_set_zoom", JSON.stringify(explicit).slice(0, 140));
 
 const status = payload(await req(id++, "tools/call", { name: "wps_status", arguments: {} }));
-check("wps_status reports merged count", status.deprecatedTools === 3, "deprecatedTools=" + status.deprecatedTools);
+check("wps_status reports merged count", status.deprecatedTools === deprecatedCount, "deprecatedTools=" + status.deprecatedTools + " expected=" + deprecatedCount);
 
 const created = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_excel_create_workbook", args: {} } });
 check("can create a scratch workbook", ok(created), "");

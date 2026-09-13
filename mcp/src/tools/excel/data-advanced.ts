@@ -154,22 +154,28 @@ export const fillSeriesDefinition: ToolDefinition = {
       direction: { type: 'string', description: '填充方向', enum: ['down', 'right', 'up', 'left'] },
       type: { type: 'string', description: '填充类型', enum: ['linear', 'growth', 'date', 'auto'] },
       step: { type: 'number', description: '步长值' },
+      startValue: { type: 'number', description: '序列起始值，默认1' },
       sheet: { type: 'string', description: '工作表名称' },
+      sourceRange: { type: 'string', description: '自动填充的源区域（与 targetRange 配对使用）' },
+      targetRange: { type: 'string', description: '自动填充的目标区域' },
     },
-    required: ['range'],
+    // Either range (fill a series) or sourceRange+targetRange (extend a pattern) is required; the
+    // bridge rejects a call that has neither.
+    required: [],
   },
 };
 
 export const fillSeriesHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { range, direction, type, step, sheet } = args as {
-    range: string; direction?: string; type?: string; step?: number; sheet?: string;
+  const { range, direction, type, step, sheet, startValue, sourceRange, targetRange } = args as {
+    range?: string; direction?: string; type?: string; step?: number; sheet?: string;
+    startValue?: number; sourceRange?: string; targetRange?: string;
   };
   try {
     const response = await wpsClient.executeMethod<{ message: string }>(
       'fillSeries',
-      { range, direction: direction || 'down', type: type || 'auto', step, sheet },
+      { range, direction: direction || 'down', type: type || 'auto', step, sheet, startValue, sourceRange, targetRange },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {

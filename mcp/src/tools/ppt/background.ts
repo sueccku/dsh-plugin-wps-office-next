@@ -59,17 +59,22 @@ export const setSlideBackgroundDefinition: ToolDefinition = {
         type: 'object',
         description: '背景配置对象，包含 type/color/colors/imagePath/pattern 等字段',
       },
+      color: { type: 'string', description: '纯色背景的颜色（等价于 background.color）' },
+      imagePath: { type: 'string', description: '图片背景的路径（等价于 background.imagePath）' },
     },
-    required: ['slideIndex', 'background'],
+    // Either the background object or a flat color/imagePath is required; the bridge checks it.
+    required: ['slideIndex'],
   },
 };
 
 export const setSlideBackgroundHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, background } = args as {
+  const { slideIndex, background, color, imagePath } = args as {
     slideIndex: number;
-    background: Record<string, unknown>;
+    background?: Record<string, unknown>;
+    color?: string;
+    imagePath?: string;
   };
 
   try {
@@ -78,12 +83,12 @@ export const setSlideBackgroundHandler: ToolHandler = async (
       message: string;
     }>(
       'setSlideBackground',
-      { slideIndex, background },
+      { slideIndex, background, color, imagePath },
       WpsAppType.PRESENTATION
     );
 
     if (response.success) {
-      const bgType = (background.type as string) || 'solid';
+      const bgType = (background?.type as string) || (color ? 'solid' : imagePath ? 'image' : 'solid');
       const typeName: Record<string, string> = {
         solid: '纯色',
         gradient: '渐变',

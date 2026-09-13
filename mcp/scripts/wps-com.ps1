@@ -35,6 +35,15 @@ function Test-WpsSlideIndex($pres, $value) {
     if ($total -le 0) { return $true }
     return ($index -le $total)
 }
+function Invoke-ComMethodReflect($target, [string]$method, [object[]]$arguments) {
+    # PowerShell's COM member resolution can miss a member the process has not materialised yet (the
+    # same lazy-member problem seen with Range.Replace), which surfaces as "does not contain a method
+    # named 'Align'" even though the member exists. Dispatch through IDispatch via reflection.
+    if ($null -eq $target) { throw ('Invoke-ComMethodReflect: null target for ' + $method) }
+    if ($null -eq $arguments) { $arguments = @() }
+    return $target.GetType().InvokeMember($method, [System.Reflection.BindingFlags]::InvokeMethod, $null, $target, $arguments)
+}
+
 function Test-WpsAppUsable($app, [string]$kind) {
     # The acquisition chain can hand back an object that is not usable: [Activator]::CreateInstance
     # on a Coclass produces an instance whose collection is null, and a stale ROT entry behaves the
@@ -273,11 +282,19 @@ function Get-PptBackgroundSpec($p) {
     # The tool sends one background object; flat keys are accepted too. Returns a spec with either
     # rgb1/rgb2/imagePath filled in or a human-readable error, so both callers stay short.
     $bg = Get-PropOrNull $p 'background'
-    $kind = if ($null -ne $bg -and $bg.type) { [string]$bg.type } elseif ($null -ne $p.type) { [string]$p.type } else { "solid" }
+    $kind = if ($null -ne $bg -and $bg.type) { [string]$bg.type } elseif ($null -ne $p.type) { [string]$p.type } else { $null }
     $color = if ($null -ne $bg -and $bg.color) { [string]$bg.color } elseif ($null -ne $p.color) { [string]$p.color } else { $null }
     $colors = @()
     if ($null -ne $bg -and $null -ne $bg.colors) { $colors = @($bg.colors) } elseif ($null -ne $p.colors) { $colors = @($p.colors) }
     $image = if ($null -ne $bg -and $bg.imagePath) { [string]$bg.imagePath } elseif ($null -ne $p.imagePath) { [string]$p.imagePath } else { $null }
+    # No explicit type: infer it from what was supplied, so the flat spelling
+    # (color / colors / imagePath) works as well as the background object.
+    if ($null -eq $kind -or "$kind" -eq "") {
+        if ($null -ne $image -and "$image" -ne "") { $kind = "image" }
+        elseif ($colors.Count -ge 2) { $kind = "gradient" }
+        elseif ($null -ne $color -and "$color" -ne "") { $kind = "solid" }
+        else { $kind = "solid" }
+    }
     $spec = @{ kind = $kind; color = $color; colors = $colors; imagePath = $image; error = $null }
     if ($kind -eq "solid") {
         if ($null -eq $color -or $color -eq "") { $spec.error = "a solid background needs a color" }
@@ -4292,9 +4309,36 @@ switch ($Action) {
         $alignMap = @{ left = 1; center = 2; right = 3; top = 4; middle = 5; bottom = 6 }
         $align = $alignMap[$p.alignment]
         if ($null -eq $align) { $align = 1 }
-        $range = $slide.Shapes.Range($p.names)
-        $range.Align($align, 1)
-        Output-Json @{ success = $true; data = @{ alignment = $p.alignment } }
+        # ShapeRange.Align is unreliable here: PowerShell either cannot resolve the member in a
+        # long-lived host or unwraps the ShapeRange into an Object[], so align by geometry instead.
+        $indices = @()
+        if ($null -ne $p.names) {
+            foreach ($n in @($p.names)) { $indices += [int]$n }
+        } else {
+            for ($i = 1; $i -le $slide.Shapes.Count; $i++) { $indices += $i }
+        }
+        if ($indices.Count -eq 0) { Output-Json @{ success = $false; error = "no shapes to align" }; exit }
+        $targets = @()
+        foreach ($n in $indices) {
+            if ($n -lt 1 -or $n -gt $slide.Shapes.Count) { Output-Json @{ success = $false; error = ("shape index " + $n + " is out of range") }; exit }
+            $targets += $slide.Shapes.Item($n)
+        }
+        $lefts = @($targets | ForEach-Object { [double]$_.Left })
+        $tops = @($targets | ForEach-Object { [double]$_.Top })
+        foreach ($shape in $targets) {
+            switch ($align) {
+                1 { Set-ComValue $shape 'Left' $lefts[0] }
+                2 { Set-ComValue $shape 'Left' ((($lefts | Measure-Object -Average).Average) - [double]$shape.Width / 2) }
+                3 { Set-ComValue $shape 'Left' ((($lefts | Measure-Object -Maximum).Maximum) - [double]$shape.Width) }
+                4 { Set-ComValue $shape 'Top' $tops[0] }
+                5 { Set-ComValue $shape 'Top' ((($tops | Measure-Object -Average).Average) - [double]$shape.Height / 2) }
+                6 { Set-ComValue $shape 'Top' ((($tops | Measure-Object -Maximum).Maximum) - [double]$shape.Height) }
+            }
+        }
+
+
+
+        Output-Json @{ success = $true; data = @{ alignment = $p.alignment; shapes = $targets.Count; scope = $(if ($null -ne $p.names) { "selected" } else { "all-shapes" }) } }
     }
 
     "distributeShapes" {
@@ -4362,14 +4406,27 @@ switch ($Action) {
         $top = if ($p.top) { $p.top } else { 100 }
         $width = if ($p.width) { $p.width } else { 400 }
         $height = if ($p.height) { $p.height } else { 300 }
-        $shape = $slide.Shapes.AddChart($p.type, $left, $top, $width, $height)
+        # AddChart wants an XlChartType number while the tools name the type.
+        $chartTypes = @{ bar = 57; bar_clustered = 57; column = 51; column_clustered = 51; column_stacked = 52; line = 4; line_markers = 65; pie = 5; doughnut = -4120; area = 1; scatter = -4169; radar = -4151 }
+        $chartType = $p.type
+        if ($null -eq $chartType) { Output-Json @{ success = $false; error = "type/chartType is required" }; exit }
+        if ($chartType -is [string]) {
+            $mapped = $chartTypes[([string]$chartType).ToLower()]
+            if ($null -eq $mapped) {
+                $numeric = 0
+                if (-not [int]::TryParse([string]$chartType, [ref]$numeric)) { Output-Json @{ success = $false; error = ("unknown chart type '" + $chartType + "'; use " + (($chartTypes.Keys | Sort-Object) -join "/") + " or an XlChartType number") }; exit }
+                $mapped = $numeric
+            }
+            $chartType = $mapped
+        }
+        $shape = $slide.Shapes.AddChart($chartType, $left, $top, $width, $height)
         # Chart data is not injected: doing so means opening the chart's embedded workbook, which can
         # leave a hidden document behind in a resident host. The tool says so instead of pretending.
         $titleError = $null
         if ($null -ne $p.title -and "$($p.title)" -ne "") {
             try { $shape.Chart.HasTitle = $true; $shape.Chart.ChartTitle.Text = [string]$p.title } catch { $titleError = $_.Exception.Message }
         }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name; chartType = $p.type; title = $p.title; titleError = $titleError } }
+        Output-Json @{ success = $true; data = @{ name = $shape.Name; chartType = $chartType; title = $p.title; titleError = $titleError } }
     }
 
     "addAnimation" {

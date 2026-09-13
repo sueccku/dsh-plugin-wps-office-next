@@ -476,6 +476,47 @@ D 类一上线就抓到一个被缺口掩盖的真实错配：
 现状：A/B/C/D 四类全部为 0；未解析 9 个中 8 个由 D 类覆盖，真正无覆盖的只剩
 proofread_basic（无 COM）与 set_cell_format（动态 action，另有专门测试）。
 
+### 21. 其余 15 对重复工具合并（已修）
+
+判据用的是「多个工具驱动同一个 COM action」——比按名字相似去猜可靠。全量扫出 18 组，
+其中 3 组此前已合并，剩下 15 组这次做完（合并表从 3 条增到 18 条）：
+
+| 旧名（转发） | 规范名 |
+| --- | --- |
+| insert_slide_image / insert_image | insert_ppt_image |
+| auto_fill | fill_series |
+| insert_row / hide_row / delete_row / insert_column / delete_column | 各自的复数规范名 |
+| set_animation | add_animation |
+| set_transition | set_slide_transition |
+| set_background | set_slide_background |
+| add_chart | insert_ppt_chart |
+| duplicate_slide | copy_slide |
+| align_objects | align_shapes |
+| set_font_style | set_font |
+
+做法：保留**能力更全或已在广告**的那个名字，旧名保留可调用（隐藏于 wps_help），用 paramMap 改名转发。
+为了让改名不丢能力，**5 个规范工具被扩成参数并集**：fill_series 接受 sourceRange/targetRange/startValue、
+hide_rows 接受 row/rows/count/hide、delete_rows 接受 row、set_slide_background 接受平铺的 color/imagePath、
+align_shapes 的 shapeIndices 变可选。
+
+合并过程中又修掉 5 个缺陷：
+
+1. **AddChart 要的是 XlChartType 数值**，而工具传的是名字，直接抛「无法将类型 string 转换为 Object」。
+   现在有名称→数值映射，未知名明确报错并列出可用名；
+2. **平铺写法的背景不生效**：Get-PptBackgroundSpec 在没有 type 时一律按 solid 处理，
+   只给 imagePath 会报「需要 color」。现在按提供的值推断类型（image/gradient/solid）；
+3. **ShapeRange.Align 在这里不可用**：常驻宿主里 PowerShell 解析不到该成员，反射调用又会拿到 Object[]
+   （Shapes.Range() 被展开）。改为按几何直接对齐，语义一致且确定；
+4. **show_rows 不该转发 hide**：它的 action 从不读取该键，转发只会被参数闸门拒绝；
+5. 规范工具 align_shapes 的成功消息解引用了可选的 shapeIndices，旧名转发时抛 undefined 错误。
+
+特意**没有**合并的一对：wps_ppt_set_active_target 与 wps_ppt_get_open_presentations 共用 action，
+但前者是「锁定目标文稿」这一独立能力（后者只是它的校验手段），属同 action 不同功能，不是重复。
+
+回归：test/merged-tools.test.mjs **31 项**——每个旧名用**自己的**参数名调用，并核实效果
+（插入行/列、隐藏后再显示、自动填充扩展、三张图片落位、动画/切换/背景/图表、无索引对齐、
+复制幻灯片、字体转发）。全量 13 个测试文件 270 项 + verify 23 项通过，跑完无残留文档。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

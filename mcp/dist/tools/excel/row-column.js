@@ -99,17 +99,18 @@ exports.deleteRowsDefinition = {
         type: 'object',
         properties: {
             startRow: { type: 'number', description: '起始行号（从1开始）' },
+            row: { type: 'number', description: '要删除的行号（与 startRow 等价，便于合并旧工具）' },
             count: { type: 'number', description: '删除行数，默认1' },
             sheet: { type: 'string', description: '工作表名称，不填则使用当前活动工作表' },
         },
-        required: ['startRow'],
+        required: [],
     },
 };
 const deleteRowsHandler = async (args) => {
-    const { startRow, count, sheet } = args;
+    const { startRow, row, count, sheet } = args;
     const deleteCount = count || 1;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('deleteRows', { startRow, count: deleteCount, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('deleteRows', { startRow, row, count: deleteCount, sheet }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `删除行失败: ${response.error}` }], error: response.error };
         }
@@ -166,15 +167,19 @@ exports.hideRowsDefinition = {
         properties: {
             startRow: { type: 'number', description: '起始行号（从1开始）' },
             endRow: { type: 'number', description: '结束行号（从1开始）' },
+            row: { type: 'number', description: '单行行号（与 startRow 等价）' },
+            rows: { type: 'array', description: '行号数组' },
+            count: { type: 'number', description: '从 row 起的连续行数' },
+            hide: { type: 'boolean', description: 'true 隐藏（默认），false 显示' },
             sheet: { type: 'string', description: '工作表名称，不填则使用当前活动工作表' },
         },
-        required: ['startRow', 'endRow'],
+        required: [],
     },
 };
 const hideRowsHandler = async (args) => {
-    const { startRow, endRow, sheet } = args;
+    const { startRow, endRow, row, rows, count, hide, sheet } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('hideRows', { startRow, endRow, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('hideRows', { startRow, endRow, row, rows, count, hide, sheet }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `隐藏行失败: ${response.error}` }], error: response.error };
         }
@@ -198,15 +203,18 @@ exports.showRowsDefinition = {
         properties: {
             startRow: { type: 'number', description: '起始行号（从1开始）' },
             endRow: { type: 'number', description: '结束行号（从1开始）' },
+            row: { type: 'number', description: '单行行号（与 startRow 等价）' },
+            rows: { type: 'array', description: '行号数组' },
+            count: { type: 'number', description: '从 row 起的连续行数' },
             sheet: { type: 'string', description: '工作表名称，不填则使用当前活动工作表' },
         },
-        required: ['startRow', 'endRow'],
+        required: [],
     },
 };
 const showRowsHandler = async (args) => {
-    const { startRow, endRow, sheet } = args;
+    const { startRow, endRow, row, rows, count, sheet } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('showRows', { startRow, endRow, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('showRows', { startRow, endRow, row, rows, count, sheet }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `显示行失败: ${response.error}` }], error: response.error };
         }

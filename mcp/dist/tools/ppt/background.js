@@ -53,16 +53,19 @@ exports.setSlideBackgroundDefinition = {
                 type: 'object',
                 description: '背景配置对象，包含 type/color/colors/imagePath/pattern 等字段',
             },
+            color: { type: 'string', description: '纯色背景的颜色（等价于 background.color）' },
+            imagePath: { type: 'string', description: '图片背景的路径（等价于 background.imagePath）' },
         },
-        required: ['slideIndex', 'background'],
+        // Either the background object or a flat color/imagePath is required; the bridge checks it.
+        required: ['slideIndex'],
     },
 };
 const setSlideBackgroundHandler = async (args) => {
-    const { slideIndex, background } = args;
+    const { slideIndex, background, color, imagePath } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setSlideBackground', { slideIndex, background }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('setSlideBackground', { slideIndex, background, color, imagePath }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
-            const bgType = background.type || 'solid';
+            const bgType = background?.type || (color ? 'solid' : imagePath ? 'image' : 'solid');
             const typeName = {
                 solid: '纯色',
                 gradient: '渐变',

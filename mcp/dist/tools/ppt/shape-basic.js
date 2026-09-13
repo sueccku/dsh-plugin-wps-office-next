@@ -557,7 +557,8 @@ exports.alignShapesDefinition = {
                 enum: ['left', 'center', 'right', 'top', 'middle', 'bottom'],
             },
         },
-        required: ['slideIndex', 'shapeIndices', 'alignment'],
+        // shapeIndices is optional: without it every shape on the slide is aligned.
+        required: ['slideIndex', 'alignment'],
     },
 };
 const alignShapesHandler = async (args) => {
@@ -579,7 +580,9 @@ const alignShapesHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `形状对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}\n形状数量: ${shapeIndices.length} 个`,
+                        // shapeIndices is optional: without it the action aligns every shape on the slide, and
+                        // dereferencing it here used to fail with "Cannot read properties of undefined".
+                        text: `形状对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}\n形状数量: ${shapeIndices ? shapeIndices.length + ' 个' : (response.data?.shapes ?? '全部')}`,
                     },
                 ],
             };
