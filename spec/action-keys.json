@@ -4,8 +4,8 @@
  "ping": [],
  "save": [],
  "saveAs": [
-  "filePath",
-  "format"
+  "format",
+  "path"
  ],
  "setSelectedText": [
   "text"
@@ -139,10 +139,7 @@
   "freeze",
   "row"
  ],
- "getContext": [
-  "description",
-  "target_cell"
- ],
+ "getContext": [],
  "getCellComments": [
   "range",
   "sheet"
@@ -189,8 +186,8 @@
  ],
  "insertExcelImage": [
   "cell",
-  "filePath",
   "height",
+  "path",
   "sheet",
   "width"
  ],
@@ -213,7 +210,7 @@
   "position"
  ],
  "openWorkbook": [
-  "filePath"
+  "path"
  ],
  "pasteRange": [
   "destination",
@@ -229,7 +226,6 @@
   "protect"
  ],
  "getRangeData": [
-  "include_header",
   "range",
   "sheet"
  ],
@@ -369,13 +365,13 @@
  "updateChart": [
   "chartIndex",
   "chartName",
-  "chart_type",
+  "chartType",
   "colors",
-  "data_range",
-  "legend_position",
+  "dataRange",
+  "legendPosition",
   "sheet",
-  "show_data_labels",
-  "show_legend",
+  "showDataLabels",
+  "showLegend",
   "title"
  ],
  "updatePivotTable": [
@@ -457,9 +453,6 @@
   "transition"
  ],
  "beautifySlide": [
-  "beautify_all",
-  "color_scheme",
-  "font",
   "slideIndex"
  ],
  "closePresentation": [
@@ -508,10 +501,7 @@
  "getAnimations": [
   "slideIndex"
  ],
- "getOpenPresentations": [
-  "clear",
-  "name"
- ],
+ "getOpenPresentations": [],
  "getShapes": [
   "slideIndex"
  ],
@@ -834,14 +824,11 @@
   "position"
  ],
  "getActiveDocument": [],
- "getDocumentText": [
-  "end",
-  "start"
- ],
+ "getDocumentText": [],
  "getOpenDocuments": [],
  "getDocumentParagraphs": [
-  "end_paragraph",
-  "start_paragraph"
+  "endParagraph",
+  "startParagraph"
  ],
  "getTrackChangesStatus": [],
  "insertBookmark": [
@@ -860,7 +847,7 @@
  ],
  "insertImage": [
   "height",
-  "imagePath",
+  "path",
   "width"
  ],
  "insertPageBreak": [],
@@ -872,13 +859,12 @@
   "rows"
  ],
  "insertText": [
-  "new_paragraph",
   "position",
   "style",
   "text"
  ],
  "openDocument": [
-  "filePath"
+  "path"
  ],
  "replaceBookmarkContent": [
   "name",
@@ -903,11 +889,11 @@
   "paragraphIndex"
  ],
  "setPageSetup": [
-  "marginBottom",
-  "marginLeft",
-  "marginRight",
-  "marginTop",
-  "orientation"
+  "bottomMargin",
+  "leftMargin",
+  "orientation",
+  "rightMargin",
+  "topMargin"
  ],
  "setParagraph": [
   "alignment",

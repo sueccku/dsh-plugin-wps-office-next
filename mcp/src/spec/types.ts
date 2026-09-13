@@ -10,8 +10,21 @@
 export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'array2d';
 
 /** 一个参数的规格。字段名即桥读取的键（公开名 = 桥名，见 P1-4）。 */
+/**
+ * 参数的去向。历史代码里一个 schema 参数并不一定等于桥键：
+ *  - bridge：发给桥（公开名与桥键可能不同，见 OperationSpec.aliases）
+ *  - local ：handler 自己消费，从不到达桥（例如 read_range 的 include_header、insert_text 的 new_paragraph）
+ *  - container：被 handler 打包进一个嵌套对象，由桥展平（见 OperationSpec.containers）
+ *  - unresolved：还没查清——它必须归零，不允许长期存在（那正是过去"静默忽略"的老毛病）
+ */
+export type ParamKind = 'bridge' | 'local' | 'container' | 'unresolved';
+
 export interface ParamSpec {
   type: ParamType;
+  /** 去向；缺省视为 bridge。 */
+  kind?: ParamKind;
+  /** kind 为 container 时，被装进哪个容器对象。 */
+  container?: string;
   /** 中文说明，进 schema 的 description */
   description?: string;
   required?: boolean;

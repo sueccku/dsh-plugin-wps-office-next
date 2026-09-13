@@ -85,6 +85,43 @@ for (const file of walk('mcp/src/tools')) {
 const { map: TOOL_MAP } = analyseToolSource();
 const normalize = (name) => name.replace(/_/g, '').toLowerCase();
 
+// Params the handler consumes itself: they never reach the bridge, and pretending they are bridge
+// keys would either invent a rename or hide a silently ignored parameter. Declared explicitly so the
+// list stays visible and the "unresolved" count can be driven to zero.
+const LOCAL_PARAMS = new Set([
+  'wps_excel_read_range.include_header',
+  'wps_excel_generate_formula.description',
+  'wps_excel_generate_formula.target_cell',
+  'wps_ppt_set_active_target.name',
+  'wps_ppt_set_active_target.clear',
+  'wps_word_insert_text.new_paragraph',
+  'wps_word_get_document_text.start',
+  'wps_word_get_document_text.end',
+]);
+
+// Parameters that reach the bridge under a genuinely different name (a synonym, not a case shift).
+// These are the P1-4 rename targets: align the two names, then delete these entries.
+const SYNONYMS = {
+  'wps_common_save_as.filePath': 'path',
+  'wps_excel_insert_excel_image.filePath': 'path',
+  'wps_excel_open_workbook.filePath': 'path',
+  'wps_word_insert_image.imagePath': 'path',
+  'wps_word_open_document.filePath': 'path',
+  'wps_word_set_page_setup.marginTop': 'topMargin',
+  'wps_word_set_page_setup.marginBottom': 'bottomMargin',
+  'wps_word_set_page_setup.marginLeft': 'leftMargin',
+  'wps_word_set_page_setup.marginRight': 'rightMargin',
+};
+
+// Schema parameters the handler packs into a single value that the bridge reads as one key:
+// wps_ppt_beautify folds color_scheme/font/beautify_all into its "style" argument. They never reach
+// the bridge under their own names, so they are local to the handler, not a rename.
+const FOLDED_INTO_ONE_ARG = new Set([
+  'wps_ppt_beautify.color_scheme',
+  'wps_ppt_beautify.font',
+  'wps_ppt_beautify.beautify_all',
+]);
+
 const toolset = await import('../mcp/dist/server/toolset.js');
 const advertised = new Set([...toolset.STANDARD_TOOLS, ...toolset.FACADE_TOOLS]);
 
@@ -124,7 +161,7 @@ function toParamSpec(p) {
 const tools = await listFull();
 tools.sort((a, b) => (appOf(a.name) + a.name).localeCompare(appOf(b.name) + b.name));
 const used = LIMIT ? tools.slice(0, LIMIT) : tools;
-const stats = { tools: tools.length, emitted: used.length, mapped: 0, unmapped: 0, local: 0, withAliases: 0, withContainers: 0, missingRequired: [] };
+const stats = { tools: tools.length, emitted: used.length, mapped: 0, unmapped: 0, local: 0, withAliases: 0, withContainers: 0, missingRequired: [], unresolved: [] };
 const entries = [];
 for (const tool of used) {
   const actions = toolAction.get(tool.name) || [];
@@ -139,21 +176,45 @@ for (const tool of used) {
   const aliasSource = action ? actionAliases.get(action) : null;
   const params = {};
   const bridgeAliases = {};
+  const engine = action ? 'bridge' : (/generate_formula|proofread_basic/.test(tool.name) ? 'local' : 'opaque');
   for (const [name, p] of Object.entries(props)) {
     const spec = toParamSpec(p);
     if (required.includes(name)) spec.required = true;
+    // A tool that does not drive a bridge action consumes its own parameters.
+    if (engine !== 'bridge') spec.kind = 'local';
     params[name] = spec;
+    // Nothing to classify for a tool that drives no bridge action: every parameter is the tool's own.
+    if (engine !== 'bridge') continue;
     const sentKey = sentByShape.get(normalize(name));
     if (sentKey) {
       const bridgeKey = (aliasSource && aliasSource[sentKey]) || sentKey;
       if (bridgeKey !== name) bridgeAliases[name] = bridgeKey;
+      continue;
     }
+    // The call site was unreadable (a spread or a helper) but the bridge table still tells us which
+    // key this parameter lands on: match by shape.
+    const accepted = action ? actionKeys.get(action) : null;
+    const viaHost = accepted && accepted.find((k) => normalize(k) === normalize(name));
+    if (viaHost) {
+      if (viaHost !== name) bridgeAliases[name] = viaHost;
+      continue;
+    }
+    if (LOCAL_PARAMS.has(tool.name + '.' + name) || FOLDED_INTO_ONE_ARG.has(tool.name + '.' + name)) { spec.kind = 'local'; continue; }
+    const synonym = SYNONYMS[tool.name + '.' + name];
+    if (synonym) { bridgeAliases[name] = synonym; continue; }
+    const container = CONTAINER_PARAMS[tool.name + '.' + name];
+    if (container) { spec.kind = 'container'; spec.container = container; continue; }
+    const containers = action ? actionContainers.get(action) : null;
+    if (containers && containers.length === 1) { spec.kind = 'container'; spec.container = containers[0]; continue; }
+    spec.kind = 'unresolved';
+    stats.unresolved.push(tool.name + '.' + name);
   }
   for (const r of required) if (!params[r]) stats.missingRequired.push(tool.name + ':' + r);
   const entry = { tool: tool.name, action, app: appOf(tool.name), summary: tool.description || '', params, effect: effectOf(tool.name), advertised: advertised.has(tool.name) };
   // verbatim, so an absent key stays absent and an empty array stays an empty array
   if (Array.isArray(rawRequired)) entry.required = rawRequired;
-  entry.engine = action ? 'bridge' : (/generate_formula|proofread_basic/.test(tool.name) ? 'local' : 'opaque');
+  // engine was computed above the parameter loop so parameters could be classified with it
+  entry.engine = engine;
   if (Object.keys(bridgeAliases).length) { entry.aliases = bridgeAliases; stats.withAliases++; }
   const containerSource = action ? actionContainers.get(action) : null;
   if (containerSource && containerSource.length) { entry.containers = containerSource; stats.withContainers++; }

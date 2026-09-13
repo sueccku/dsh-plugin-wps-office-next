@@ -87,19 +87,18 @@ for (const m of keysSeg.matchAll(/^\s*'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)
   hostKeys.set(m[1], [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1]));
 }
 
-// Two debts are recorded here instead of being asserted as zero, because zero is the P1-4/P2 goal
-// and a red gate would just get disabled. Both are snapshots: they fail when the debt GROWS, and
-// they must be updated deliberately when it shrinks.
+// The classification of every parameter is asserted outright: nothing may be left unclassified,
+// and every bridge parameter must land on a key the bridge actually reads.
 //
-// 1. RENAME_DEBT: tool parameters whose name differs from the bridge key they land on (the second
-//    dialect, renamed inside the handlers today). P1-4 makes the public name equal the bridge key.
-// 2. UNTOOLED_ACTIONS: bridge actions no operation drives yet — the P2 backlog of capability that
-//    exists but has no tool.
-// Ratchet: tightened from 57 to 27 once the bootstrap learned to read rename mappings out of the
-// handler call sites (snake_case -> camelCase). What is left are synonyms (filePath vs path,
-// style_name vs style): the public parameter name genuinely differs from the bridge key, which is
-// exactly what P1-4 removes.
-const RENAME_DEBT = 27;
+// Two debts are ratchets instead: they fail when they GROW and must be updated deliberately when
+// they shrink.
+//   ALIAS_DEBT       parameters whose public name differs from the bridge key they land on. P1-4
+//                    aligns the names (filePath -> path, marginTop -> topMargin, ...) and this
+//                    number goes to 0.
+//   UNTOOLED_ACTIONS bridge actions no operation drives yet: the P2 backlog of capability that
+//                    already exists but has no tool.
+const spec = require(resolve('mcp/dist/spec/operations.js'));
+const ALIAS_DEBT = 62;
 const UNTOOLED_ACTIONS = 29;
 const NO_KEY_TABLE = ['setCellFormat'];
 
@@ -121,7 +120,21 @@ check('every generated action exists in the host key table', unexpectedNoTable.l
 
 const specActions = new Set(Object.keys(actionKeysGenerated));
 const untooled = [...hostKeys.keys()].filter((a) => !specActions.has(a));
-check('rename debt did not grow (P1-4 target: 0)', keyMismatch.length <= RENAME_DEBT, keyMismatch.length + ' of ' + RENAME_DEBT + ' recorded, e.g. ' + keyMismatch.slice(0, 4).join(', '));
+let unresolved = 0;
+let localParams = 0;
+let containerParams = 0;
+let aliased = 0;
+for (const op of spec.operations) {
+  for (const [name, p] of Object.entries(op.params)) {
+    if (p.kind === 'unresolved') unresolved++;
+    else if (p.kind === 'local') localParams++;
+    else if (p.kind === 'container') containerParams++;
+    if (p.kind !== 'local' && p.kind !== 'container' && op.aliases && op.aliases[name]) aliased++;
+  }
+}
+check('every parameter has a declared destination', unresolved === 0, unresolved + ' unresolved; ' + localParams + " local to the handler, " + containerParams + ' flattened by a container');
+check('every bridge parameter lands on a key the bridge reads', keyMismatch.length === 0, keyMismatch.length ? keyMismatch.slice(0, 6).join(', ') : aliased + ' of them differ only by name');
+check('alias debt did not grow (P1-4 target: 0)', aliased <= ALIAS_DEBT, aliased + ' of ' + ALIAS_DEBT + ' recorded');
 check('untooled-action backlog did not grow (P2 target: down to 0)', untooled.length <= UNTOOLED_ACTIONS, untooled.length + ' of ' + UNTOOLED_ACTIONS + ' recorded (autoFit*, named ranges, conditional formats, getComments, getBookmarks, ...)');
 
 console.log('');

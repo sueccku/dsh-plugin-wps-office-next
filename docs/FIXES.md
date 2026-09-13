@@ -811,6 +811,33 @@ P1 第一步量出的 58 处「参数名 ≠ 桥键」里，有一大半不是�
 `param-contract` 的地基是「handler 真正发了什么」，spec 的 `action-keys.json` 也该建在同一块地基上，
 否则两边会慢慢漂开（这正是 P0 之前三张人手表的老毛病）。
 
+### 35. P1-4a：给每个参数一个明确的去向（已落地）
+
+接着 P1-3 剩下的 27 处「参数名 ≠ 桥键」逐个查清后发现：**它们不是一类东西，而是三种去向**，
+而 spec 之前只认识一种。
+
+| 去向 | 例子 | 数量 |
+|---|---|---|
+| **bridge**：发给桥（公开名可能与桥键不同） | `chart_type` → 桥读 `chartType` | 509 |
+| **local**：handler 自己消费，从不到桥 | `read_range` 的 `include_header`、`insert_text` 的 `new_paragraph`、`generate_formula` 的 `description`/`target_cell`、`set_active_target` 的 `name`/`clear`、`get_document_text` 的 `start`/`end` | 22 |
+| **container / 折进单个参数**：被 handler 打包后只以一个键到达桥 | `wps_ppt_beautify` 把 `color_scheme`/`font`/`beautify_all` 折进它的 `style` 参数 | 3 |
+
+`types.ts` 增加 `ParamSpec.kind`；提取器按「发送键形状匹配 → 宿主键表回退 → 显式声明」三级判定，
+**未归类必须为 0**（这正是过去「静默忽略」的老毛病在 spec 层的对应物）。显式声明了
+`LOCAL_PARAMS`（8 条）与 `FOLDED_INTO_ONE_ARG`（3 条）——**显式胜过猜测**：宁可留一张会被 review 的表，
+也不要让提取器把「没人读的参数」和「handler 自己用的参数」混为一谈。
+
+同时把验收收紧：
+
+- 新增断言 **「每个 bridge 参数都落在桥真正读的键上」——严格 0 例外**（之前只是"债务 ≤ N"）；
+- `alias debt`（公开名 ≠ 桥键，**62 处**）成为新的棘轮，目标 0；
+- 未归类参数严格为 0。
+
+过程中修掉两个我自己的错：把 `beautify` 的三个参数当成容器成员（其实 handler 把它们折进 `style` 一个参数，
+桥只读 `style`）；以及生成器对 local / container 参数没有区别对待（会把 local 参数也写进 action 键表）。
+
+工具面仍逐字节复现（209 schema / 121,308 字节 / 广告集 44），验收 **11 项全绿**。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

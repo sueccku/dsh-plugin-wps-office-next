@@ -39,7 +39,8 @@ export const operations: OperationSpec[] = [
             ]
           }
         },
-        "required": true
+        "required": true,
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -58,11 +59,13 @@ export const operations: OperationSpec[] = [
       "tool": {
         "type": "string",
         "description": "完整工具名，如 wps_ppt_set_animation",
-        "required": true
+        "required": true,
+        "kind": "local"
       },
       "args": {
         "type": "object",
-        "description": "该工具的参数对象"
+        "description": "该工具的参数对象",
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -137,7 +140,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "filePath"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "filePath": "path"
+    }
   }),
   op({
     "tool": "wps_common_set_selected_text",
@@ -245,11 +251,13 @@ export const operations: OperationSpec[] = [
       "method": {
         "type": "string",
         "description": "API方法名",
-        "required": true
+        "required": true,
+        "kind": "local"
       },
       "params": {
         "type": "object",
-        "description": "方法参数"
+        "description": "方法参数",
+        "kind": "local"
       },
       "appType": {
         "type": "string",
@@ -258,7 +266,8 @@ export const operations: OperationSpec[] = [
           "wps",
           "et",
           "wpp"
-        ]
+        ],
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -276,15 +285,18 @@ export const operations: OperationSpec[] = [
     "params": {
       "app": {
         "type": "string",
-        "description": "应用：excel / word / ppt / common"
+        "description": "应用：excel / word / ppt / common",
+        "kind": "local"
       },
       "query": {
         "type": "string",
-        "description": "按名称或描述搜索关键字"
+        "description": "按名称或描述搜索关键字",
+        "kind": "local"
       },
       "tool": {
         "type": "string",
-        "description": "工具名，返回完整 inputSchema"
+        "description": "工具名，返回完整 inputSchema",
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -1098,11 +1110,13 @@ export const operations: OperationSpec[] = [
       "description": {
         "type": "string",
         "description": "用户对公式需求的自然语言描述，如\"查找产品名对应的价格\"、\"计算A列的总和\"",
-        "required": true
+        "required": true,
+        "kind": "local"
       },
       "target_cell": {
         "type": "string",
-        "description": "目标单元格地址，如 B2。不填则返回上下文让用户确认"
+        "description": "目标单元格地址，如 B2。不填则返回上下文让用户确认",
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -1404,7 +1418,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "filePath"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "filePath": "path"
+    }
   }),
   op({
     "tool": "wps_excel_insert_rows",
@@ -1527,7 +1544,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "filePath"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "filePath": "path"
+    }
   }),
   op({
     "tool": "wps_excel_paste_range",
@@ -1624,7 +1644,8 @@ export const operations: OperationSpec[] = [
       },
       "include_header": {
         "type": "boolean",
-        "description": "是否将第一行作为表头返回，默认false"
+        "description": "是否将第一行作为表头返回，默认false",
+        "kind": "local"
       }
     },
     "effect": "read",
@@ -2583,7 +2604,12 @@ export const operations: OperationSpec[] = [
     "engine": "bridge",
     "aliases": {
       "chart_index": "chartIndex",
-      "chart_name": "chartName"
+      "chart_name": "chartName",
+      "chart_type": "chartType",
+      "show_legend": "showLegend",
+      "legend_position": "legendPosition",
+      "show_data_labels": "showDataLabels",
+      "data_range": "dataRange"
     }
   }),
   op({
@@ -3222,15 +3248,18 @@ export const operations: OperationSpec[] = [
           "tech",
           "creative",
           "minimal"
-        ]
+        ],
+        "kind": "local"
       },
       "font": {
         "type": "string",
-        "description": "统一使用的字体，如 \"微软雅黑\"、\"思源黑体\""
+        "description": "统一使用的字体，如 \"微软雅黑\"、\"思源黑体\"",
+        "kind": "local"
       },
       "beautify_all": {
         "type": "boolean",
-        "description": "是否美化所有幻灯片，默认false只美化指定页"
+        "description": "是否美化所有幻灯片，默认false只美化指定页",
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -4182,11 +4211,13 @@ export const operations: OperationSpec[] = [
     "params": {
       "name": {
         "type": "string",
-        "description": "目标演示文稿文件名（如 关节模组申报PPT-生成版.pptx）；留空或 clear=true 则取消锁定"
+        "description": "目标演示文稿文件名（如 关节模组申报PPT-生成版.pptx）；留空或 clear=true 则取消锁定",
+        "kind": "local"
       },
       "clear": {
         "type": "boolean",
-        "description": "为 true 时清除锁定，恢复使用当前活动文稿"
+        "description": "为 true 时清除锁定，恢复使用当前活动文稿",
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -5772,11 +5803,13 @@ export const operations: OperationSpec[] = [
     "params": {
       "start": {
         "type": "number",
-        "description": "起始位置（字符索引），默认从头开始"
+        "description": "起始位置（字符索引），默认从头开始",
+        "kind": "local"
       },
       "end": {
         "type": "number",
-        "description": "结束位置（字符索引），默认到文档末尾"
+        "description": "结束位置（字符索引），默认到文档末尾",
+        "kind": "local"
       }
     },
     "effect": "read",
@@ -5811,7 +5844,11 @@ export const operations: OperationSpec[] = [
     "effect": "read",
     "advertised": true,
     "required": [],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "start_paragraph": "startParagraph",
+      "end_paragraph": "endParagraph"
+    }
   }),
   op({
     "tool": "wps_word_get_track_changes_status",
@@ -5944,7 +5981,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "imagePath"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "imagePath": "path"
+    }
   }),
   op({
     "tool": "wps_word_insert_page_break",
@@ -6029,7 +6069,8 @@ export const operations: OperationSpec[] = [
       },
       "new_paragraph": {
         "type": "boolean",
-        "description": "插入后是否新起一段，默认false"
+        "description": "插入后是否新起一段，默认false",
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -6056,7 +6097,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "filePath"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "filePath": "path"
+    }
   }),
   op({
     "tool": "wps_word_proofread_basic",
@@ -6067,11 +6111,13 @@ export const operations: OperationSpec[] = [
       "text": {
         "type": "string",
         "description": "要校对的文本内容",
-        "required": true
+        "required": true,
+        "kind": "local"
       },
       "start_offset": {
         "type": "number",
-        "description": "文本在文档中的起始偏移位置，用于定位问题在文档中的准确位置"
+        "description": "文本在文档中的起始偏移位置，用于定位问题在文档中的准确位置",
+        "kind": "local"
       }
     },
     "effect": "write",
@@ -6246,7 +6292,13 @@ export const operations: OperationSpec[] = [
     "effect": "write",
     "advertised": false,
     "required": [],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "marginTop": "topMargin",
+      "marginBottom": "bottomMargin",
+      "marginLeft": "leftMargin",
+      "marginRight": "rightMargin"
+    }
   }),
   op({
     "tool": "wps_word_set_paragraph",

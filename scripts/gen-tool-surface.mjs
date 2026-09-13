@@ -57,7 +57,12 @@ const actionKeys = {};
 for (const op of operations) {
   if (!op.action) continue;
   const keys = new Set(actionKeys[op.action] || []);
-  for (const name of Object.keys(op.params)) keys.add((op.aliases && op.aliases[name]) || name);
+  for (const [name, p] of Object.entries(op.params)) {
+    // A local parameter never reaches the bridge; a container parameter arrives as its container.
+    if (p.kind === 'local') continue;
+    if (p.kind === 'container') { keys.add(p.container || name); continue; }
+    keys.add((op.aliases && op.aliases[name]) || name);
+  }
   actionKeys[op.action] = [...keys].sort();
 }
 
