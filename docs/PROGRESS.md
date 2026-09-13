@@ -170,7 +170,11 @@ e2e 已一键化（第 30 条）：`node scripts/e2e.mjs --profile <name>` 自�
 重命名 58 处（参数名 ≠ 桥键，分布在 33 个 action）· 未工具化 action 29 个（P2 待办清单）·
 raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 
-下一步：**P1-3 桥键真源**（复用 `param-contract.mjs` 的调用点解析器，让 spec 说出每个 action 真正读哪些键）
-→ P1-4 三张人手表归零 → P1-5 `param-contract` 退化为相等断言；之后进 P2 Excel 做深。
+- **P1-3（FIXES 34）**：调用点解析器抽成 `scripts/lib/tool-action-map.mjs`（param-contract 与提取器共用，
+  抽完验证契约报告逐字节未变）；提取器改用「handler 实际发送的键」反推桥键，重命名债务 **57 → 27**，
+  棘轮同步收紧到 27。剩下 27 处是同义改名（`filePath`→`path`、`style_name`→`style`），属 P1-4 范围。
+
+下一步：**P1-4**（把 27 处同义改名与 12 个容器收干净，公开名 = 桥键，三张人手表归零）
+→ P1-5（`param-contract` 退化为相等断言）→ 进 P2 Excel 做深。
 
 

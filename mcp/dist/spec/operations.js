@@ -200,7 +200,10 @@ exports.operations = [
         "required": [
             "targetFormat"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "app_type": "appType"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_convert_to_pdf",
@@ -229,7 +232,10 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "app_type": "appType"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_execute_method",
@@ -605,7 +611,13 @@ exports.operations = [
         "required": [
             "data_range"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "data_range": "dataRange",
+            "chart_type": "chartType",
+            "show_legend": "showLegend",
+            "show_data_labels": "showDataLabels"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_excel_create_pivot_table",
@@ -1662,7 +1674,10 @@ exports.operations = [
         "required": [
             "range"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "has_header": "hasHeader"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_excel_rename_sheet",
@@ -2566,7 +2581,11 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "chart_index": "chartIndex",
+            "chart_name": "chartName"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_excel_update_pivot_table",
@@ -3218,7 +3237,10 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "slide_index": "slideIndex"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_close_presentation",
@@ -5531,7 +5553,13 @@ exports.operations = [
         "required": [
             "font_name"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "font_name": "fontName",
+            "slide_index": "slideIndex",
+            "include_title": "includeTitle",
+            "include_body": "includeBody"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_apply_style",
@@ -5568,7 +5596,10 @@ exports.operations = [
         "required": [
             "style_name"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "style_name": "styleName"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_close_document",
@@ -5643,7 +5674,13 @@ exports.operations = [
         "required": [
             "find_text"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "find_text": "findText",
+            "match_case": "matchCase",
+            "match_whole_word": "matchWholeWord",
+            "max_results": "maxResults"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_find_replace",
@@ -5678,7 +5715,14 @@ exports.operations = [
         "required": [
             "find_text"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "find_text": "findText",
+            "replace_text": "replaceText",
+            "replace_all": "replaceAll",
+            "match_case": "matchCase",
+            "match_whole_word": "matchWholeWord"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_generate_toc",
@@ -5706,7 +5750,10 @@ exports.operations = [
         "effect": "write",
         "advertised": true,
         "required": [],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "include_page_numbers": "includePageNumbers"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_get_active_document",
@@ -6089,7 +6136,11 @@ exports.operations = [
             "end_pos",
             "text"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "start_pos": "startPos",
+            "end_pos": "endPos"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_set_font",
@@ -6133,7 +6184,11 @@ exports.operations = [
         "effect": "write",
         "advertised": true,
         "required": [],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "font_name": "fontName",
+            "font_size": "fontSize"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_set_line_spacing",
@@ -6266,7 +6321,10 @@ exports.operations = [
             "keyword",
             "value"
         ],
-        "engine": "bridge"
+        "engine": "bridge",
+        "aliases": {
+            "fill_mode": "fillMode"
+        }
     }),
     (0, types_1.op)({
         "tool": "wps_word_switch_document",

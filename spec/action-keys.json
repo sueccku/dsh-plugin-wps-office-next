@@ -12,12 +12,12 @@
  ],
  "wireCheck": [],
  "convertFormat": [
-  "app_type",
+  "appType",
   "outputPath",
   "targetFormat"
  ],
  "convertToPDF": [
-  "app_type",
+  "appType",
   "openAfterExport",
   "outputPath"
  ],
@@ -60,12 +60,12 @@
   "position"
  ],
  "createChart": [
-  "chart_type",
-  "data_range",
+  "chartType",
+  "dataRange",
   "position",
   "sheet",
-  "show_data_labels",
-  "show_legend",
+  "showDataLabels",
+  "showLegend",
   "title"
  ],
  "createPivotTable": [
@@ -235,7 +235,7 @@
  ],
  "removeDuplicates": [
   "columns",
-  "has_header",
+  "hasHeader",
   "range",
   "sheet"
  ],
@@ -367,8 +367,8 @@
   "password"
  ],
  "updateChart": [
-  "chart_index",
-  "chart_name",
+  "chartIndex",
+  "chartName",
   "chart_type",
   "colors",
   "data_range",
@@ -460,7 +460,7 @@
   "beautify_all",
   "color_scheme",
   "font",
-  "slide_index"
+  "slideIndex"
  ],
  "closePresentation": [
   "name",
@@ -798,14 +798,14 @@
   "slideIndex"
  ],
  "unifyFont": [
-  "font_name",
-  "include_body",
-  "include_title",
-  "slide_index"
+  "fontName",
+  "includeBody",
+  "includeTitle",
+  "slideIndex"
  ],
  "applyStyle": [
   "range",
-  "style_name"
+  "styleName"
  ],
  "closeDocument": [
   "name",
@@ -816,20 +816,20 @@
   "enable"
  ],
  "findInDocument": [
-  "find_text",
-  "match_case",
-  "match_whole_word",
-  "max_results"
+  "findText",
+  "matchCase",
+  "matchWholeWord",
+  "maxResults"
  ],
  "findReplace": [
-  "find_text",
-  "match_case",
-  "match_whole_word",
-  "replace_all",
-  "replace_text"
+  "findText",
+  "matchCase",
+  "matchWholeWord",
+  "replaceAll",
+  "replaceText"
  ],
  "generateTOC": [
-  "include_page_numbers",
+  "includePageNumbers",
   "levels",
   "position"
  ],
@@ -885,15 +885,15 @@
   "text"
  ],
  "replaceRange": [
-  "end_pos",
-  "start_pos",
+  "endPos",
+  "startPos",
   "text"
  ],
  "setFont": [
   "bold",
   "color",
-  "font_name",
-  "font_size",
+  "fontName",
+  "fontSize",
   "italic",
   "range",
   "underline"
@@ -917,7 +917,7 @@
   "color"
  ],
  "smartFillField": [
-  "fill_mode",
+  "fillMode",
   "keyword",
   "value"
  ],

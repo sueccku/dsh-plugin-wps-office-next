@@ -199,7 +199,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "targetFormat"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "app_type": "appType"
+    }
   }),
   op({
     "tool": "wps_convert_to_pdf",
@@ -228,7 +231,10 @@ export const operations: OperationSpec[] = [
     "effect": "lifecycle",
     "advertised": true,
     "required": [],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "app_type": "appType"
+    }
   }),
   op({
     "tool": "wps_execute_method",
@@ -604,7 +610,13 @@ export const operations: OperationSpec[] = [
     "required": [
       "data_range"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "data_range": "dataRange",
+      "chart_type": "chartType",
+      "show_legend": "showLegend",
+      "show_data_labels": "showDataLabels"
+    }
   }),
   op({
     "tool": "wps_excel_create_pivot_table",
@@ -1661,7 +1673,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "range"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "has_header": "hasHeader"
+    }
   }),
   op({
     "tool": "wps_excel_rename_sheet",
@@ -2565,7 +2580,11 @@ export const operations: OperationSpec[] = [
     "effect": "write",
     "advertised": false,
     "required": [],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "chart_index": "chartIndex",
+      "chart_name": "chartName"
+    }
   }),
   op({
     "tool": "wps_excel_update_pivot_table",
@@ -3217,7 +3236,10 @@ export const operations: OperationSpec[] = [
     "effect": "write",
     "advertised": false,
     "required": [],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "slide_index": "slideIndex"
+    }
   }),
   op({
     "tool": "wps_ppt_close_presentation",
@@ -5530,7 +5552,13 @@ export const operations: OperationSpec[] = [
     "required": [
       "font_name"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "font_name": "fontName",
+      "slide_index": "slideIndex",
+      "include_title": "includeTitle",
+      "include_body": "includeBody"
+    }
   }),
   op({
     "tool": "wps_word_apply_style",
@@ -5567,7 +5595,10 @@ export const operations: OperationSpec[] = [
     "required": [
       "style_name"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "style_name": "styleName"
+    }
   }),
   op({
     "tool": "wps_word_close_document",
@@ -5642,7 +5673,13 @@ export const operations: OperationSpec[] = [
     "required": [
       "find_text"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "find_text": "findText",
+      "match_case": "matchCase",
+      "match_whole_word": "matchWholeWord",
+      "max_results": "maxResults"
+    }
   }),
   op({
     "tool": "wps_word_find_replace",
@@ -5677,7 +5714,14 @@ export const operations: OperationSpec[] = [
     "required": [
       "find_text"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "find_text": "findText",
+      "replace_text": "replaceText",
+      "replace_all": "replaceAll",
+      "match_case": "matchCase",
+      "match_whole_word": "matchWholeWord"
+    }
   }),
   op({
     "tool": "wps_word_generate_toc",
@@ -5705,7 +5749,10 @@ export const operations: OperationSpec[] = [
     "effect": "write",
     "advertised": true,
     "required": [],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "include_page_numbers": "includePageNumbers"
+    }
   }),
   op({
     "tool": "wps_word_get_active_document",
@@ -6088,7 +6135,11 @@ export const operations: OperationSpec[] = [
       "end_pos",
       "text"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "start_pos": "startPos",
+      "end_pos": "endPos"
+    }
   }),
   op({
     "tool": "wps_word_set_font",
@@ -6132,7 +6183,11 @@ export const operations: OperationSpec[] = [
     "effect": "write",
     "advertised": true,
     "required": [],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "font_name": "fontName",
+      "font_size": "fontSize"
+    }
   }),
   op({
     "tool": "wps_word_set_line_spacing",
@@ -6265,7 +6320,10 @@ export const operations: OperationSpec[] = [
       "keyword",
       "value"
     ],
-    "engine": "bridge"
+    "engine": "bridge",
+    "aliases": {
+      "fill_mode": "fillMode"
+    }
   }),
   op({
     "tool": "wps_word_switch_document",

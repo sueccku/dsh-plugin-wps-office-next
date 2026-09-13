@@ -95,7 +95,11 @@ for (const m of keysSeg.matchAll(/^\s*'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)
 //    dialect, renamed inside the handlers today). P1-4 makes the public name equal the bridge key.
 // 2. UNTOOLED_ACTIONS: bridge actions no operation drives yet — the P2 backlog of capability that
 //    exists but has no tool.
-const RENAME_DEBT = 57;
+// Ratchet: tightened from 57 to 27 once the bootstrap learned to read rename mappings out of the
+// handler call sites (snake_case -> camelCase). What is left are synonyms (filePath vs path,
+// style_name vs style): the public parameter name genuinely differs from the bridge key, which is
+// exactly what P1-4 removes.
+const RENAME_DEBT = 27;
 const UNTOOLED_ACTIONS = 29;
 const NO_KEY_TABLE = ['setCellFormat'];
 

@@ -5,6 +5,7 @@
 import { spawn } from 'node:child_process';
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { analyseToolSource } from './lib/tool-action-map.mjs';
 
 const LIMIT = process.argv.includes('--limit') ? Number(process.argv[process.argv.indexOf('--limit') + 1]) : 0;
 
@@ -78,6 +79,12 @@ for (const file of walk('mcp/src/tools')) {
   }
 }
 
+// The handler call sites say which keys a tool actually sends; most pass schema params through, some
+// rename them in code (createChart sends dataRange while its schema says data_range). Recording the
+// bridge-side name is what lets the generated key table match what the bridge really reads.
+const { map: TOOL_MAP } = analyseToolSource();
+const normalize = (name) => name.replace(/_/g, '').toLowerCase();
+
 const toolset = await import('../mcp/dist/server/toolset.js');
 const advertised = new Set([...toolset.STANDARD_TOOLS, ...toolset.FACADE_TOOLS]);
 
@@ -127,22 +134,27 @@ for (const tool of used) {
   const props = (tool.inputSchema && tool.inputSchema.properties) || {};
   const rawRequired = tool.inputSchema ? tool.inputSchema.required : undefined;
   const required = Array.isArray(rawRequired) ? rawRequired : [];
+  const sent = TOOL_MAP.get(tool.name);
+  const sentByShape = new Map(((sent && sent.keys) || []).map((k) => [normalize(k), k]));
+  const aliasSource = action ? actionAliases.get(action) : null;
   const params = {};
+  const bridgeAliases = {};
   for (const [name, p] of Object.entries(props)) {
     const spec = toParamSpec(p);
     if (required.includes(name)) spec.required = true;
     params[name] = spec;
+    const sentKey = sentByShape.get(normalize(name));
+    if (sentKey) {
+      const bridgeKey = (aliasSource && aliasSource[sentKey]) || sentKey;
+      if (bridgeKey !== name) bridgeAliases[name] = bridgeKey;
+    }
   }
   for (const r of required) if (!params[r]) stats.missingRequired.push(tool.name + ':' + r);
   const entry = { tool: tool.name, action, app: appOf(tool.name), summary: tool.description || '', params, effect: effectOf(tool.name), advertised: advertised.has(tool.name) };
   // verbatim, so an absent key stays absent and an empty array stays an empty array
   if (Array.isArray(rawRequired)) entry.required = rawRequired;
   entry.engine = action ? 'bridge' : (/generate_formula|proofread_basic/.test(tool.name) ? 'local' : 'opaque');
-  const aliasSource = action ? actionAliases.get(action) : null;
-  if (aliasSource) {
-    const kept = Object.fromEntries(Object.entries(aliasSource).filter(([k]) => params[k]));
-    if (Object.keys(kept).length) { entry.aliases = kept; stats.withAliases++; }
-  }
+  if (Object.keys(bridgeAliases).length) { entry.aliases = bridgeAliases; stats.withAliases++; }
   const containerSource = action ? actionContainers.get(action) : null;
   if (containerSource && containerSource.length) { entry.containers = containerSource; stats.withContainers++; }
   entries.push(entry);
