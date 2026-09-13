@@ -615,9 +615,6 @@ export const chartFlowTools: RegisteredTool[] = [
   { definition: insertPptChartDefinition, handler: insertPptChartHandler },
   { definition: setPptChartDataDefinition, handler: setPptChartDataHandler },
   { definition: setPptChartStyleDefinition, handler: setPptChartStyleHandler },
-  { definition: createFlowChartDefinition, handler: createFlowChartHandler },
-  { definition: createOrgChartDefinition, handler: createOrgChartHandler },
-  { definition: createTimelineDefinition, handler: createTimelineHandler },
 ];
 
 export default chartFlowTools;

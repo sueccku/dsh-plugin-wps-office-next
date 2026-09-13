@@ -677,7 +677,6 @@ exports.presentationTools = [
     { definition: exports.closePresentationDefinition, handler: exports.closePresentationHandler },
     { definition: exports.getOpenPresentationsDefinition, handler: exports.getOpenPresentationsHandler },
     { definition: exports.switchPresentationDefinition, handler: exports.switchPresentationHandler },
-    { definition: exports.setSlideThemeDefinition, handler: exports.setSlideThemeHandler },
     { definition: exports.copySlideDefinition, handler: exports.copySlideHandler },
     { definition: exports.insertSlideImageDefinition, handler: exports.insertSlideImageHandler },
     { definition: exports.insertSlidesFromFileDefinition, handler: exports.insertSlidesFromFileHandler },

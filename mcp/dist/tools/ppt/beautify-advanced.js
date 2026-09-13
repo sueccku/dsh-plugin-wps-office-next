@@ -650,13 +650,6 @@ exports.setBackgroundGradientHandler = setBackgroundGradientHandler;
  * 导出所有高级美化相关的Tools
  */
 exports.beautifyAdvancedTools = [
-    { definition: exports.applyColorSchemeDefinition, handler: exports.applyColorSchemeHandler },
-    { definition: exports.autoBeautifySlideDefinition, handler: exports.autoBeautifySlideHandler },
-    { definition: exports.beautifyAllSlidesDefinition, handler: exports.beautifyAllSlidesHandler },
-    { definition: exports.createKpiCardsDefinition, handler: exports.createKpiCardsHandler },
-    { definition: exports.createStyledTableDefinition, handler: exports.createStyledTableHandler },
-    { definition: exports.addTitleDecorationDefinition, handler: exports.addTitleDecorationHandler },
-    { definition: exports.addPageIndicatorDefinition, handler: exports.addPageIndicatorHandler },
     { definition: exports.setBackgroundGradientDefinition, handler: exports.setBackgroundGradientHandler },
 ];
 exports.default = exports.beautifyAdvancedTools;

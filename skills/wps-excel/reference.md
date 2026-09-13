@@ -18,7 +18,6 @@
 | wps_excel_remove_duplicates | wps_call | 删除指定范围内的重复行。 |
 | wps_excel_sort_range | wps_call | 对Excel选定区域按指定列排序。 |
 | wps_excel_find_replace | 直达 | 在Excel中查找并替换内容。 |
-| wps_excel_insert_row | wps_call | 在Excel中插入行。 |
 | wps_excel_add_comment | wps_call | 给单元格添加批注。 |
 | wps_excel_protect_sheet | wps_call | 保护或取消保护工作表。 |
 | wps_excel_set_conditional_format | wps_call | 设置条件格式。 |
@@ -38,11 +37,7 @@
 | wps_excel_switch_sheet | wps_call | 切换到指定的工作表，使其成为活动工作表。 |
 | wps_excel_move_sheet | wps_call | 移动指定工作表到新的位置。 |
 | wps_excel_get_selection | wps_call | 获取当前Excel中选中区域的信息，包括范围地址、行列数等。 |
-| wps_excel_delete_row | wps_call | 删除指定行。 |
-| wps_excel_insert_column | wps_call | 在指定位置插入列。 |
-| wps_excel_delete_column | wps_call | 删除指定列。 |
 | wps_excel_freeze_panes | wps_call | 冻结/取消冻结窗格。 |
-| wps_excel_auto_fill | wps_call | 自动填充单元格区域。 |
 | wps_excel_set_named_range | wps_call | 设置命名范围。 |
 | wps_excel_hide_column | wps_call | 隐藏或显示指定列。 |
 | wps_excel_auto_sum | wps_call | 对指定范围的列或行自动求和，并将结果写入目标单元格。 |
@@ -54,7 +49,6 @@
 | wps_excel_unmerge_cells | wps_call | 拆分Excel中已合并的单元格，恢复为独立的单元格。 |
 | wps_excel_set_column_width | wps_call | 设置Excel指定列的列宽。 |
 | wps_excel_set_row_height | wps_call | 设置Excel指定行的行高。 |
-| wps_excel_hide_row | wps_call | 隐藏或显示Excel指定行。 |
 | wps_excel_set_data_validation | wps_call | 设置Excel单元格的数据验证规则，如下拉列表、数值范围、日期范围等。 |
 | wps_excel_open_workbook | 直达 | 打开指定路径的Excel工作簿文件。 |
 | wps_excel_get_open_workbooks | 直达 | 获取当前所有已打开的Excel工作簿列表。 |
@@ -89,3 +83,9 @@
 | wps_excel_insert_excel_image | wps_call | 在Excel中插入图片到指定位置。 |
 | wps_excel_set_hyperlink | wps_call | 为Excel单元格设置超链接。 |
 | wps_excel_zoom | wps_call | [已废弃] 设置工作表缩放比例 请改用 wps_excel_set_zoom。 |
+| wps_excel_auto_fill | wps_call | [已废弃] 自动填充单元格区域。 |
+| wps_excel_insert_row | wps_call | [已废弃] 在Excel中插入行。 |
+| wps_excel_hide_row | wps_call | [已废弃] 隐藏或显示Excel指定行。 |
+| wps_excel_insert_column | wps_call | [已废弃] 在指定位置插入列。 |
+| wps_excel_delete_row | wps_call | [已废弃] 删除指定行。 |
+| wps_excel_delete_column | wps_call | [已废弃] 删除指定列。 |

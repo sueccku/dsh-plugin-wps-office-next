@@ -49,15 +49,44 @@ check("footer reports hidden", text(await call("wps_ppt_set_ppt_footer", { text:
 check("slide number accepts show", ok(await call("wps_ppt_set_slide_number", { show: true })), "");
 check("date time accepts autoUpdate+format", ok(await call("wps_ppt_set_ppt_date_time", { show: true, autoUpdate: false, format: "YYYY-MM-DD", text: "2026-01-01" })), "");
 
-// gauge max, progress value, page indicator position
-check("gauge accepts value+max", ok(await call("wps_ppt_create_gauge", { slideIndex: 1, value: 75, max: 150 })), "");
-check("progress bar accepts value", ok(await call("wps_ppt_create_progress_bar", { slideIndex: 1, value: 60, label: "进度" })), "");
-check("page indicator accepts position", ok(await call("wps_ppt_add_page_indicator", { slideIndex: 1, position: "bottom-left" })), "");
-check("unknown indicator position fails loudly", !ok(await call("wps_ppt_add_page_indicator", { slideIndex: 1, position: "sideways" })), "");
+// The scenario wrappers (KPI cards, timeline, flow chart, gauge, donut, progress bar, page
+// indicator, title decoration, org chart, mini chart, colour scheme) were removed from the tool
+// layer; they now live as recipes in skills/wps-ppt/SKILL.md and are built from primitives. These
+// checks build the same figures out of primitives, which is what makes the recipes trustworthy.
+const shapeCount = async (slide) => (payload(await viaAction("getShapes", { slideIndex: slide })).data?.shapes ?? []).length;
+const addShape = (a) => call("wps_ppt_add_shape", a);
+const shapeAt = async (slide) => (payload(await viaAction("getShapes", { slideIndex: slide })).data?.shapes ?? []);
+const fillShape = (slide, index, color) => call("wps_ppt_set_shape_fill", { slideIndex: slide, shapeIndex: index, color });
+const textShape = (slide, index, t) => call("wps_ppt_set_shape_text", { slideIndex: slide, shapeIndex: index, text: t });
 
-// colour scheme slide range
-check("color scheme accepts slideIndex", ok(await call("wps_ppt_apply_color_scheme", { slideIndex: 1, scheme: "tech" })), "");
-check("color scheme rejects an out-of-range slide", !ok(await call("wps_ppt_apply_color_scheme", { slideIndex: 99, scheme: "tech" })), "");
+// recipe: 进度条 = 轨道 + 按比例宽度的填充 + 说明文字
+const trackIdx = (await shapeCount(1)) + 1;
+check("recipe: progress bar track", ok(await addShape({ slideIndex: 1, type: "rectangle", left: 60, top: 380, width: 400, height: 24, fillColor: "#E0E0E0" })), "");
+const fillIdx = (await shapeCount(1)) + 1;
+check("recipe: progress bar fill", ok(await addShape({ slideIndex: 1, type: "rectangle", left: 60, top: 380, width: Math.round(400 * 0.6), height: 24, fillColor: "#28A745" })), "");
+const slide1 = await shapeAt(1);
+const bar = slide1.find((s) => s.index === fillIdx);
+check("recipe: fill width is 60% of the track", bar && Math.abs(bar.width - 240) <= 2, bar ? "width=" + bar.width : "shape not found");
+
+// recipe: 仪表盘/环形图 = 外圈 + 白色内圈 + 中心百分比
+const ringOuter = (await shapeCount(1)) + 1;
+check("recipe: ring outer circle", ok(await addShape({ slideIndex: 1, type: "oval", left: 700, top: 300, width: 160, height: 160, fillColor: "#0D47A1" })), "");
+const ringInner = (await shapeCount(1)) + 1;
+check("recipe: ring inner circle", ok(await addShape({ slideIndex: 1, type: "oval", left: 732, top: 332, width: 96, height: 96, fillColor: "#FFFFFF" })), "");
+check("recipe: ring centre text", ok(await call("wps_ppt_add_textbox", { slideIndex: 1, left: 740, top: 365, width: 80, height: 30, text: "60%", fontSize: 18 })), "");
+
+// recipe: 页码指示器 = 右下角文本框
+const pageBox = await call("wps_ppt_add_textbox", { slideIndex: 1, left: 880, top: 520, width: 80, height: 30, text: "1 / " + (await slideCount()), fontSize: 12 });
+check("recipe: page indicator textbox", ok(pageBox), text(pageBox).replace(/\s+/g, " ").slice(0, 60));
+
+// recipe: 配色 = 遍历现有形状逐个改填充色（取代 apply_color_scheme）
+const palette = ["#2F5496", "#333333", "#00B0F0"];
+let recoloured = 0;
+for (const s of await shapeAt(1)) {
+  if (recoloured >= palette.length) break;
+  if (await fillShape(1, s.index, palette[recoloured])) recoloured++;
+}
+check("recipe: recolour shapes via set_shape_fill", recoloured > 0, "recoloured=" + recoloured);
 
 // animation targeting + trigger
 check("animation preset accepts shapeIndex", ok(await call("wps_ppt_add_animation_preset", { slideIndex: 1, preset: "fadeIn", shapeIndex: 1 })), "");
@@ -68,8 +97,8 @@ check("remove_animation accepts animationIndex", ok(await call("wps_ppt_remove_a
 // hyperlink url, font unification range, title decoration style
 check("hyperlink accepts url", ok(await call("wps_ppt_add_ppt_hyperlink", { slideIndex: 1, shapeIndex: 1, url: "https://example.com" })), "");
 check("unify_font accepts include_title/include_body", ok(await call("wps_ppt_unify_font", { font_name: "Arial", include_title: true, include_body: false })), "");
-check("title decoration accepts style", ok(await call("wps_ppt_add_title_decoration", { slideIndex: 1, style: "sidebar" })), "");
-check("unknown title decoration fails loudly", !ok(await call("wps_ppt_add_title_decoration", { slideIndex: 1, style: "nope" })), "");
+// recipe: 标题装饰 = 标题下方一根细色条
+check("recipe: title decoration bar", ok(await addShape({ slideIndex: 1, type: "rectangle", left: 60, top: 96, width: 200, height: 6, fillColor: "#1A365D" })), "");
 
 // copy slide to a target position
 const beforeCopy = await slideCount();
@@ -82,14 +111,34 @@ check("slide background accepts background object", ok(await call("wps_ppt_set_s
 check("unknown background type fails loudly", !ok(await call("wps_ppt_set_slide_background", { slideIndex: 1, background: { type: "plaid" } })), "");
 check("master background accepts gradient colours", ok(await call("wps_ppt_set_master_background", { background: { type: "gradient", colors: ["#1a1a2e", "#0f3460"] } })), "");
 
-// structured scenario data the action used to ignore
-check("flow chart accepts nodes+connections", ok(await call("wps_ppt_create_flow_chart", { slideIndex: 2, nodes: [{ id: "a", text: "开始", type: "start" }, { id: "b", text: "结束" }], connections: [{ from: "a", to: "b" }] })), "");
-check("mini charts accept data", ok(await call("wps_ppt_create_mini_charts", { slideIndex: 2, data: [{ label: "Q1", values: [1, 2, 3] }, { label: "Q2", values: [5, 4, 2] }] })), "");
-check("org chart accepts a tree", ok(await call("wps_ppt_create_org_chart", { slideIndex: 2, data: { name: "CEO", children: [{ name: "CTO" }, { name: "CFO" }] } })), "");
-// A multi-slice donut is not supported (WPS's pie shape has one adjustment), so this exercises the
-// single share it does draw, with the centre text the caller asked for.
-const donut = await call("wps_ppt_create_donut_chart", { slideIndex: 1, value: 0.6, title: "占比", centerText: "60%" });
-check("donut chart accepts value+title+centerText", ok(donut), text(donut).replace(/\s+/g, " ").slice(0, 80));
+// recipe: 流程图 = 方框 + 文字 + 箭头形状
+check("recipe: flow chart start box", ok(await addShape({ slideIndex: 2, type: "rectangle", left: 80, top: 120, width: 160, height: 60, text: "开始", fillColor: "#2F5496" })), "");
+check("recipe: flow chart end box", ok(await addShape({ slideIndex: 2, type: "rectangle", left: 320, top: 120, width: 160, height: 60, text: "结束", fillColor: "#2F5496" })), "");
+check("recipe: flow chart connector arrow", ok(await addShape({ slideIndex: 2, type: "arrow", left: 245, top: 138, width: 70, height: 24, fillColor: "#333333" })), "");
+
+// recipe: 迷你图表 = 数值 + 标签 + 趋势箭头
+const miniBase = (await shapeCount(2)) + 1;
+check("recipe: mini chart value", ok(await call("wps_ppt_add_textbox", { slideIndex: 2, left: 80, top: 380, width: 100, height: 30, text: "3", fontSize: 20 })), "");
+check("recipe: mini chart label", ok(await call("wps_ppt_add_textbox", { slideIndex: 2, left: 80, top: 412, width: 100, height: 20, text: "Q1", fontSize: 11 })), "");
+check("recipe: mini chart trend", ok(await call("wps_ppt_add_textbox", { slideIndex: 2, left: 150, top: 380, width: 30, height: 20, text: "↑", fontSize: 14 })), "");
+
+// recipe: 组织架构图 = 根节点 + 两个子节点
+check("recipe: org chart root", ok(await addShape({ slideIndex: 2, type: "rectangle", left: 200, top: 200, width: 140, height: 50, text: "CEO", fillColor: "#1A365D" })), "");
+check("recipe: org chart child left", ok(await addShape({ slideIndex: 2, type: "rectangle", left: 120, top: 300, width: 120, height: 44, text: "CTO", fillColor: "#2F5496" })), "");
+check("recipe: org chart child right", ok(await addShape({ slideIndex: 2, type: "rectangle", left: 300, top: 300, width: 120, height: 44, text: "CFO", fillColor: "#2F5496" })), "");
+
+// recipe: 时间线 = 连接线 + 节点圆点 + 事件文字
+check("recipe: timeline axis", ok(await addShape({ slideIndex: 2, type: "rectangle", left: 80, top: 470, width: 500, height: 4, fillColor: "#9E9E9E" })), "");
+check("recipe: timeline node", ok(await addShape({ slideIndex: 2, type: "oval", left: 150, top: 458, width: 28, height: 28, fillColor: "#2F5496" })), "");
+check("recipe: timeline label", ok(await call("wps_ppt_add_textbox", { slideIndex: 2, left: 120, top: 500, width: 140, height: 24, text: "2026 Q1", fontSize: 11 })), "");
+
+// recipe: KPI 卡片行 = 三张卡片（形状 + 填充 + 文字）
+for (const [i, kpi] of [["A", "销售额¥128万"], ["B", "增长+15%"], ["C", "客户320"]].entries()) {
+  const idx = (await shapeCount(2)) + 1;
+  const added = await addShape({ slideIndex: 2, type: "rectangle", left: 80 + i * 170, top: 560, width: 150, height: 70, fillColor: "#1565C0" });
+  check("recipe: kpi card " + kpi[0] + " shape", ok(added), "");
+  check("recipe: kpi card " + kpi[0] + " text", ok(await textShape(2, idx, String(kpi[1]))), "");
+}
 
 // nested style objects
 check("shape shadow accepts a shadow object", ok(await call("wps_ppt_set_shape_shadow", { slideIndex: 1, shapeIndex: 1, shadow: { enabled: true, color: "#000000", blur: 4, offsetX: 2, offsetY: 2, opacity: 0.5 } })), "");

@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 演示工具（115）
+## WPS 演示工具（96）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -11,9 +11,7 @@
 | wps_ppt_beautify | wps_call | 一键美化幻灯片，优化排版、配色、字体和间距。 |
 | wps_ppt_unify_font | wps_call | 统一演示文稿中所有幻灯片的字体。 |
 | wps_ppt_set_font_color | wps_call | 设置幻灯片中指定形状的文字颜色。 |
-| wps_ppt_align_objects | wps_call | 对齐幻灯片中的对象。 |
 | wps_ppt_delete_slide | wps_call | 删除指定的幻灯片。 |
-| wps_ppt_duplicate_slide | wps_call | 复制指定的幻灯片，在其后插入副本。 |
 | wps_ppt_move_slide | wps_call | 移动幻灯片到指定位置。 |
 | wps_ppt_get_slide_count | 直达 | 获取演示文稿中的幻灯片总数。 |
 | wps_ppt_get_slide_info | 直达 | 获取指定幻灯片的详细信息，包括布局、元素列表等。 |
@@ -25,22 +23,15 @@
 | wps_ppt_set_shape_style | wps_call | 设置幻灯片中形状的样式，包括填充颜色、边框颜色和边框粗细。 |
 | wps_ppt_add_textbox | 直达 | 在幻灯片中添加文本框。 |
 | wps_ppt_set_slide_title | 直达 | 设置幻灯片的标题文本。 |
-| wps_ppt_insert_image | wps_call | 在幻灯片中插入图片。 |
 | wps_ppt_set_shape_text | 直达 | 设置幻灯片中指定形状的文字内容。 |
-| wps_ppt_set_animation | wps_call | 设置幻灯片中指定元素的动画效果。 |
-| wps_ppt_set_background | wps_call | 设置幻灯片的背景颜色或背景图片。 |
 | wps_ppt_set_slide_size | wps_call | 设置演示文稿的幻灯片尺寸。 |
-| wps_ppt_set_transition | wps_call | 设置幻灯片切换效果。 |
-| wps_ppt_add_chart | wps_call | 在幻灯片中插入图表。 |
 | wps_ppt_set_shape_fill | 直达 | 设置幻灯片中指定形状的填充颜色。 |
 | wps_ppt_create_presentation | wps_call | 新建空白演示文稿。 |
 | wps_ppt_open_presentation | 直达 | 打开指定路径的演示文稿文件。 |
 | wps_ppt_close_presentation | wps_call | 关闭演示文稿。 |
 | wps_ppt_get_open_presentations | wps_call | 获取当前所有已打开的演示文稿列表。 |
 | wps_ppt_switch_presentation | wps_call | 切换到指定名称的演示文稿。 |
-| wps_ppt_set_slide_theme | wps_call | 设置演示文稿主题。 |
 | wps_ppt_copy_slide | wps_call | 复制幻灯片到指定位置。 |
-| wps_ppt_insert_slide_image | wps_call | 在幻灯片中插入图片。 |
 | wps_ppt_insert_slides_from_file | wps_call | 从另一个 PPT 文件把整页幻灯片插入到【当前活动演示文稿】，并保留来源幻灯片的原始格式（字体/配色/版式/图片）。 |
 | wps_ppt_set_active_target | wps_call | 锁定后续所有 PPT 操作的【目标演示文稿】（按文件名）。 |
 | wps_ppt_delete_textbox | wps_call | 删除幻灯片上指定的文本框。 |
@@ -85,40 +76,30 @@
 | wps_ppt_insert_ppt_chart | wps_call | 在幻灯片中插入数据图表。 |
 | wps_ppt_set_ppt_chart_data | wps_call | 更新幻灯片中已有图表的数据。 |
 | wps_ppt_set_ppt_chart_style | wps_call | 设置幻灯片中图表的样式属性。 |
-| wps_ppt_create_flow_chart | wps_call | 在幻灯片中创建流程图。 |
-| wps_ppt_create_org_chart | wps_call | 在幻灯片中创建组织架构图。 |
-| wps_ppt_create_timeline | wps_call | 在幻灯片中创建时间线。 |
 | wps_ppt_get_slide_master | wps_call | 获取当前演示文稿的母版信息。 |
 | wps_ppt_set_master_background | wps_call | 设置母版背景样式。 |
 | wps_ppt_add_master_element | wps_call | 向母版中添加新元素。 |
 | wps_ppt_set_3d_rotation | wps_call | 设置幻灯片中形状的3D旋转效果。 |
 | wps_ppt_set_3d_depth | wps_call | 设置幻灯片中形状的3D挤出深度。 |
 | wps_ppt_set_3d_material | wps_call | 设置幻灯片中形状的3D材质效果。 |
-| wps_ppt_create_3d_text | wps_call | 在幻灯片中创建带有3D效果的文字。 |
 | wps_ppt_add_ppt_hyperlink | wps_call | 为幻灯片中的形状添加超链接。 |
 | wps_ppt_remove_ppt_hyperlink | wps_call | 移除幻灯片中形状的超链接。 |
 | wps_ppt_find_ppt_text | wps_call | 在演示文稿中搜索指定文本。 |
 | wps_ppt_replace_ppt_text | wps_call | 在演示文稿中查找并替换文本。 |
 | wps_ppt_start_slide_show | wps_call | 开始幻灯片放映。 |
-| wps_ppt_create_progress_bar | wps_call | 在幻灯片中创建进度条。 |
-| wps_ppt_create_gauge | wps_call | 在幻灯片中创建仪表盘图表。 |
-| wps_ppt_create_mini_charts | wps_call | 在幻灯片中创建迷你图表。 |
-| wps_ppt_create_donut_chart | wps_call | 在幻灯片中创建环形图。 |
-| wps_ppt_auto_layout | wps_call | 自动调整幻灯片中所有元素的布局。 |
-| wps_ppt_smart_distribute | wps_call | 将指定形状进行等距分布排列。 |
-| wps_ppt_create_grid | wps_call | 在幻灯片中创建网格布局。 |
 | wps_ppt_insert_table | 直达 | 在幻灯片中插入表格。 |
 | wps_ppt_set_table_cell | wps_call | 设置PPT表格中指定单元格的文本内容。 |
 | wps_ppt_get_table_cell | wps_call | 获取PPT表格中指定单元格的文本内容。 |
 | wps_ppt_set_table_style | wps_call | 设置PPT表格的整体样式。 |
 | wps_ppt_set_table_cell_style | wps_call | 设置PPT表格中指定单元格的样式。 |
 | wps_ppt_set_table_row_style | wps_call | 设置PPT表格中指定行的样式。 |
-| wps_ppt_apply_color_scheme | wps_call | 为幻灯片应用统一配色方案。 |
-| wps_ppt_auto_beautify_slide | wps_call | 自动美化指定的单页幻灯片。 |
-| wps_ppt_beautify_all_slides | wps_call | 批量美化演示文稿中的所有幻灯片。 |
-| wps_ppt_create_kpi_cards | wps_call | 在幻灯片上创建KPI指标卡片。 |
-| wps_ppt_create_styled_table | wps_call | 在幻灯片中创建带预设样式的精美表格。 |
-| wps_ppt_add_title_decoration | wps_call | 为幻灯片标题添加装饰性元素。 |
-| wps_ppt_add_page_indicator | wps_call | 为演示文稿添加页码指示器。 |
 | wps_ppt_set_background_gradient | wps_call | 为幻灯片设置渐变色背景。 |
 | wps_ppt_add_speaker_notes | wps_call | [已废弃] 添加或追加演讲者备注到指定幻灯片。 |
+| wps_ppt_insert_slide_image | wps_call | [已废弃] 在幻灯片中插入图片。 |
+| wps_ppt_insert_image | wps_call | [已废弃] 在幻灯片中插入图片。 |
+| wps_ppt_set_animation | wps_call | [已废弃] 设置幻灯片中指定元素的动画效果。 |
+| wps_ppt_set_transition | wps_call | [已废弃] 设置幻灯片切换效果。 |
+| wps_ppt_set_background | wps_call | [已废弃] 设置幻灯片的背景颜色或背景图片。 |
+| wps_ppt_add_chart | wps_call | [已废弃] 在幻灯片中插入图表。 |
+| wps_ppt_duplicate_slide | wps_call | [已废弃] 复制指定的幻灯片，在其后插入副本。 |
+| wps_ppt_align_objects | wps_call | [已废弃] 对齐幻灯片中的对象。 |

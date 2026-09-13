@@ -816,7 +816,6 @@ export const presentationTools: RegisteredTool[] = [
   { definition: closePresentationDefinition, handler: closePresentationHandler },
   { definition: getOpenPresentationsDefinition, handler: getOpenPresentationsHandler },
   { definition: switchPresentationDefinition, handler: switchPresentationHandler },
-  { definition: setSlideThemeDefinition, handler: setSlideThemeHandler },
   { definition: copySlideDefinition, handler: copySlideHandler },
   { definition: insertSlideImageDefinition, handler: insertSlideImageHandler },
   { definition: insertSlidesFromFileDefinition, handler: insertSlidesFromFileHandler },

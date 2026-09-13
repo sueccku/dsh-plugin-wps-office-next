@@ -514,9 +514,6 @@ exports.chartFlowTools = [
     { definition: exports.insertPptChartDefinition, handler: exports.insertPptChartHandler },
     { definition: exports.setPptChartDataDefinition, handler: exports.setPptChartDataHandler },
     { definition: exports.setPptChartStyleDefinition, handler: exports.setPptChartStyleHandler },
-    { definition: exports.createFlowChartDefinition, handler: exports.createFlowChartHandler },
-    { definition: exports.createOrgChartDefinition, handler: exports.createOrgChartHandler },
-    { definition: exports.createTimelineDefinition, handler: exports.createTimelineHandler },
 ];
 exports.default = exports.chartFlowTools;
 //# sourceMappingURL=chart-flow.js.map

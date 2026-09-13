@@ -784,13 +784,6 @@ export const setBackgroundGradientHandler: ToolHandler = async (
  * 导出所有高级美化相关的Tools
  */
 export const beautifyAdvancedTools: RegisteredTool[] = [
-  { definition: applyColorSchemeDefinition, handler: applyColorSchemeHandler },
-  { definition: autoBeautifySlideDefinition, handler: autoBeautifySlideHandler },
-  { definition: beautifyAllSlidesDefinition, handler: beautifyAllSlidesHandler },
-  { definition: createKpiCardsDefinition, handler: createKpiCardsHandler },
-  { definition: createStyledTableDefinition, handler: createStyledTableHandler },
-  { definition: addTitleDecorationDefinition, handler: addTitleDecorationHandler },
-  { definition: addPageIndicatorDefinition, handler: addPageIndicatorHandler },
   { definition: setBackgroundGradientDefinition, handler: setBackgroundGradientHandler },
 ];
 

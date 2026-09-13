@@ -854,7 +854,6 @@ exports.miscTools = [
     { definition: exports.set3DRotationDefinition, handler: exports.set3DRotationHandler },
     { definition: exports.set3DDepthDefinition, handler: exports.set3DDepthHandler },
     { definition: exports.set3DMaterialDefinition, handler: exports.set3DMaterialHandler },
-    { definition: exports.create3DTextDefinition, handler: exports.create3DTextHandler },
     // 超链接操作
     { definition: exports.addPptHyperlinkDefinition, handler: exports.addPptHyperlinkHandler },
     { definition: exports.removePptHyperlinkDefinition, handler: exports.removePptHyperlinkHandler },

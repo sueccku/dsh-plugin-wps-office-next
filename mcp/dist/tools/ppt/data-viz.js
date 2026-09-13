@@ -504,15 +504,8 @@ exports.createGridHandler = createGridHandler;
  * 导出所有数据可视化与布局Tools
  */
 exports.dataVizTools = [
-    // 数据可视化
-    { definition: exports.createProgressBarDefinition, handler: exports.createProgressBarHandler },
-    { definition: exports.createGaugeDefinition, handler: exports.createGaugeHandler },
-    { definition: exports.createMiniChartsDefinition, handler: exports.createMiniChartsHandler },
-    { definition: exports.createDonutChartDefinition, handler: exports.createDonutChartHandler },
-    // 布局操作
-    { definition: exports.autoLayoutDefinition, handler: exports.autoLayoutHandler },
-    { definition: exports.smartDistributeDefinition, handler: exports.smartDistributeHandler },
-    { definition: exports.createGridDefinition, handler: exports.createGridHandler },
+// 数据可视化
+// 布局操作
 ];
 exports.default = exports.dataVizTools;
 //# sourceMappingURL=data-viz.js.map

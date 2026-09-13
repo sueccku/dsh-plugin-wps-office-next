@@ -36,7 +36,10 @@ const help = payload(await req(id++, "tools/call", { name: "wps_help", arguments
 // Derived from the merge table instead of a frozen number: the total moves every time a duplicate
 // is collapsed, and a snapshot would just need editing again.
 const deprecatedCount = Object.keys(DEPRECATED_TOOLS).length;
-check("wps_help total excludes deprecated", help.total === 254 - deprecatedCount, "total=" + help.total + " deprecated=" + deprecatedCount);
+// 235 = the 254 catalog tools minus the 19 scenario wrappers that moved to skills/wps-ppt as
+// recipes (KPI 卡片/时间线/流程图/仪表盘/环形图/进度条/... 见 SKILL.md 的组合配方一节).
+const registeredCount = 235;
+check("wps_help total excludes deprecated", help.total === registeredCount - deprecatedCount, "total=" + help.total + " registered=" + registeredCount + " deprecated=" + deprecatedCount);
 
 const search = payload(await req(id++, "tools/call", { name: "wps_help", arguments: { query: "zoom" } }));
 const searchNames = (search.tools || []).map((t) => t.name);

@@ -1030,7 +1030,6 @@ export const miscTools: RegisteredTool[] = [
   { definition: set3DRotationDefinition, handler: set3DRotationHandler },
   { definition: set3DDepthDefinition, handler: set3DDepthHandler },
   { definition: set3DMaterialDefinition, handler: set3DMaterialHandler },
-  { definition: create3DTextDefinition, handler: create3DTextHandler },
   // 超链接操作
   { definition: addPptHyperlinkDefinition, handler: addPptHyperlinkHandler },
   { definition: removePptHyperlinkDefinition, handler: removePptHyperlinkHandler },

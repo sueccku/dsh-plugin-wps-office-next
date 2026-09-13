@@ -10,7 +10,8 @@ whenToUse: 任务针对演示文稿、幻灯片、形状、文本框、动画、
 
 wps_ppt_get_slide_count、wps_ppt_get_slide_info、wps_ppt_get_shapes、wps_ppt_set_shape_fill、wps_ppt_set_shape_text、wps_ppt_add_slide、wps_ppt_set_slide_title、wps_ppt_set_slide_content、wps_ppt_add_textbox、wps_ppt_insert_table、wps_ppt_insert_ppt_image、wps_ppt_export_slide_as_image、wps_ppt_open_presentation，以及通用的 wps_common_save、wps_convert_to_pdf。
 
-演示是三个应用里工具最多的一个（115 个）。动画、切换、母版、配色、图表、流程图、KPI 卡片、时间线、3D 文字等全部通过 wps_call 使用，清单见同目录 reference.md。
+演示仍是三个应用里工具最多的一个（96 个）。动画、切换、母版、图表、3D、表格等通过 wps_call 使用，清单见同目录 reference.md。
+KPI 卡片、时间线、流程图等「高层场景封装」已不再作为工具提供，改由下面的组合配方实现。
 
 ## 参数约定
 
@@ -35,6 +36,37 @@ wps_ppt_get_slide_count、wps_ppt_get_slide_info、wps_ppt_get_shapes、wps_ppt_
 5. 需要精细排版时先 get_shapes 取形状索引，再对具体形状操作。
 6. 导出前先 wps_common_save，导出用 export_slide_as_image（绝对路径）。
 
+## 组合配方（用基础工具画出常见信息图）
+
+KPI 卡片、时间线、流程图、组织架构图、仪表盘、环形图、进度条、迷你图表、标题装饰、页码指示器、
+配色统一这些「高层场景封装」已从工具层移除，改由本技能给出配方——**用基础工具组合**，
+这样位置、配色、文案都能按场景调整，而不是被写死的参数限制。
+
+坐标单位是像素，左上角为原点。常用基础工具：
+wps_ppt_add_shape（type: rectangle/oval/arrow/…，可带 text 与 fillColor）、wps_ppt_set_shape_fill、
+wps_ppt_set_shape_text、wps_ppt_set_shape_position、wps_ppt_add_textbox、wps_ppt_get_shapes。
+
+- **KPI 卡片行**：每张卡片一个 rectangle（如 150×70，left 依次 +170，top 相同），
+  set_shape_text 写「指标名\n数值」，用不同 fillColor 区分正负。
+- **时间线**：一条细长 rectangle 作轴（如 500×4），每个事件一个 oval 节点压轴上，
+  节点下方 add_textbox 写日期与标题。
+- **流程图**：每个步骤一个 rectangle（text 直接写步骤名），步骤之间用 arrow 形状连接；
+  分支就并排放两个 rectangle，再各引一根 arrow。
+- **组织架构图**：根节点一个 rectangle 居中，子节点在同一 top 上等距排开，
+  再用无填充的 rectangle 或线段连接各层。
+- **进度条**：轨道 = 灰色 rectangle（如 400×24）；填充 = 同位置同高的 rectangle，
+  **宽度 = 轨道宽 × 完成比例**，fillColor 用强调色；旁边 add_textbox 写百分比与说明。
+- **仪表盘 / 环形图**：外圈 oval（纯色）+ 内圈较小的白色 oval 盖住中心 + add_textbox 写百分比。
+  多段占比不要用扇形（WPS 的扇形只暴露一个 adjustment，改角度会挂住 COM 宿主），
+  用横向堆叠条 + 图例表达分布。
+- **迷你图表（sparkline 风格）**：每个指标一组文本框——数值（大号）、标签（小号）、趋势箭头 ↑/↓。
+- **标题装饰**：标题下方一根细 rectangle（如 200×6）作为下划线；做成侧边条就把宽度收到 6。
+- **页码指示器**：右下角 add_textbox，内容「当前页 / 总页数」（页码取自 get_slide_count 与当前 slideIndex）。
+- **配色统一**：先 get_shapes 拿到形状列表，再对每个形状 set_shape_fill（标题用深色、正文用浅色），
+  比一次性套配色方案更可控。
+- **网格 / 自动排版**：按 rows×cols 算好每个单元的 left/top/width/height，逐个 set_shape_position。
+
+配方同样适用于表格外的场景：先算坐标，再落形状，最后回读 get_shapes 校验。
 ## 已知坑与不支持的能力
 
 - 当前这版 WPS 里，**通过 COM 新建的文稿 Slides.Count 会一直报 0**，所以 get_slide_count 可能返回 0 而幻灯片确实存在。以 get_slide_info / get_shapes 的实际返回为准。

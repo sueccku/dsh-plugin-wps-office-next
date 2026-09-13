@@ -19,7 +19,6 @@
 | wps_word_get_active_document | 直达 | 获取当前WPS Writer活动文档的基本信息 |
 | wps_word_insert_image | wps_call | 在Word文档中插入图片。 |
 | wps_word_insert_page_break | wps_call | 在文档光标位置插入分页符 |
-| wps_word_set_font_style | wps_call | 设置选中文字的字体样式属性 |
 | wps_word_insert_comment | wps_call | 在Word文档选中内容处插入批注 |
 | wps_word_set_text_color | wps_call | 设置Word文档中选中文字的颜色 |
 | wps_word_get_paragraphs | 直达 | 获取Word文档的段落结构信息，返回每段的文本、样式和字符位置。 |
@@ -39,3 +38,4 @@
 | wps_word_replace_range | wps_call | 按字符范围精确替换Word文档中的文本。 |
 | wps_word_proofread_basic | wps_call | 对中文文本进行基础校对，检测常见问题。 |
 | wps_word_generate_doc_toc | wps_call | [已废弃] 自动生成文档目录。 |
+| wps_word_set_font_style | wps_call | [已废弃] 设置选中文字的字体样式属性 请改用 wps_word_set_font。 |

@@ -615,14 +615,7 @@ export const createGridHandler: ToolHandler = async (
  */
 export const dataVizTools: RegisteredTool[] = [
   // 数据可视化
-  { definition: createProgressBarDefinition, handler: createProgressBarHandler },
-  { definition: createGaugeDefinition, handler: createGaugeHandler },
-  { definition: createMiniChartsDefinition, handler: createMiniChartsHandler },
-  { definition: createDonutChartDefinition, handler: createDonutChartHandler },
   // 布局操作
-  { definition: autoLayoutDefinition, handler: autoLayoutHandler },
-  { definition: smartDistributeDefinition, handler: smartDistributeHandler },
-  { definition: createGridDefinition, handler: createGridHandler },
 ];
 
 export default dataVizTools;
