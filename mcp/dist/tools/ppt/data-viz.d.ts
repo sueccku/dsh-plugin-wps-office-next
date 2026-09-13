@@ -13,52 +13,7 @@
  * - wps_ppt_smart_distribute: 智能分布
  * - wps_ppt_create_grid: 创建网格布局
  */
-import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
-/**
- * 创建进度条
- * 在幻灯片中创建可视化进度条
- */
-export declare const createProgressBarDefinition: ToolDefinition;
-export declare const createProgressBarHandler: ToolHandler;
-/**
- * 创建仪表盘
- * 在幻灯片中创建仪表盘图表
- */
-export declare const createGaugeDefinition: ToolDefinition;
-export declare const createGaugeHandler: ToolHandler;
-/**
- * 创建迷你图表
- * 在幻灯片中创建迷你图表（sparkline风格）
- */
-export declare const createMiniChartsDefinition: ToolDefinition;
-export declare const createMiniChartsHandler: ToolHandler;
-/**
- * 创建环形图
- * 在幻灯片中创建环形图（Donut Chart）
- */
-export declare const createDonutChartDefinition: ToolDefinition;
-export declare const createDonutChartHandler: ToolHandler;
-/**
- * 自动排版
- * 智能调整幻灯片中所有元素的布局
- */
-export declare const autoLayoutDefinition: ToolDefinition;
-export declare const autoLayoutHandler: ToolHandler;
-/**
- * 智能分布
- * 将指定形状进行等距分布排列
- */
-export declare const smartDistributeDefinition: ToolDefinition;
-export declare const smartDistributeHandler: ToolHandler;
-/**
- * 创建网格布局
- * 在幻灯片中创建网格布局结构
- */
-export declare const createGridDefinition: ToolDefinition;
-export declare const createGridHandler: ToolHandler;
-/**
- * 导出所有数据可视化与布局Tools
- */
+import { RegisteredTool } from '../../types/tools';
 export declare const dataVizTools: RegisteredTool[];
 export default dataVizTools;
 //# sourceMappingURL=data-viz.d.ts.map

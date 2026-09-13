@@ -9,7 +9,6 @@
  * - wps_ppt_close_presentation: 关闭演示文稿
  * - wps_ppt_get_open_presentations: 获取所有已打开的演示文稿列表
  * - wps_ppt_switch_presentation: 切换到指定演示文稿
- * - wps_ppt_set_slide_theme: 设置演示文稿主题
  * - wps_ppt_copy_slide: 复制幻灯片
  * - wps_ppt_insert_slide_image: 在幻灯片中插入图片
  */
@@ -406,74 +405,6 @@ export const switchPresentationHandler: ToolHandler = async (
     };
   }
 };
-
-/**
- * 设置演示文稿主题
- */
-export const setSlideThemeDefinition: ToolDefinition = {
-  name: 'wps_ppt_set_slide_theme',
-  description: `设置演示文稿主题。
-
-使用场景：
-- "切换PPT主题"
-- "应用商务主题"
-- "更换演示文稿风格"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      theme: {
-        type: 'string',
-        description: '主题名称',
-      },
-    },
-    required: ['theme'],
-  },
-};
-
-export const setSlideThemeHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { theme } = args as { theme: string };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'setSlideTheme', // NOTE: macOS未实现，仅Windows支持
-      { theme },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success && response.data) {
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [{ type: 'text', text: `主题已设置为: ${theme}` }],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `设置主题失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `设置主题出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
-
-/**
- * 复制幻灯片
- */
 export const copySlideDefinition: ToolDefinition = {
   name: 'wps_ppt_copy_slide',
   description: `复制幻灯片到指定位置。

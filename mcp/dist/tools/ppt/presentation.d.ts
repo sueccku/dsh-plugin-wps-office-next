@@ -9,7 +9,6 @@
  * - wps_ppt_close_presentation: 关闭演示文稿
  * - wps_ppt_get_open_presentations: 获取所有已打开的演示文稿列表
  * - wps_ppt_switch_presentation: 切换到指定演示文稿
- * - wps_ppt_set_slide_theme: 设置演示文稿主题
  * - wps_ppt_copy_slide: 复制幻灯片
  * - wps_ppt_insert_slide_image: 在幻灯片中插入图片
  */
@@ -39,14 +38,6 @@ export declare const getOpenPresentationsHandler: ToolHandler;
  */
 export declare const switchPresentationDefinition: ToolDefinition;
 export declare const switchPresentationHandler: ToolHandler;
-/**
- * 设置演示文稿主题
- */
-export declare const setSlideThemeDefinition: ToolDefinition;
-export declare const setSlideThemeHandler: ToolHandler;
-/**
- * 复制幻灯片
- */
 export declare const copySlideDefinition: ToolDefinition;
 export declare const copySlideHandler: ToolHandler;
 /**

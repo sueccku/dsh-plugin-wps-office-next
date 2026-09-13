@@ -11,7 +11,6 @@
  * - wps_ppt_set_3d_rotation: 设置3D旋转
  * - wps_ppt_set_3d_depth: 设置3D深度
  * - wps_ppt_set_3d_material: 设置3D材质
- * - wps_ppt_create_3d_text: 创建3D文字
  * - wps_ppt_add_ppt_hyperlink: 添加超链接
  * - wps_ppt_remove_ppt_hyperlink: 移除超链接
  * - wps_ppt_find_ppt_text: 搜索文本
@@ -517,98 +516,6 @@ export const set3DMaterialHandler: ToolHandler = async (
     };
   }
 };
-
-/**
- * 创建3D文字
- * 在幻灯片中创建带有3D效果的文字
- */
-export const create3DTextDefinition: ToolDefinition = {
-  name: 'wps_ppt_create_3d_text',
-  description: `在幻灯片中创建带有3D效果的文字。
-
-可以指定文字内容和3D样式参数。
-
-使用场景：
-- "创建3D标题文字"
-- "添加立体文字效果"
-- "做一个炫酷的3D文字"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      slideIndex: {
-        type: 'number',
-        description: '幻灯片页码（从1开始）',
-      },
-      text: {
-        type: 'string',
-        description: '文字内容',
-      },
-      style: {
-        type: 'object',
-        description: '可选的3D样式参数，如 {depth:30,material:"metal",color:"#FFD700",fontSize:48,rotation:{rotX:20,rotY:30}}',
-      },
-    },
-    required: ['slideIndex', 'text'],
-  },
-};
-
-export const create3DTextHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, text, style } = args as {
-    slideIndex: number;
-    text: string;
-    style?: Record<string, unknown>;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      shapeId?: number;
-    }>(
-      'create3DText',
-      { slideIndex, text, style: style || {} },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success && response.data) {
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `3D文字创建成功！\n幻灯片: 第 ${slideIndex} 页\n文字: "${text}"${response.data.shapeId ? `\n形状ID: ${response.data.shapeId}` : ''}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `创建3D文字失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `创建3D文字出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
-
-// ==================== 超链接操作 ====================
-
-/**
- * 添加超链接
- * 为形状添加超链接
- */
 export const addPptHyperlinkDefinition: ToolDefinition = {
   name: 'wps_ppt_add_ppt_hyperlink',
   description: `为幻灯片中的形状添加超链接。

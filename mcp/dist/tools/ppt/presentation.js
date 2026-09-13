@@ -10,12 +10,11 @@
  * - wps_ppt_close_presentation: 关闭演示文稿
  * - wps_ppt_get_open_presentations: 获取所有已打开的演示文稿列表
  * - wps_ppt_switch_presentation: 切换到指定演示文稿
- * - wps_ppt_set_slide_theme: 设置演示文稿主题
  * - wps_ppt_copy_slide: 复制幻灯片
  * - wps_ppt_insert_slide_image: 在幻灯片中插入图片
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.presentationTools = exports.setActiveTargetHandler = exports.setActiveTargetDefinition = exports.insertSlidesFromFileHandler = exports.insertSlidesFromFileDefinition = exports.insertSlideImageHandler = exports.insertSlideImageDefinition = exports.copySlideHandler = exports.copySlideDefinition = exports.setSlideThemeHandler = exports.setSlideThemeDefinition = exports.switchPresentationHandler = exports.switchPresentationDefinition = exports.getOpenPresentationsHandler = exports.getOpenPresentationsDefinition = exports.closePresentationHandler = exports.closePresentationDefinition = exports.openPresentationHandler = exports.openPresentationDefinition = exports.createPresentationHandler = exports.createPresentationDefinition = void 0;
+exports.presentationTools = exports.setActiveTargetHandler = exports.setActiveTargetDefinition = exports.insertSlidesFromFileHandler = exports.insertSlidesFromFileDefinition = exports.insertSlideImageHandler = exports.insertSlideImageDefinition = exports.copySlideHandler = exports.copySlideDefinition = exports.switchPresentationHandler = exports.switchPresentationDefinition = exports.getOpenPresentationsHandler = exports.getOpenPresentationsDefinition = exports.closePresentationHandler = exports.closePresentationDefinition = exports.openPresentationHandler = exports.openPresentationDefinition = exports.createPresentationHandler = exports.createPresentationDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -332,64 +331,6 @@ const switchPresentationHandler = async (args) => {
     }
 };
 exports.switchPresentationHandler = switchPresentationHandler;
-/**
- * 设置演示文稿主题
- */
-exports.setSlideThemeDefinition = {
-    name: 'wps_ppt_set_slide_theme',
-    description: `设置演示文稿主题。
-
-使用场景：
-- "切换PPT主题"
-- "应用商务主题"
-- "更换演示文稿风格"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            theme: {
-                type: 'string',
-                description: '主题名称',
-            },
-        },
-        required: ['theme'],
-    },
-};
-const setSlideThemeHandler = async (args) => {
-    const { theme } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setSlideTheme', // NOTE: macOS未实现，仅Windows支持
-        { theme }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success && response.data) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [{ type: 'text', text: `主题已设置为: ${theme}` }],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置主题失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置主题出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setSlideThemeHandler = setSlideThemeHandler;
-/**
- * 复制幻灯片
- */
 exports.copySlideDefinition = {
     name: 'wps_ppt_copy_slide',
     description: `复制幻灯片到指定位置。

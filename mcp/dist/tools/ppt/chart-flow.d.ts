@@ -9,9 +9,6 @@
  * - wps_ppt_insert_ppt_chart: 插入图表
  * - wps_ppt_set_ppt_chart_data: 设置图表数据
  * - wps_ppt_set_ppt_chart_style: 设置图表样式
- * - wps_ppt_create_flow_chart: 创建流程图
- * - wps_ppt_create_org_chart: 创建组织架构图
- * - wps_ppt_create_timeline: 创建时间线
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /**
@@ -32,27 +29,6 @@ export declare const setPptChartDataHandler: ToolHandler;
  */
 export declare const setPptChartStyleDefinition: ToolDefinition;
 export declare const setPptChartStyleHandler: ToolHandler;
-/**
- * 创建流程图
- * 在幻灯片中创建流程图，自动布局节点和连接线
- */
-export declare const createFlowChartDefinition: ToolDefinition;
-export declare const createFlowChartHandler: ToolHandler;
-/**
- * 创建组织架构图
- * 根据层级数据自动生成组织架构图
- */
-export declare const createOrgChartDefinition: ToolDefinition;
-export declare const createOrgChartHandler: ToolHandler;
-/**
- * 创建时间线
- * 根据事件数据在幻灯片中生成时间线图形
- */
-export declare const createTimelineDefinition: ToolDefinition;
-export declare const createTimelineHandler: ToolHandler;
-/**
- * 导出所有图表与流程图相关的Tools
- */
 export declare const chartFlowTools: RegisteredTool[];
 export default chartFlowTools;
 //# sourceMappingURL=chart-flow.d.ts.map

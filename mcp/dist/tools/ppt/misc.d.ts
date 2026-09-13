@@ -11,7 +11,6 @@
  * - wps_ppt_set_3d_rotation: 设置3D旋转
  * - wps_ppt_set_3d_depth: 设置3D深度
  * - wps_ppt_set_3d_material: 设置3D材质
- * - wps_ppt_create_3d_text: 创建3D文字
  * - wps_ppt_add_ppt_hyperlink: 添加超链接
  * - wps_ppt_remove_ppt_hyperlink: 移除超链接
  * - wps_ppt_find_ppt_text: 搜索文本
@@ -55,16 +54,6 @@ export declare const set3DDepthHandler: ToolHandler;
  */
 export declare const set3DMaterialDefinition: ToolDefinition;
 export declare const set3DMaterialHandler: ToolHandler;
-/**
- * 创建3D文字
- * 在幻灯片中创建带有3D效果的文字
- */
-export declare const create3DTextDefinition: ToolDefinition;
-export declare const create3DTextHandler: ToolHandler;
-/**
- * 添加超链接
- * 为形状添加超链接
- */
 export declare const addPptHyperlinkDefinition: ToolDefinition;
 export declare const addPptHyperlinkHandler: ToolHandler;
 /**

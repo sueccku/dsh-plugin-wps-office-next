@@ -12,7 +12,6 @@
  * - wps_ppt_set_3d_rotation: 设置3D旋转
  * - wps_ppt_set_3d_depth: 设置3D深度
  * - wps_ppt_set_3d_material: 设置3D材质
- * - wps_ppt_create_3d_text: 创建3D文字
  * - wps_ppt_add_ppt_hyperlink: 添加超链接
  * - wps_ppt_remove_ppt_hyperlink: 移除超链接
  * - wps_ppt_find_ppt_text: 搜索文本
@@ -20,7 +19,7 @@
  * - wps_ppt_start_slide_show: 开始放映
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.miscTools = exports.startSlideShowHandler = exports.startSlideShowDefinition = exports.replacePptTextHandler = exports.replacePptTextDefinition = exports.findPptTextHandler = exports.findPptTextDefinition = exports.removePptHyperlinkHandler = exports.removePptHyperlinkDefinition = exports.addPptHyperlinkHandler = exports.addPptHyperlinkDefinition = exports.create3DTextHandler = exports.create3DTextDefinition = exports.set3DMaterialHandler = exports.set3DMaterialDefinition = exports.set3DDepthHandler = exports.set3DDepthDefinition = exports.set3DRotationHandler = exports.set3DRotationDefinition = exports.addMasterElementHandler = exports.addMasterElementDefinition = exports.setMasterBackgroundHandler = exports.setMasterBackgroundDefinition = exports.getSlideMasterHandler = exports.getSlideMasterDefinition = void 0;
+exports.miscTools = exports.startSlideShowHandler = exports.startSlideShowDefinition = exports.replacePptTextHandler = exports.replacePptTextDefinition = exports.findPptTextHandler = exports.findPptTextDefinition = exports.removePptHyperlinkHandler = exports.removePptHyperlinkDefinition = exports.addPptHyperlinkHandler = exports.addPptHyperlinkDefinition = exports.set3DMaterialHandler = exports.set3DMaterialDefinition = exports.set3DDepthHandler = exports.set3DDepthDefinition = exports.set3DRotationHandler = exports.set3DRotationDefinition = exports.addMasterElementHandler = exports.addMasterElementDefinition = exports.setMasterBackgroundHandler = exports.setMasterBackgroundDefinition = exports.getSlideMasterHandler = exports.getSlideMasterDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -433,81 +432,6 @@ const set3DMaterialHandler = async (args) => {
     }
 };
 exports.set3DMaterialHandler = set3DMaterialHandler;
-/**
- * 创建3D文字
- * 在幻灯片中创建带有3D效果的文字
- */
-exports.create3DTextDefinition = {
-    name: 'wps_ppt_create_3d_text',
-    description: `在幻灯片中创建带有3D效果的文字。
-
-可以指定文字内容和3D样式参数。
-
-使用场景：
-- "创建3D标题文字"
-- "添加立体文字效果"
-- "做一个炫酷的3D文字"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            text: {
-                type: 'string',
-                description: '文字内容',
-            },
-            style: {
-                type: 'object',
-                description: '可选的3D样式参数，如 {depth:30,material:"metal",color:"#FFD700",fontSize:48,rotation:{rotX:20,rotY:30}}',
-            },
-        },
-        required: ['slideIndex', 'text'],
-    },
-};
-const create3DTextHandler = async (args) => {
-    const { slideIndex, text, style } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('create3DText', { slideIndex, text, style: style || {} }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success && response.data) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `3D文字创建成功！\n幻灯片: 第 ${slideIndex} 页\n文字: "${text}"${response.data.shapeId ? `\n形状ID: ${response.data.shapeId}` : ''}`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `创建3D文字失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `创建3D文字出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.create3DTextHandler = create3DTextHandler;
-// ==================== 超链接操作 ====================
-/**
- * 添加超链接
- * 为形状添加超链接
- */
 exports.addPptHyperlinkDefinition = {
     name: 'wps_ppt_add_ppt_hyperlink',
     description: `为幻灯片中的形状添加超链接。
