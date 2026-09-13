@@ -691,7 +691,7 @@ e2e 里模型正是这么绕过去的。
 | test/ppt-contract-fixes.test.mjs | 57 | PPT 参数契约逐项修复 |
 | test/word-lifecycle.test.mjs | 17 | e2e 暴露的 5 个缺陷（第 24～29 条） |
 
-合计 **309 项**（16 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 45 工具 / 25,000 字节预算与 action 数量三方一致）。
+合计 **310 项**（15 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 45 工具 / 25,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 211 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
