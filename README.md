@@ -67,6 +67,8 @@
 - **一键 e2e 验收已跑通**：`node scripts/e2e.mjs --profile <name>` → 19 项检查、65 秒、exit 0；
   另做过负向验证（超时压到 5 秒 → 10 项 FAIL、exit 1），确认它会真的失败而不只是打印 PASS；
 - 310 项测试 + 23 项门禁全绿，参数契约对账 211 对、四类静默失效均为 0；
+- **CI 在 GitHub 的 windows-latest 上跑通**（首次运行 13 步全绿、67 秒）：tsc 与三处产物漂移检查
+  在干净的 runner 上复现，不需要本机任何环境；
 - 常驻宿主的串行化、崩溃重启、超时与 warning 语义；
 - 本机路径安装与 **GitHub 安装**（`79f0c96`）：拉包 → `--dump-config` 出现插件与 MCP 两行 →
   真跑一次 `wps_status`，7 秒返回 `connected/44/237/193`；
@@ -196,6 +198,8 @@
 4. `node scripts/verify.mjs --static` —— 18 项：广告面、预算、桥 action 数量、`wps_help` 检索与派发守卫；
 5. 参数契约对账，再断言 `docs/param-contract.md` 一致；
 6. 两个不需要 WPS 的测试文件：`test/plugin.test.mjs`(32 项)、`test/com-host.test.mjs`(6 项)。
+
+首次运行（2026-09-13，[run 34760241577](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/runs/34760241577)）**13 步全绿、67 秒**。
 
 需要真实 WPS 的 310 项测试与一键 e2e **留在本机**——没有自托管 runner，也不打算为了 CI 去装 WPS。
 `verify.mjs` 的另外 5 项（`wps_status`、真实派发、`wps_batch`）只有完整模式（不带 `--static`）才会跑。
