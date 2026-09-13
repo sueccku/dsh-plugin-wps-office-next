@@ -189,8 +189,18 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
   例外必须写进 spec 的 `dynamicParamActions`，未声明就让生成器失败（负向验证过）。
   **三张人手表全部归零**，P1 完成。
 
-下一步：**P2 Excel 做深** —— 第一波：挂出 20 个已实现却无出口的 Excel action（named range / 条件格式 /
-数据验证的读与删、autofit、wrapText、groupColumns、findInSheet、refreshLinks…）+ used range 一等公民；
-之后 ListObject 全族。
+## P2 Excel 做深（第一波已落地）
+
+- 广告面 **44 → 48 工具 / 25,097 字节**：`get_sheet_info`、`auto_fit`（+columns/rows）、`set_wrap_text`、
+  `find_in_sheet`、`get_named_ranges` / `delete_named_range`
+- 注册工具 **209 → 217**，操作规格（spec）同步 217 条；桥 action 仍 **231**（本波没有新 COM 代码）
+- **验收**：`test/excel-missing-halves.test.mjs` 18 项（真实 WPS），覆盖单格 / 显式范围 / 缺省已用范围三条路径
+- **两个 action 在常驻宿主里从来不可能生效**（`Find().Address()` 不可用；二维组下标被逗号优先级解析成
+  `int + Object[]`，异常又被裸 `catch { continue }` 吞掉）——详见 FIXES 第 38 条
+- 参数契约：被校验的对 **200 → 205**，A/B/C/D 仍全 0，`UNPARSED` 回到基线 6
+- 预算门禁按已锁定的 **D1** 同步为 60 工具 / 32,000 字节（verify 与 deprecated 测试同步）
+
+下一步：P2 第一波余项（条件格式/数据验证的读删、groupColumns、copyFormat/clearFormats、refreshLinks、
+consolidate、calculateSheet、getActiveWorkbook…），然后 P2-2 ListObject 全族。
 
 

@@ -11,7 +11,10 @@ import { readFileSync } from "node:fs";
 const argv = process.argv.slice(2);
 const staticOnly = argv.includes("--static");
 const entry = argv.find((arg) => !arg.startsWith("--")) || "mcp/dist/index.js";
-const BUDGET = { maxTools: 45, maxSchemaBytes: 25000 };
+// D1 (locked 2026-09-13, docs/tool-roadmap.md): the advertised surface is allowed 60 tools / ~32,000
+// bytes. It was 45 / 25,000 before Excel started going deep in P2; the ceiling moves with the decision,
+// and this gate is what makes the next growth a deliberate edit instead of a drift.
+const BUDGET = { maxTools: 60, maxSchemaBytes: 32000 };
 // Snapshot of how many actions the bridge dispatches. Ad-hoc source edits have silently dropped a
 // whole case before (a patch script swallowed "slide.unifyFont"), and nothing noticed because every
 // remaining action still worked. Update this number deliberately when adding or removing an action.

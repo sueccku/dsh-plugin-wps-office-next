@@ -888,13 +888,57 @@ P1 收尾。`build-host-actions.ps1` 里的 `$helperKeys`（8 条：共享解析
 
 **三张人手表状态**：aliases ✅、containers ✅、helperKeys ✅ —— 全部归零，每一次都以宿主产物逐字节未变作证。
 
+### 38. P2 第一波：8 个 Excel「缺失的另一半」挂上工具，顺带挖出两个在常驻宿主里从不生效的 action（已落地）
+
+P2 开始把 Excel 做深。第一波只挂**桥里已经实现、却没有工具出口**的能力，零新 COM 代码：
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_excel_get_sheet_info` | getExcelContext | 工作簿/工作表名、已用范围、表头、当前单元格 |
+| `wps_excel_auto_fit` / `_columns` / `_rows` | autoFitAll / autoFitColumn / autoFitRow | 三个显式字面量 action（静态提取器依赖这个写法） |
+| `wps_excel_set_wrap_text` | wrapText | 打开/关闭自动换行 |
+| `wps_excel_find_in_sheet` | findInSheet | 查找并报告命中地址，不改内容 |
+| `wps_excel_get_named_ranges` / `_delete_named_range` | getNamedRanges / deleteNamedRange | 命名范围此前只有写 |
+
+**但「这些 action 既然在桥里，挂出来就能用」这个假设是错的：两个 action 在常驻宿主里根本不可能生效**，
+而且此前没有任何测试覆盖它们。验收 `test/excel-missing-halves.test.mjs`（18 项，真实 WPS）第一次跑就抓到：
+
+1. **`Range.Find()` 结果的 `Address()` 在常驻宿主里永远失败**（0 参与 2 参都抛），
+   而 `UsedRange.Address()`、`Selection.Address()` 都正常。旧实现先取 `$found.Address()` 再用它做
+   `FindNext` 的比较基准，第一步就抛，于是 `find_in_sheet`/`find_replace` 的多格路径是死的。
+   改为：范围来自调用方的 A1 串（缺省时用 `UsedRange.Address()`），一次 `Value2` 读回整块后自行扫描，
+   与 `getRangeData` 用同一个访问器。
+2. **PowerShell 的逗号优先级高于 `+`**。我按 C 系语言直觉写了 `$matrix[$mRow + $r, $mCol + $c]`，
+   它被解析成 `$mRow + ($r, $mCol) + $c` → `int + Object[]` → 每条索引都抛
+   `[System.Object[]] 不包含名为 op_Addition 的方法`。因为索引外面套着 `try { } catch { continue }`，
+   异常被**逐格吞掉**，对外表现是「成功、0 命中」：单格范围（标量路径）查得到，多格范围永远查不到。
+   修法是把下标列表括起来：`$matrix[($mRow + $r), ($mCol + $c)]`。
+
+第 2 条是本轮最值得记住的一课：**裸 `catch { continue }` 会把「整段逻辑失效」伪装成「没有结果」**，
+而空结果在这个仓库里太容易被当成正常。定位它的过程也值得记：先加诊断字段、经 error 通道把
+rank/下界/首格/异常消息打出来，才从「循环体没执行」纠正到「循环体执行了、每格都抛」。
+
+**验收**：18/18 绿，覆盖单格（C4）、显式范围（A1:C4）、不传范围用已用范围三条路径；
+生成器计数不变（`switch_cases=231`）——本波没有增删 action，只改了实现。
+
+**顺带清掉两笔契约债**：`find_in_sheet` 原本在 handler 里先调 `getExcelContext` 再调 `findInSheet`，
+参数契约把它记成 D 类（透传声明了 action 读不到的键）；把范围解析移回桥后它是纯透传，D 归零。
+另外 5 个新 handler 原来写 `executeMethod('x', args)`，静态读不出实参；改成显式键对象后，
+被校验的参数对从 200 升到 205，`UNPARSED` 回到基线 6（都是既有工具）。
+
+**D1 提前生效**：本波把广告面从 44 推到 48 工具 / 25,097 字节，越过旧的 45 / 25,000 门禁。
+按已锁定的 D1 把上限同步调整为 **60 工具 / 32,000 字节**（`scripts/verify.mjs` 与 `test/deprecated.test.mjs`），
+P5-2 到时只做最终复测。门禁仍然存在，只是跟着决定走——这正是它该有的行为。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
   任何“新建演示文稿后立刻操作第 1 页”的流程都会 E_FAIL。
   技能文档必须写明：新建后先 add_slide。
 - Range.Value2 返回 Object[,]，ConvertTo-Json 会把它压平；
-  必须显式转换并用 GetLowerBound() 判断下界（这也解释了上游为何逐格读）。
+  必须显式转换并用 GetLowerBound() 判断下界（这也解释了上游为何逐格读）。- **`Find()` 结果的 `Address()` 在常驻宿主里不可用**（0 参/2 参都抛），但 `UsedRange.Address()` 与
+  `Selection.Address()` 正常。凡是「用 Find 定位、再读地址」的写法在这里都是死的（第 38 条）。
+- **PowerShell 的 `,` 比 `+` 绑得更紧**：`$a[$i + 1, $j + 1]` 不是「两个下标」，而是 `$i + (1, $j) + 1`，
+  结果是 `Object[]` 没有 `op_Addition`。二维组取下标的算式必须写成 `$a[($i + 1), ($j + 1)]`。
 
 ## 验证
 
@@ -920,9 +964,11 @@ P1 收尾。`build-host-actions.ps1` 里的 `$helperKeys`（8 条：共享解析
 | test/warnings.test.mjs | 7 | warnings 机制：尽力而为的失败如实回传 |
 | test/ppt-contract-fixes.test.mjs | 57 | PPT 参数契约逐项修复 |
 | test/word-lifecycle.test.mjs | 17 | e2e 暴露的 5 个缺陷（第 24～29 条） |
+| test/spec-reproduction.test.mjs | 12 | P1 验收：spec 逐字节复现模型可见面 |
+| test/excel-missing-halves.test.mjs | 18 | P2 第一波：工作表信息、自动尺寸 ×3、自动换行、查找定位、命名范围读删 |
 
-合计 **310 项**（15 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 45 工具 / 25,000 字节预算与 action 数量三方一致）。
+合计 **340 项**（17 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 211 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 205 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
-动态键闸门跳过）与 9 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。
+动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

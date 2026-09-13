@@ -2610,21 +2610,50 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $searchRange = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
-        $results = @()
-        $lookAt = if ($p.matchCase) { 1 } else { 2 }
-        $found = $searchRange.Find($p.searchText, $null, -4163, $lookAt)
-        if ($found) {
-            $firstAddr = $found.Address()
-            do {
-                $addr = $found.Address()
-                $results += @{ address = ($addr -replace "\$", ""); value = $found.Value2 }
-                $found = $searchRange.FindNext($found)
-                if ($null -eq $found) { break }
-                $currAddr = $found.Address()
-            } while ($currAddr -ne $firstAddr)
+        $searchRange = if ($p.range) { $sheet.Range([string]$p.range) } else { $sheet.UsedRange }
+        # The old Find()+Address() version could never work here: Address() answers only for ranges the
+        # resident host reaches directly, and a Find() result is not one of them (measured in P2 wave 1).
+        # UsedRange.Address() does work - getExcelContext relies on it - and the cells are then scanned
+        # from a single Value2 read, the same accessor getRangeData uses.
+        $rangeRef = if ($p.range) { [string]$p.range } else { $sheet.UsedRange.Address() }
+        $span = Get-AddressSpan $rangeRef
+        if ($null -eq $span) { Output-Json @{ success = $false; error = "findInSheet could not resolve a searchable range" }; return }
+        $rawValue = $searchRange.Value2
+        $matrix = $null; $flatArr = @()
+        if ($rawValue -is [Array] -and $rawValue.Rank -eq 2) { $matrix = $rawValue }
+        elseif ($null -ne $rawValue) { $flatArr = @($rawValue) }
+        $mRow = 0; $mCol = 0; $mRows = 1; $mCols = $span.ColumnCount
+        if ($null -ne $matrix) {
+            $mRow = $matrix.GetLowerBound(0)
+            $mCol = $matrix.GetLowerBound(1)
+            $mRows = $matrix.GetUpperBound(0) - $mRow + 1
+            $mCols = $matrix.GetUpperBound(1) - $mCol + 1
+        } elseif ($flatArr.Count -gt 0) {
+            $mRows = [Math]::Ceiling($flatArr.Count / $mCols)
+        } else {
+            $mRows = 0
         }
-        Output-Json @{ success = $true; data = @{ searchText = $p.searchText; results = $results; count = $results.Count } }
+        $needle = [string]$p.searchText
+        $caseSensitive = [bool]$p.matchCase
+        $results = @()
+        for ($r = 0; $r -lt $span.RowCount; $r++) {
+            for ($c = 0; $c -lt $span.ColumnCount; $c++) {
+                if ($r -ge $mRows -or $c -ge $mCols) { continue }
+                $v = $null
+                # The index list must be parenthesised: comma binds tighter than "+" in PowerShell,
+                # so "$matrix[$mRow + $r, $mCol + $c]" parses as "$mRow + ($r, $mCol) + $c" and every
+                # access throws "Object[] has no op_Addition" - which a bare catch would swallow.
+                if ($null -ne $matrix) { $v = $matrix[($mRow + $r), ($mCol + $c)] }
+                else { $v = $flatArr[($r * $mCols + $c)] }
+                if ($null -eq $v) { continue }
+                $cellText = [string]$v
+                $hit = if ($caseSensitive) { $cellText.Contains($needle) } else { $cellText.ToLower().Contains($needle.ToLower()) }
+                if (-not $hit) { continue }
+                $cellAddress = (Convert-ColumnNumberToLetter($span.Column + $c)) + [string]($span.Row + $r)
+                $results += @{ address = $cellAddress; value = $v }
+            }
+        }
+        Output-Json @{ success = $true; data = @{ searchText = $needle; results = $results; count = $results.Count } }
     }
 
     "replaceInSheet" {

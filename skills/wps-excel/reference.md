@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 表格工具（75）
+## WPS 表格工具（83）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -82,3 +82,11 @@
 | wps_excel_set_array_formula | wps_call | 为Excel指定范围设置数组公式（CSE数组公式）。 |
 | wps_excel_insert_excel_image | wps_call | 在Excel中插入图片到指定位置。 |
 | wps_excel_set_hyperlink | wps_call | 为Excel单元格设置超链接。 |
+| wps_excel_get_sheet_info | 直达 | 获取工作表的结构信息：工作簿与工作表名、已用范围地址、表头、当前单元格。 |
+| wps_excel_auto_fit | 直达 | 按内容自动调整列宽与行高。 |
+| wps_excel_auto_fit_columns | wps_call | 按内容自动调整列宽（不动行高）。 |
+| wps_excel_auto_fit_rows | wps_call | 按内容自动调整行高（不动列宽）。 |
+| wps_excel_set_wrap_text | wps_call | 设置或取消单元格的自动换行。 |
+| wps_excel_find_in_sheet | 直达 | 在工作表里查找文本并返回每一个命中的单元格地址（不改动任何内容）。 |
+| wps_excel_get_named_ranges | 直达 | 列出工作簿里的全部命名范围及其引用位置。 |
+| wps_excel_delete_named_range | wps_call | 删除指定的命名范围（只删名字，不动单元格内容）。 |

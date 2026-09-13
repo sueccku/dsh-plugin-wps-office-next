@@ -80,6 +80,21 @@
   "effect": "write"
  },
  {
+  "tool": "wps_excel_auto_fit",
+  "signature": "excel_auto_fit(sheet?, range?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_auto_fit_columns",
+  "signature": "excel_auto_fit_columns(sheet?, range?, column?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_auto_fit_rows",
+  "signature": "excel_auto_fit_rows(sheet?, range?, row?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_excel_auto_sum",
   "signature": "excel_auto_sum(range*, targetCell*)",
   "effect": "write"
@@ -140,6 +155,11 @@
   "effect": "delete"
  },
  {
+  "tool": "wps_excel_delete_named_range",
+  "signature": "excel_delete_named_range(name*)",
+  "effect": "delete"
+ },
+ {
   "tool": "wps_excel_delete_rows",
   "signature": "excel_delete_rows(startRow?, row?, count?, sheet?)",
   "effect": "delete"
@@ -173,6 +193,11 @@
   "tool": "wps_excel_fill_series",
   "signature": "excel_fill_series(range?, direction?, type?, step?, startValue?, sheet?, sourceRange?, targetRange?)",
   "effect": "write"
+ },
+ {
+  "tool": "wps_excel_find_in_sheet",
+  "signature": "excel_find_in_sheet(searchText*, range?, sheet?, matchCase?)",
+  "effect": "read"
  },
  {
   "tool": "wps_excel_find_replace",
@@ -210,6 +235,11 @@
   "effect": "read"
  },
  {
+  "tool": "wps_excel_get_named_ranges",
+  "signature": "excel_get_named_ranges()",
+  "effect": "read"
+ },
+ {
   "tool": "wps_excel_get_open_workbooks",
   "signature": "excel_get_open_workbooks()",
   "effect": "lifecycle"
@@ -217,6 +247,11 @@
  {
   "tool": "wps_excel_get_selection",
   "signature": "excel_get_selection()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_sheet_info",
+  "signature": "excel_get_sheet_info(sheet?)",
   "effect": "read"
  },
  {
@@ -372,6 +407,11 @@
  {
   "tool": "wps_excel_set_row_height",
   "signature": "excel_set_row_height(row*, height*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_wrap_text",
+  "signature": "excel_set_wrap_text(range*, sheet?, wrap?)",
   "effect": "write"
  },
  {

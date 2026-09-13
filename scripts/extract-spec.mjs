@@ -41,20 +41,10 @@ for (const m of keysSeg.matchAll(/^\s*'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)
   actionKeys.set(m[1], [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1]));
 }
 
-// --- the two hand-written translation tables this spec is meant to replace ---
-const gen = readFileSync('scripts/build-host-actions.ps1', 'utf8');
-const aliasBlock = gen.slice(gen.indexOf('$paramAliases = @{'), gen.indexOf('$paramContainers = @{'));
-const actionAliases = new Map();
-for (const m of aliasBlock.matchAll(/'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\{([^}]*)\}/g)) {
-  const pairs = {};
-  for (const p of m[2].matchAll(/'([^']+)'\s*=\s*'([^']+)'/g)) pairs[p[1]] = p[2];
-  if (Object.keys(pairs).length) actionAliases.set(m[1], pairs);
-}
-const contBlock = gen.slice(gen.indexOf('$paramContainers = @{'), gen.indexOf('$helperKeys = @{'));
-const actionContainers = new Map();
-for (const m of contBlock.matchAll(/'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)\)/g)) {
-  actionContainers.set(m[1], [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1]));
-}
+// --- the bridge-side declarations now live in the spec, not in the host generator ---
+const specAliases = await import('../mcp/dist/spec/aliases.js');
+const actionAliases = new Map(Object.entries(specAliases.paramAliases));
+const actionContainers = new Map(Object.entries(specAliases.paramContainers));
 
 // --- tool -> bridge action, from the tool sources ---
 const clientSrc = readFileSync('mcp/src/client/wps-client.ts', 'utf8');

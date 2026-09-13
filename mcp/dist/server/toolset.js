@@ -33,6 +33,10 @@ exports.STANDARD_TOOLS = [
     'wps_excel_find_replace',
     'wps_excel_get_open_workbooks',
     'wps_excel_open_workbook',
+    'wps_excel_get_sheet_info',
+    'wps_excel_auto_fit',
+    'wps_excel_find_in_sheet',
+    'wps_excel_get_named_ranges',
     // Word
     'wps_word_get_active_document',
     'wps_word_get_document_text',

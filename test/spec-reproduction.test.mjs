@@ -103,7 +103,7 @@ for (const m of keysSeg.matchAll(/^\s*'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)
 //                    already exists but has no tool.
 const spec = require(resolve('mcp/dist/spec/operations.js'));
 const ALIAS_DEBT = 62;
-const UNTOOLED_ACTIONS = 29;
+const UNTOOLED_ACTIONS = 21;
 // Actions the spec declares as "parameters cannot be read statically"; the generator refuses to
 // skip anything that is not declared here, so this is a ledger rather than an allowance.
 const NO_KEY_TABLE = Object.keys(require(resolve('mcp/dist/spec/aliases.js')).dynamicParamActions);

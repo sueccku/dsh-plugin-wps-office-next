@@ -31,6 +31,20 @@
   "range",
   "sheet"
  ],
+ "autoFitAll": [
+  "range",
+  "sheet"
+ ],
+ "autoFitColumn": [
+  "column",
+  "range",
+  "sheet"
+ ],
+ "autoFitRow": [
+  "range",
+  "row",
+  "sheet"
+ ],
  "autoSum": [
   "range",
   "targetCell"
@@ -92,6 +106,9 @@
   "count",
   "sheet"
  ],
+ "deleteNamedRange": [
+  "name"
+ ],
  "deleteRows": [
   "count",
   "row",
@@ -129,6 +146,12 @@
   "targetRange",
   "type"
  ],
+ "findInSheet": [
+  "matchCase",
+  "range",
+  "searchText",
+  "sheet"
+ ],
  "findReplaceExcel": [
   "find",
   "matchCase",
@@ -157,8 +180,12 @@
   "cell",
   "sheet"
  ],
+ "getNamedRanges": [],
  "getOpenWorkbooks": [],
  "getSelection": [],
+ "getExcelContext": [
+  "sheet"
+ ],
  "getSheetList": [],
  "groupRows": [
   "endRow",
@@ -310,6 +337,11 @@
   "height",
   "row",
   "sheet"
+ ],
+ "wrapText": [
+  "range",
+  "sheet",
+  "wrap"
  ],
  "setZoom": [
   "percent"

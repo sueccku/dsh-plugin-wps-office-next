@@ -30,9 +30,9 @@ let bytes = 0;
 for (const t of list.result.tools) bytes += Buffer.byteLength(JSON.stringify(t), "utf8");
 // The byte count shrinks whenever a schema is tightened (removing an unimplemented parameter does
 // exactly that), so this asserts the budget instead of a snapshot that would need editing each time.
-// Budget: <= 45 advertised tools / <= 25000 bytes of tool schema (see docs/FIXES.md).
-const ADVERTISED_TOOL_BUDGET = 45;
-const ADVERTISED_BYTE_BUDGET = 25000;
+// Budget: <= 60 advertised tools / <= 32000 bytes of tool schema - decision D1 in docs/tool-roadmap.md.
+const ADVERTISED_TOOL_BUDGET = 60;
+const ADVERTISED_BYTE_BUDGET = 32000;
 check("advertised surface stays within budget", list.result.tools.length <= ADVERTISED_TOOL_BUDGET && bytes <= ADVERTISED_BYTE_BUDGET, list.result.tools.length + " tools / " + bytes + " bytes");
 
 const help = payload(await req(id++, "tools/call", { name: "wps_help", arguments: {} }));

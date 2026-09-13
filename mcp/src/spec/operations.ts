@@ -370,6 +370,71 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_auto_fit",
+    "action": "autoFitAll",
+    "app": "excel",
+    "summary": "按内容自动调整列宽与行高。使用场景：\"列宽太窄看不清\"、\"让表格自适应内容\"。",
+    "params": {
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      },
+      "range": {
+        "type": "string",
+        "description": "要调整的区域，如 A1:D20；不填则用整张表的已用范围"
+      }
+    },
+    "effect": "write",
+    "advertised": true,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_auto_fit_columns",
+    "action": "autoFitColumn",
+    "app": "excel",
+    "summary": "按内容自动调整列宽（不动行高）。使用 column 可只调整某一列。",
+    "params": {
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      },
+      "range": {
+        "type": "string",
+        "description": "要调整的区域，如 A1:D20；不填则用整张表的已用范围"
+      },
+      "column": {
+        "type": "string",
+        "description": "只调整这一列（列名如 B，或列号）"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_auto_fit_rows",
+    "action": "autoFitRow",
+    "app": "excel",
+    "summary": "按内容自动调整行高（不动列宽）。使用 row 可只调整某一行。",
+    "params": {
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      },
+      "range": {
+        "type": "string",
+        "description": "要调整的区域，如 A1:D20；不填则用整张表的已用范围"
+      },
+      "row": {
+        "type": "number",
+        "description": "只调整这一行（从 1 开始）"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_auto_sum",
     "action": "autoSum",
     "app": "excel",
@@ -829,6 +894,25 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_delete_named_range",
+    "action": "deleteNamedRange",
+    "app": "excel",
+    "summary": "删除指定的命名范围（只删名字，不动单元格内容）。使用场景：\"把这个没用的名字去掉\"。",
+    "params": {
+      "name": {
+        "type": "string",
+        "description": "要删除的命名范围名称",
+        "required": true
+      }
+    },
+    "effect": "delete",
+    "advertised": false,
+    "required": [
+      "name"
+    ],
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_delete_rows",
     "action": "deleteRows",
     "app": "excel",
@@ -1050,6 +1134,37 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_find_in_sheet",
+    "action": "findInSheet",
+    "app": "excel",
+    "summary": "在工作表里查找文本并返回每一个命中的单元格地址（不改动任何内容）。\n\n使用场景：\n- \"帮我找一下'华东'出现在哪些格子里\"\n- 先定位再决定怎么改，比直接替换安全\n\n只统计、不修改。要替换请用 wps_excel_find_replace。",
+    "params": {
+      "searchText": {
+        "type": "string",
+        "description": "要查找的文本",
+        "required": true
+      },
+      "range": {
+        "type": "string",
+        "description": "查找范围；不填则用已用范围"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      },
+      "matchCase": {
+        "type": "boolean",
+        "description": "是否区分大小写，默认 false"
+      }
+    },
+    "effect": "read",
+    "advertised": true,
+    "required": [
+      "searchText"
+    ],
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_find_replace",
     "action": "findReplaceExcel",
     "app": "excel",
@@ -1228,6 +1343,16 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_get_named_ranges",
+    "action": "getNamedRanges",
+    "app": "excel",
+    "summary": "列出工作簿里的全部命名范围及其引用位置。使用场景：\"这个工作簿里定义了哪些名字\"。",
+    "params": {},
+    "effect": "read",
+    "advertised": true,
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_get_open_workbooks",
     "action": "getOpenWorkbooks",
     "app": "excel",
@@ -1246,6 +1371,21 @@ export const operations: OperationSpec[] = [
     "params": {},
     "effect": "read",
     "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_get_sheet_info",
+    "action": "getExcelContext",
+    "app": "excel",
+    "summary": "获取工作表的结构信息：工作簿与工作表名、已用范围地址、表头、当前单元格。\n\n使用场景：\n- \"这张表有多大\" / \"数据到哪一行\"\n- 读数据之前先确定范围，而不是猜一个很大的区域\n\n先调用它拿到 usedRange，再用 read_range 精确读取，避免把整片空白也读回来。",
+    "params": {
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "read",
+    "advertised": true,
     "engine": "bridge"
   }),
   op({
@@ -2220,6 +2360,33 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_set_wrap_text",
+    "action": "wrapText",
+    "app": "excel",
+    "summary": "设置或取消单元格的自动换行。使用场景：\"让长文本在单元格里换行显示\"。",
+    "params": {
+      "range": {
+        "type": "string",
+        "description": "目标区域，如 A1:C10",
+        "required": true
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      },
+      "wrap": {
+        "type": "boolean",
+        "description": "true 打开自动换行，false 关闭，默认 true"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "required": [
+      "range"
+    ],
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_set_zoom",
     "action": "setZoom",
     "app": "excel",
@@ -3094,7 +3261,7 @@ export const operations: OperationSpec[] = [
       },
       "position": {
         "type": "number",
-        "description": "插入位置（页码），不填则在末尾添加"
+        "description": "插入位���（页码），不填则在末尾添加"
       },
       "title": {
         "type": "string",
