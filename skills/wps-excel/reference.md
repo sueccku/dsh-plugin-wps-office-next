@@ -12,7 +12,6 @@
 | wps_excel_diagnose_formula | wps_call | 诊断公式错误，分析原因并提供修复建议。 |
 | wps_excel_evaluate_formula | wps_call | 计算并返回公式结果 |
 | wps_excel_set_print_area | wps_call | 设置打印区域 |
-| wps_excel_zoom | wps_call | 设置工作表缩放比例 |
 | wps_excel_read_range | 直达 | 读取Excel指定范围的单元格数据，返回二维数组格式的数据。 |
 | wps_excel_write_range | 直达 | 向Excel指定范围写入数据。 |
 | wps_excel_clean_data | wps_call | 数据清洗工具，支持多种清洗操作的组合。 |
@@ -89,3 +88,4 @@
 | wps_excel_set_array_formula | wps_call | 为Excel指定范围设置数组公式（CSE数组公式）。 |
 | wps_excel_insert_excel_image | wps_call | 在Excel中插入图片到指定位置。 |
 | wps_excel_set_hyperlink | wps_call | 为Excel单元格设置超链接。 |
+| wps_excel_zoom | wps_call | [已废弃] 设置工作表缩放比例 请改用 wps_excel_set_zoom。 |

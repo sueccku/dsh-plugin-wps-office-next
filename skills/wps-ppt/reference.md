@@ -7,7 +7,7 @@
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
-| wps_ppt_add_slide | 直达 | 添加新幻灯片��演示文稿。 |
+| wps_ppt_add_slide | 直达 | 添加新幻灯片到演示文稿。 |
 | wps_ppt_beautify | wps_call | 一键美化幻灯片，优化排版、配色、字体和间距。 |
 | wps_ppt_unify_font | wps_call | 统一演示文稿中所有幻灯片的字体。 |
 | wps_ppt_set_font_color | wps_call | 设置幻灯片中指定形状的文字颜色。 |
@@ -33,7 +33,6 @@
 | wps_ppt_set_transition | wps_call | 设置幻灯片切换效果。 |
 | wps_ppt_add_chart | wps_call | 在幻灯片中插入图表。 |
 | wps_ppt_set_shape_fill | 直达 | 设置幻灯片中指定形状的填充颜色。 |
-| wps_ppt_add_speaker_notes | wps_call | 添加或追加演讲者备注到指定幻灯片。 |
 | wps_ppt_create_presentation | wps_call | 新建空白演示文稿。 |
 | wps_ppt_open_presentation | 直达 | 打开指定路径的演示文稿文件。 |
 | wps_ppt_close_presentation | wps_call | 关闭演示文稿。 |
@@ -122,3 +121,4 @@
 | wps_ppt_add_title_decoration | wps_call | 为幻灯片标题添加装饰性元素。 |
 | wps_ppt_add_page_indicator | wps_call | 为演示文稿添加页码指示器。 |
 | wps_ppt_set_background_gradient | wps_call | 为幻灯片设置渐变色背景。 |
+| wps_ppt_add_speaker_notes | wps_call | [已废弃] 添加或追加演讲者备注到指定幻灯片。 |

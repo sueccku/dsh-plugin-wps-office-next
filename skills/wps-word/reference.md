@@ -32,10 +32,10 @@
 | wps_word_get_document_text | 直达 | 获取当前Word文档的文本内容。 |
 | wps_word_insert_header | wps_call | 设置页眉内容。 |
 | wps_word_insert_footer | wps_call | 设置页脚内容。 |
-| wps_word_generate_doc_toc | wps_call | 自动生成文档目录。 |
 | wps_word_insert_section_break | wps_call | 插入分节符，用于将文档分为不同的节，以便对各节应用不同的页面设置。 |
 | wps_word_set_line_spacing | wps_call | 设置段落行距。 |
 | wps_word_enable_track_changes | wps_call | 开启或关闭Word文档的修订模式（Track Changes）。 |
 | wps_word_get_track_changes_status | wps_call | 获取当前文档的修订模式状态。 |
 | wps_word_replace_range | wps_call | 按字符范围精确替换Word文档中的文本。 |
 | wps_word_proofread_basic | wps_call | 对中文文本进行基础校对，检测常见问题。 |
+| wps_word_generate_doc_toc | wps_call | [已废弃] 自动生成文档目录。 |

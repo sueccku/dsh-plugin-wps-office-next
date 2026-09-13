@@ -420,6 +420,36 @@ PPT 端到端测试 test/ppt-contract-fixes.test.mjs **42 项全部通过**（�
 同一批还修掉：我新加的 slideIndex 上界校验依赖 `Slides.Count`，
 而 WPS 对 COM 新建的文稿**恒报 0**，导致所有合法页码被拒——改为"下界必查、上界仅在计数可信时查"。
 
+### 19. 技能文档同步（并因此发现 4 个缺陷）
+
+四份 SKILL.md 按本轮的真实行为重写，reference.md 重新生成（工具数：表格 82、文字 32、演示 115、
+门面与通用 25；standard 档直接广告 43）。主要更正：
+
+- **参数校验的准确表述**：桥校验的是「工具层发给桥的键」，不是「调用方传给工具的键」。
+  必填参数写错名会被 schema 挡下（Missing required parameter: X），
+  **可选参数写错名仍然是静默忽略**——这一点此前含糊，现在明确写成两条。
+  旧文档里「写错名字不会报错」的说法已删除；
+- standard 档工具数 31 → 43；
+- 表格：sheet 参数已在几乎所有工具上生效（删掉「底层曾取 0 号工作表」的旧警告）、
+  工作表 position 是 0 基、delete_sheet 必须显式给名字、常用工具的正确参数名列表；
+- 文字：set_line_spacing / set_page_setup / get_paragraphs 均已可用（旧文档说前两者是坏功能），
+  find_replace 的「不传 replace_text 就是纯查找」、页眉页脚的 section、页边距单位是整数磅；
+- 演示：动画与切换的名称/数值、trigger、imageIndex 与 shapeIndex 的语义差别、
+  以及**不支持的能力**（多段环形图、自定义组织架构节点、图表数据注入、渐变角度、页码起始编号）；
+  同时写明「新建文稿 Slides.Count 恒报 0，不要据此判断文稿为空」。
+
+写文档需要核实说法，于是逐个实测，又抓到并修掉 4 个缺陷：
+
+1. **段落读取一直失败**：三处 `TrimEnd("\r\n", "\r", "\n")` 是无效写法——
+   PowerShell 的 TrimEnd 只接受 char[]，多字符字符串转换直接抛类型错误。
+   改为 `TrimEnd([char[]]@([char]13, [char]10))`；
+2. **页面设置的四个边距全部 E_FAIL**：action 把入参当厘米乘 28.35（而 schema 写的是磅），
+   且 WPS 的边距**只接受整数磅**（小数报「指定的转换无效」，超范围报裸 E_FAIL）。
+   现在按磅取整、校验 0-1584 并给出可读的范围错误，且**回读实际生效值**回报给调用方；
+3. **98 处演示 action 在没有打开文稿时抛裸空引用**：现在统一返回 no presentation is open；
+4. **出错时返回不合法的 MCP 结果**：`JSON.stringify(undefined)` 让整个 tools/call 结果非法，
+   客户端看到的是 -32602 协议错误而不是错误消息。改为合法的内容块。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

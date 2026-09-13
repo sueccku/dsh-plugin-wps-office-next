@@ -83,7 +83,7 @@ export const setFormulaHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `公式设置成功！\n单元格: ${range}\n公式: ${formula}\n计算结果: ${JSON.stringify(response.data)}`,
+            text: `公式设置成功！\n单元格: ${range}\n公式: ${formula}\n计算结果: ${JSON.stringify(response.data ?? null)}`,
           },
         ],
       };
@@ -339,7 +339,7 @@ export const evaluateFormulaHandler = async (args: Record<string, unknown>) => {
     'evaluateFormula', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
   );
 
-  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: JSON.stringify(response.data) }] };
+  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: JSON.stringify(response.data ?? { error: response.error }) }] };
 };
 
 export const setPrintAreaDefinition: ToolDefinition = {

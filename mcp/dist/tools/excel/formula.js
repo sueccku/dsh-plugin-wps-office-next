@@ -64,7 +64,7 @@ const setFormulaHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `公式设置成功！\n单元格: ${range}\n公式: ${formula}\n计算结果: ${JSON.stringify(response.data)}`,
+                        text: `公式设置成功！\n单元格: ${range}\n公式: ${formula}\n计算结果: ${JSON.stringify(response.data ?? null)}`,
                     },
                 ],
             };
@@ -287,7 +287,7 @@ exports.evaluateFormulaDefinition = {
 const evaluateFormulaHandler = async (args) => {
     const response = await wps_client_1.wpsClient.executeMethod('evaluateFormula', args, wps_1.WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
     );
-    return { id: (0, uuid_1.v4)(), success: response.success, content: [{ type: "text", text: JSON.stringify(response.data) }] };
+    return { id: (0, uuid_1.v4)(), success: response.success, content: [{ type: "text", text: JSON.stringify(response.data ?? { error: response.error }) }] };
 };
 exports.evaluateFormulaHandler = evaluateFormulaHandler;
 exports.setPrintAreaDefinition = {
