@@ -56,8 +56,6 @@ export declare const insertImageHandler: ToolHandler;
  */
 export declare const insertPageBreakDefinition: ToolDefinition;
 export declare const insertPageBreakHandler: ToolHandler;
-export declare const setFontStyleDefinition: ToolDefinition;
-export declare const setFontStyleHandler: ToolHandler;
 /**
  * 插入批注到文档选中内容
  */

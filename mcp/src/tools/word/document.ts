@@ -506,71 +506,7 @@ export const insertFooterHandler: ToolHandler = async (
   }
 };
 
-/**
- * 自动生成文档目录
- */
-export const generateDocTocDefinition: ToolDefinition = {
-  name: 'wps_word_generate_doc_toc',
-  description: `自动生成文档目录。根据文档中的标题样式自动生成目录。
 
-前提条件：文档中的标题必须使用"标题1"、"标题2"等样式。
-
-使用场景：
-- "帮我生成目录"
-- "在文档开头插入目录"
-- "自动生成文档目录"`,
-  category: ToolCategory.DOCUMENT,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      levels: {
-        type: 'number',
-        description: '目录包含的标题级别数，如3表示包含标题1-3，默认3',
-        default: 3,
-      },
-    },
-  },
-};
-
-export const generateDocTocHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { levels = 3 } = args as { levels?: number };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'generateTOC',
-      { levels },
-      WpsAppType.WRITER
-    );
-
-    if (response.success) {
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [{ type: 'text', text: `目录已生成（包含标题1-${levels}级）` }],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `生成目录失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `生成目录出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
 
 /**
  * 插入分节符
@@ -829,7 +765,6 @@ export const documentTools: RegisteredTool[] = [
   { definition: getDocumentTextDefinition, handler: getDocumentTextHandler },
   { definition: insertHeaderDefinition, handler: insertHeaderHandler },
   { definition: insertFooterDefinition, handler: insertFooterHandler },
-  { definition: generateDocTocDefinition, handler: generateDocTocHandler },
   { definition: insertSectionBreakDefinition, handler: insertSectionBreakHandler },
   { definition: setLineSpacingDefinition, handler: setLineSpacingHandler },
 ];

@@ -43,7 +43,9 @@ const deprecatedCount = Object.keys(DEPRECATED_TOOLS).length;
 // from allTools (which does not see the facade tools the server registers itself): adding a tool
 // kept breaking a snapshot that carries no meaning of its own.
 const status = payload(await req(id++, "tools/call", { name: "wps_status", arguments: {} }));
-check("wps_help total excludes deprecated", help.total === status.registeredTools - deprecatedCount, "total=" + help.total + " registered=" + status.registeredTools + " deprecated=" + deprecatedCount);
+// Deprecated names now resolve at dispatch, so they occupy no registry slot at all: the
+// discoverable total equals the registry, while deprecatedCount still reports how many aliases resolve.
+check("deprecated names occupy no registry slot", help.total === status.registeredTools && deprecatedCount > 0, "total=" + help.total + " registered=" + status.registeredTools + " deprecated=" + deprecatedCount);
 
 const search = payload(await req(id++, "tools/call", { name: "wps_help", arguments: { query: "zoom" } }));
 const searchNames = (search.tools || []).map((t) => t.name);

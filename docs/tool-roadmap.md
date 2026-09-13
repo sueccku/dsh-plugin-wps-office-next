@@ -29,6 +29,9 @@
 | 分布 | excel 75 / word 32 / ppt 87 / common 9 | + 16 builtin/门面 |
 | 测试 | 310 项 + verify 23 项 + e2e 19 项 | 全绿，CI 跑静态部分 |
 
+> **P0 完成后的当前值**：桥 action **231**、注册工具 **209**（广告 44 / 隐藏 165；18 个废弃别名不占注册位，
+> 只在派发期解析）、builtin 组从 16 降到 **5**。下面 §1 的表格是 P0 之前的审计快照，保留用于对照。
+
 **真缺口清单（桥里已实现、无任何工具引用，共 31 项 = 20 + 4 + 5 + 2）**
 
 - Excel（20）：`getActiveWorkbook`、`copyFormat`、`clearFormats`、`getConditionalFormats`、`removeConditionalFormat`、`getDataValidations`、`removeDataValidation`、`autoFitColumn`、`autoFitRow`、`autoFitAll`、`wrapText`、`groupColumns`、`findInSheet`、`replaceInSheet`、`getNamedRanges`、`deleteNamedRange`、`refreshLinks`、`consolidate`、`calculateSheet`、`getExcelContext`
@@ -42,6 +45,19 @@
 `autoBeautifySlide`、`beautifyAllSlides`、`createKpiCards`、`createStyledTable`、`addTitleDecoration`、`addPageIndicator`、`createProgressBar`、`createGauge`、`createMiniCharts`、`createDonutChart`、`autoLayout`、`smartDistribute`、`createGrid`、`createFlowChart`、`createOrgChart`、`createTimeline`、`create3DText`、`setShapeFullStyle`、`addConnector`、`addArrow`、`applyColorScheme`
 
 （校验：31 真缺口 + 2 待判定 + 21 唯一死代码 = 54 个唯一名；加上 `create3DText` 的重复条目 = 55 个无工具引用的 case 条目 ✓）
+
+## 2. 已锁定的四个参数（2026-09-13 定）
+
+| # | 参数 | **决定** |
+|---|---|---|
+| D1 | 广告面预算 | **60 个 / ~32,000 字节**（上限同步调整） |
+| D2 | Word 长尾边界 | **全都要**：表格/修订/页码/水印/文档属性/批注读删 + 内容控件/脚注尾注/分栏 + 邮件合并/索引/交叉引用 |
+| D3 | PPT 放弃清单 | **确认放弃**：媒体(视频/音频)、SmartArt、讲义、3D 族、美化族；**保留**：版式列表、主题、尺寸、母版、节 |
+| D4 | 兼容窗口 | **确认**：18 个废弃名保留一个发布周期（改为派发别名，不占注册位）；12 个 builtin 立即删 |
+
+因此 P0-4 的处置确定为：**恢复 `wps_ppt_set_slide_theme` 工具**（主题属于 D3 的保留项），并修正 FIXES 第 1 条。
+
+## 2b. 原始建议（存档）
 
 ## 2. 需要拍板的四个参数
 
@@ -73,7 +89,11 @@
 
 ## 5. 分阶段任务清单
 
-### P0 清理（低风险，先做）
+### P0 清理（低风险，先做）——**已完成 2026-09-13**
+
+实施结果：桥 action **259 → 231**（删 28 个 case 条目 / 1039 行：22 个场景死代码、3 个点号重复实现、
+4 个重复标签的后一份）；注册工具 **237 → 209**（删 11 个 builtin + 18 个废弃名的重复定义，共 1319 行）；
+生成器别名表 **20 → 17**、容器表 **13 → 12**；全部测试 + verify + e2e + CI 绿。详见 docs/FIXES.md 第 32 条。
 
 | ID | 任务 | 依据 | 验收 |
 |---|---|---|---|

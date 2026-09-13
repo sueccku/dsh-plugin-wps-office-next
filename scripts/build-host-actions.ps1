@@ -70,14 +70,11 @@ $paramAliases = @{
     'alignShapes'          = @{ 'shapeIndices' = 'names' }
     'distributeShapes'     = @{ 'shapeIndices' = 'names' }
     'groupShapes'          = @{ 'shapeIndices' = 'names' }
-    'smartDistribute'      = @{ 'shapeIndices' = 'shapes' }
     'setSlideNumber'       = @{ 'show' = 'visible' }
     'setPptDateTime'       = @{ 'show' = 'visible' }
-    'createProgressBar'    = @{ 'value' = 'progress' }
     'applyTransitionToAll' = @{ 'effect' = 'transition' }
     'setSlideTransition'   = @{ 'transition' = 'effect' }
     'addPptHyperlink'      = @{ 'url' = 'address' }
-    'createKpiCards'       = @{ 'data' = 'cards' }
     'insertPptChart'       = @{ 'chartType' = 'type' }
 }
 
@@ -91,7 +88,6 @@ $paramContainers = @{
     'setBackgroundGradient' = @('gradient')
     'addMasterElement'     = @('element')
     'set3DRotation'        = @('rotation')
-    'create3DText'         = @('style')
     'setImageStyle'        = @('style')
     'setTextBoxStyle'      = @('style')
     'setPptChartStyle'     = @('style')

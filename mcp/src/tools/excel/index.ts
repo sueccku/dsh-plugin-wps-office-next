@@ -67,8 +67,6 @@ export {
   evaluateFormulaHandler,
   setPrintAreaDefinition,
   setPrintAreaHandler,
-  zoomDefinition,
-  zoomHandler,
 } from './formula';
 
 export {
@@ -84,8 +82,6 @@ export {
   sortRangeHandler,
   findReplaceDefinition,
   findReplaceHandler,
-  insertRowDefinition,
-  insertRowHandler,
   addCommentDefinition,
   addCommentHandler,
   protectSheetDefinition,
@@ -133,16 +129,8 @@ export {
   moveSheetHandler,
   getSelectionDefinition,
   getSelectionHandler,
-  deleteRowDefinition,
-  deleteRowHandler,
-  insertColumnDefinition,
-  insertColumnHandler,
-  deleteColumnDefinition,
-  deleteColumnHandler,
   freezePanesDefinition,
   freezePanesHandler,
-  autoFillDefinition,
-  autoFillHandler,
   setNamedRangeDefinition,
   setNamedRangeHandler,
   autoSumDefinition,
@@ -168,8 +156,6 @@ export {
   setColumnWidthHandler,
   setRowHeightDefinition,
   setRowHeightHandler,
-  hideRowDefinition,
-  hideRowHandler,
   setDataValidationDefinition,
   setDataValidationHandler,
 } from './format';

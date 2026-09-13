@@ -20,7 +20,7 @@
  * - wps_word_set_line_spacing: 设置行距
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.documentTools = exports.closeDocumentHandler = exports.closeDocumentDefinition = exports.createDocumentHandler = exports.createDocumentDefinition = exports.setLineSpacingHandler = exports.setLineSpacingDefinition = exports.insertSectionBreakHandler = exports.insertSectionBreakDefinition = exports.generateDocTocHandler = exports.generateDocTocDefinition = exports.insertFooterHandler = exports.insertFooterDefinition = exports.insertHeaderHandler = exports.insertHeaderDefinition = exports.getDocumentTextHandler = exports.getDocumentTextDefinition = exports.openDocumentHandler = exports.openDocumentDefinition = exports.switchDocumentHandler = exports.switchDocumentDefinition = exports.getOpenDocumentsHandler = exports.getOpenDocumentsDefinition = void 0;
+exports.documentTools = exports.closeDocumentHandler = exports.closeDocumentDefinition = exports.createDocumentHandler = exports.createDocumentDefinition = exports.setLineSpacingHandler = exports.setLineSpacingDefinition = exports.insertSectionBreakHandler = exports.insertSectionBreakDefinition = exports.insertFooterHandler = exports.insertFooterDefinition = exports.insertHeaderHandler = exports.insertHeaderDefinition = exports.getDocumentTextHandler = exports.getDocumentTextDefinition = exports.openDocumentHandler = exports.openDocumentDefinition = exports.switchDocumentHandler = exports.switchDocumentDefinition = exports.getOpenDocumentsHandler = exports.getOpenDocumentsDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -432,62 +432,6 @@ const insertFooterHandler = async (args) => {
 };
 exports.insertFooterHandler = insertFooterHandler;
 /**
- * 自动生成文档目录
- */
-exports.generateDocTocDefinition = {
-    name: 'wps_word_generate_doc_toc',
-    description: `自动生成文档目录。根据文档中的标题样式自动生成目录。
-
-前提条件：文档中的标题必须使用"标题1"、"标题2"等样式。
-
-使用场景：
-- "帮我生成目录"
-- "在文档开头插入目录"
-- "自动生成文档目录"`,
-    category: tools_1.ToolCategory.DOCUMENT,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            levels: {
-                type: 'number',
-                description: '目录包含的标题级别数，如3表示包含标题1-3，默认3',
-                default: 3,
-            },
-        },
-    },
-};
-const generateDocTocHandler = async (args) => {
-    const { levels = 3 } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('generateTOC', { levels }, wps_1.WpsAppType.WRITER);
-        if (response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [{ type: 'text', text: `目录已生成（包含标题1-${levels}级）` }],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `生成目录失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `生成目录出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.generateDocTocHandler = generateDocTocHandler;
-/**
  * 插入分节符
  */
 exports.insertSectionBreakDefinition = {
@@ -713,7 +657,6 @@ exports.documentTools = [
     { definition: exports.getDocumentTextDefinition, handler: exports.getDocumentTextHandler },
     { definition: exports.insertHeaderDefinition, handler: exports.insertHeaderHandler },
     { definition: exports.insertFooterDefinition, handler: exports.insertFooterHandler },
-    { definition: exports.generateDocTocDefinition, handler: exports.generateDocTocHandler },
     { definition: exports.insertSectionBreakDefinition, handler: exports.insertSectionBreakHandler },
     { definition: exports.setLineSpacingDefinition, handler: exports.setLineSpacingHandler },
 ];

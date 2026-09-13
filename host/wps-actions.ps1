@@ -610,32 +610,24 @@ function Get-PptSaveFormat([string]$format) {
 $script:ActionParamKeys = @{
     'addAnimation' = @('animationType', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'trigger')
     'addAnimationPreset' = @('delayIncrement', 'presentationName', 'preset', 'shapeIndex', 'shapeName', 'slideIndex')
-    'addArrow' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
     'addCellComment' = @('cell', 'comment', 'sheet', 'text', 'visible')
     'addComment' = @('comment', 'text')
     'addConditionalFormat' = @('backgroundColor', 'colorScaleType', 'condition', 'fontColor', 'format', 'operator', 'range', 'sheet', 'type', 'value', 'value1', 'value2')
-    'addConnector' = @('height', 'left', 'presentationName', 'slideIndex', 'top', 'width')
     'addDataValidation' = @('errorMessage', 'errorTitle', 'formula', 'formula1', 'formula2', 'inputMessage', 'inputTitle', 'list', 'operator', 'range', 'sheet', 'showDropdown', 'type', 'validationType')
     'addEmphasisAnimation' = @('duration', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
     'addMasterElement' = @('color', 'element', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
-    'addPageIndicator' = @('dark', 'left', 'position', 'presentationName', 'slideIndex', 'top')
     'addPptHyperlink' = @('address', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress', 'url')
     'addShape' = @('fillColor', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'type', 'width')
     'addSlide' = @('content', 'layout', 'position', 'presentationName', 'title')
     'addTextBox' = @('fontName', 'fontSize', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'width')
-    'addTitleDecoration' = @('color', 'height', 'left', 'presentationName', 'slideIndex', 'style', 'top', 'width')
     'alignShapes' = @('alignment', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
-    'applyColorScheme' = @('colorScheme', 'presentationName', 'scheme', 'slideIndex')
     'applyStyle' = @('range', 'styleName')
     'applyTransitionToAll' = @('duration', 'effect', 'presentationName', 'transition')
-    'autoBeautifySlide' = @('presentationName', 'slideIndex', 'style')
     'autoFilter' = @('column', 'criteria', 'field', 'range', 'sheet')
     'autoFitAll' = @('range', 'sheet')
     'autoFitColumn' = @('column', 'range', 'sheet')
     'autoFitRow' = @('range', 'row', 'sheet')
-    'autoLayout' = @('cols', 'gap', 'layout', 'margin', 'presentationName', 'slideIndex')
     'autoSum' = @('range', 'sheet', 'targetCell')
-    'beautifyAllSlides' = @('presentationName', 'style')
     'beautifySlide' = @('presentationName', 'slideIndex', 'style')
     'calculateSheet' = @('all', 'sheet')
     'cleanData' = @('operations', 'range', 'sheet')
@@ -650,23 +642,12 @@ $script:ActionParamKeys = @{
     'copyFormat' = @('sheet', 'source', 'target')
     'copyRange' = @('destination', 'range', 'sheet', 'source')
     'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
-    'create3DText' = @('depth', 'fontColor', 'fontSize', 'height', 'left', 'presentationName', 'rotationX', 'rotationY', 'slideIndex', 'style', 'text', 'top', 'width')
     'createChart' = @('chartType', 'chartTypeName', 'dataRange', 'left', 'position', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
     'createDocument' = @()
-    'createDonutChart' = @('centerText', 'centerX', 'centerY', 'color', 'presentationName', 'radius', 'slideIndex', 'title', 'value')
-    'createFlowChart' = @('boxHeight', 'boxWidth', 'connections', 'direction', 'gap', 'nodes', 'presentationName', 'slideIndex', 'startX', 'startY', 'steps')
-    'createGauge' = @('centerX', 'centerY', 'max', 'presentationName', 'radius', 'slideIndex', 'title', 'value')
-    'createGrid' = @('borderColor', 'cellColor', 'cols', 'gap', 'margin', 'presentationName', 'rows', 'slideIndex')
-    'createKpiCards' = @('cardHeight', 'cards', 'cardWidth', 'data', 'gap', 'presentationName', 'slideIndex', 'startX', 'startY')
-    'createMiniCharts' = @('data', 'gap', 'items', 'itemWidth', 'presentationName', 'slideIndex', 'startX', 'startY')
     'createNamedRange' = @('name', 'range', 'sheet')
-    'createOrgChart' = @('boxHeight', 'boxWidth', 'data', 'levelGap', 'nodes', 'presentationName', 'slideIndex', 'startY')
     'createPivotTable' = @('columnFields', 'destinationCell', 'destinationSheet', 'filterFields', 'rowFields', 'sourceRange', 'tableName', 'valueFields')
     'createPresentation' = @()
-    'createProgressBar' = @('bgColor', 'color', 'height', 'label', 'left', 'presentationName', 'progress', 'slideIndex', 'top', 'value', 'width')
     'createSheet' = @('name', 'position')
-    'createStyledTable' = @('cols', 'data', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'style', 'top', 'width')
-    'createTimeline' = @('dotColor', 'events', 'lineColor', 'lineLength', 'presentationName', 'slideIndex', 'startX', 'startY')
     'createWorkbook' = @('name')
     'deleteCellComment' = @('cell', 'sheet')
     'deleteColumns' = @('column', 'count', 'sheet', 'startColumn')
@@ -814,7 +795,6 @@ $script:ActionParamKeys = @{
     'setSelectedText' = @('text')
     'setShapeBorder' = @('border', 'color', 'enabled', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'style', 'weight', 'width')
     'setShapeFill' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
-    'setShapeFullStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
     'setShapeGradient' = @('color1', 'color2', 'gradient', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'stops')
     'setShapePosition' = @('height', 'left', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'top', 'width')
     'setShapeRoundness' = @('name', 'presentationName', 'roundness', 'shapeIndex', 'slideIndex')
@@ -823,10 +803,10 @@ $script:ActionParamKeys = @{
     'setShapeText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
     'setShapeTransparency' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
     'setShapeZOrder' = @('name', 'order', 'presentationName', 'shapeIndex', 'slideIndex', 'zOrder')
-    'setSlideBackground' = @('background', 'color', 'colors', 'fontName', 'imagePath', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex', 'type')
+    'setSlideBackground' = @('background', 'color', 'colors', 'imagePath', 'presentationName', 'slideIndex', 'type')
     'setSlideContent' = @('content', 'presentationName', 'slideIndex')
     'setSlideLayout' = @('index', 'layout', 'presentationName', 'slideIndex')
-    'setSlideNotes' = @('content', 'index', 'layout', 'notes', 'position', 'presentationName', 'slideIndex', 'title')
+    'setSlideNotes' = @('index', 'notes', 'presentationName', 'slideIndex')
     'setSlideNumber' = @('presentationName', 'show', 'visible')
     'setSlideSize' = @('height', 'presentationName', 'width')
     'setSlideSubtitle' = @('presentationName', 'slideIndex', 'subtitle')
@@ -839,7 +819,6 @@ $script:ActionParamKeys = @{
     'setZoom' = @('percent', 'sheet')
     'showColumns' = @('column', 'columns', 'count', 'endColumn', 'sheet', 'startColumn')
     'showRows' = @('count', 'endRow', 'row', 'rows', 'sheet', 'startRow')
-    'smartDistribute' = @('direction', 'presentationName', 'shapeIndices', 'shapes', 'slideIndex')
     'smartFillField' = @('fillMode', 'keyword', 'value')
     'sortRange' = @('ascending', 'column', 'keyColumn', 'order', 'range', 'sheet')
     'startSlideShow' = @('fromSlide', 'presentationName')
@@ -852,7 +831,7 @@ $script:ActionParamKeys = @{
     'textToColumns' = @('delimiter', 'range', 'sheet')
     'transpose' = @('destination', 'destinationCell', 'sheet', 'source', 'sourceRange', 'targetCell')
     'unfreezePanes' = @()
-    'unifyFont' = @('fontName', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex', 'style')
+    'unifyFont' = @('fontName', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex')
     'unmergeCells' = @('range', 'sheet')
     'unprotectSheet' = @('password', 'sheet')
     'updateChart' = @('chartIndex', 'chartName', 'chartType', 'colors', 'dataRange', 'legendPosition', 'sheet', 'showDataLabels', 'showLegend', 'title')
@@ -867,8 +846,6 @@ $script:ActionParamAliases = @{
     'addPptHyperlink' = @{ 'url' = 'address' }
     'alignShapes' = @{ 'shapeIndices' = 'names' }
     'applyTransitionToAll' = @{ 'effect' = 'transition' }
-    'createKpiCards' = @{ 'data' = 'cards' }
-    'createProgressBar' = @{ 'value' = 'progress' }
     'distributeShapes' = @{ 'shapeIndices' = 'names' }
     'groupShapes' = @{ 'shapeIndices' = 'names' }
     'insertPptChart' = @{ 'chartType' = 'type' }
@@ -882,13 +859,11 @@ $script:ActionParamAliases = @{
     'setShapeZOrder' = @{ 'order' = 'zOrder' }
     'setSlideNumber' = @{ 'show' = 'visible' }
     'setSlideTransition' = @{ 'transition' = 'effect' }
-    'smartDistribute' = @{ 'shapeIndices' = 'shapes' }
 }
 
 # Container parameters whose properties are merged onto the flat key set.
 $script:ActionNestedParams = @{
     'addMasterElement' = @('element')
-    'create3DText' = @('style')
     'set3DRotation' = @('rotation')
     'setBackgroundGradient' = @('gradient')
     'setImageStyle' = @('style')
@@ -3907,31 +3882,6 @@ return }
         Output-Json @{ success = $true; data = @{ slideIndex = $index } }
     }
 
-    "slide.add" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $layouts = @{ title = 1; title_content = 2; blank = 12; two_column = 3; comparison = 34 }
-        $layoutKey = if ($p.layout) { $p.layout } else { "title_content" }
-        $layoutType = $layouts[$layoutKey]
-        if ($null -eq $layoutType) { $layoutType = 2 }
-        $position = if ($p.position) { $p.position } else { $pres.Slides.Count + 1 }
-        $slide = $pres.Slides.Add($position, $layoutType)
-        if ($p.title -and $slide.Shapes.HasTitle) { $slide.Shapes.Title.TextFrame.TextRange.Text = $p.title }
-        if ($p.content) {
-            try {
-                foreach ($shape in $slide.Shapes) {
-                    try {
-                        if ($shape.PlaceholderFormat.Type -eq 2) {
-                            $shape.TextFrame.TextRange.Text = $p.content
-                        }
-                    } catch { Add-WpsWarning $_.Exception.Message }
-                }
-            } catch { Add-WpsWarning $_.Exception.Message }
-        }
-        Output-Json @{ success = $true; data = @{ slideIndex = $position; layout = $layoutKey } }
-    }
 
     "addSlide" {
         $ppt = Get-WpsPpt
@@ -4635,20 +4585,6 @@ return }
         Output-Json @{ success = $true; data = @{ name = $shape.Name } }
     }
 
-    "setShapeFullStyle" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
-        if ($p.fillColor) { $shape.Fill.ForeColor.RGB = Convert-HexColorToRgbInt([string]$p.fillColor) }
-        if ($p.lineColor) { $shape.Line.ForeColor.RGB = Convert-HexColorToRgbInt([string]$p.lineColor) }
-        if ($p.lineWidth) { $shape.Line.Weight = $p.lineWidth }
-        if ($null -ne $p.transparency) { $shape.Fill.Transparency = $p.transparency }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
 
     "alignShapes" {
         $ppt = Get-WpsPpt
@@ -4837,660 +4773,22 @@ return }
         Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; type = $spec.kind } }
     }
 
-    "slide.unifyFont" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $fontName = if ($p.fontName) { $p.fontName } else { "微软雅黑" }
-        $count = 0
-        $includeTitle = if ($null -ne $p.includeTitle) { [bool]$p.includeTitle } else { $true }
-        $includeBody = if ($null -ne $p.includeBody) { [bool]$p.includeBody } else { $true }
-        $start = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        $end = if ($p.slideIndex) { [int]$p.slideIndex } else { $pres.Slides.Count }
-        for ($i = $start; $i -le $end; $i++) {
-            $slide = $pres.Slides.Item($i)
-            for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
-                $shape = $slide.Shapes.Item($j)
-                try {
-                    if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
-                        $isTitle = $false
-                        try { $isTitle = $shape.PlaceholderFormat.Type -eq 1 -or $shape.PlaceholderFormat.Type -eq 3 } catch { Add-WpsWarning $_.Exception.Message }
-                        if (($isTitle -and $includeTitle) -or (-not $isTitle -and $includeBody)) {
-                            $shape.TextFrame.TextRange.Font.Name = $fontName
-                            $count++
-                        }
-                    }
-                } catch { Add-WpsWarning $_.Exception.Message }
-            }
-        }
-        $slideCount = if ($p.slideIndex) { 1 } else { $pres.Slides.Count }
-        Output-Json @{ success = $true; data = @{ font = $fontName; count = $count; slideCount = $slideCount } }
-    }
 
-    "addConnector" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $left = if ($p.left) { $p.left } else { 100 }
-        $top = if ($p.top) { $p.top } else { 100 }
-        $width = if ($p.width) { $p.width } else { 200 }
-        $height = if ($p.height) { $p.height } else { 0 }
-        $connector = $slide.Shapes.AddConnector(1, $left, $top, $width, $height)
-        Output-Json @{ success = $true; data = @{ name = $connector.Name } }
-    }
 
-    "addArrow" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $left = if ($p.left) { $p.left } else { 100 }
-        $top = if ($p.top) { $p.top } else { 100 }
-        $width = if ($p.width) { $p.width } else { 120 }
-        $height = if ($p.height) { $p.height } else { 60 }
-        $shape = $slide.Shapes.AddShape(13, $left, $top, $width, $height)
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
 
-    "applyColorScheme" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $schemeKey = if ($p.scheme) { $p.scheme } elseif ($p.colorScheme) { $p.colorScheme } else { "business" }
-        $schemes = @{ business = @{ title = 0x2F5496; body = 0x333333 }; tech = @{ title = 0x00B0F0; body = 0x404040 }; creative = @{ title = 0xFF6B6B; body = 0x4A4A4A }; minimal = @{ title = 0x000000; body = 0x666666 } }
-        $scheme = $schemes[$schemeKey]
-        if ($null -eq $scheme) { $scheme = $schemes["business"] }
-        $count = 0
-        # slideIndex restricts the scheme to one slide; without it every slide is recoloured.
-        $firstSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        $lastSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { $pres.Slides.Count }
-        if (-not (Test-WpsSlideIndex $pres $firstSlide)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
-        for ($i = $firstSlide; $i -le $lastSlide; $i++) {
-            $slide = $pres.Slides.Item($i)
-            for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
-                $shape = $slide.Shapes.Item($j)
-                try {
-                    if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
-                        $textRange = $shape.TextFrame.TextRange
-                        if ($textRange.Font.Size -ge 24) { $textRange.Font.Color.RGB = $scheme.title } else { $textRange.Font.Color.RGB = $scheme.body }
-                        $count++
-                    }
-                } catch { Add-WpsWarning $_.Exception.Message }
-            }
-        }
-        Output-Json @{ success = $true; data = @{ scheme = $schemeKey; count = $count } }
-    }
 
-    "autoBeautifySlide" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { $ppt.ActiveWindow.Selection.SlideRange.SlideIndex }
-        $slide = $pres.Slides.Item($slideIndex)
-        $schemes = @{ business = @{ title = 0x2F5496; body = 0x333333 }; tech = @{ title = 0x00B0F0; body = 0x404040 }; creative = @{ title = 0xFF6B6B; body = 0x4A4A4A }; minimal = @{ title = 0x000000; body = 0x666666 } }
-        $schemeKey = if ($p.style) { $p.style } else { "business" }
-        $scheme = $schemes[$schemeKey]
-        if ($null -eq $scheme) { $scheme = $schemes["business"] }
-        $count = 0
-        for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
-            $shape = $slide.Shapes.Item($j)
-            try {
-                if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
-                    $textRange = $shape.TextFrame.TextRange
-                    if ($textRange.Font.Size -ge 24) { $textRange.Font.Color.RGB = $scheme.title } else { $textRange.Font.Color.RGB = $scheme.body }
-                    $count++
-                }
-            } catch { Add-WpsWarning $_.Exception.Message }
-        }
-        Output-Json @{ success = $true; data = @{ style = $schemeKey; count = $count } }
-    }
 
-    "createKpiCards" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
 
-        $cards = if ($p.cards) { $p.cards } else { @() }
-        $startX = if ($p.startX) { $p.startX } else { 50 }
-        $startY = if ($p.startY) { $p.startY } else { 350 }
-        $cardWidth = if ($p.cardWidth) { $p.cardWidth } else { 150 }
-        $cardHeight = if ($p.cardHeight) { $p.cardHeight } else { 80 }
-        $gap = if ($p.gap) { $p.gap } else { 20 }
 
-        $colors = @("#28a745", "#17a2b8", "#ffc107", "#dc3545", "#6f42c1", "#fd7e14")
-        $created = @()
 
-        for ($i = 0; $i -lt $cards.Count; $i++) {
-            $card = $cards[$i]
-            $x = $startX + ($i * ($cardWidth + $gap))
-            $color = if ($card.color) { $card.color } else { $colors[$i % $colors.Count] }
-            $shape = $slide.Shapes.AddShape(5, $x, $startY, $cardWidth, $cardHeight)
-            $colorValue = Convert-HexColorToRgbInt([string]$color)
-            if ($null -ne $colorValue) { $shape.Fill.Solid(); $shape.Fill.ForeColor.RGB = $colorValue }
-            $shape.Line.Visible = $false
-            $shape.Shadow.Visible = $true
-            $shape.Shadow.Blur = 10
-            $shape.Shadow.OffsetX = 3
-            $shape.Shadow.OffsetY = 3
-            $shape.Shadow.Transparency = 0.6
-            $title = if ($card.title) { $card.title } else { "" }
-            $value = if ($card.value) { $card.value } else { "" }
-            $shape.TextFrame.TextRange.Text = ($title + "`n" + $value)
-            $shape.TextFrame.TextRange.Font.Color.RGB = 16777215
-            $shape.TextFrame.TextRange.Font.Size = 14
-            $shape.TextFrame.TextRange.Font.Bold = $true
-            $shape.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-            $created += $shape.Name
-        }
 
-        Output-Json @{ success = $true; data = @{ count = $created.Count; cards = $created } }
-    }
 
-    "createStyledTable" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
 
-        $rows = if ($p.rows) { $p.rows } else { 5 }
-        $cols = if ($p.cols) { $p.cols } else { 4 }
-        $left = if ($p.left) { $p.left } else { 50 }
-        $top = if ($p.top) { $p.top } else { 150 }
-        $width = if ($p.width) { $p.width } else { 620 }
-        $height = if ($p.height) { $p.height } else { 200 }
 
-        $tableShape = $slide.Shapes.AddTable($rows, $cols, $left, $top, $width, $height)
-        $table = $tableShape.Table
 
-        $styleKey = if ($p.style) { $p.style } else { "business" }
-        $styles = @{
-            business = @{ header = "#1a365d"; headerText = "#ffffff"; oddRow = "#f8f9fa"; evenRow = "#ffffff" }
-            tech = @{ header = "#0d47a1"; headerText = "#ffffff"; oddRow = "#e3f2fd"; evenRow = "#ffffff" }
-            elegant = @{ header = "#37474f"; headerText = "#ffffff"; oddRow = "#eceff1"; evenRow = "#ffffff" }
-        }
-        $style = $styles[$styleKey]
-        if ($null -eq $style) { $style = $styles["business"] }
 
-        for ($c = 1; $c -le $cols; $c++) {
-            $headerCell = $table.Cell(1, $c)
-            $headerColor = Convert-HexColorToRgbInt([string]$style.header)
-            if ($null -ne $headerColor) { $headerCell.Shape.Fill.Solid(); $headerCell.Shape.Fill.ForeColor.RGB = $headerColor }
-            $headerTextColor = Convert-HexColorToRgbInt([string]$style.headerText)
-            if ($null -ne $headerTextColor) { $headerCell.Shape.TextFrame.TextRange.Font.Color.RGB = $headerTextColor }
-            $headerCell.Shape.TextFrame.TextRange.Font.Bold = $true
-            $headerCell.Shape.TextFrame.TextRange.Font.Size = 12
-        }
 
-        for ($r = 2; $r -le $rows; $r++) {
-            $rowColor = if ($r % 2 -eq 0) { $style.evenRow } else { $style.oddRow }
-            $rowColorValue = Convert-HexColorToRgbInt([string]$rowColor)
-            for ($c = 1; $c -le $cols; $c++) {
-                $cell = $table.Cell($r, $c)
-                if ($null -ne $rowColorValue) { $cell.Shape.Fill.Solid(); $cell.Shape.Fill.ForeColor.RGB = $rowColorValue }
-                $cell.Shape.TextFrame.TextRange.Font.Size = 11
-            }
-        }
 
-        if ($p.data) {
-            for ($r = 0; $r -lt $p.data.Count; $r++) {
-                $rowData = $p.data[$r]
-                for ($c = 0; $c -lt $rowData.Count; $c++) {
-                    if (($r + 1) -le $rows -and ($c + 1) -le $cols) {
-                        $table.Cell($r + 1, $c + 1).Shape.TextFrame.TextRange.Text = [string]$rowData[$c]
-                    }
-                }
-            }
-        }
-
-        Output-Json @{ success = $true; data = @{ name = $tableShape.Name; rows = $rows; cols = $cols } }
-    }
-
-    "addTitleDecoration" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        # style was advertised but never read: every decoration came out as the same underline.
-        $style = if ($null -ne $p.style) { [string]$p.style } else { "underline" }
-        $left = if ($null -ne $p.left) { $p.left } else { 50 }
-        $top = if ($null -ne $p.top) { $p.top } else { 130 }
-        $width = if ($null -ne $p.width) { $p.width } else { 200 }
-        $height = if ($null -ne $p.height) { $p.height } else { 5 }
-        switch ($style) {
-            "underline" { }
-            "block" { $top = $top - 30; $height = 40 }
-            "sidebar" { $width = 6; $height = 60; $top = $top - 20 }
-            "bracket" { }
-            "gradient_bar" { $height = 8 }
-            default { Output-Json @{ success = $false; error = ("unknown title decoration '" + $style + "'; use underline/block/sidebar/bracket/gradient_bar") }; return }
-        }
-        $colorValue = Convert-HexColorToRgbInt([string]$(if ($p.color) { $p.color } else { "#1a365d" }))
-        $bar = $slide.Shapes.AddShape(1, $left, $top, $width, $height)
-        if ($style -eq "gradient_bar") {
-            $bar.Fill.TwoColorGradient(1, 1)
-            if ($null -ne $colorValue) { $bar.Fill.ForeColor.RGB = $colorValue }
-        } elseif ($null -ne $colorValue) {
-            $bar.Fill.Solid()
-            $bar.Fill.ForeColor.RGB = $colorValue
-        }
-        $bar.Line.Visible = $false
-        if ($style -eq "bracket") {
-            $second = $slide.Shapes.AddShape(1, $left, $top + $height + 24, $width, $height)
-            if ($null -ne $colorValue) { $second.Fill.Solid(); $second.Fill.ForeColor.RGB = $colorValue }
-            $second.Line.Visible = $false
-        }
-        Output-Json @{ success = $true; data = @{ name = $bar.Name; style = $style } }
-    }
-
-    "addPageIndicator" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $total = $pres.Slides.Count
-        $current = $slideIndex
-        $text = "$current / $total"
-        # position was advertised but never read; it picks the corner when left/top are absent.
-        $position = if ($null -ne $p.position) { [string]$p.position } else { "bottom-right" }
-        $defaultLeft = if ($position -eq "bottom-left") { 40 } elseif ($position -eq "bottom-center") { 440 } elseif ($position -eq "bottom-right") { 880 } else { Output-Json @{ success = $false; error = ("unknown indicator position '" + $position + "'") }; return }
-        $left = if ($null -ne $p.left) { $p.left } else { $defaultLeft }
-        $top = if ($null -ne $p.top) { $p.top } else { 500 }
-        $box = $slide.Shapes.AddTextbox(1, $left, $top, 80, 30)
-        $box.TextFrame.TextRange.Text = $text
-        $box.TextFrame.TextRange.Font.Size = 12
-        $box.TextFrame.TextRange.Font.Color.RGB = if ($p.dark) { 0 } else { 16777215 }
-        $box.TextFrame.TextRange.ParagraphFormat.Alignment = 3
-        Output-Json @{ success = $true; data = @{ name = $box.Name; page = $text } }
-    }
-
-    "beautifyAllSlides" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $schemeKey = if ($p.style) { $p.style } else { "business" }
-        $schemes = @{ business = @{ title = 0x2F5496; body = 0x333333 }; tech = @{ title = 0x00B0F0; body = 0x404040 }; creative = @{ title = 0xFF6B6B; body = 0x4A4A4A }; minimal = @{ title = 0x000000; body = 0x666666 } }
-        $scheme = $schemes[$schemeKey]
-        if ($null -eq $scheme) { $scheme = $schemes["business"] }
-        $count = 0
-        for ($i = 1; $i -le $pres.Slides.Count; $i++) {
-            $slide = $pres.Slides.Item($i)
-            for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
-                $shape = $slide.Shapes.Item($j)
-                try {
-                    if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
-                        $textRange = $shape.TextFrame.TextRange
-                        if ($textRange.Font.Size -ge 24) { $textRange.Font.Color.RGB = $scheme.title } else { $textRange.Font.Color.RGB = $scheme.body }
-                        $count++
-                    }
-                } catch { Add-WpsWarning $_.Exception.Message }
-            }
-        }
-        Output-Json @{ success = $true; data = @{ style = $schemeKey; count = $count } }
-    }
-
-    "createProgressBar" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $left = if ($p.left) { $p.left } else { 100 }
-        $top = if ($p.top) { $p.top } else { 300 }
-        $width = if ($p.width) { $p.width } else { 400 }
-        $height = if ($p.height) { $p.height } else { 30 }
-        $progress = if ($null -ne $p.progress) { [double]$p.progress } else { 0.5 }
-        if ($progress -lt 0) { $progress = 0 }
-        if ($progress -gt 1) { $progress = 1 }
-        $label = if ($p.label) { $p.label } else { "" }
-
-        $bgBar = $slide.Shapes.AddShape(5, $left, $top, $width, $height)
-        $bgColor = Convert-HexColorToRgbInt([string]$(if ($p.bgColor) { $p.bgColor } else { "#e0e0e0" }))
-        if ($null -ne $bgColor) { $bgBar.Fill.Solid(); $bgBar.Fill.ForeColor.RGB = $bgColor }
-        $bgBar.Line.Visible = $false
-
-        $progressWidth = $width * $progress
-        $progressBar = $slide.Shapes.AddShape(5, $left, $top, $progressWidth, $height)
-        $colorValue = Convert-HexColorToRgbInt([string]$(if ($p.color) { $p.color } else { "#28a745" }))
-        if ($null -ne $colorValue) { $progressBar.Fill.Solid(); $progressBar.Fill.ForeColor.RGB = $colorValue }
-        $progressBar.Line.Visible = $false
-
-        $percentText = $slide.Shapes.AddTextbox(1, $left + $width + 10, $top, 60, $height)
-        $percentText.TextFrame.TextRange.Text = "{0}%" -f ([Math]::Round($progress * 100))
-        $percentText.TextFrame.TextRange.Font.Size = 14
-        $percentText.TextFrame.TextRange.Font.Bold = $true
-
-        if ($label) {
-            $labelBox = $slide.Shapes.AddTextbox(1, $left, $top - 25, $width, 20)
-            $labelBox.TextFrame.TextRange.Text = $label
-            $labelBox.TextFrame.TextRange.Font.Size = 12
-        }
-
-        Output-Json @{ success = $true; data = @{ bgBar = $bgBar.Name; progressBar = $progressBar.Name; progress = $progress } }
-    }
-
-    "createGauge" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $centerX = if ($p.centerX) { $p.centerX } else { 360 }
-        $centerY = if ($p.centerY) { $p.centerY } else { 300 }
-        $radius = if ($p.radius) { $p.radius } else { 100 }
-        # value is the reading and max is the top of the scale; the gauge draws the fraction.
-        $rawValue = if ($null -ne $p.value) { [double]$p.value } else { 50 }
-        $maxValue = if ($null -ne $p.max) { [double]$p.max } else { 100 }
-        if ($maxValue -le 0) { Output-Json @{ success = $false; error = "max must be greater than 0" }; return }
-        $value = $rawValue / $maxValue
-        if ($value -lt 0) { $value = 0 }
-        if ($value -gt 1) { $value = 1 }
-        $title = if ($p.title) { $p.title } else { "" }
-
-        $outerCircle = $slide.Shapes.AddShape(9, $centerX - $radius, $centerY - $radius, $radius * 2, $radius * 2)
-        $outerColor = Convert-HexColorToRgbInt([string]"#e0e0e0")
-        if ($null -ne $outerColor) { $outerCircle.Fill.Solid(); $outerCircle.Fill.ForeColor.RGB = $outerColor }
-        $outerCircle.Line.Visible = $false
-
-        $innerRadius = $radius * 0.7
-        $innerCircle = $slide.Shapes.AddShape(9, $centerX - $innerRadius, $centerY - $innerRadius, $innerRadius * 2, $innerRadius * 2)
-        $innerColor = Convert-HexColorToRgbInt([string]"#ffffff")
-        if ($null -ne $innerColor) { $innerCircle.Fill.Solid(); $innerCircle.Fill.ForeColor.RGB = $innerColor }
-        $innerCircle.Line.Visible = $false
-
-        $valueText = $slide.Shapes.AddTextbox(1, $centerX - 40, $centerY - 20, 80, 40)
-        $valueText.TextFrame.TextRange.Text = "{0}%" -f ([Math]::Round($value * 100))
-        $valueText.TextFrame.TextRange.Font.Size = 24
-        $valueText.TextFrame.TextRange.Font.Bold = $true
-        $valueText.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-
-        if ($title) {
-            $titleBox = $slide.Shapes.AddTextbox(1, $centerX - 60, $centerY + $radius + 10, 120, 25)
-            $titleBox.TextFrame.TextRange.Text = $title
-            $titleBox.TextFrame.TextRange.Font.Size = 14
-            $titleBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-        }
-
-        Output-Json @{ success = $true; data = @{ gauge = $outerCircle.Name; value = $value } }
-    }
-
-    "createMiniCharts" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $items = if ($p.items) { @($p.items) } else { @() }
-        if ($null -ne $p.data) {
-            # The tool sends sparkline-style items (label + values); this action draws one value per
-            # item, so use the latest value and derive the trend from the series.
-            $items = @()
-            foreach ($d in @($p.data)) {
-                $values = if ($null -ne $d.values) { @($d.values) } else { @() }
-                $last = if ($values.Count -gt 0) { [double]$values[$values.Count - 1] } else { 0 }
-                $first = if ($values.Count -gt 0) { [double]$values[0] } else { 0 }
-                $trend = if ($last -ge $first) { "up" } else { "down" }
-                $items += @{ label = $d.label; value = [string]$last; trend = $trend }
-            }
-        }
-        $startX = if ($p.startX) { $p.startX } else { 50 }
-        $startY = if ($p.startY) { $p.startY } else { 400 }
-        $itemWidth = if ($p.itemWidth) { $p.itemWidth } else { 100 }
-        $gap = if ($p.gap) { $p.gap } else { 30 }
-        $colors = @("#28a745", "#17a2b8", "#ffc107", "#dc3545", "#6f42c1")
-        $created = @()
-
-        for ($i = 0; $i -lt $items.Count; $i++) {
-            $item = $items[$i]
-            $x = $startX + ($i * ($itemWidth + $gap))
-            $color = if ($item.color) { $item.color } else { $colors[$i % $colors.Count] }
-            $colorValue = Convert-HexColorToRgbInt([string]$color)
-
-            $valueBox = $slide.Shapes.AddTextbox(1, $x, $startY, $itemWidth, 30)
-            $valueBox.TextFrame.TextRange.Text = if ($item.value) { $item.value } else { "0" }
-            $valueBox.TextFrame.TextRange.Font.Size = 20
-            $valueBox.TextFrame.TextRange.Font.Bold = $true
-            if ($null -ne $colorValue) { $valueBox.TextFrame.TextRange.Font.Color.RGB = $colorValue }
-
-            $labelBox = $slide.Shapes.AddTextbox(1, $x, $startY + 30, $itemWidth, 20)
-            $labelBox.TextFrame.TextRange.Text = if ($item.label) { $item.label } else { "" }
-            $labelBox.TextFrame.TextRange.Font.Size = 11
-            $labelBox.TextFrame.TextRange.Font.Color.RGB = 6710886
-
-            if ($item.trend) {
-                $trendBox = $slide.Shapes.AddTextbox(1, $x + $itemWidth - 30, $startY, 30, 20)
-                $trendBox.TextFrame.TextRange.Text = if ($item.trend -eq "up") { "↑" } else { "↓" }
-                $trendBox.TextFrame.TextRange.Font.Size = 14
-                $trendColor = if ($item.trend -eq "up") { "#28a745" } else { "#dc3545" }
-                $trendColorValue = Convert-HexColorToRgbInt([string]$trendColor)
-                if ($null -ne $trendColorValue) { $trendBox.TextFrame.TextRange.Font.Color.RGB = $trendColorValue }
-            }
-
-            $created += @{ label = $item.label; value = $item.value }
-        }
-
-        Output-Json @{ success = $true; data = @{ count = $created.Count; items = $created } }
-    }
-
-    "createDonutChart" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
-        $slide = $pres.Slides.Item($slideIndex)
-        $centerX = if ($p.centerX) { $p.centerX } else { 360 }
-        $centerY = if ($p.centerY) { $p.centerY } else { 280 }
-        $radius = if ($p.radius) { $p.radius } else { 80 }
-        $value = if ($null -ne $p.value) { [double]$p.value } else { 0.75 }
-        if ($value -gt 1) { $value = $value / 100 }
-        if ($value -lt 0) { $value = 0 }
-        if ($value -gt 1) { $value = 1 }
-        $title = if ($p.title) { $p.title } else { "" }
-        $centerText = if ($p.centerText) { [string]$p.centerText } else { "{0}%" -f ([Math]::Round($value * 100)) }
-        # Multi-slice wedges are not drawn: WPS's pie shape exposes a single adjustment, and assigning
-        # its angle hung the host. The ring shows one share; use a chart for a full distribution.
-        $outerCircle = $slide.Shapes.AddShape(9, $centerX - $radius, $centerY - $radius, $radius * 2, $radius * 2)
-        $outerColor = Convert-HexColorToRgbInt([string]$(if ($p.color) { $p.color } else { "#0d47a1" }))
-        if ($null -ne $outerColor) { $outerCircle.Fill.Solid(); $outerCircle.Fill.ForeColor.RGB = $outerColor }
-        $outerCircle.Line.Visible = $false
-        $innerRadius = $radius * 0.6
-        $innerCircle = $slide.Shapes.AddShape(9, $centerX - $innerRadius, $centerY - $innerRadius, $innerRadius * 2, $innerRadius * 2)
-        $innerColor = Convert-HexColorToRgbInt([string]"#ffffff")
-        if ($null -ne $innerColor) { $innerCircle.Fill.Solid(); $innerCircle.Fill.ForeColor.RGB = $innerColor }
-        $innerCircle.Line.Visible = $false
-        $textBox = $slide.Shapes.AddTextbox(1, $centerX - 40, $centerY - 15, 80, 30)
-        $textBox.TextFrame.TextRange.Text = $centerText
-        $textBox.TextFrame.TextRange.Font.Size = 18
-        $textBox.TextFrame.TextRange.Font.Bold = $true
-        $textBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-        if ($title) {
-            $titleBox = $slide.Shapes.AddTextbox(1, $centerX - 60, $centerY + $radius + 15, 120, 25)
-            $titleBox.TextFrame.TextRange.Text = $title
-            $titleBox.TextFrame.TextRange.Font.Size = 12
-            $titleBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-        }
-        Output-Json @{ success = $true; data = @{ donut = $outerCircle.Name; value = $value; centerText = $centerText } }
-    }
-
-    "autoLayout" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $layout = if ($p.layout) { $p.layout } else { "grid" }
-        $margin = if ($p.margin) { $p.margin } else { 50 }
-        $gap = if ($p.gap) { $p.gap } else { 20 }
-        $slideWidth = 720
-        $slideHeight = 540
-
-        $shapes = @()
-        for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
-            $s = $slide.Shapes.Item($i)
-            if ($s.Type -eq 1 -or $s.Type -eq 6 -or $s.Type -eq 17) { $shapes += $s }
-        }
-
-        if ($shapes.Count -eq 0) {
-            Output-Json @{ success = $true; data = @{ message = "没有可排列的形状"; count = 0 } }
-            break
-        }
-
-        if ($layout -eq "horizontal") {
-            $totalWidth = 0
-            foreach ($shape in $shapes) { $totalWidth += $shape.Width }
-            $availWidth = $slideWidth - 2 * $margin
-            $spacing = ($availWidth - $totalWidth) / ($shapes.Count + 1)
-            $currentX = $margin + $spacing
-            foreach ($shape in $shapes) {
-                $shape.Left = $currentX
-                $shape.Top = ($slideHeight - $shape.Height) / 2
-                $currentX += $shape.Width + $spacing
-            }
-        } elseif ($layout -eq "vertical") {
-            $currentY = $margin
-            foreach ($shape in $shapes) {
-                $shape.Left = ($slideWidth - $shape.Width) / 2
-                $shape.Top = $currentY
-                $currentY += $shape.Height + $gap
-            }
-        } else {
-            $cols = if ($p.cols) { $p.cols } else { [Math]::Ceiling([Math]::Sqrt($shapes.Count)) }
-            $rows = [Math]::Ceiling($shapes.Count / $cols)
-            $cellWidth = ($slideWidth - 2 * $margin) / $cols
-            $cellHeight = ($slideHeight - 2 * $margin) / $rows
-            for ($idx = 0; $idx -lt $shapes.Count; $idx++) {
-                $col = $idx % $cols
-                $row = [Math]::Floor($idx / $cols)
-                $shape = $shapes[$idx]
-                $shape.Left = $margin + $col * $cellWidth + ($cellWidth - $shape.Width) / 2
-                $shape.Top = $margin + $row * $cellHeight + ($cellHeight - $shape.Height) / 2
-            }
-        }
-
-        Output-Json @{ success = $true; data = @{ layout = $layout; count = $shapes.Count } }
-    }
-
-    "smartDistribute" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $direction = if ($p.direction) { $p.direction } else { "horizontal" }
-        $shapeNames = if ($p.shapes) { $p.shapes } else { @() }
-        $shapes = @()
-
-        if ($shapeNames.Count -gt 0) {
-            foreach ($name in $shapeNames) {
-                try { $shapes += $slide.Shapes.Item($name) } catch { Add-WpsWarning $_.Exception.Message }
-            }
-        } else {
-            for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
-                $s = $slide.Shapes.Item($i)
-                if ($s.Type -eq 1 -or $s.Type -eq 6 -or $s.Type -eq 17) { $shapes += $s }
-            }
-        }
-
-        if ($shapes.Count -lt 2) {
-            Output-Json @{ success = $true; data = @{ message = "需要至少2个形状"; count = $shapes.Count } }
-            break
-        }
-
-        $shapes = if ($direction -eq "horizontal") { $shapes | Sort-Object Left } else { $shapes | Sort-Object Top }
-
-        if ($direction -eq "horizontal") {
-            $minX = $shapes[0].Left
-            $maxX = $shapes[$shapes.Count - 1].Left + $shapes[$shapes.Count - 1].Width
-            $totalWidth = 0
-            foreach ($shape in $shapes) { $totalWidth += $shape.Width }
-            $spacing = ($maxX - $minX - $totalWidth) / ($shapes.Count - 1)
-            $currentX = $minX
-            foreach ($shape in $shapes) {
-                $shape.Left = $currentX
-                $currentX += $shape.Width + $spacing
-            }
-        } else {
-            $minY = $shapes[0].Top
-            $maxY = $shapes[$shapes.Count - 1].Top + $shapes[$shapes.Count - 1].Height
-            $totalHeight = 0
-            foreach ($shape in $shapes) { $totalHeight += $shape.Height }
-            $spacing = ($maxY - $minY - $totalHeight) / ($shapes.Count - 1)
-            $currentY = $minY
-            foreach ($shape in $shapes) {
-                $shape.Top = $currentY
-                $currentY += $shape.Height + $spacing
-            }
-        }
-
-        Output-Json @{ success = $true; data = @{ direction = $direction; count = $shapes.Count } }
-    }
-
-    "createGrid" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $rows = if ($p.rows) { $p.rows } else { 2 }
-        $cols = if ($p.cols) { $p.cols } else { 3 }
-        $margin = if ($p.margin) { $p.margin } else { 50 }
-        $gap = if ($p.gap) { $p.gap } else { 15 }
-        $slideWidth = 720
-        $slideHeight = 540
-
-        $cellWidth = ($slideWidth - 2 * $margin - ($cols - 1) * $gap) / $cols
-        $cellHeight = ($slideHeight - 2 * $margin - ($rows - 1) * $gap) / $rows
-        $cells = @()
-
-        for ($r = 0; $r -lt $rows; $r++) {
-            for ($c = 0; $c -lt $cols; $c++) {
-                $left = $margin + $c * ($cellWidth + $gap)
-                $top = $margin + $r * ($cellHeight + $gap)
-                $cell = $slide.Shapes.AddShape(5, $left, $top, $cellWidth, $cellHeight)
-                $cellColor = Convert-HexColorToRgbInt([string]$(if ($p.cellColor) { $p.cellColor } else { "#f8f9fa" }))
-                $borderColor = Convert-HexColorToRgbInt([string]$(if ($p.borderColor) { $p.borderColor } else { "#dee2e6" }))
-                if ($null -ne $cellColor) { $cell.Fill.Solid(); $cell.Fill.ForeColor.RGB = $cellColor }
-                if ($null -ne $borderColor) { $cell.Line.ForeColor.RGB = $borderColor }
-                $cell.Line.Weight = 1
-                $cells += $cell.Name
-            }
-        }
-
-        Output-Json @{ success = $true; data = @{ rows = $rows; cols = $cols; cells = $cells } }
-    }
 
     "addAnimationPreset" {
         $ppt = Get-WpsPpt
@@ -5555,207 +4853,8 @@ return }
         Output-Json @{ success = $true; data = @{ shape = $shape.Name; effect = $effectType } }
     }
 
-    "createFlowChart" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
 
-        $steps = if ($p.steps) { @($p.steps) } else { @() }
-        if ($null -ne $p.nodes) {
-            # The tool sends nodes with id/text/type; this action draws a linear chain.
-            $steps = @()
-            foreach ($node in @($p.nodes)) {
-                if ($node.text) { $steps += [string]$node.text } elseif ($node.id) { $steps += [string]$node.id }
-            }
-        }
-        if ($steps.Count -eq 0) { $steps = @("开始", "步骤1", "步骤2", "结束") }
-        $direction = if ($p.direction) { $p.direction } else { "horizontal" }
-        $startX = if ($p.startX) { $p.startX } else { 80 }
-        $startY = if ($p.startY) { $p.startY } else { 250 }
-        $boxWidth = if ($p.boxWidth) { $p.boxWidth } else { 100 }
-        $boxHeight = if ($p.boxHeight) { $p.boxHeight } else { 50 }
-        $gap = if ($p.gap) { $p.gap } else { 60 }
-        $colors = @{ start = "#28a745"; process = "#0d47a1"; end = "#dc3545" }
-        $shapes = @()
 
-        for ($i = 0; $i -lt $steps.Count; $i++) {
-            if ($direction -eq "horizontal") {
-                $x = $startX + $i * ($boxWidth + $gap)
-                $y = $startY
-            } else {
-                $x = $startX
-                $y = $startY + $i * ($boxHeight + $gap)
-            }
-
-            $shapeType = 5
-            $colorKey = "process"
-            if ($i -eq 0) { $shapeType = 9; $colorKey = "start" }
-            elseif ($i -eq $steps.Count - 1) { $shapeType = 9; $colorKey = "end" }
-
-            $shape = $slide.Shapes.AddShape($shapeType, $x, $y, $boxWidth, $boxHeight)
-            $colorValue = Convert-HexColorToRgbInt([string]$colors[$colorKey])
-            if ($null -ne $colorValue) { $shape.Fill.Solid(); $shape.Fill.ForeColor.RGB = $colorValue }
-            $shape.Line.Visible = $false
-            $shape.TextFrame.TextRange.Text = $steps[$i]
-            $shape.TextFrame.TextRange.Font.Color.RGB = 16777215
-            $shape.TextFrame.TextRange.Font.Size = 12
-            $shape.TextFrame.TextRange.Font.Bold = $true
-            $shape.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-            $shapes += $shape.Name
-
-            if ($i -lt $steps.Count - 1) {
-                if ($direction -eq "horizontal") {
-                    $arrowX1 = $x + $boxWidth
-                    $arrowY1 = $y + $boxHeight / 2
-                    $arrowX2 = $x + $boxWidth + $gap
-                    $arrowY2 = $arrowY1
-                } else {
-                    $arrowX1 = $x + $boxWidth / 2
-                    $arrowY1 = $y + $boxHeight
-                    $arrowX2 = $arrowX1
-                    $arrowY2 = $y + $boxHeight + $gap
-                }
-                $arrow = $slide.Shapes.AddLine($arrowX1, $arrowY1, $arrowX2, $arrowY2)
-                $arrow.Line.EndArrowheadStyle = 2
-                $arrow.Line.Weight = 2
-                $arrowColor = Convert-HexColorToRgbInt([string]"#666666")
-                if ($null -ne $arrowColor) { $arrow.Line.ForeColor.RGB = $arrowColor }
-            }
-        }
-
-        # connections were advertised; the drawing is the implicit chain, so report that instead of dropping it.
-        $requestedConnections = if ($null -ne $p.connections) { @($p.connections).Count } else { 0 }
-        Output-Json @{ success = $true; data = @{ steps = $steps.Count; shapes = $shapes; requestedConnections = $requestedConnections; connectionMode = "sequential" } }
-    }
-
-    "createOrgChart" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $nodes = if ($p.nodes) { @($p.nodes) } else { @() }
-        if ($null -ne $p.data) {
-            # The tool sends a tree (name/title/children); this action groups nodes by level.
-            $nodes = @()
-            $queue = @(@{ node = $p.data; level = 0 })
-            while ($queue.Count -gt 0) {
-                $current = $queue[0]
-                $queue = @($queue | Select-Object -Skip 1)
-                $node = $current.node
-                $label = if ($node.name) { [string]$node.name } elseif ($node.title) { [string]$node.title } else { "" }
-                $nodes += @{ name = $label; level = [int]$current.level }
-                foreach ($child in @($node.children)) { $queue += @{ node = $child; level = [int]$current.level + 1 } }
-            }
-        }
-        if ($nodes.Count -eq 0) { $nodes = @(@{ name = "CEO"; level = 0 }, @{ name = "技术总监"; level = 1 }, @{ name = "市场总监"; level = 1 }, @{ name = "财务总监"; level = 1 }) }
-        $centerX = 360
-        $startY = if ($p.startY) { $p.startY } else { 80 }
-        $boxWidth = if ($p.boxWidth) { $p.boxWidth } else { 100 }
-        $boxHeight = if ($p.boxHeight) { $p.boxHeight } else { 40 }
-        $levelGap = if ($p.levelGap) { $p.levelGap } else { 80 }
-        $levelColors = @("#1a365d", "#2d5a87", "#4a7ab0", "#6b9bd1")
-
-        $levels = @{}
-        foreach ($node in $nodes) {
-            $level = if ($node.level -ne $null) { $node.level } else { 0 }
-            if (-not $levels.ContainsKey($level)) { $levels[$level] = @() }
-            $levels[$level] += $node
-        }
-
-        $levelKeys = $levels.Keys | Sort-Object
-        $shapes = @()
-        $levelIndex = 0
-        foreach ($levelKey in $levelKeys) {
-            $levelNodes = $levels[$levelKey]
-            $levelY = $startY + $levelIndex * $levelGap
-            $totalWidth = $levelNodes.Count * $boxWidth + ($levelNodes.Count - 1) * 30
-            $startX = $centerX - $totalWidth / 2
-
-            for ($i = 0; $i -lt $levelNodes.Count; $i++) {
-                $x = $startX + $i * ($boxWidth + 30)
-                $shape = $slide.Shapes.AddShape(5, $x, $levelY, $boxWidth, $boxHeight)
-                $colorValue = Convert-HexColorToRgbInt([string]$levelColors[$levelIndex % $levelColors.Count])
-                if ($null -ne $colorValue) { $shape.Fill.Solid(); $shape.Fill.ForeColor.RGB = $colorValue }
-                $shape.Line.Visible = $false
-                $shape.TextFrame.TextRange.Text = $levelNodes[$i].name
-                $shape.TextFrame.TextRange.Font.Color.RGB = 16777215
-                $shape.TextFrame.TextRange.Font.Size = 11
-                $shape.TextFrame.TextRange.Font.Bold = $true
-                $shape.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-                $shape.Shadow.Visible = $true
-                $shape.Shadow.Blur = 5
-                $shape.Shadow.OffsetX = 2
-                $shape.Shadow.OffsetY = 2
-                $shape.Shadow.Transparency = 0.7
-                $shapes += $shape.Name
-            }
-
-            $levelIndex++
-        }
-
-        Output-Json @{ success = $true; data = @{ levels = $levelKeys.Count; totalNodes = $nodes.Count; shapes = $shapes } }
-    }
-
-    "createTimeline" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $events = if ($p.events) { $p.events } else { @(@{ date = "2020"; title = "成立" }, @{ date = "2021"; title = "融资" }, @{ date = "2022"; title = "扩张" }, @{ date = "2023"; title = "上市" }) }
-        $startX = if ($p.startX) { $p.startX } else { 80 }
-        $startY = if ($p.startY) { $p.startY } else { 280 }
-        $lineLength = if ($p.lineLength) { $p.lineLength } else { 560 }
-
-        $mainLine = $slide.Shapes.AddLine($startX, $startY, $startX + $lineLength, $startY)
-        $lineColor = Convert-HexColorToRgbInt([string]$(if ($p.lineColor) { $p.lineColor } else { "#1a365d" }))
-        if ($null -ne $lineColor) { $mainLine.Line.ForeColor.RGB = $lineColor }
-        $mainLine.Line.Weight = 3
-
-        $gap = if ($events.Count -gt 1) { $lineLength / ($events.Count - 1) } else { 0 }
-        $shapes = @()
-
-        for ($i = 0; $i -lt $events.Count; $i++) {
-            $x = $startX + ($i * $gap)
-            $above = ($i % 2 -eq 0)
-
-            $dot = $slide.Shapes.AddShape(9, $x - 8, $startY - 8, 16, 16)
-            $dotColor = Convert-HexColorToRgbInt([string]$(if ($p.dotColor) { $p.dotColor } else { "#0d47a1" }))
-            if ($null -ne $dotColor) { $dot.Fill.Solid(); $dot.Fill.ForeColor.RGB = $dotColor }
-            $dot.Line.Visible = $false
-
-            $lineY = if ($above) { $startY - 50 } else { $startY + 50 }
-            $connector = $slide.Shapes.AddLine($x, $startY, $x, $lineY)
-            $connector.Line.Weight = 2
-            $connectorColor = Convert-HexColorToRgbInt([string]"#cccccc")
-            if ($null -ne $connectorColor) { $connector.Line.ForeColor.RGB = $connectorColor }
-
-            $dateBox = $slide.Shapes.AddTextbox(1, $x - 30, $(if ($above) { $lineY - 45 } else { $lineY + 5 }), 60, 20)
-            $dateBox.TextFrame.TextRange.Text = $events[$i].date
-            $dateBox.TextFrame.TextRange.Font.Size = 12
-            $dateBox.TextFrame.TextRange.Font.Bold = $true
-            $dateBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-
-            $titleBox = $slide.Shapes.AddTextbox(1, $x - 40, $(if ($above) { $lineY - 25 } else { $lineY + 25 }), 80, 20)
-            $titleBox.TextFrame.TextRange.Text = $events[$i].title
-            $titleBox.TextFrame.TextRange.Font.Size = 10
-            $titleColor = Convert-HexColorToRgbInt([string]"#666666")
-            if ($null -ne $titleColor) { $titleBox.TextFrame.TextRange.Font.Color.RGB = $titleColor }
-            $titleBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-
-            $shapes += $dot.Name
-        }
-
-        Output-Json @{ success = $true; data = @{ events = $events.Count; shapes = $shapes } }
-    }
 
     "getSlideMaster" {
         $ppt = Get-WpsPpt
@@ -5881,39 +4980,6 @@ return }
         Output-Json @{ success = $true; data = @{ shape = $shape.Name; material = $material } }
     }
 
-    "create3DText" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-
-        $text = if ($p.text) { $p.text } else { "3D文字" }
-        $left = if ($p.left) { $p.left } else { 200 }
-        $top = if ($p.top) { $p.top } else { 200 }
-        $width = if ($p.width) { $p.width } else { 300 }
-        $height = if ($p.height) { $p.height } else { 100 }
-        $textBox = $slide.Shapes.AddTextbox(1, $left, $top, $width, $height)
-        $textBox.TextFrame.TextRange.Text = $text
-        $textBox.TextFrame.TextRange.Font.Size = if ($p.fontSize) { $p.fontSize } else { 48 }
-        $textBox.TextFrame.TextRange.Font.Bold = $true
-        $colorValue = Convert-HexColorToRgbInt([string]$(if ($p.color) { $p.color } else { "#1a365d" }))
-        if ($null -ne $colorValue) { $textBox.TextFrame.TextRange.Font.Color.RGB = $colorValue }
-        $textBox.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-
-        $textBox.ThreeD.RotationX = if ($p.rotationX -ne $null) { $p.rotationX } else { 15 }
-        $textBox.ThreeD.RotationY = if ($p.rotationY -ne $null) { $p.rotationY } else { 30 }
-        $textBox.ThreeD.Depth = if ($p.depth) { $p.depth } else { 10 }
-
-        $textBox.Shadow.Visible = $true
-        $textBox.Shadow.Blur = 8
-        $textBox.Shadow.OffsetX = 5
-        $textBox.Shadow.OffsetY = 5
-        $textBox.Shadow.Transparency = 0.5
-
-        Output-Json @{ success = $true; data = @{ name = $textBox.Name; text = $text } }
-    }
 
     "setPptChartData" {
         $ppt = Get-WpsPpt
@@ -6237,140 +5303,10 @@ return }
         Output-Json @{ success = $true; data = @{ fontName = $fontName; count = $count } }
     }
 
-    "slide.beautify" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $schemes = @{
-            business = @{ title = 0x2F5496; body = 0x333333 }
-            tech = @{ title = 0x00B0F0; body = 0x404040 }
-            creative = @{ title = 0xFF6B6B; body = 0x4A4A4A }
-            minimal = @{ title = 0x000000; body = 0x666666 }
-        }
-        $schemeKey = if ($p.style -and $p.style.colorScheme) { $p.style.colorScheme } elseif ($p.style) { $p.style } else { "business" }
-        $scheme = $schemes[$schemeKey]
-        if ($null -eq $scheme) { $scheme = $schemes["business"] }
-        $fontName = if ($p.style -and $p.style.font) { $p.style.font } else { $null }
-        $slideIndex = $p.slideIndex
-        $slides = @()
-        if ($slideIndex -eq "all") {
-            for ($i = 1; $i -le $pres.Slides.Count; $i++) { $slides += $pres.Slides.Item($i) }
-        } else {
-            $target = if ($slideIndex) { [int]$slideIndex } else { $ppt.ActiveWindow.Selection.SlideRange.SlideIndex }
-            $slides += $pres.Slides.Item($target)
-        }
-        $ops = @(
-            @{ operation = "unify_font"; count = 0 },
-            @{ operation = "apply_color_scheme"; count = 0 },
-            @{ operation = "align"; count = 0 },
-            @{ operation = "optimize_spacing"; count = 0 }
-        )
-        foreach ($slide in $slides) {
-            for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
-                $shape = $slide.Shapes.Item($j)
-                try {
-                    if ($shape.HasTextFrame -and $shape.TextFrame.HasText) {
-                        $textRange = $shape.TextFrame.TextRange
-                        if ($textRange.Font.Size -ge 24) { $textRange.Font.Color.RGB = $scheme.title }
-                        else { $textRange.Font.Color.RGB = $scheme.body }
-                        $ops[1].count++
-                        if ($fontName) { $textRange.Font.Name = $fontName; $ops[0].count++ }
-                    }
-                } catch { Add-WpsWarning $_.Exception.Message }
-            }
-        }
-        $slideIndexOut = if ($slideIndex -eq "all") { "all" } else { ($slides | Select-Object -First 1).SlideIndex }
-        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndexOut; operations = $ops } }
-    }
 
-    "set3DRotation" {
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($null -ne $p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
-        # ThreeD angles are Single; handing the binder an Int32 raised "invalid cast".
-        $x = if ($null -ne $p.rotationX) { [single]$p.rotationX } else { 0 }
-        $y = if ($null -ne $p.rotationY) { [single]$p.rotationY } else { 0 }
-        $z = if ($null -ne $p.rotationZ) { [single]$p.rotationZ } else { 0 }
-        if ($null -ne $p.preset) {
-            $presets = @{ isometric = @{ x = 45; y = 45; z = 0 }; perspective = @{ x = 30; y = 30; z = 0 }; oblique = @{ x = 20; y = 60; z = 0 }; tiltLeft = @{ x = 0; y = -30; z = 0 }; tiltRight = @{ x = 0; y = 30; z = 0 } }
-            $preset = $presets[[string]$p.preset]
-            if ($null -eq $preset) { Output-Json @{ success = $false; error = ("unknown 3D preset '" + $p.preset + "'; use isometric/perspective/oblique/tiltLeft/tiltRight") }; return }
-            $x = [single]$preset.x; $y = [single]$preset.y; $z = [single]$preset.z
-        }
-        Set-ComValue $shape.ThreeD "RotationX" $x
-        Set-ComValue $shape.ThreeD "RotationY" $y
-        Set-ComValue $shape.ThreeD "RotationZ" $z
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; rotationX = $x; rotationY = $y; rotationZ = $z } }
-    }
 
-    "set3DDepth" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } elseif ($p.shapeIndex) { [int]$p.shapeIndex } else { 1 }))
-        $depth = if ($null -ne $p.depth) { [double]$p.depth } else { 20 }
-        $shape.ThreeD.Depth = $depth
-        if ($p.depthColor) {
-            $dc = Convert-HexColorToRgbInt([string]$p.depthColor)
-            if ($null -ne $dc) { $shape.ThreeD.ExtrusionColor.RGB = $dc }
-        }
-        if ($p.lighting) {
-            $lightingMap = @{ bright = 1; normal = 2; dim = 3; flat = 4 }
-            $lv = $lightingMap[$p.lighting]
-            if ($null -ne $lv) { $shape.ThreeD.PresetLighting = $lv }
-        }
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; depth = $depth } }
-    }
 
-    "set3DMaterial" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } elseif ($p.shapeIndex) { [int]$p.shapeIndex } else { 1 }))
-        $material = if ($p.material) { $p.material } else { "plastic" }
-        $materialMap = @{ matte = 1; plastic = 2; metal = 3; wireFrame = 4; glass = 5 }
-        $mv = $materialMap[$material]
-        if ($null -eq $mv) { $mv = 2 }
-        $shape.ThreeD.PresetMaterial = $mv
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; material = $material } }
-    }
 
-    "create3DText" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $text = if ($p.text) { $p.text } else { "3D文字" }
-        $left = if ($null -ne $p.left) { $p.left } else { 200 }
-        $top = if ($null -ne $p.top) { $p.top } else { 200 }
-        $width = if ($null -ne $p.width) { $p.width } else { 300 }
-        $height = if ($null -ne $p.height) { $p.height } else { 100 }
-        $tb = $slide.Shapes.AddTextbox(1, $left, $top, $width, $height)
-        $tb.TextFrame.TextRange.Text = $text
-        $tb.TextFrame.TextRange.Font.Size = if ($p.fontSize) { $p.fontSize } else { 36 }
-        $tb.TextFrame.TextRange.Font.Bold = $true
-        if ($p.fontColor) {
-            $fc = Convert-HexColorToRgbInt([string]$p.fontColor)
-            if ($null -ne $fc) { $tb.TextFrame.TextRange.Font.Color.RGB = $fc }
-        }
-        $tb.ThreeD.Depth = if ($null -ne $p.depth) { $p.depth } else { 20 }
-        $tb.ThreeD.RotationX = if ($null -ne $p.rotationX) { $p.rotationX } else { 30 }
-        $tb.ThreeD.RotationY = if ($null -ne $p.rotationY) { $p.rotationY } else { 30 }
-        $tb.ThreeD.PresetMaterial = 2
-        Output-Json @{ success = $true; data = @{ shape = $tb.Name; text = $text } }
-    }
 
     "beautifySlide" {
         $ppt = Get-WpsPpt

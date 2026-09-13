@@ -14,7 +14,7 @@
  * - wps_ppt_align_objects: 对齐幻灯片中的对象
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.slideTools = exports.alignObjectsHandler = exports.alignObjectsDefinition = exports.setFontColorHandler = exports.setFontColorDefinition = exports.unifyFontHandler = exports.unifyFontDefinition = exports.beautifyHandler = exports.beautifyDefinition = exports.addSlideHandler = exports.addSlideDefinition = void 0;
+exports.slideTools = exports.setFontColorHandler = exports.setFontColorDefinition = exports.unifyFontHandler = exports.unifyFontDefinition = exports.beautifyHandler = exports.beautifyDefinition = exports.addSlideHandler = exports.addSlideDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -372,91 +372,6 @@ const setFontColorHandler = async (args) => {
 };
 exports.setFontColorHandler = setFontColorHandler;
 /**
- * 对齐幻灯片中的对象
- * 支持多种对齐方式
- */
-exports.alignObjectsDefinition = {
-    name: 'wps_ppt_align_objects',
-    description: `对齐幻灯片中的对象。
-
-支持的对齐方式：
-- left: 左对齐
-- center: 水平居中
-- right: 右对齐
-- top: 顶部对齐
-- middle: 垂直居中
-- bottom: 底部对齐
-- distribute_h: 水平等距分布
-- distribute_v: 垂直等距分布
-
-使用场景：
-- "把这些元素居中对齐"
-- "让所有对象左对齐"
-- "等距分布这些形状"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            alignment: {
-                type: 'string',
-                description: '对齐方式',
-                enum: ['left', 'center', 'right', 'top', 'middle', 'bottom', 'distribute_h', 'distribute_v'],
-            },
-        },
-        required: ['slideIndex', 'alignment'],
-    },
-};
-const alignObjectsHandler = async (args) => {
-    const { slideIndex, alignment } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('alignShapes', { slideIndex, alignment }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            const alignName = {
-                left: '左对齐',
-                center: '水平居中',
-                right: '右对齐',
-                top: '顶部对齐',
-                middle: '垂直居中',
-                bottom: '底部对齐',
-                distribute_h: '水平等距分布',
-                distribute_v: '垂直等距分布',
-            };
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `对象对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}${response.data?.count ? `\n处理对象: ${response.data.count} 个` : ''}`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `对齐对象失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `对齐对象出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.alignObjectsHandler = alignObjectsHandler;
-/**
  * 导出所有幻灯片相关的Tools
  */
 exports.slideTools = [
@@ -464,7 +379,6 @@ exports.slideTools = [
     { definition: exports.beautifyDefinition, handler: exports.beautifyHandler },
     { definition: exports.unifyFontDefinition, handler: exports.unifyFontHandler },
     { definition: exports.setFontColorDefinition, handler: exports.setFontColorHandler },
-    { definition: exports.alignObjectsDefinition, handler: exports.alignObjectsHandler },
 ];
 exports.default = exports.slideTools;
 //# sourceMappingURL=slide.js.map

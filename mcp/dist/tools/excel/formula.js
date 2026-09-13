@@ -12,7 +12,7 @@
  * - wps_excel_diagnose_formula: 诊断公式错误，分析原因并提供修复建议
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formulaTools = exports.zoomHandler = exports.zoomDefinition = exports.setPrintAreaHandler = exports.setPrintAreaDefinition = exports.evaluateFormulaHandler = exports.evaluateFormulaDefinition = exports.diagnoseFormulaHandler = exports.diagnoseFormulaDefinition = exports.generateFormulaHandler = exports.generateFormulaDefinition = exports.setFormulaHandler = exports.setFormulaDefinition = void 0;
+exports.formulaTools = exports.setPrintAreaHandler = exports.setPrintAreaDefinition = exports.evaluateFormulaHandler = exports.evaluateFormulaDefinition = exports.diagnoseFormulaHandler = exports.diagnoseFormulaDefinition = exports.generateFormulaHandler = exports.generateFormulaDefinition = exports.setFormulaHandler = exports.setFormulaDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -332,29 +332,12 @@ const setPrintAreaHandler = async (args) => {
     return { id: (0, uuid_1.v4)(), success: response.success, content: [{ type: "text", text: response.success ? "打印区域已设置" : "设置失败" }] };
 };
 exports.setPrintAreaHandler = setPrintAreaHandler;
-exports.zoomDefinition = {
-    name: 'wps_excel_zoom',
-    description: '设置工作表缩放比例',
-    category: tools_1.ToolCategory.SPREADSHEET,
-    inputSchema: {
-        type: 'object',
-        properties: { percent: { type: 'number', description: '缩放百分比，如 100' } },
-        required: ['percent'],
-    },
-};
-const zoomHandler = async (args) => {
-    const response = await wps_client_1.wpsClient.executeMethod('setZoom', args, wps_1.WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
-    );
-    return { id: (0, uuid_1.v4)(), success: response.success, content: [{ type: "text", text: response.success ? "缩放已设置" : "设置失败" }] };
-};
-exports.zoomHandler = zoomHandler;
 exports.formulaTools = [
     { definition: exports.setFormulaDefinition, handler: exports.setFormulaHandler },
     { definition: exports.generateFormulaDefinition, handler: exports.generateFormulaHandler },
     { definition: exports.diagnoseFormulaDefinition, handler: exports.diagnoseFormulaHandler },
     { definition: exports.evaluateFormulaDefinition, handler: exports.evaluateFormulaHandler },
     { definition: exports.setPrintAreaDefinition, handler: exports.setPrintAreaHandler },
-    { definition: exports.zoomDefinition, handler: exports.zoomHandler },
 ];
 exports.default = exports.formulaTools;
 //# sourceMappingURL=formula.js.map

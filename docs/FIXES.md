@@ -713,6 +713,42 @@ tsc 构建 + `mcp/dist` 漂移检查、宿主生成器 + `host/wps-actions.ps1` 
 实测：workflow 的每一条命令都在本机按同样顺序干跑过一遍，**11 步 0 失败**、三处漂移检查全干净；
 `npm ci --dry-run` 通过（锁文件与 package.json 一致），workflow 的 YAML 也过了解析器。
 
+### 32. P0 清理：删死代码、拆废弃名、恢复主题工具（已落地）
+
+按 docs/tool-roadmap.md 的 P0 执行，每一步都可复跑。
+
+**P0-1 删 11 个 builtin**（保留 `wps_execute_method` 逃生舱）：6 个与 pro 工具重复、`wps_check_connection`、
+以及 4 个没人用的缓存工具。顺带删掉 `ToolRegistry.dataCache`——**tsc 的 noUnusedLocals 当场抓到了这个残留**，
+构建再次充当清理的校验器。
+
+**P0-2 18 个废弃名从「注册工具」改成「派发别名」**：以前它们是注销后再注册的转发器，每个仍占一个注册位
+与一份重复 schema；现在注册表里根本没有它们。`tools/call`、`wps_call`、`wps_batch` 三处派发前统一查
+`DEPRECATED_TOOLS`，解析成规范工具并改名参数；`wps_help {tool:"旧名"}` 仍回答 `deprecated: true` 与 canonical。
+旧名字照样能调（实测 `wps_excel_zoom` 转发后返回 130%）。
+
+**P0-3 删桥里的死代码**：28 个 case 条目 / 1039 行——22 个场景封装 action（KPI 卡/仪表盘/时间线/流程图/
+3D 文字/网格/自动美化等，工具早已删除）、3 个点号重复实现（`slide.add`/`slide.unifyFont`/`slide.beautify`）、
+以及 4 个重复 case 标签的**后一份**（PowerShell switch 只认第一份，后一份永不可达）。
+动刀前先 dry-run 打印每块的起止行与首末行，确认无重叠、且每个名字在桥里只出现在自己的标签处；
+删完由生成器验证解析与数量（switch_cases 259 → 231）。
+
+**P0-4 恢复 `wps_ppt_set_slide_theme`**：FIXES 第 1 条把它列为已实现，第 22 条的场景清理又把它当「美化」
+删掉了——文档与现实打架。D3 决定保留「主题」，所以恢复工具，并把 schema 写准：`theme` 是**模板文件路径**
+（.thmx/.potx/.pptx，必须存在），不再沿用上游那句误导的「主题名称」。
+
+**踩到并修掉的一个坑**：我按「名字出现在重复 case 标签里」就顺手删了 `set3DRotation` 的**容器表**条目，
+但那个 action 是活的（`wps_ppt_set_3d_rotation` 发的是嵌套 `rotation` 对象）——表项一删，
+`ppt-contract-fixes` 的 3D 旋转用例立刻变红，参数契约 A 类也从 0 变 1。教训：
+**重复标签只说明有一份是死的，不说明整个 action 是死的**；删表项要看「还有没有工具在驱动这个 action」，
+而不是看名字。
+
+**回归**：310 项测试 + verify 23 项 + 一键 e2e + CI 全绿；参数契约 197 对、A/B/C/D 均为 0（UNPARSED 9 → 6，
+少掉的正是已删的废弃 handler）；注册 209（广告 44 / 隐藏 165 / 别名 18）。
+
+**顺带**：生成器别名表 20 → 17、容器表 13 → 12；`skills/*/reference.md` 全部重生成；
+`mcp/src/tools/index.ts` 的头部枚举（长期过期、写的是 235 个工具与 12 个内置）改成指针——
+清单本来就该由生成物承担。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

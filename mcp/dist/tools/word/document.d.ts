@@ -50,11 +50,6 @@ export declare const insertHeaderHandler: ToolHandler;
 export declare const insertFooterDefinition: ToolDefinition;
 export declare const insertFooterHandler: ToolHandler;
 /**
- * 自动生成文档目录
- */
-export declare const generateDocTocDefinition: ToolDefinition;
-export declare const generateDocTocHandler: ToolHandler;
-/**
  * 插入分节符
  */
 export declare const insertSectionBreakDefinition: ToolDefinition;

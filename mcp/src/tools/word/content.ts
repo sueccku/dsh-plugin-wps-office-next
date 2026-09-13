@@ -569,40 +569,7 @@ export const insertPageBreakHandler: ToolHandler = async (
   }
 };
 
-export const setFontStyleDefinition: ToolDefinition = {
-  name: 'wps_word_set_font_style',
-  description: '设置选中文字的字体样式属性',
-  category: ToolCategory.DOCUMENT,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      fontName: { type: 'string', description: '字体名称' },
-      fontSize: { type: 'number', description: '字号' },
-      bold: { type: 'boolean', description: '是否加粗' },
-      italic: { type: 'boolean', description: '是否斜体' },
-    },
-    required: [],
-  },
-};
 
-export const setFontStyleHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  try {
-    const response = await wpsClient.executeMethod<{ success: boolean; message: string }>(
-      'setFont',
-      args,
-      WpsAppType.WRITER
-    );
-    return {
-      id: uuidv4(),
-      success: response.success,
-      content: [{ type: 'text', text: response.success ? '字体已设置' : (response.data as any)?.message || '设置失败' }],
-    };
-  } catch (e: any) {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置字体出错: ${e.message}` }], error: e.message };
-  }
-};
 
 /**
  * 插入批注到文档选中内容
@@ -995,7 +962,6 @@ export const contentTools: RegisteredTool[] = [
   { definition: getActiveDocumentDefinition, handler: getActiveDocumentHandler },
   { definition: insertImageDefinition, handler: insertImageHandler },
   { definition: insertPageBreakDefinition, handler: insertPageBreakHandler },
-  { definition: setFontStyleDefinition, handler: setFontStyleHandler },
   { definition: insertCommentDefinition, handler: insertCommentHandler },
   { definition: setTextColorDefinition, handler: setTextColorHandler },
   { definition: getParagraphsDefinition, handler: getParagraphsHandler },

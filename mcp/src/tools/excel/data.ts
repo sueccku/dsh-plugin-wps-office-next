@@ -502,43 +502,7 @@ export const findReplaceHandler: ToolHandler = async (
   }
 };
 
-/**
- * 插入行
- */
-export const insertRowDefinition: ToolDefinition = {
-  name: 'wps_excel_insert_row',
-  description: '在Excel中插入行。',
-  category: ToolCategory.SPREADSHEET,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      row: { type: 'number', description: '在第几行前插入（从1开始）' },
-      count: { type: 'number', description: '插入行数，默认1' },
-    },
-    required: ['row'],
-  },
-};
 
-export const insertRowHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { row, count } = args as { row: number; count?: number };
-  const insertCount = count || 1;
-  try {
-    const response = await wpsClient.executeMethod<{ message: string }>(
-      'insertRows',
-      { row, count: insertCount },
-      WpsAppType.SPREADSHEET
-    );
-    if (!response.success) {
-      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入行失败: ${response.error}` }], error: response.error };
-    }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `插入行完成！在第${row}行前插入了${insertCount}行` }] };
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入行出错: ${errMsg}` }], error: errMsg };
-  }
-};
 
 /**
  * 给单元格添加批注
@@ -739,7 +703,6 @@ export const dataTools: RegisteredTool[] = [
   { definition: removeDuplicatesDefinition, handler: removeDuplicatesHandler },
   { definition: sortRangeDefinition, handler: sortRangeHandler },
   { definition: findReplaceDefinition, handler: findReplaceHandler },
-  { definition: insertRowDefinition, handler: insertRowHandler },
   { definition: addCommentDefinition, handler: addCommentHandler },
   { definition: protectSheetDefinition, handler: protectSheetHandler },
   { definition: setConditionalFormatDefinition, handler: setConditionalFormatHandler },

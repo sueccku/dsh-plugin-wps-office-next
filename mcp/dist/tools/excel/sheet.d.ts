@@ -65,30 +65,10 @@ export declare const moveSheetHandler: ToolHandler;
 export declare const getSelectionDefinition: ToolDefinition;
 export declare const getSelectionHandler: ToolHandler;
 /**
- * 删除指定行
- */
-export declare const deleteRowDefinition: ToolDefinition;
-export declare const deleteRowHandler: ToolHandler;
-/**
- * 插入列
- */
-export declare const insertColumnDefinition: ToolDefinition;
-export declare const insertColumnHandler: ToolHandler;
-/**
- * 删除指定列
- */
-export declare const deleteColumnDefinition: ToolDefinition;
-export declare const deleteColumnHandler: ToolHandler;
-/**
  * 冻结/取消冻结窗格
  */
 export declare const freezePanesDefinition: ToolDefinition;
 export declare const freezePanesHandler: ToolHandler;
-/**
- * 自动填充单元格区域
- */
-export declare const autoFillDefinition: ToolDefinition;
-export declare const autoFillHandler: ToolHandler;
 /**
  * 设置命名范围
  */

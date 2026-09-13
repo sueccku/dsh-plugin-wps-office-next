@@ -21,7 +21,7 @@
  * - wps_excel_set_zoom: 设置工作表缩放比例
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dataTools = exports.setZoomHandler = exports.setZoomDefinition = exports.protectWorkbookHandler = exports.protectWorkbookDefinition = exports.setConditionalFormatHandler = exports.setConditionalFormatDefinition = exports.protectSheetHandler = exports.protectSheetDefinition = exports.addCommentHandler = exports.addCommentDefinition = exports.insertRowHandler = exports.insertRowDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.sortRangeHandler = exports.sortRangeDefinition = exports.removeDuplicatesHandler = exports.removeDuplicatesDefinition = exports.cleanDataHandler = exports.cleanDataDefinition = exports.writeRangeHandler = exports.writeRangeDefinition = exports.readRangeHandler = exports.readRangeDefinition = void 0;
+exports.dataTools = exports.setZoomHandler = exports.setZoomDefinition = exports.protectWorkbookHandler = exports.protectWorkbookDefinition = exports.setConditionalFormatHandler = exports.setConditionalFormatDefinition = exports.protectSheetHandler = exports.protectSheetDefinition = exports.addCommentHandler = exports.addCommentDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.sortRangeHandler = exports.sortRangeDefinition = exports.removeDuplicatesHandler = exports.removeDuplicatesDefinition = exports.cleanDataHandler = exports.cleanDataDefinition = exports.writeRangeHandler = exports.writeRangeDefinition = exports.readRangeHandler = exports.readRangeDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -415,38 +415,6 @@ const findReplaceHandler = async (args) => {
 };
 exports.findReplaceHandler = findReplaceHandler;
 /**
- * 插入行
- */
-exports.insertRowDefinition = {
-    name: 'wps_excel_insert_row',
-    description: '在Excel中插入行。',
-    category: tools_1.ToolCategory.SPREADSHEET,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            row: { type: 'number', description: '在第几行前插入（从1开始）' },
-            count: { type: 'number', description: '插入行数，默认1' },
-        },
-        required: ['row'],
-    },
-};
-const insertRowHandler = async (args) => {
-    const { row, count } = args;
-    const insertCount = count || 1;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertRows', { row, count: insertCount }, wps_1.WpsAppType.SPREADSHEET);
-        if (!response.success) {
-            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `插入行失败: ${response.error}` }], error: response.error };
-        }
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `插入行完成！在第${row}行前插入了${insertCount}行` }] };
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `插入行出错: ${errMsg}` }], error: errMsg };
-    }
-};
-exports.insertRowHandler = insertRowHandler;
-/**
  * 给单元格添加批注
  */
 exports.addCommentDefinition = {
@@ -616,7 +584,6 @@ exports.dataTools = [
     { definition: exports.removeDuplicatesDefinition, handler: exports.removeDuplicatesHandler },
     { definition: exports.sortRangeDefinition, handler: exports.sortRangeHandler },
     { definition: exports.findReplaceDefinition, handler: exports.findReplaceHandler },
-    { definition: exports.insertRowDefinition, handler: exports.insertRowHandler },
     { definition: exports.addCommentDefinition, handler: exports.addCommentHandler },
     { definition: exports.protectSheetDefinition, handler: exports.protectSheetHandler },
     { definition: exports.setConditionalFormatDefinition, handler: exports.setConditionalFormatHandler },

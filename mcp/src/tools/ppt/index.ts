@@ -88,8 +88,6 @@ export {
   beautifyHandler,
   unifyFontDefinition,
   unifyFontHandler,
-  alignObjectsDefinition,
-  alignObjectsHandler,
   setFontColorDefinition,
   setFontColorHandler,
 } from './slide';
@@ -97,8 +95,6 @@ export {
 export {
   deleteSlideDefinition,
   deleteSlideHandler,
-  duplicateSlideDefinition,
-  duplicateSlideHandler,
   moveSlideDefinition,
   moveSlideHandler,
   getSlideCountDefinition,
@@ -121,24 +117,12 @@ export {
   addTextboxHandler,
   setSlideTitleDefinition,
   setSlideTitleHandler,
-  insertImageDefinition,
-  insertImageHandler,
   setShapeTextDefinition,
   setShapeTextHandler,
-  setAnimationDefinition,
-  setAnimationHandler,
-  setBackgroundDefinition,
-  setBackgroundHandler,
   setSlideSizeDefinition,
   setSlideSizeHandler,
-  addChartDefinition,
-  addChartHandler,
-  addSpeakerNotesDefinition,
-  addSpeakerNotesHandler,
   setShapeFillDefinition,
   setShapeFillHandler,
-  setTransitionDefinition,
-  setTransitionHandler,
 } from './slide-ops';
 
 export {
@@ -154,12 +138,12 @@ export {
   switchPresentationHandler,
   copySlideDefinition,
   copySlideHandler,
-  insertSlideImageDefinition,
-  insertSlideImageHandler,
   insertSlidesFromFileDefinition,
   insertSlidesFromFileHandler,
   setActiveTargetDefinition,
   setActiveTargetHandler,
+  setSlideThemeDefinition,
+  setSlideThemeHandler,
 } from './presentation';
 
 export {

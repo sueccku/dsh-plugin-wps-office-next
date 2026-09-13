@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 演示工具（96）
+## WPS 演示工具（88）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -34,6 +34,7 @@
 | wps_ppt_copy_slide | wps_call | 复制幻灯片到指定位置。 |
 | wps_ppt_insert_slides_from_file | wps_call | 从另一个 PPT 文件把整页幻灯片插入到【当前活动演示文稿】，并保留来源幻灯片的原始格式（字体/配色/版式/图片）。 |
 | wps_ppt_set_active_target | wps_call | 锁定后续所有 PPT 操作的【目标演示文稿】（按文件名）。 |
+| wps_ppt_set_slide_theme | wps_call | 把演示文稿套用为指定的主题模板（. |
 | wps_ppt_delete_textbox | wps_call | 删除幻灯片上指定的文本框。 |
 | wps_ppt_get_textboxes | wps_call | 获取幻灯片上所有文本框的列表。 |
 | wps_ppt_set_textbox_text | wps_call | 设置指定文本框的文本内容。 |
@@ -94,12 +95,3 @@
 | wps_ppt_set_table_cell_style | wps_call | 设置PPT表格中指定单元格的样式。 |
 | wps_ppt_set_table_row_style | wps_call | 设置PPT表格中指定行的样式。 |
 | wps_ppt_set_background_gradient | wps_call | 为幻灯片设置渐变色背景。 |
-| wps_ppt_add_speaker_notes | wps_call | [已废弃] 添加或追加演讲者备注到指定幻灯片。 |
-| wps_ppt_insert_slide_image | wps_call | [已废弃] 在幻灯片中插入图片。 |
-| wps_ppt_insert_image | wps_call | [已废弃] 在幻灯片中插入图片。 |
-| wps_ppt_set_animation | wps_call | [已废弃] 设置幻灯片中指定元素的动画效果。 |
-| wps_ppt_set_transition | wps_call | [已废弃] 设置幻灯片切换效果。 |
-| wps_ppt_set_background | wps_call | [已废弃] 设置幻灯片的背景颜色或背景图片。 |
-| wps_ppt_add_chart | wps_call | [已废弃] 在幻灯片中插入图表。 |
-| wps_ppt_duplicate_slide | wps_call | [已废弃] 复制指定的幻灯片，在其后插入副本。 |
-| wps_ppt_align_objects | wps_call | [已废弃] 对齐幻灯片中的对象。 |

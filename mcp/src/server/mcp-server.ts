@@ -65,9 +65,6 @@ export class WpsMcpServer {
   private readonly registry: ToolRegistry;
   private isRunning: boolean = false;
 
-  // 跨应用数据缓存 - 解决macOS WPS无法跨应用操作的P0问题
-  private static dataCache: Map<string, { data: unknown; timestamp: number; appType: string }> = new Map();
-
   // 已合并掉的重复工具数量，供 wps_status 汇报
   private deprecatedToolCount = 0;
 
@@ -132,8 +129,13 @@ export class WpsMcpServer {
 
       logger.debug('Handling tools/call request', { name, args });
 
+      // 已废弃的旧名字在派发期解析成规范工具：不再各占一个注册位与一份重复 schema
+      const aliased = this.resolveDeprecated(name, args || {});
+      const targetName = aliased ? aliased.name : name;
+      const targetArgs = aliased ? aliased.args : (args || {});
+
       // 检查Tool是否存在
-      if (!this.registry.hasTool(name)) {
+      if (!this.registry.hasTool(targetName)) {
         throw new SdkMcpError(
           McpErrorCode.MethodNotFound,
           `Unknown tool: ${name}`
@@ -142,7 +144,7 @@ export class WpsMcpServer {
 
       try {
         // 创建调用请求并执行
-        const callRequest = ToolRegistry.createRequest(name, args || {});
+        const callRequest = ToolRegistry.createRequest(targetName, targetArgs);
         const result: ToolCallResult = await this.registry.callTool(callRequest);
 
         return {
@@ -170,263 +172,13 @@ export class WpsMcpServer {
   /**
    * 注册内置Tools - 一些基础的WPS操作Tool
    */
+  /**
+   * 注册逃生舱工具。原有的 11 个 builtin 已删除（重复/缓存/连接检查），
+   * 只保留 wps_execute_method：覆盖尚未工具化时唯一的自逃生路径，文档里明确不推荐。
+   */
   registerBuiltinTools(): void {
-    logger.info('Registering built-in tools');
+    logger.info('Registering the escape-hatch built-in tool');
 
-    // 连接状态检查Tool
-    this.registry.register(
-      {
-        name: 'wps_check_connection',
-        description: '检查WPS Office连接状态',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-        category: ToolCategory.COMMON,
-      },
-      async () => {
-        const connected = await wpsClient.checkConnection();
-        const status = wpsClient.getStatus();
-
-        return {
-          id: '',
-          success: true,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                connected,
-                status,
-              }),
-            },
-          ],
-        };
-      }
-    );
-
-    // 获取当前文档信息
-    this.registry.register(
-      {
-        name: 'wps_get_active_document',
-        description: '获取当前打开的WPS文字文档信息',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-        category: ToolCategory.DOCUMENT,
-      },
-      async () => {
-        const doc = await wpsClient.getActiveDocument();
-
-        return {
-          id: '',
-          success: doc !== null,
-          content: [
-            {
-              type: 'text',
-              text: doc
-                ? JSON.stringify(doc)
-                : '没有打开的文档',
-            },
-          ],
-        };
-      }
-    );
-
-    // 在文档中插入文本
-    this.registry.register(
-      {
-        name: 'wps_insert_text',
-        description: '在当前文档中插入文本',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            text: {
-              type: 'string',
-              description: '要插入的文本内容',
-            },
-            position: {
-              type: 'number',
-              description: '插入位置（可选，不指定则在光标处插入）',
-            },
-          },
-          required: ['text'],
-        },
-        category: ToolCategory.DOCUMENT,
-      },
-      async (args) => {
-        const text = args.text as string;
-        const position = args.position as number | undefined;
-
-        const success = await wpsClient.insertText(text, position);
-
-        return {
-          id: '',
-          success,
-          content: [
-            {
-              type: 'text',
-              text: success ? '文本插入成功' : '文本插入失败',
-            },
-          ],
-        };
-      }
-    );
-
-    // 获取当前工作簿信息
-    this.registry.register(
-      {
-        name: 'wps_get_active_workbook',
-        description: '获取当前打开的WPS表格工作簿信息',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-        category: ToolCategory.SPREADSHEET,
-      },
-      async () => {
-        const workbook = await wpsClient.getActiveWorkbook();
-
-        return {
-          id: '',
-          success: workbook !== null,
-          content: [
-            {
-              type: 'text',
-              text: workbook
-                ? JSON.stringify(workbook)
-                : '没有打开的工作簿',
-            },
-          ],
-        };
-      }
-    );
-
-    // 读取单元格值
-    this.registry.register(
-      {
-        name: 'wps_get_cell_value',
-        description: '读取指定单元格的值',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            sheet: {
-              type: 'string',
-              description: '工作表名称或索引',
-            },
-            row: {
-              type: 'number',
-              description: '行号（从1开始）',
-            },
-            col: {
-              type: 'number',
-              description: '列号（从1开始）',
-            },
-          },
-          required: ['sheet', 'row', 'col'],
-        },
-        category: ToolCategory.SPREADSHEET,
-      },
-      async (args) => {
-        const sheet = args.sheet as string | number;
-        const row = args.row as number;
-        const col = args.col as number;
-
-        const value = await wpsClient.getCellValue(sheet, row, col);
-
-        return {
-          id: '',
-          success: true,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ value }),
-            },
-          ],
-        };
-      }
-    );
-
-    // 设置单元格值
-    this.registry.register(
-      {
-        name: 'wps_set_cell_value',
-        description: '设置指定单元格的值',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            sheet: {
-              type: 'string',
-              description: '工作表名称或索引',
-            },
-            row: {
-              type: 'number',
-              description: '行号（从1开始）',
-            },
-            col: {
-              type: 'number',
-              description: '列号（从1开始）',
-            },
-            value: {
-              type: 'string',
-              description: '要设置的值',
-            },
-          },
-          required: ['sheet', 'row', 'col', 'value'],
-        },
-        category: ToolCategory.SPREADSHEET,
-      },
-      async (args) => {
-        const sheet = args.sheet as string | number;
-        const row = args.row as number;
-        const col = args.col as number;
-        const value = args.value;
-
-        const success = await wpsClient.setCellValue(sheet, row, col, value);
-
-        return {
-          id: '',
-          success,
-          content: [
-            {
-              type: 'text',
-              text: success ? '单元格值设置成功' : '单元格值设置失败',
-            },
-          ],
-        };
-      }
-    );
-
-    // 获取当前演示文稿信息
-    this.registry.register(
-      {
-        name: 'wps_get_active_presentation',
-        description: '获取当前打开的WPS演示文稿信息',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-        category: ToolCategory.PRESENTATION,
-      },
-      async () => {
-        const presentation = await wpsClient.getActivePresentation();
-
-        return {
-          id: '',
-          success: presentation !== null,
-          content: [
-            {
-              type: 'text',
-              text: presentation
-                ? JSON.stringify(presentation)
-                : '没有打开的演示文稿',
-            },
-          ],
-        };
-      }
-    );
-
-    // 执行自定义WPS方法
     this.registry.register(
       {
         name: 'wps_execute_method',
@@ -475,222 +227,6 @@ export class WpsMcpServer {
         };
       }
     );
-
-    // ==================== 跨应用数据缓存工具 ====================
-    // 解决macOS WPS加载项无法跨应用操作的P0问题
-    // Excel读取数据 → 缓存到MCP Server → PPT获取缓存 → 创建演示文稿
-
-    // 缓存数据
-    this.registry.register(
-      {
-        name: 'wps_cache_data',
-        description: '缓存数据到MCP Server，用于跨应用数据传递。例如：从Excel读取数据后缓存，然后在PPT中使用。',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            key: {
-              type: 'string',
-              description: '缓存键名，用于后续获取数据',
-            },
-            data: {
-              type: 'object',
-              description: '要缓存的数据（任意JSON对象）',
-            },
-            appType: {
-              type: 'string',
-              description: '数据来源应用类型：et（表格）、wps（文字）、wpp（演示）',
-              enum: ['et', 'wps', 'wpp'],
-            },
-          },
-          required: ['key', 'data'],
-        },
-        category: ToolCategory.COMMON,
-      },
-      async (args) => {
-        const key = args.key as string;
-        const data = args.data;
-        const appType = (args.appType as string) || 'unknown';
-
-        WpsMcpServer.dataCache.set(key, {
-          data,
-          timestamp: Date.now(),
-          appType,
-        });
-
-        logger.info(`Data cached: key=${key}, appType=${appType}`);
-
-        return {
-          id: '',
-          success: true,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                key,
-                message: `数据已缓存，可在其他应用中通过 wps_get_cached_data 获取`,
-                cacheSize: WpsMcpServer.dataCache.size,
-              }),
-            },
-          ],
-        };
-      }
-    );
-
-    // 获取缓存数据
-    this.registry.register(
-      {
-        name: 'wps_get_cached_data',
-        description: '从MCP Server获取缓存的数据，用于跨应用数据传递。',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            key: {
-              type: 'string',
-              description: '缓存键名',
-            },
-          },
-          required: ['key'],
-        },
-        category: ToolCategory.COMMON,
-      },
-      async (args) => {
-        const key = args.key as string;
-        const cached = WpsMcpServer.dataCache.get(key);
-
-        if (!cached) {
-          return {
-            id: '',
-            success: false,
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: false,
-                  error: `缓存键 "${key}" 不存在`,
-                  availableKeys: Array.from(WpsMcpServer.dataCache.keys()),
-                }),
-              },
-            ],
-          };
-        }
-
-        logger.info(`Cache hit: key=${key}, age=${Date.now() - cached.timestamp}ms`);
-
-        return {
-          id: '',
-          success: true,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                key,
-                data: cached.data,
-                appType: cached.appType,
-                cachedAt: new Date(cached.timestamp).toISOString(),
-              }),
-            },
-          ],
-        };
-      }
-    );
-
-    // 列出所有缓存
-    this.registry.register(
-      {
-        name: 'wps_list_cache',
-        description: '列出MCP Server中所有缓存的数据键名',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-        category: ToolCategory.COMMON,
-      },
-      async () => {
-        const cacheList = Array.from(WpsMcpServer.dataCache.entries()).map(([key, value]) => ({
-          key,
-          appType: value.appType,
-          cachedAt: new Date(value.timestamp).toISOString(),
-          ageMs: Date.now() - value.timestamp,
-        }));
-
-        return {
-          id: '',
-          success: true,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                count: cacheList.length,
-                caches: cacheList,
-              }),
-            },
-          ],
-        };
-      }
-    );
-
-    // 清除缓存
-    this.registry.register(
-      {
-        name: 'wps_clear_cache',
-        description: '清除MCP Server中的缓存数据',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            key: {
-              type: 'string',
-              description: '要清除的缓存键名，不指定则清除所有缓存',
-            },
-          },
-        },
-        category: ToolCategory.COMMON,
-      },
-      async (args) => {
-        const key = args.key as string | undefined;
-
-        if (key) {
-          const deleted = WpsMcpServer.dataCache.delete(key);
-          logger.info(`Cache cleared: key=${key}, deleted=${deleted}`);
-
-          return {
-            id: '',
-            success: true,
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: true,
-                  message: deleted ? `缓存 "${key}" 已清除` : `缓存 "${key}" 不存在`,
-                }),
-              },
-            ],
-          };
-        } else {
-          const count = WpsMcpServer.dataCache.size;
-          WpsMcpServer.dataCache.clear();
-          logger.info(`All cache cleared: count=${count}`);
-
-          return {
-            id: '',
-            success: true,
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: true,
-                  message: `已清除所有缓存，共 ${count} 条`,
-                }),
-              },
-            ],
-          };
-        }
-      }
-    );
-
-    logger.info(`Registered ${this.registry.size} built-in tools`);
   }
 
   /**
@@ -713,8 +249,13 @@ export class WpsMcpServer {
       error: message,
     });
 
-    const callable = (name: string): boolean =>
-      !!name && !FACADE_TOOLS.includes(name) && this.registry.hasTool(name);
+    // 废弃名不再注册，所以要同时认规范工具与可解析的别名
+    const callable = (name: string): boolean => {
+      if (!name || FACADE_TOOLS.includes(name)) return false;
+      if (this.registry.hasTool(name)) return true;
+      const spec = DEPRECATED_TOOLS[name];
+      return !!spec && this.registry.hasTool(spec.canonical);
+    };
 
     // 状态总览
     this.registry.register(
@@ -779,20 +320,21 @@ export class WpsMcpServer {
         const discoverable = all.filter((tool) => !DEPRECATED_NAMES.has(tool.name));
         const wanted = typeof args.tool === 'string' ? args.tool.trim() : '';
         if (wanted) {
+          // 废弃名已不在注册表里，必须先查别名表，否则 wps_help {tool:"旧名"} 会变成"未找到"
+          const deprecatedSpec = DEPRECATED_TOOLS[wanted];
+          if (deprecatedSpec) {
+            const canonical = all.find((tool) => tool.name === deprecatedSpec.canonical);
+            return text({
+              name: wanted,
+              deprecated: true,
+              canonical: deprecatedSpec.canonical,
+              reason: deprecatedSpec.reason,
+              inputSchema: canonical ? canonical.inputSchema : undefined,
+            });
+          }
           const exact = all.find((tool) => tool.name === wanted);
           const found = exact || all.find((tool) => tool.name.endsWith(wanted));
           if (!found) return failure('未找到工具 ' + wanted + '，请先用 wps_help 查询目录');
-          const spec = DEPRECATED_TOOLS[found.name];
-          if (spec) {
-            const canonical = all.find((tool) => tool.name === spec.canonical);
-            return text({
-              name: found.name,
-              deprecated: true,
-              canonical: spec.canonical,
-              reason: spec.reason,
-              inputSchema: canonical ? canonical.inputSchema : found.inputSchema,
-            });
-          }
           return text({ name: found.name, description: found.description, inputSchema: found.inputSchema });
         }
 
@@ -864,9 +406,17 @@ export class WpsMcpServer {
         const name = typeof args.tool === 'string' ? args.tool.trim() : '';
         if (!name) return failure('缺少 tool 参数');
         if (FACADE_TOOLS.includes(name)) return failure('门面工具 ' + name + ' 不能通过 wps_call 调用');
-        if (!this.registry.hasTool(name)) return failure('未知工具 ' + name + '，请先用 wps_help 查询');
+        if (!this.registry.hasTool(name)) {
+          const spec = DEPRECATED_TOOLS[name];
+          if (!spec || !this.registry.hasTool(spec.canonical)) {
+            return failure('未知工具 ' + name + '，请先用 wps_help 查询');
+          }
+        }
         const inner = args.args && typeof args.args === 'object' ? (args.args as Record<string, unknown>) : {};
-        return this.registry.callTool(ToolRegistry.createRequest(name, inner));
+        const aliased = this.resolveDeprecated(name, inner);
+        return this.registry.callTool(
+          ToolRegistry.createRequest(aliased ? aliased.name : name, aliased ? aliased.args : inner)
+        );
       }
     );
 
@@ -908,7 +458,10 @@ export class WpsMcpServer {
             continue;
           }
           const inner = entry.args && typeof entry.args === 'object' ? (entry.args as Record<string, unknown>) : {};
-          const outcome = await this.registry.callTool(ToolRegistry.createRequest(tool, inner));
+          const aliased = this.resolveDeprecated(tool, inner);
+          const outcome = await this.registry.callTool(
+            ToolRegistry.createRequest(aliased ? aliased.name : tool, aliased ? aliased.args : inner)
+          );
           const blocks = Array.isArray(outcome.content) ? outcome.content : [];
           const joined = blocks
             .map((block) => (block && typeof block === 'object' && 'text' in block ? String((block as { text?: string }).text || '') : ''))
@@ -923,32 +476,31 @@ export class WpsMcpServer {
   }
 
   /**
-   * 把与规范工具完全等价的重复工具改成转发别名
-   * 旧名字仍然可用，但不再出现在 wps_help 的目录里
+   * 校验废弃别名指向的规范工具都还在，并把可解析的别名数量记下来供 wps_status 汇报。
+   * 别名不再注册成工具：旧名字在派发期解析（resolveDeprecated），既不占注册位也不重复 schema。
    */
-  applyDeprecatedTools(): void {
+  resolveDeprecatedTools(): void {
     let applied = 0;
     for (const [name, spec] of Object.entries(DEPRECATED_TOOLS)) {
-      const existing = this.registry.getTool(name);
-      if (!existing) continue;
       if (!this.registry.hasTool(spec.canonical)) {
         logger.warn('Canonical tool missing for deprecated alias', { name, canonical: spec.canonical });
         continue;
       }
-      const definition = {
-        ...existing.definition,
-        description: '[已废弃] ' + existing.definition.description + ' 请改用 ' + spec.canonical + '。',
-      };
-      this.registry.unregister(name);
-      this.registry.register(definition, async (args) => {
-        logger.warn('Deprecated tool called', { name, canonical: spec.canonical });
-        const mapped = renameArgs(args, spec.paramMap);
-        return this.registry.callTool(ToolRegistry.createRequest(spec.canonical, mapped));
-      });
       applied++;
     }
     this.deprecatedToolCount = applied;
-    logger.info('Applied deprecated tool aliases', { applied });
+    logger.info('Resolved deprecated tool aliases', { applied });
+  }
+
+  /** 废弃名 → {规范工具名, 改名后的参数}；不是废弃名、或规范工具缺失时返回 null。 */
+  private resolveDeprecated(
+    name: string,
+    args: Record<string, unknown>
+  ): { name: string; args: Record<string, unknown> } | null {
+    const spec = DEPRECATED_TOOLS[name];
+    if (!spec || !this.registry.hasTool(spec.canonical)) return null;
+    logger.warn('Deprecated tool called', { name, canonical: spec.canonical });
+    return { name: spec.canonical, args: renameArgs(args, spec.paramMap) };
   }
 
   /**
@@ -973,7 +525,7 @@ export class WpsMcpServer {
     logger.info(`Registered ${allTools.length} professional tools (Excel/Word/PPT)`);
 
     // 把完全等价的重复工具收敛到规范名
-    this.applyDeprecatedTools();
+    this.resolveDeprecatedTools();
 
     // 创建stdio传输层
     const transport = new StdioServerTransport();

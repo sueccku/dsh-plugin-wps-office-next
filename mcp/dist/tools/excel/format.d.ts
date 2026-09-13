@@ -33,8 +33,6 @@ export declare const setColumnWidthDefinition: ToolDefinition;
 export declare const setColumnWidthHandler: ToolHandler;
 export declare const setRowHeightDefinition: ToolDefinition;
 export declare const setRowHeightHandler: ToolHandler;
-export declare const hideRowDefinition: ToolDefinition;
-export declare const hideRowHandler: ToolHandler;
 export declare const setDataValidationDefinition: ToolDefinition;
 export declare const setDataValidationHandler: ToolHandler;
 export declare const excelFormatTools: RegisteredTool[];

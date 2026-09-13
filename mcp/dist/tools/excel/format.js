@@ -18,7 +18,7 @@
  * - wps_excel_set_data_validation: 设置数据验证规则
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.excelFormatTools = exports.setDataValidationHandler = exports.setDataValidationDefinition = exports.hideRowHandler = exports.hideRowDefinition = exports.setRowHeightHandler = exports.setRowHeightDefinition = exports.setColumnWidthHandler = exports.setColumnWidthDefinition = exports.unmergeCellsHandler = exports.unmergeCellsDefinition = exports.mergeCellsHandler = exports.mergeCellsDefinition = exports.setNumberFormatHandler = exports.setNumberFormatDefinition = exports.setBorderHandler = exports.setBorderDefinition = exports.setCellStyleHandler = exports.setCellStyleDefinition = exports.setCellFormatHandler = exports.setCellFormatDefinition = void 0;
+exports.excelFormatTools = exports.setDataValidationHandler = exports.setDataValidationDefinition = exports.setRowHeightHandler = exports.setRowHeightDefinition = exports.setColumnWidthHandler = exports.setColumnWidthDefinition = exports.unmergeCellsHandler = exports.unmergeCellsDefinition = exports.mergeCellsHandler = exports.mergeCellsDefinition = exports.setNumberFormatHandler = exports.setNumberFormatDefinition = exports.setBorderHandler = exports.setBorderDefinition = exports.setCellStyleHandler = exports.setCellStyleDefinition = exports.setCellFormatHandler = exports.setCellFormatDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -574,75 +574,6 @@ exports.setRowHeightHandler = setRowHeightHandler;
 // ============================================================
 // 9. wps_excel_hide_row - 隐藏/显示行
 // ============================================================
-exports.hideRowDefinition = {
-    name: 'wps_excel_hide_row',
-    description: '隐藏或显示Excel指定行。可一次操作连续多行。',
-    category: tools_1.ToolCategory.SPREADSHEET,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            row: {
-                type: 'number',
-                description: '起始行号，从1开始',
-            },
-            count: {
-                type: 'number',
-                description: '连续行数，默认1',
-            },
-            hide: {
-                type: 'boolean',
-                description: '是否隐藏，true=隐藏 false=显示，默认true',
-            },
-            sheet: {
-                type: 'string',
-                description: '工作表名称，不填则使用当前活动工作表',
-            },
-        },
-        required: ['row'],
-    },
-};
-const hideRowHandler = async (args) => {
-    const { row, count = 1, hide = true, sheet } = args;
-    if (row < 1) {
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: '行号必须大于等于1' }],
-            error: '行号无效',
-        };
-    }
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('hideRows', { row, count, hide, sheet }, wps_1.WpsAppType.SPREADSHEET);
-        if (!response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `${hide ? '隐藏' : '显示'}行失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-        return {
-            id: (0, uuid_1.v4)(),
-            success: true,
-            content: [
-                {
-                    type: 'text',
-                    text: `行${hide ? '隐藏' : '显示'}成功！\n起始行: ${row}\n行数: ${count}`,
-                },
-            ],
-        };
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `${hide ? '隐藏' : '显示'}行出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.hideRowHandler = hideRowHandler;
 // ============================================================
 // 10. wps_excel_set_data_validation - 设置数据验证规则
 // ============================================================
@@ -719,7 +650,6 @@ exports.excelFormatTools = [
     { definition: exports.unmergeCellsDefinition, handler: exports.unmergeCellsHandler },
     { definition: exports.setColumnWidthDefinition, handler: exports.setColumnWidthHandler },
     { definition: exports.setRowHeightDefinition, handler: exports.setRowHeightHandler },
-    { definition: exports.hideRowDefinition, handler: exports.hideRowHandler },
     { definition: exports.setDataValidationDefinition, handler: exports.setDataValidationHandler },
 ];
 exports.default = exports.excelFormatTools;

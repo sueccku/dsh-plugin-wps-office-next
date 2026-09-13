@@ -41,11 +41,6 @@ export declare const switchPresentationHandler: ToolHandler;
 export declare const copySlideDefinition: ToolDefinition;
 export declare const copySlideHandler: ToolHandler;
 /**
- * 在幻灯片中插入图片
- */
-export declare const insertSlideImageDefinition: ToolDefinition;
-export declare const insertSlideImageHandler: ToolHandler;
-/**
  * 从其它演示文稿导入整页幻灯片（跨PPT整合，保留来源格式）
  */
 export declare const insertSlidesFromFileDefinition: ToolDefinition;
@@ -55,6 +50,11 @@ export declare const insertSlidesFromFileHandler: ToolHandler;
  */
 export declare const setActiveTargetDefinition: ToolDefinition;
 export declare const setActiveTargetHandler: ToolHandler;
+/**
+ * 应用演示文稿主题（模板文件）
+ */
+export declare const setSlideThemeDefinition: ToolDefinition;
+export declare const setSlideThemeHandler: ToolHandler;
 /**
  * 导出所有演示文稿管理相关的Tools
  */

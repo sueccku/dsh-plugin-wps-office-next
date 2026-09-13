@@ -54,11 +54,6 @@ export declare const sortRangeHandler: ToolHandler;
 export declare const findReplaceDefinition: ToolDefinition;
 export declare const findReplaceHandler: ToolHandler;
 /**
- * 插入行
- */
-export declare const insertRowDefinition: ToolDefinition;
-export declare const insertRowHandler: ToolHandler;
-/**
  * 给单元格添加批注
  */
 export declare const addCommentDefinition: ToolDefinition;

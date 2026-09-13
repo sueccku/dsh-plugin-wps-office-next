@@ -8,15 +8,15 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 
 | metric | count |
 | --- | --- |
-| tools in the full catalog | 237 |
-| tool/action pairs checked | 211 |
+| tools in the full catalog | 209 |
+| tool/action pairs checked | 197 |
 | **A. handler sends a parameter the bridge never reads** | **0** |
 | B. schema advertises a parameter the handler never uses | 0 |
 | **C. nested object carries a property the action never reads** | **0** |
 | **D. pass-through handler advertises a parameter the bridge never reads** | **0** |
 | actions with no key table (guard skipped) | 1 |
-| handlers whose arguments are not statically readable | 9 |
-| of those, still covered by the D check below | 8 |
+| handlers whose arguments are not statically readable | 6 |
+| of those, still covered by the D check below | 5 |
 
 ## A. Sent by the tool, never read by the bridge
 
@@ -50,9 +50,6 @@ Only an entry with no action name has no coverage at all.
 | `wps_excel_text_to_columns` | argument object not statically readable |
 | `wps_excel_evaluate_formula` | argument object not statically readable |
 | `wps_excel_set_print_area` | argument object not statically readable |
-| `wps_excel_zoom` | argument object not statically readable |
-| `wps_ppt_set_background` | argument object not statically readable |
 | `wps_word_set_paragraph` | argument object not statically readable |
-| `wps_word_set_font_style` | argument object not statically readable |
 | `wps_word_set_line_spacing` | argument object not statically readable |
 | `wps_word_proofread_basic` | 0 executeMethod calls |

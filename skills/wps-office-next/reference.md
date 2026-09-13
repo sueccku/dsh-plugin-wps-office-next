@@ -26,19 +26,8 @@
 | wps_common_get_selected_text | wps_call | 获取当前文档中选中的文本内容。 |
 | wps_common_set_selected_text | wps_call | 替换当前文档中选中的文本内容。 |
 
-## 内置兼容工具（12）
+## 内置兼容工具（1）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
-| wps_check_connection | wps_call | 检查WPS Office连接状态 |
-| wps_get_active_document | wps_call | 获取当前打开的WPS文字文档信息 |
-| wps_insert_text | wps_call | 在当前文档中插入文本 |
-| wps_get_active_workbook | wps_call | 获取当前打开的WPS表格工作簿信息 |
-| wps_get_cell_value | wps_call | 读取指定单元格的值 |
-| wps_set_cell_value | wps_call | 设置指定单元格的值 |
-| wps_get_active_presentation | wps_call | 获取当前打开的WPS演示文稿信息 |
 | wps_execute_method | wps_call | 执行自定义WPS API方法 |
-| wps_cache_data | wps_call | 缓存数据到MCP Server，用于跨应用数据传递。 |
-| wps_get_cached_data | wps_call | 从MCP Server获取缓存的数据，用于跨应用数据传递。 |
-| wps_list_cache | wps_call | 列出MCP Server中所有缓存的数据键名 |
-| wps_clear_cache | wps_call | 清除MCP Server中的缓存数据 |

@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 文字工具（34）
+## WPS 文字工具（32）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -39,5 +39,3 @@
 | wps_word_get_track_changes_status | wps_call | 获取当前文档的修订模式状态。 |
 | wps_word_replace_range | wps_call | 按字符范围精确替换Word文档中的文本。 |
 | wps_word_proofread_basic | wps_call | 对中文文本进行基础校对，检测常见问题。 |
-| wps_word_generate_doc_toc | wps_call | [已废弃] 自动生成文档目录。 |
-| wps_word_set_font_style | wps_call | [已废弃] 设置选中文字的字体样式属性 请改用 wps_word_set_font。 |

@@ -25,7 +25,6 @@ export declare class WpsMcpServer {
     private readonly server;
     private readonly registry;
     private isRunning;
-    private static dataCache;
     private deprecatedToolCount;
     constructor(config?: Partial<McpServerConfig>);
     /**
@@ -35,6 +34,10 @@ export declare class WpsMcpServer {
     /**
      * 注册内置Tools - 一些基础的WPS操作Tool
      */
+    /**
+     * 注册逃生舱工具。原有的 11 个 builtin 已删除（重复/缓存/连接检查），
+     * 只保留 wps_execute_method：覆盖尚未工具化时唯一的自逃生路径，文档里明确不推荐。
+     */
     registerBuiltinTools(): void;
     /**
      * 注册门面工具 - 常驻广告的四个入口
@@ -42,10 +45,12 @@ export declare class WpsMcpServer {
      */
     registerFacadeTools(): void;
     /**
-     * 把与规范工具完全等价的重复工具改成转发别名
-     * 旧名字仍然可用，但不再出现在 wps_help 的目录里
+     * 校验废弃别名指向的规范工具都还在，并把可解析的别名数量记下来供 wps_status 汇报。
+     * 别名不再注册成工具：旧名字在派发期解析（resolveDeprecated），既不占注册位也不重复 schema。
      */
-    applyDeprecatedTools(): void;
+    resolveDeprecatedTools(): void;
+    /** 废弃名 → {规范工具名, 改名后的参数}；不是废弃名、或规范工具缺失时返回 null。 */
+    private resolveDeprecated;
     /**
      * 启动服务器
      */

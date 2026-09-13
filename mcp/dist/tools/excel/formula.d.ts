@@ -50,15 +50,6 @@ export declare const setPrintAreaHandler: (args: Record<string, unknown>) => Pro
         text: string;
     }[];
 }>;
-export declare const zoomDefinition: ToolDefinition;
-export declare const zoomHandler: (args: Record<string, unknown>) => Promise<{
-    id: string;
-    success: boolean;
-    content: {
-        type: "text";
-        text: string;
-    }[];
-}>;
 export declare const formulaTools: RegisteredTool[];
 export default formulaTools;
 //# sourceMappingURL=formula.d.ts.map

@@ -38,12 +38,6 @@ export declare const unifyFontHandler: ToolHandler;
 export declare const setFontColorDefinition: ToolDefinition;
 export declare const setFontColorHandler: ToolHandler;
 /**
- * 对齐幻灯片中的对象
- * 支持多种对齐方式
- */
-export declare const alignObjectsDefinition: ToolDefinition;
-export declare const alignObjectsHandler: ToolHandler;
-/**
  * 导出所有幻灯片相关的Tools
  */
 export declare const slideTools: RegisteredTool[];

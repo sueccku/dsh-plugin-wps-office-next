@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 表格工具（82）
+## WPS 表格工具（75）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -82,10 +82,3 @@
 | wps_excel_set_array_formula | wps_call | 为Excel指定范围设置数组公式（CSE数组公式）。 |
 | wps_excel_insert_excel_image | wps_call | 在Excel中插入图片到指定位置。 |
 | wps_excel_set_hyperlink | wps_call | 为Excel单元格设置超链接。 |
-| wps_excel_zoom | wps_call | [已废弃] 设置工作表缩放比例 请改用 wps_excel_set_zoom。 |
-| wps_excel_auto_fill | wps_call | [已废弃] 自动填充单元格区域。 |
-| wps_excel_insert_row | wps_call | [已废弃] 在Excel中插入行。 |
-| wps_excel_hide_row | wps_call | [已废弃] 隐藏或显示Excel指定行。 |
-| wps_excel_insert_column | wps_call | [已废弃] 在指定位置插入列。 |
-| wps_excel_delete_row | wps_call | [已废弃] 删除指定行。 |
-| wps_excel_delete_column | wps_call | [已废弃] 删除指定列。 |

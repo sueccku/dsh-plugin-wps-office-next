@@ -14,7 +14,7 @@
  * - wps_ppt_insert_slide_image: 在幻灯片中插入图片
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.presentationTools = exports.setActiveTargetHandler = exports.setActiveTargetDefinition = exports.insertSlidesFromFileHandler = exports.insertSlidesFromFileDefinition = exports.insertSlideImageHandler = exports.insertSlideImageDefinition = exports.copySlideHandler = exports.copySlideDefinition = exports.switchPresentationHandler = exports.switchPresentationDefinition = exports.getOpenPresentationsHandler = exports.getOpenPresentationsDefinition = exports.closePresentationHandler = exports.closePresentationDefinition = exports.openPresentationHandler = exports.openPresentationDefinition = exports.createPresentationHandler = exports.createPresentationDefinition = void 0;
+exports.presentationTools = exports.setSlideThemeHandler = exports.setSlideThemeDefinition = exports.setActiveTargetHandler = exports.setActiveTargetDefinition = exports.insertSlidesFromFileHandler = exports.insertSlidesFromFileDefinition = exports.copySlideHandler = exports.copySlideDefinition = exports.switchPresentationHandler = exports.switchPresentationDefinition = exports.getOpenPresentationsHandler = exports.getOpenPresentationsDefinition = exports.closePresentationHandler = exports.closePresentationDefinition = exports.openPresentationHandler = exports.openPresentationDefinition = exports.createPresentationHandler = exports.createPresentationDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -392,79 +392,6 @@ const copySlideHandler = async (args) => {
 };
 exports.copySlideHandler = copySlideHandler;
 /**
- * 在幻灯片中插入图片
- */
-exports.insertSlideImageDefinition = {
-    name: 'wps_ppt_insert_slide_image',
-    description: `在幻灯片中插入图片。
-
-使用场景：
-- "在第1页插入一张图片"
-- "添加图片到幻灯片"
-- "把这个图片放到PPT里"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片索引（从1开始）',
-            },
-            imagePath: {
-                type: 'string',
-                description: '图片文件的完整路径',
-            },
-            left: {
-                type: 'number',
-                description: '左边距（像素），默认100',
-            },
-            top: {
-                type: 'number',
-                description: '上边距（像素），默认100',
-            },
-        },
-        required: ['slideIndex', 'imagePath'],
-    },
-};
-const insertSlideImageHandler = async (args) => {
-    const { slideIndex, imagePath, left, top } = args;
-    try {
-        // "insertImage" is the Word action, so this used to insert the picture into the Word document
-        // instead of the slide. insertPptImage is the presentation one.
-        const response = await wps_client_1.wpsClient.executeMethod('insertPptImage', { slideIndex, path: imagePath, left, top }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success && response.data) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `图片已插入到第${slideIndex}页幻灯片！\n图片路径: ${imagePath}`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `插入图片失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `插入图片出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.insertSlideImageHandler = insertSlideImageHandler;
-/**
  * 从其它演示文稿导入整页幻灯片（跨PPT整合，保留来源格式）
  */
 exports.insertSlidesFromFileDefinition = {
@@ -610,6 +537,52 @@ const setActiveTargetHandler = async (args) => {
 };
 exports.setActiveTargetHandler = setActiveTargetHandler;
 /**
+ * 应用演示文稿主题（模板文件）
+ */
+exports.setSlideThemeDefinition = {
+    name: 'wps_ppt_set_slide_theme',
+    description: `把演示文稿套用为指定的主题模板（.thmx / .potx / .pptx）。
+
+使用场景：
+- "换成这套主题" / "套用这个模板"
+- 按公司模板统一整套演示的字体与配色
+
+注意：theme 必须是**磁盘上存在的模板文件路径**，不是"商务/简约"这类名称；
+按名称换肤请改用配色、母版与形状样式类工具逐个调整。`,
+    category: tools_1.ToolCategory.PRESENTATION,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            theme: { type: 'string', description: '模板文件路径（.thmx / .potx / .pptx），必须存在' },
+            presentationName: { type: 'string', description: '目标演示文稿名称；不填则用当前活动文稿' },
+        },
+        required: ['theme'],
+    },
+};
+const setSlideThemeHandler = async (args) => {
+    const theme = typeof args.theme === 'string' ? args.theme.trim() : '';
+    const presentationName = typeof args.presentationName === 'string' ? args.presentationName : undefined;
+    if (!theme) {
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: 'theme 不能为空：需要一个存在的模板文件路径' }], error: 'theme 为空' };
+    }
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('setSlideTheme', { theme, presentationName }, wps_1.WpsAppType.PRESENTATION);
+        if (response.success) {
+            return {
+                id: (0, uuid_1.v4)(),
+                success: true,
+                content: [{ type: 'text', text: `主题已应用: ${response.data && response.data.applied ? response.data.applied : theme}` }],
+            };
+        }
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `应用主题失败: ${response.error}` }], error: response.error };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `应用主题出错: ${errMsg}` }], error: errMsg };
+    }
+};
+exports.setSlideThemeHandler = setSlideThemeHandler;
+/**
  * 导出所有演示文稿管理相关的Tools
  */
 exports.presentationTools = [
@@ -619,9 +592,9 @@ exports.presentationTools = [
     { definition: exports.getOpenPresentationsDefinition, handler: exports.getOpenPresentationsHandler },
     { definition: exports.switchPresentationDefinition, handler: exports.switchPresentationHandler },
     { definition: exports.copySlideDefinition, handler: exports.copySlideHandler },
-    { definition: exports.insertSlideImageDefinition, handler: exports.insertSlideImageHandler },
     { definition: exports.insertSlidesFromFileDefinition, handler: exports.insertSlidesFromFileHandler },
     { definition: exports.setActiveTargetDefinition, handler: exports.setActiveTargetHandler },
+    { definition: exports.setSlideThemeDefinition, handler: exports.setSlideThemeHandler },
 ];
 exports.default = exports.presentationTools;
 //# sourceMappingURL=presentation.js.map

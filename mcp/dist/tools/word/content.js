@@ -20,7 +20,7 @@
  * - wps_word_set_text_color: 设置文字颜色
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.contentTools = exports.replaceBookmarkContentHandler = exports.replaceBookmarkContentDefinition = exports.smartFillFieldHandler = exports.smartFillFieldDefinition = exports.findInDocumentHandler = exports.findInDocumentDefinition = exports.getParagraphsHandler = exports.getParagraphsDefinition = exports.setTextColorHandler = exports.setTextColorDefinition = exports.insertCommentHandler = exports.insertCommentDefinition = exports.setFontStyleHandler = exports.setFontStyleDefinition = exports.insertPageBreakHandler = exports.insertPageBreakDefinition = exports.insertImageHandler = exports.insertImageDefinition = exports.getActiveDocumentHandler = exports.getActiveDocumentDefinition = exports.setParagraphHandler = exports.setParagraphDefinition = exports.insertTableHandler = exports.insertTableDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.insertTextHandler = exports.insertTextDefinition = void 0;
+exports.contentTools = exports.replaceBookmarkContentHandler = exports.replaceBookmarkContentDefinition = exports.smartFillFieldHandler = exports.smartFillFieldDefinition = exports.findInDocumentHandler = exports.findInDocumentDefinition = exports.getParagraphsHandler = exports.getParagraphsDefinition = exports.setTextColorHandler = exports.setTextColorDefinition = exports.insertCommentHandler = exports.insertCommentDefinition = exports.insertPageBreakHandler = exports.insertPageBreakDefinition = exports.insertImageHandler = exports.insertImageDefinition = exports.getActiveDocumentHandler = exports.getActiveDocumentDefinition = exports.setParagraphHandler = exports.setParagraphDefinition = exports.insertTableHandler = exports.insertTableDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.insertTextHandler = exports.insertTextDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -475,35 +475,6 @@ const insertPageBreakHandler = async (_args) => {
     }
 };
 exports.insertPageBreakHandler = insertPageBreakHandler;
-exports.setFontStyleDefinition = {
-    name: 'wps_word_set_font_style',
-    description: '设置选中文字的字体样式属性',
-    category: tools_1.ToolCategory.DOCUMENT,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            fontName: { type: 'string', description: '字体名称' },
-            fontSize: { type: 'number', description: '字号' },
-            bold: { type: 'boolean', description: '是否加粗' },
-            italic: { type: 'boolean', description: '是否斜体' },
-        },
-        required: [],
-    },
-};
-const setFontStyleHandler = async (args) => {
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setFont', args, wps_1.WpsAppType.WRITER);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: response.success,
-            content: [{ type: 'text', text: response.success ? '字体已设置' : response.data?.message || '设置失败' }],
-        };
-    }
-    catch (e) {
-        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `设置字体出错: ${e.message}` }], error: e.message };
-    }
-};
-exports.setFontStyleHandler = setFontStyleHandler;
 /**
  * 插入批注到文档选中内容
  */
@@ -846,7 +817,6 @@ exports.contentTools = [
     { definition: exports.getActiveDocumentDefinition, handler: exports.getActiveDocumentHandler },
     { definition: exports.insertImageDefinition, handler: exports.insertImageHandler },
     { definition: exports.insertPageBreakDefinition, handler: exports.insertPageBreakHandler },
-    { definition: exports.setFontStyleDefinition, handler: exports.setFontStyleHandler },
     { definition: exports.insertCommentDefinition, handler: exports.insertCommentHandler },
     { definition: exports.setTextColorDefinition, handler: exports.setTextColorHandler },
     { definition: exports.getParagraphsDefinition, handler: exports.getParagraphsHandler },

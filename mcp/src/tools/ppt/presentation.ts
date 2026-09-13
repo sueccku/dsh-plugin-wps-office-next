@@ -479,93 +479,7 @@ export const copySlideHandler: ToolHandler = async (
   }
 };
 
-/**
- * 在幻灯片中插入图片
- */
-export const insertSlideImageDefinition: ToolDefinition = {
-  name: 'wps_ppt_insert_slide_image',
-  description: `在幻灯片中插入图片。
 
-使用场景：
-- "在第1页插入一张图片"
-- "添加图片到幻灯片"
-- "把这个图片放到PPT里"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      slideIndex: {
-        type: 'number',
-        description: '幻灯片索引（从1开始）',
-      },
-      imagePath: {
-        type: 'string',
-        description: '图片文件的完整路径',
-      },
-      left: {
-        type: 'number',
-        description: '左边距（像素），默认100',
-      },
-      top: {
-        type: 'number',
-        description: '上边距（像素），默认100',
-      },
-    },
-    required: ['slideIndex', 'imagePath'],
-  },
-};
-
-export const insertSlideImageHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, imagePath, left, top } = args as {
-    slideIndex: number;
-    imagePath: string;
-    left?: number;
-    top?: number;
-  };
-
-  try {
-    // "insertImage" is the Word action, so this used to insert the picture into the Word document
-    // instead of the slide. insertPptImage is the presentation one.
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'insertPptImage',
-      { slideIndex, path: imagePath, left, top },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success && response.data) {
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `图片已插入到第${slideIndex}页幻灯片！\n图片路径: ${imagePath}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `插入图片失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `插入图片出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
 
 /**
  * 从其它演示文稿导入整页幻灯片（跨PPT整合，保留来源格式）
@@ -739,6 +653,58 @@ export const setActiveTargetHandler: ToolHandler = async (
 };
 
 /**
+ * 应用演示文稿主题（模板文件）
+ */
+export const setSlideThemeDefinition: ToolDefinition = {
+  name: 'wps_ppt_set_slide_theme',
+  description: `把演示文稿套用为指定的主题模板（.thmx / .potx / .pptx）。
+
+使用场景：
+- "换成这套主题" / "套用这个模板"
+- 按公司模板统一整套演示的字体与配色
+
+注意：theme 必须是**磁盘上存在的模板文件路径**，不是"商务/简约"这类名称；
+按名称换肤请改用配色、母版与形状样式类工具逐个调整。`,
+  category: ToolCategory.PRESENTATION,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      theme: { type: 'string', description: '模板文件路径（.thmx / .potx / .pptx），必须存在' },
+      presentationName: { type: 'string', description: '目标演示文稿名称；不填则用当前活动文稿' },
+    },
+    required: ['theme'],
+  },
+};
+
+export const setSlideThemeHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const theme = typeof args.theme === 'string' ? args.theme.trim() : '';
+  const presentationName = typeof args.presentationName === 'string' ? args.presentationName : undefined;
+  if (!theme) {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: 'theme 不能为空：需要一个存在的模板文件路径' }], error: 'theme 为空' };
+  }
+  try {
+    const response = await wpsClient.executeMethod<{ applied?: string }>(
+      'setSlideTheme',
+      { theme, presentationName },
+      WpsAppType.PRESENTATION
+    );
+    if (response.success) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [{ type: 'text', text: `主题已应用: ${response.data && response.data.applied ? response.data.applied : theme}` }],
+      };
+    }
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `应用主题失败: ${response.error}` }], error: response.error };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `应用主题出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
  * 导出所有演示文稿管理相关的Tools
  */
 export const presentationTools: RegisteredTool[] = [
@@ -748,9 +714,9 @@ export const presentationTools: RegisteredTool[] = [
   { definition: getOpenPresentationsDefinition, handler: getOpenPresentationsHandler },
   { definition: switchPresentationDefinition, handler: switchPresentationHandler },
   { definition: copySlideDefinition, handler: copySlideHandler },
-  { definition: insertSlideImageDefinition, handler: insertSlideImageHandler },
   { definition: insertSlidesFromFileDefinition, handler: insertSlidesFromFileHandler },
   { definition: setActiveTargetDefinition, handler: setActiveTargetHandler },
+  { definition: setSlideThemeDefinition, handler: setSlideThemeHandler },
 ];
 
 export default presentationTools;

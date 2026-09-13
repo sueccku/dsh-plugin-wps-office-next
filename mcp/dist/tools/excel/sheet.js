@@ -25,7 +25,7 @@
  * - wps_excel_auto_sum: 对指定列/行自动求和
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sheetTools = exports.autoSumHandler = exports.autoSumDefinition = exports.hideColumnHandler = exports.hideColumnDefinition = exports.setNamedRangeHandler = exports.setNamedRangeDefinition = exports.autoFillHandler = exports.autoFillDefinition = exports.freezePanesHandler = exports.freezePanesDefinition = exports.deleteColumnHandler = exports.deleteColumnDefinition = exports.insertColumnHandler = exports.insertColumnDefinition = exports.deleteRowHandler = exports.deleteRowDefinition = exports.getSelectionHandler = exports.getSelectionDefinition = exports.moveSheetHandler = exports.moveSheetDefinition = exports.switchSheetHandler = exports.switchSheetDefinition = exports.getSheetListHandler = exports.getSheetListDefinition = exports.copySheetHandler = exports.copySheetDefinition = exports.renameSheetHandler = exports.renameSheetDefinition = exports.deleteSheetHandler = exports.deleteSheetDefinition = exports.createSheetHandler = exports.createSheetDefinition = void 0;
+exports.sheetTools = exports.autoSumHandler = exports.autoSumDefinition = exports.hideColumnHandler = exports.hideColumnDefinition = exports.setNamedRangeHandler = exports.setNamedRangeDefinition = exports.freezePanesHandler = exports.freezePanesDefinition = exports.getSelectionHandler = exports.getSelectionDefinition = exports.moveSheetHandler = exports.moveSheetDefinition = exports.switchSheetHandler = exports.switchSheetDefinition = exports.getSheetListHandler = exports.getSheetListDefinition = exports.copySheetHandler = exports.copySheetDefinition = exports.renameSheetHandler = exports.renameSheetDefinition = exports.deleteSheetHandler = exports.deleteSheetDefinition = exports.createSheetHandler = exports.createSheetDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -468,174 +468,6 @@ const getSelectionHandler = async (_args) => {
 };
 exports.getSelectionHandler = getSelectionHandler;
 /**
- * 删除指定行
- */
-exports.deleteRowDefinition = {
-    name: 'wps_excel_delete_row',
-    description: '删除指定行。可指定起始行号和删除行数。',
-    category: tools_1.ToolCategory.SPREADSHEET,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            row: {
-                type: 'number',
-                description: '要删除的起始行号（从1开始）',
-            },
-            count: {
-                type: 'number',
-                description: '要删除的行数，默认1',
-            },
-        },
-        required: ['row'],
-    },
-};
-const deleteRowHandler = async (args) => {
-    const { row, count = 1 } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('deleteRows', { row, count }, wps_1.WpsAppType.SPREADSHEET);
-        if (!response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `删除行失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-        return {
-            id: (0, uuid_1.v4)(),
-            success: true,
-            content: [
-                {
-                    type: 'text',
-                    text: `已成功删除第${row}行起共${count}行`,
-                },
-            ],
-        };
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `删除行出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.deleteRowHandler = deleteRowHandler;
-/**
- * 插入列
- */
-exports.insertColumnDefinition = {
-    name: 'wps_excel_insert_column',
-    description: '在指定位置插入列。可指定起始列号和插入列数。',
-    category: tools_1.ToolCategory.SPREADSHEET,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            column: {
-                type: 'number',
-                description: '要插入的列号（从1开始）',
-            },
-            count: {
-                type: 'number',
-                description: '要插入的列数，默认1',
-            },
-        },
-        required: ['column'],
-    },
-};
-const insertColumnHandler = async (args) => {
-    const { column, count = 1 } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertColumns', { column, count }, wps_1.WpsAppType.SPREADSHEET);
-        if (!response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `插入列失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-        return {
-            id: (0, uuid_1.v4)(),
-            success: true,
-            content: [
-                {
-                    type: 'text',
-                    text: `已在第${column}列处成功插入${count}列`,
-                },
-            ],
-        };
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `插入列出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.insertColumnHandler = insertColumnHandler;
-/**
- * 删除指定列
- */
-exports.deleteColumnDefinition = {
-    name: 'wps_excel_delete_column',
-    description: '删除指定列。可指定起始列号和删除列数。',
-    category: tools_1.ToolCategory.SPREADSHEET,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            column: {
-                type: 'number',
-                description: '要删除的起始列号（从1开始）',
-            },
-            count: {
-                type: 'number',
-                description: '要删除的列数，默认1',
-            },
-        },
-        required: ['column'],
-    },
-};
-const deleteColumnHandler = async (args) => {
-    const { column, count = 1 } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('deleteColumns', { column, count }, wps_1.WpsAppType.SPREADSHEET);
-        if (!response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `删除列失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-        return {
-            id: (0, uuid_1.v4)(),
-            success: true,
-            content: [
-                {
-                    type: 'text',
-                    text: `已成功删除第${column}列起共${count}列`,
-                },
-            ],
-        };
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `删除列出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.deleteColumnHandler = deleteColumnHandler;
-/**
  * 冻结/取消冻结窗格
  */
 exports.freezePanesDefinition = {
@@ -695,62 +527,6 @@ const freezePanesHandler = async (args) => {
     }
 };
 exports.freezePanesHandler = freezePanesHandler;
-/**
- * 自动填充单元格区域
- */
-exports.autoFillDefinition = {
-    name: 'wps_excel_auto_fill',
-    description: '自动填充单元格区域。根据源区域的数据模式自动填充到目标区域。',
-    category: tools_1.ToolCategory.SPREADSHEET,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            sourceRange: {
-                type: 'string',
-                description: '源数据区域，如 "A1:A5"',
-            },
-            targetRange: {
-                type: 'string',
-                description: '目标填充区域，如 "A1:A20"',
-            },
-        },
-        required: ['sourceRange', 'targetRange'],
-    },
-};
-const autoFillHandler = async (args) => {
-    const { sourceRange, targetRange } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('fillSeries', { sourceRange, targetRange }, wps_1.WpsAppType.SPREADSHEET);
-        if (!response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `自动填充失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-        return {
-            id: (0, uuid_1.v4)(),
-            success: true,
-            content: [
-                {
-                    type: 'text',
-                    text: `自动填充成功！\n源区域: ${sourceRange}\n目标区域: ${targetRange}`,
-                },
-            ],
-        };
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `自动填充出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.autoFillHandler = autoFillHandler;
 /**
  * 设置命名范围
  */
@@ -937,11 +713,7 @@ exports.sheetTools = [
     { definition: exports.switchSheetDefinition, handler: exports.switchSheetHandler },
     { definition: exports.moveSheetDefinition, handler: exports.moveSheetHandler },
     { definition: exports.getSelectionDefinition, handler: exports.getSelectionHandler },
-    { definition: exports.deleteRowDefinition, handler: exports.deleteRowHandler },
-    { definition: exports.insertColumnDefinition, handler: exports.insertColumnHandler },
-    { definition: exports.deleteColumnDefinition, handler: exports.deleteColumnHandler },
     { definition: exports.freezePanesDefinition, handler: exports.freezePanesHandler },
-    { definition: exports.autoFillDefinition, handler: exports.autoFillHandler },
     { definition: exports.setNamedRangeDefinition, handler: exports.setNamedRangeHandler },
     { definition: exports.hideColumnDefinition, handler: exports.hideColumnHandler },
     { definition: exports.autoSumDefinition, handler: exports.autoSumHandler },

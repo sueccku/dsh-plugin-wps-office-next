@@ -390,24 +390,7 @@ export const setPrintAreaHandler = async (args: Record<string, unknown>) => {
   return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: response.success ? "打印区域已设置" : "设置失败" }] };
 };
 
-export const zoomDefinition: ToolDefinition = {
-  name: 'wps_excel_zoom',
-  description: '设置工作表缩放比例',
-  category: ToolCategory.SPREADSHEET,
-  inputSchema: {
-    type: 'object',
-    properties: { percent: { type: 'number', description: '缩放百分比，如 100' } },
-    required: ['percent'],
-  },
-};
 
-export const zoomHandler = async (args: Record<string, unknown>) => {
-  const response = await wpsClient.executeMethod<{ success: boolean }>(
-    'setZoom', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
-  );
-
-  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: response.success ? "缩放已设置" : "设置失败" }] };
-};
 
 export const formulaTools: RegisteredTool[] = [
   { definition: setFormulaDefinition, handler: setFormulaHandler },
@@ -415,7 +398,6 @@ export const formulaTools: RegisteredTool[] = [
   { definition: diagnoseFormulaDefinition, handler: diagnoseFormulaHandler },
   { definition: evaluateFormulaDefinition, handler: evaluateFormulaHandler },
   { definition: setPrintAreaDefinition, handler: setPrintAreaHandler },
-  { definition: zoomDefinition, handler: zoomHandler },
 ];
 
 export default formulaTools;
