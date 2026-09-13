@@ -1,0 +1,1047 @@
+[
+ {
+  "tool": "wps_batch",
+  "signature": "batch(calls*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_call",
+  "signature": "call(tool*, args?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_common_get_app_info",
+  "signature": "common_get_app_info()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_common_get_selected_text",
+  "signature": "common_get_selected_text()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_common_ping",
+  "signature": "common_ping()",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_common_save",
+  "signature": "common_save()",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_common_save_as",
+  "signature": "common_save_as(filePath*, format?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_common_set_selected_text",
+  "signature": "common_set_selected_text(text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_common_wire_check",
+  "signature": "common_wire_check()",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_convert_format",
+  "signature": "convert_format(targetFormat*, outputPath?, app_type?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_convert_to_pdf",
+  "signature": "convert_to_pdf(outputPath?, openAfterExport?, app_type?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_execute_method",
+  "signature": "execute_method(method*, params?, appType?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_help",
+  "signature": "help(app?, query?, tool?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_status",
+  "signature": "status()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_add_comment",
+  "signature": "excel_add_comment(cell*, comment*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_auto_filter",
+  "signature": "excel_auto_filter(range*, column?, criteria?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_auto_sum",
+  "signature": "excel_auto_sum(range*, targetCell*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_clean_data",
+  "signature": "excel_clean_data(range*, operations*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_clear_range",
+  "signature": "excel_clear_range(range*, sheet?, type?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_close_workbook",
+  "signature": "excel_close_workbook(name?, save?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_copy_range",
+  "signature": "excel_copy_range(source*, destination*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_copy_sheet",
+  "signature": "excel_copy_sheet(name*, newName?, position?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_create_chart",
+  "signature": "excel_create_chart(data_range*, chart_type?, title?, position?, sheet?, show_legend?, show_data_labels?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_create_pivot_table",
+  "signature": "excel_create_pivot_table(sourceRange*, destinationCell*, rowFields*, columnFields?, valueFields*, filterFields?, tableName?, destinationSheet?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_create_sheet",
+  "signature": "excel_create_sheet(name*, position?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_create_workbook",
+  "signature": "excel_create_workbook()",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_delete_cell_comment",
+  "signature": "excel_delete_cell_comment(cell*, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_delete_columns",
+  "signature": "excel_delete_columns(column*, count?, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_delete_rows",
+  "signature": "excel_delete_rows(startRow?, row?, count?, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_delete_sheet",
+  "signature": "excel_delete_sheet(name*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_diagnose_formula",
+  "signature": "excel_diagnose_formula(cell*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_evaluate_formula",
+  "signature": "excel_evaluate_formula(formula*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_export_chart_as_image",
+  "signature": "excel_export_chart_as_image(chartName*, outputPath*, format?, sheet?)",
+  "effect": "export"
+ },
+ {
+  "tool": "wps_excel_export_range_as_image",
+  "signature": "excel_export_range_as_image(range*, outputPath*, format?, sheet?)",
+  "effect": "export"
+ },
+ {
+  "tool": "wps_excel_fill_series",
+  "signature": "excel_fill_series(range?, direction?, type?, step?, startValue?, sheet?, sourceRange?, targetRange?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_find_replace",
+  "signature": "excel_find_replace(find*, replace*, matchCase?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_freeze_panes",
+  "signature": "excel_freeze_panes(row?, column?, freeze?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_generate_formula",
+  "signature": "excel_generate_formula(description*, target_cell?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_get_cell_comments",
+  "signature": "excel_get_cell_comments(range?, sheet?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_cell_info",
+  "signature": "excel_get_cell_info(sheet*, cell*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_cell_value",
+  "signature": "excel_get_cell_value(sheet*, row*, col*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_formula",
+  "signature": "excel_get_formula(sheet*, cell*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_open_workbooks",
+  "signature": "excel_get_open_workbooks()",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_get_selection",
+  "signature": "excel_get_selection()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_sheet_list",
+  "signature": "excel_get_sheet_list()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_group_rows",
+  "signature": "excel_group_rows(startRow*, endRow*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_hide_column",
+  "signature": "excel_hide_column(column*, count*, hide*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_hide_rows",
+  "signature": "excel_hide_rows(startRow?, endRow?, row?, rows?, count?, hide?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_insert_columns",
+  "signature": "excel_insert_columns(column*, count?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_insert_excel_image",
+  "signature": "excel_insert_excel_image(filePath*, cell?, width?, height?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_insert_rows",
+  "signature": "excel_insert_rows(row*, count?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_lock_cells",
+  "signature": "excel_lock_cells(range*, locked*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_merge_cells",
+  "signature": "excel_merge_cells(range*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_move_sheet",
+  "signature": "excel_move_sheet(name*, position*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_open_workbook",
+  "signature": "excel_open_workbook(filePath*)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_paste_range",
+  "signature": "excel_paste_range(destination*, pasteType?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_protect_sheet",
+  "signature": "excel_protect_sheet(password?, protect?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_protect_workbook",
+  "signature": "excel_protect_workbook(password*, protect*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_read_range",
+  "signature": "excel_read_range(range*, sheet?, include_header?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_remove_duplicates",
+  "signature": "excel_remove_duplicates(range*, columns?, has_header?, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_rename_sheet",
+  "signature": "excel_rename_sheet(oldName*, newName*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_array_formula",
+  "signature": "excel_set_array_formula(range*, formula*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_border",
+  "signature": "excel_set_border(range*, borderStyle*, position?, color?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_cell_format",
+  "signature": "excel_set_cell_format(range*, format*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_cell_style",
+  "signature": "excel_set_cell_style(range*, style*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_cell_value",
+  "signature": "excel_set_cell_value(sheet*, row*, col*, value*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_column_width",
+  "signature": "excel_set_column_width(column*, width*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_conditional_format",
+  "signature": "excel_set_conditional_format(range*, condition*, format*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_data_validation",
+  "signature": "excel_set_data_validation(range*, type*, formula*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_formula",
+  "signature": "excel_set_formula(range*, formula*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_hyperlink",
+  "signature": "excel_set_hyperlink(cell*, url*, text?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_named_range",
+  "signature": "excel_set_named_range(name*, range*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_number_format",
+  "signature": "excel_set_number_format(range*, format*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_print_area",
+  "signature": "excel_set_print_area(range*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_row_height",
+  "signature": "excel_set_row_height(row*, height*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_zoom",
+  "signature": "excel_set_zoom(percent*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_show_columns",
+  "signature": "excel_show_columns(startColumn*, endColumn*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_show_rows",
+  "signature": "excel_show_rows(startRow?, endRow?, row?, rows?, count?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_sort_range",
+  "signature": "excel_sort_range(range*, column*, ascending?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_subtotal",
+  "signature": "excel_subtotal(range*, groupBy*, function*, columns*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_switch_sheet",
+  "signature": "excel_switch_sheet(name*)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_switch_workbook",
+  "signature": "excel_switch_workbook(name*)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_text_to_columns",
+  "signature": "excel_text_to_columns(range*, delimiter?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_transpose",
+  "signature": "excel_transpose(source*, destination*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_unmerge_cells",
+  "signature": "excel_unmerge_cells(range*, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_unprotect_sheet",
+  "signature": "excel_unprotect_sheet(password?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_update_chart",
+  "signature": "excel_update_chart(chart_index?, chart_name?, title?, chart_type?, show_legend?, legend_position?, show_data_labels?, data_range?, colors?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_update_pivot_table",
+  "signature": "excel_update_pivot_table(pivotTableName?, pivotTableCell?, addRowFields?, removeRowFields?, addColumnFields?, removeColumnFields?, addValueFields?, removeValueFields?, updateValueFields?, addFilterFields?, removeFilterFields?, refresh?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_write_range",
+  "signature": "excel_write_range(range*, data*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_animation",
+  "signature": "ppt_add_animation(slideIndex*, shapeIndex*, effect*, trigger?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_animation_preset",
+  "signature": "ppt_add_animation_preset(slideIndex*, shapeIndex*, preset*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_emphasis_animation",
+  "signature": "ppt_add_emphasis_animation(slideIndex*, shapeIndex*, effect*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_master_element",
+  "signature": "ppt_add_master_element(element*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_ppt_hyperlink",
+  "signature": "ppt_add_ppt_hyperlink(slideIndex*, shapeIndex*, url*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_shape",
+  "signature": "ppt_add_shape(slideIndex?, type?, left?, top?, width?, height?, text?, fillColor?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_slide",
+  "signature": "ppt_add_slide(layout?, position?, title?, content?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_add_textbox",
+  "signature": "ppt_add_textbox(slideIndex?, left?, top?, width?, height?, text?, fontSize?, fontName?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_align_shapes",
+  "signature": "ppt_align_shapes(slideIndex*, shapeIndices?, alignment*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_apply_transition_to_all",
+  "signature": "ppt_apply_transition_to_all(effect*, duration?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_beautify",
+  "signature": "ppt_beautify(slide_index?, color_scheme?, font?, beautify_all?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_close_presentation",
+  "signature": "ppt_close_presentation(name?, save?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_ppt_copy_slide",
+  "signature": "ppt_copy_slide(slideIndex*, targetIndex?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_create_presentation",
+  "signature": "ppt_create_presentation()",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_ppt_delete_ppt_image",
+  "signature": "ppt_delete_ppt_image(slideIndex*, imageIndex*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_ppt_delete_shape",
+  "signature": "ppt_delete_shape(slideIndex*, shapeIndex*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_ppt_delete_slide",
+  "signature": "ppt_delete_slide(slideIndex*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_ppt_delete_textbox",
+  "signature": "ppt_delete_textbox(slideIndex*, textboxIndex*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_ppt_distribute_shapes",
+  "signature": "ppt_distribute_shapes(slideIndex*, shapeIndices*, direction*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_duplicate_shape",
+  "signature": "ppt_duplicate_shape(slideIndex*, shapeIndex*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_export_slide_as_image",
+  "signature": "ppt_export_slide_as_image(slideIndex*, outputPath*, format?, width?, height?)",
+  "effect": "export"
+ },
+ {
+  "tool": "wps_ppt_find_ppt_text",
+  "signature": "ppt_find_ppt_text(text*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_animations",
+  "signature": "ppt_get_animations(slideIndex*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_open_presentations",
+  "signature": "ppt_get_open_presentations()",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_ppt_get_shapes",
+  "signature": "ppt_get_shapes(slideIndex*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_slide_count",
+  "signature": "ppt_get_slide_count()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_slide_info",
+  "signature": "ppt_get_slide_info(slideIndex*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_slide_master",
+  "signature": "ppt_get_slide_master()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_slide_notes",
+  "signature": "ppt_get_slide_notes(slideIndex*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_slide_title",
+  "signature": "ppt_get_slide_title(slideIndex*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_table_cell",
+  "signature": "ppt_get_table_cell(slideIndex*, tableIndex*, row*, col*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_get_textboxes",
+  "signature": "ppt_get_textboxes(slideIndex*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_ppt_group_shapes",
+  "signature": "ppt_group_shapes(slideIndex*, shapeIndices*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_insert_ppt_chart",
+  "signature": "ppt_insert_ppt_chart(slideIndex*, chartType*, title?, left?, top?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_insert_ppt_image",
+  "signature": "ppt_insert_ppt_image(slideIndex*, filePath*, left?, top?, width?, height?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_insert_slides_from_file",
+  "signature": "ppt_insert_slides_from_file(filePath*, afterIndex?, slideStart?, slideEnd?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_insert_table",
+  "signature": "ppt_insert_table(slideIndex*, rows*, cols*, left?, top?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_move_slide",
+  "signature": "ppt_move_slide(fromIndex*, toIndex*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_open_presentation",
+  "signature": "ppt_open_presentation(filePath*)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_ppt_remove_animation",
+  "signature": "ppt_remove_animation(slideIndex*, animationIndex*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_ppt_remove_ppt_hyperlink",
+  "signature": "ppt_remove_ppt_hyperlink(slideIndex*, shapeIndex*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_ppt_remove_slide_transition",
+  "signature": "ppt_remove_slide_transition(slideIndex*)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_ppt_replace_ppt_image",
+  "signature": "ppt_replace_ppt_image(slideIndex*, shapeIndex?, name?, filePath*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_replace_ppt_text",
+  "signature": "ppt_replace_ppt_text(find*, replace*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_3d_depth",
+  "signature": "ppt_set_3d_depth(slideIndex*, shapeIndex*, depth*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_3d_material",
+  "signature": "ppt_set_3d_material(slideIndex*, shapeIndex*, material*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_3d_rotation",
+  "signature": "ppt_set_3d_rotation(slideIndex*, shapeIndex*, rotation*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_active_target",
+  "signature": "ppt_set_active_target(name?, clear?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_animation_order",
+  "signature": "ppt_set_animation_order(slideIndex*, animationIndex*, newOrder*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_background_color",
+  "signature": "ppt_set_background_color(slideIndex*, color*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_background_gradient",
+  "signature": "ppt_set_background_gradient(slideIndex*, gradient*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_background_image",
+  "signature": "ppt_set_background_image(slideIndex*, imagePath*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_font_color",
+  "signature": "ppt_set_font_color(slideIndex*, shapeIndex*, color*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_image_style",
+  "signature": "ppt_set_image_style(slideIndex*, imageIndex*, style*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_master_background",
+  "signature": "ppt_set_master_background(background*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_ppt_chart_data",
+  "signature": "ppt_set_ppt_chart_data(slideIndex*, chartIndex*, data*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_ppt_chart_style",
+  "signature": "ppt_set_ppt_chart_style(slideIndex*, chartIndex*, style*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_ppt_date_time",
+  "signature": "ppt_set_ppt_date_time(show*, autoUpdate?, format?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_ppt_footer",
+  "signature": "ppt_set_ppt_footer(text*, show?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_border",
+  "signature": "ppt_set_shape_border(slideIndex*, shapeIndex*, border*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_fill",
+  "signature": "ppt_set_shape_fill(slideIndex*, shapeIndex*, color*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_gradient",
+  "signature": "ppt_set_shape_gradient(slideIndex*, shapeIndex*, gradient*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_position",
+  "signature": "ppt_set_shape_position(slideIndex*, shapeIndex*, left*, top*, width?, height?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_shadow",
+  "signature": "ppt_set_shape_shadow(slideIndex*, shapeIndex*, shadow*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_style",
+  "signature": "ppt_set_shape_style(slideIndex?, name?, shapeIndex?, fillColor?, lineColor?, lineWidth?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_text",
+  "signature": "ppt_set_shape_text(slideIndex*, shapeIndex*, text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_transparency",
+  "signature": "ppt_set_shape_transparency(slideIndex*, shapeIndex*, transparency*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_shape_z_order",
+  "signature": "ppt_set_shape_z_order(slideIndex*, shapeIndex*, order*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_background",
+  "signature": "ppt_set_slide_background(slideIndex*, background?, color?, imagePath?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_content",
+  "signature": "ppt_set_slide_content(slideIndex*, content*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_layout",
+  "signature": "ppt_set_slide_layout(slideIndex*, layout*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_notes",
+  "signature": "ppt_set_slide_notes(slideIndex*, notes*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_number",
+  "signature": "ppt_set_slide_number(show*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_size",
+  "signature": "ppt_set_slide_size(width*, height*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_subtitle",
+  "signature": "ppt_set_slide_subtitle(slideIndex*, subtitle*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_theme",
+  "signature": "ppt_set_slide_theme(theme*, presentationName?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_title",
+  "signature": "ppt_set_slide_title(slideIndex?, title*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_slide_transition",
+  "signature": "ppt_set_slide_transition(slideIndex*, effect*, duration?, sound?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_table_cell",
+  "signature": "ppt_set_table_cell(slideIndex*, tableIndex*, row*, col*, text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_table_cell_style",
+  "signature": "ppt_set_table_cell_style(slideIndex*, tableIndex*, row*, col*, style*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_table_row_style",
+  "signature": "ppt_set_table_row_style(slideIndex*, tableIndex*, row*, style*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_table_style",
+  "signature": "ppt_set_table_style(slideIndex*, tableIndex*, style*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_textbox_style",
+  "signature": "ppt_set_textbox_style(slideIndex*, textboxIndex*, style*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_set_textbox_text",
+  "signature": "ppt_set_textbox_text(slideIndex*, textboxIndex*, text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_start_slide_show",
+  "signature": "ppt_start_slide_show(fromSlide?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_ppt_switch_presentation",
+  "signature": "ppt_switch_presentation(name*)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_ppt_switch_slide",
+  "signature": "ppt_switch_slide(slideIndex*)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_ppt_unify_font",
+  "signature": "ppt_unify_font(font_name*, slide_index?, include_title?, include_body?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_apply_style",
+  "signature": "word_apply_style(style_name*, range?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_close_document",
+  "signature": "word_close_document(name?, save?)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_word_create_document",
+  "signature": "word_create_document()",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_word_enable_track_changes",
+  "signature": "word_enable_track_changes(enable?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_find_in_document",
+  "signature": "word_find_in_document(find_text*, match_case?, match_whole_word?, max_results?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_find_replace",
+  "signature": "word_find_replace(find_text*, replace_text?, replace_all?, match_case?, match_whole_word?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_generate_toc",
+  "signature": "word_generate_toc(position?, levels?, include_page_numbers?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_get_active_document",
+  "signature": "word_get_active_document()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_document_text",
+  "signature": "word_get_document_text(start?, end?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_open_documents",
+  "signature": "word_get_open_documents()",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_word_get_paragraphs",
+  "signature": "word_get_paragraphs(start_paragraph?, end_paragraph?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_track_changes_status",
+  "signature": "word_get_track_changes_status()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_insert_bookmark",
+  "signature": "word_insert_bookmark(name*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_comment",
+  "signature": "word_insert_comment(text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_footer",
+  "signature": "word_insert_footer(text*, section?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_header",
+  "signature": "word_insert_header(text*, section?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_image",
+  "signature": "word_insert_image(imagePath*, width?, height?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_page_break",
+  "signature": "word_insert_page_break()",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_section_break",
+  "signature": "word_insert_section_break(breakType?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_table",
+  "signature": "word_insert_table(rows*, cols*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_text",
+  "signature": "word_insert_text(text*, position?, style?, new_paragraph?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_open_document",
+  "signature": "word_open_document(filePath*)",
+  "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_word_proofread_basic",
+  "signature": "word_proofread_basic(text*, start_offset?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_replace_bookmark_content",
+  "signature": "word_replace_bookmark_content(name*, text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_replace_range",
+  "signature": "word_replace_range(start_pos*, end_pos*, text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_set_font",
+  "signature": "word_set_font(font_name?, font_size?, bold?, italic?, underline?, color?, range?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_set_line_spacing",
+  "signature": "word_set_line_spacing(lineSpacing*, paragraphIndex?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_set_page_setup",
+  "signature": "word_set_page_setup(orientation?, marginTop?, marginBottom?, marginLeft?, marginRight?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_set_paragraph",
+  "signature": "word_set_paragraph(alignment?, lineSpacing?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_set_text_color",
+  "signature": "word_set_text_color(color*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_smart_fill_field",
+  "signature": "word_smart_fill_field(keyword*, value*, fill_mode?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_switch_document",
+  "signature": "word_switch_document(name*)",
+  "effect": "lifecycle"
+ }
+]

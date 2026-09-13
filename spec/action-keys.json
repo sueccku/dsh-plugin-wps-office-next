@@ -1,0 +1,927 @@
+{
+ "getAppInfo": [],
+ "getSelectedText": [],
+ "ping": [],
+ "save": [],
+ "saveAs": [
+  "filePath",
+  "format"
+ ],
+ "setSelectedText": [
+  "text"
+ ],
+ "wireCheck": [],
+ "convertFormat": [
+  "app_type",
+  "outputPath",
+  "targetFormat"
+ ],
+ "convertToPDF": [
+  "app_type",
+  "openAfterExport",
+  "outputPath"
+ ],
+ "addCellComment": [
+  "cell",
+  "comment"
+ ],
+ "autoFilter": [
+  "column",
+  "criteria",
+  "range",
+  "sheet"
+ ],
+ "autoSum": [
+  "range",
+  "targetCell"
+ ],
+ "cleanData": [
+  "operations",
+  "range",
+  "sheet"
+ ],
+ "clearRange": [
+  "range",
+  "sheet",
+  "type"
+ ],
+ "closeWorkbook": [
+  "name",
+  "save"
+ ],
+ "copyRange": [
+  "destination",
+  "sheet",
+  "source"
+ ],
+ "copySheet": [
+  "name",
+  "newName",
+  "position"
+ ],
+ "createChart": [
+  "chart_type",
+  "data_range",
+  "position",
+  "sheet",
+  "show_data_labels",
+  "show_legend",
+  "title"
+ ],
+ "createPivotTable": [
+  "columnFields",
+  "destinationCell",
+  "destinationSheet",
+  "filterFields",
+  "rowFields",
+  "sourceRange",
+  "tableName",
+  "valueFields"
+ ],
+ "createSheet": [
+  "name",
+  "position"
+ ],
+ "createWorkbook": [],
+ "deleteCellComment": [
+  "cell",
+  "sheet"
+ ],
+ "deleteColumns": [
+  "column",
+  "count",
+  "sheet"
+ ],
+ "deleteRows": [
+  "count",
+  "row",
+  "sheet",
+  "startRow"
+ ],
+ "deleteSheet": [
+  "name"
+ ],
+ "diagnoseFormula": [
+  "cell"
+ ],
+ "evaluateFormula": [
+  "formula"
+ ],
+ "exportChartAsImage": [
+  "chartName",
+  "format",
+  "outputPath",
+  "sheet"
+ ],
+ "exportRangeAsImage": [
+  "format",
+  "outputPath",
+  "range",
+  "sheet"
+ ],
+ "fillSeries": [
+  "direction",
+  "range",
+  "sheet",
+  "sourceRange",
+  "startValue",
+  "step",
+  "targetRange",
+  "type"
+ ],
+ "findReplaceExcel": [
+  "find",
+  "matchCase",
+  "replace"
+ ],
+ "freezePanes": [
+  "column",
+  "freeze",
+  "row"
+ ],
+ "getContext": [
+  "description",
+  "target_cell"
+ ],
+ "getCellComments": [
+  "range",
+  "sheet"
+ ],
+ "getCellInfo": [
+  "cell",
+  "sheet"
+ ],
+ "getCellValue": [
+  "col",
+  "row",
+  "sheet"
+ ],
+ "getFormula": [
+  "cell",
+  "sheet"
+ ],
+ "getOpenWorkbooks": [],
+ "getSelection": [],
+ "getSheetList": [],
+ "groupRows": [
+  "endRow",
+  "sheet",
+  "startRow"
+ ],
+ "hideColumns": [
+  "column",
+  "count",
+  "hide"
+ ],
+ "hideRows": [
+  "count",
+  "endRow",
+  "hide",
+  "row",
+  "rows",
+  "sheet",
+  "startRow"
+ ],
+ "insertColumns": [
+  "column",
+  "count",
+  "sheet"
+ ],
+ "insertExcelImage": [
+  "cell",
+  "filePath",
+  "height",
+  "sheet",
+  "width"
+ ],
+ "insertRows": [
+  "count",
+  "row",
+  "sheet"
+ ],
+ "lockCells": [
+  "locked",
+  "range",
+  "sheet"
+ ],
+ "mergeCells": [
+  "range",
+  "sheet"
+ ],
+ "moveSheet": [
+  "name",
+  "position"
+ ],
+ "openWorkbook": [
+  "filePath"
+ ],
+ "pasteRange": [
+  "destination",
+  "pasteType",
+  "sheet"
+ ],
+ "protectSheet": [
+  "password",
+  "protect"
+ ],
+ "protectWorkbook": [
+  "password",
+  "protect"
+ ],
+ "getRangeData": [
+  "include_header",
+  "range",
+  "sheet"
+ ],
+ "removeDuplicates": [
+  "columns",
+  "has_header",
+  "range",
+  "sheet"
+ ],
+ "renameSheet": [
+  "newName",
+  "oldName"
+ ],
+ "setArrayFormula": [
+  "formula",
+  "range",
+  "sheet"
+ ],
+ "setBorder": [
+  "borderStyle",
+  "color",
+  "position",
+  "range",
+  "sheet"
+ ],
+ "setCellFormat": [
+  "format",
+  "range",
+  "sheet"
+ ],
+ "setCellStyle": [
+  "range",
+  "sheet",
+  "style"
+ ],
+ "setCellValue": [
+  "col",
+  "row",
+  "sheet",
+  "value"
+ ],
+ "setColumnWidth": [
+  "column",
+  "sheet",
+  "width"
+ ],
+ "addConditionalFormat": [
+  "condition",
+  "format",
+  "range"
+ ],
+ "addDataValidation": [
+  "formula",
+  "range",
+  "sheet",
+  "type"
+ ],
+ "setFormula": [
+  "formula",
+  "range",
+  "sheet"
+ ],
+ "setHyperlink": [
+  "cell",
+  "sheet",
+  "text",
+  "url"
+ ],
+ "createNamedRange": [
+  "name",
+  "range"
+ ],
+ "setNumberFormat": [
+  "format",
+  "range",
+  "sheet"
+ ],
+ "setPrintArea": [
+  "range"
+ ],
+ "setRowHeight": [
+  "height",
+  "row",
+  "sheet"
+ ],
+ "setZoom": [
+  "percent"
+ ],
+ "showColumns": [
+  "endColumn",
+  "sheet",
+  "startColumn"
+ ],
+ "showRows": [
+  "count",
+  "endRow",
+  "row",
+  "rows",
+  "sheet",
+  "startRow"
+ ],
+ "sortRange": [
+  "ascending",
+  "column",
+  "range"
+ ],
+ "subtotal": [
+  "columns",
+  "function",
+  "groupBy",
+  "range",
+  "sheet"
+ ],
+ "switchSheet": [
+  "name"
+ ],
+ "switchWorkbook": [
+  "name"
+ ],
+ "textToColumns": [
+  "delimiter",
+  "range",
+  "sheet"
+ ],
+ "transpose": [
+  "destination",
+  "sheet",
+  "source"
+ ],
+ "unmergeCells": [
+  "range",
+  "sheet"
+ ],
+ "unprotectSheet": [
+  "password"
+ ],
+ "updateChart": [
+  "chart_index",
+  "chart_name",
+  "chart_type",
+  "colors",
+  "data_range",
+  "legend_position",
+  "sheet",
+  "show_data_labels",
+  "show_legend",
+  "title"
+ ],
+ "updatePivotTable": [
+  "addColumnFields",
+  "addFilterFields",
+  "addRowFields",
+  "addValueFields",
+  "pivotTableCell",
+  "pivotTableName",
+  "refresh",
+  "removeColumnFields",
+  "removeFilterFields",
+  "removeRowFields",
+  "removeValueFields",
+  "updateValueFields"
+ ],
+ "setRangeData": [
+  "data",
+  "range",
+  "sheet"
+ ],
+ "addAnimation": [
+  "effect",
+  "shapeName",
+  "slideIndex",
+  "trigger"
+ ],
+ "addAnimationPreset": [
+  "preset",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "addEmphasisAnimation": [
+  "effect",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "addMasterElement": [
+  "element"
+ ],
+ "addPptHyperlink": [
+  "address",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "addShape": [
+  "fillColor",
+  "height",
+  "left",
+  "slideIndex",
+  "text",
+  "top",
+  "type",
+  "width"
+ ],
+ "addSlide": [
+  "content",
+  "layout",
+  "position",
+  "title"
+ ],
+ "addTextBox": [
+  "fontName",
+  "fontSize",
+  "height",
+  "left",
+  "slideIndex",
+  "text",
+  "top",
+  "width"
+ ],
+ "alignShapes": [
+  "alignment",
+  "names",
+  "slideIndex"
+ ],
+ "applyTransitionToAll": [
+  "duration",
+  "transition"
+ ],
+ "beautifySlide": [
+  "beautify_all",
+  "color_scheme",
+  "font",
+  "slide_index"
+ ],
+ "closePresentation": [
+  "name",
+  "save"
+ ],
+ "duplicateSlide": [
+  "slideIndex",
+  "targetIndex"
+ ],
+ "createPresentation": [],
+ "deletePptImage": [
+  "imageIndex",
+  "slideIndex"
+ ],
+ "deleteShape": [
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "deleteSlide": [
+  "slideIndex"
+ ],
+ "deleteTextBox": [
+  "slideIndex",
+  "textboxIndex"
+ ],
+ "distributeShapes": [
+  "direction",
+  "names",
+  "slideIndex"
+ ],
+ "duplicateShape": [
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "exportSlideAsImage": [
+  "format",
+  "height",
+  "outputPath",
+  "slideIndex",
+  "width"
+ ],
+ "findPptText": [
+  "text"
+ ],
+ "getAnimations": [
+  "slideIndex"
+ ],
+ "getOpenPresentations": [
+  "clear",
+  "name"
+ ],
+ "getShapes": [
+  "slideIndex"
+ ],
+ "getSlideCount": [],
+ "getSlideInfo": [
+  "slideIndex"
+ ],
+ "getSlideMaster": [],
+ "getSlideNotes": [
+  "slideIndex"
+ ],
+ "getSlideTitle": [
+  "slideIndex"
+ ],
+ "getPptTableCell": [
+  "col",
+  "row",
+  "slideIndex",
+  "tableIndex"
+ ],
+ "getTextBoxes": [
+  "slideIndex"
+ ],
+ "groupShapes": [
+  "names",
+  "slideIndex"
+ ],
+ "insertPptChart": [
+  "left",
+  "slideIndex",
+  "title",
+  "top",
+  "type"
+ ],
+ "insertPptImage": [
+  "height",
+  "left",
+  "path",
+  "slideIndex",
+  "top",
+  "width"
+ ],
+ "insertSlidesFromFile": [
+  "afterIndex",
+  "filePath",
+  "slideEnd",
+  "slideStart"
+ ],
+ "insertPptTable": [
+  "cols",
+  "left",
+  "rows",
+  "slideIndex",
+  "top"
+ ],
+ "moveSlide": [
+  "fromIndex",
+  "toIndex"
+ ],
+ "openPresentation": [
+  "path"
+ ],
+ "removeAnimation": [
+  "index",
+  "slideIndex"
+ ],
+ "removePptHyperlink": [
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "removeSlideTransition": [
+  "slideIndex"
+ ],
+ "replacePptImage": [
+  "filePath",
+  "name",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "replacePptText": [
+  "find",
+  "replace"
+ ],
+ "set3DDepth": [
+  "depth",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "set3DMaterial": [
+  "material",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "set3DRotation": [
+  "rotation",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "setAnimationOrder": [
+  "from",
+  "slideIndex",
+  "to"
+ ],
+ "setBackgroundColor": [
+  "color",
+  "slideIndex"
+ ],
+ "setBackgroundGradient": [
+  "gradient",
+  "slideIndex"
+ ],
+ "setBackgroundImage": [
+  "path",
+  "slideIndex"
+ ],
+ "setFontColor": [
+  "color",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "setImageStyle": [
+  "imageIndex",
+  "slideIndex",
+  "style"
+ ],
+ "setMasterBackground": [
+  "background"
+ ],
+ "setPptChartData": [
+  "chartIndex",
+  "data",
+  "slideIndex"
+ ],
+ "setPptChartStyle": [
+  "chartIndex",
+  "slideIndex",
+  "style"
+ ],
+ "setPptDateTime": [
+  "autoUpdate",
+  "format",
+  "visible"
+ ],
+ "setPptFooter": [
+  "show",
+  "text"
+ ],
+ "setShapeBorder": [
+  "border",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "setShapeFill": [
+  "color",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "setShapeGradient": [
+  "gradient",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "setShapePosition": [
+  "height",
+  "left",
+  "shapeIndex",
+  "slideIndex",
+  "top",
+  "width"
+ ],
+ "setShapeShadow": [
+  "shadow",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "setShapeStyle": [
+  "fillColor",
+  "lineColor",
+  "lineWidth",
+  "name",
+  "shapeIndex",
+  "slideIndex"
+ ],
+ "setShapeText": [
+  "shapeIndex",
+  "slideIndex",
+  "text"
+ ],
+ "setShapeTransparency": [
+  "shapeIndex",
+  "slideIndex",
+  "transparency"
+ ],
+ "setShapeZOrder": [
+  "shapeIndex",
+  "slideIndex",
+  "zOrder"
+ ],
+ "setSlideBackground": [
+  "background",
+  "color",
+  "imagePath",
+  "slideIndex"
+ ],
+ "setSlideContent": [
+  "content",
+  "slideIndex"
+ ],
+ "setSlideLayout": [
+  "layout",
+  "slideIndex"
+ ],
+ "setSlideNotes": [
+  "notes",
+  "slideIndex"
+ ],
+ "setSlideNumber": [
+  "visible"
+ ],
+ "setSlideSize": [
+  "height",
+  "width"
+ ],
+ "setSlideSubtitle": [
+  "slideIndex",
+  "subtitle"
+ ],
+ "setSlideTheme": [
+  "presentationName",
+  "theme"
+ ],
+ "setSlideTitle": [
+  "slideIndex",
+  "title"
+ ],
+ "setSlideTransition": [
+  "duration",
+  "effect",
+  "slideIndex",
+  "sound"
+ ],
+ "setPptTableCell": [
+  "col",
+  "row",
+  "slideIndex",
+  "tableIndex",
+  "text"
+ ],
+ "setPptTableCellStyle": [
+  "col",
+  "row",
+  "slideIndex",
+  "style",
+  "tableIndex"
+ ],
+ "setPptTableRowStyle": [
+  "row",
+  "slideIndex",
+  "style",
+  "tableIndex"
+ ],
+ "setPptTableStyle": [
+  "slideIndex",
+  "style",
+  "tableIndex"
+ ],
+ "setTextBoxStyle": [
+  "slideIndex",
+  "style",
+  "textboxIndex"
+ ],
+ "setTextBoxText": [
+  "slideIndex",
+  "text",
+  "textboxIndex"
+ ],
+ "startSlideShow": [
+  "fromSlide"
+ ],
+ "switchPresentation": [
+  "name"
+ ],
+ "switchSlide": [
+  "slideIndex"
+ ],
+ "unifyFont": [
+  "font_name",
+  "include_body",
+  "include_title",
+  "slide_index"
+ ],
+ "applyStyle": [
+  "range",
+  "style_name"
+ ],
+ "closeDocument": [
+  "name",
+  "save"
+ ],
+ "createDocument": [],
+ "enableTrackChanges": [
+  "enable"
+ ],
+ "findInDocument": [
+  "find_text",
+  "match_case",
+  "match_whole_word",
+  "max_results"
+ ],
+ "findReplace": [
+  "find_text",
+  "match_case",
+  "match_whole_word",
+  "replace_all",
+  "replace_text"
+ ],
+ "generateTOC": [
+  "include_page_numbers",
+  "levels",
+  "position"
+ ],
+ "getActiveDocument": [],
+ "getDocumentText": [
+  "end",
+  "start"
+ ],
+ "getOpenDocuments": [],
+ "getDocumentParagraphs": [
+  "end_paragraph",
+  "start_paragraph"
+ ],
+ "getTrackChangesStatus": [],
+ "insertBookmark": [
+  "name"
+ ],
+ "addComment": [
+  "text"
+ ],
+ "insertFooter": [
+  "section",
+  "text"
+ ],
+ "insertHeader": [
+  "section",
+  "text"
+ ],
+ "insertImage": [
+  "height",
+  "imagePath",
+  "width"
+ ],
+ "insertPageBreak": [],
+ "insertSectionBreak": [
+  "breakType"
+ ],
+ "insertTable": [
+  "cols",
+  "rows"
+ ],
+ "insertText": [
+  "new_paragraph",
+  "position",
+  "style",
+  "text"
+ ],
+ "openDocument": [
+  "filePath"
+ ],
+ "replaceBookmarkContent": [
+  "name",
+  "text"
+ ],
+ "replaceRange": [
+  "end_pos",
+  "start_pos",
+  "text"
+ ],
+ "setFont": [
+  "bold",
+  "color",
+  "font_name",
+  "font_size",
+  "italic",
+  "range",
+  "underline"
+ ],
+ "setLineSpacing": [
+  "lineSpacing",
+  "paragraphIndex"
+ ],
+ "setPageSetup": [
+  "marginBottom",
+  "marginLeft",
+  "marginRight",
+  "marginTop",
+  "orientation"
+ ],
+ "setParagraph": [
+  "alignment",
+  "lineSpacing"
+ ],
+ "setTextColor": [
+  "color"
+ ],
+ "smartFillField": [
+  "fill_mode",
+  "keyword",
+  "value"
+ ],
+ "switchDocument": [
+  "name"
+ ]
+}

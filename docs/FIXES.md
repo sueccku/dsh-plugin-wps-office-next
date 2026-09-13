@@ -749,6 +749,43 @@ tsc 构建 + `mcp/dist` 漂移检查、宿主生成器 + `host/wps-actions.ps1` 
 `mcp/src/tools/index.ts` 的头部枚举（长期过期、写的是 235 个工具与 12 个内置）改成指针——
 清单本来就该由生成物承担。
 
+### 33. P1 第一步：操作规格（spec）成为工具面的真源（已落地）
+
+把「工具契约」从三处人肉维护（TS 定义 + 生成器两张表 + 精选数组）收敛成一份声明式 spec：
+`mcp/src/spec/types.ts`（形状）、`mcp/src/spec/operations.ts`（209 条，由 `scripts/extract-spec.mjs`
+从今天的事实 bootstrap）、`scripts/gen-tool-surface.mjs`（spec → 四份产物）。
+
+**验收标准是「逐字节复现今天的工具面」**，`test/spec-reproduction.test.mjs` 直接跑这件事：
+
+| 检查 | 结果 |
+|---|---|
+| 工具数 / 工具名 | 209 / 完全一致 |
+| 209 个 schema 深度相等（键排序后） | 全部一致 |
+| 序列化字节数 | **121,308 = 121,308** |
+| 广告集（44 个） | 完全一致 |
+| spec 的 action 都在宿主键表里 | 202 个 action，1 个已知例外（setCellFormat 动态键） |
+
+过程中被数据纠正了两次，都记下来：
+
+- 老 surface **本身并不一致**：35 个工具写了 `required: []`，14 个干脆没有这个键。所以 spec 必须
+  **原样保留** `required`（undefined = 原 schema 没有这个键），否则字节数对不上（差 196 = 14 × 14）。
+  这也说明「迁移先复现、再谈收拾」的顺序是对的：不一致本身是先复现出来才看得见的。
+- 我原以为「工具参数名 = 桥键（经生成器别名表）」，实测发现真正的重命名发生在 **handler 代码**里
+  （`createChart` 收蛇形 `data_range`、桥读驼峰 `dataRange`）。这条记成账：
+  **58 处「参数名 ≠ 桥键」分布在 33 个 action 上**，正是 P1-4 要归零的第二套方言。
+
+**账本式门禁**：`rename debt ≤ 57`、`untooled actions ≤ 29` 两条断言把债务写进测试——
+**涨了会红，降了要手动改数字**。29 个「桥里有、没工具」的 action 同时就是 P2 的待办清单
+（autoFit*、命名范围、条件格式、数据验证、getComments、getBookmarks、getDocumentStats…）。
+
+**新增产物**（`spec/`，入库、进 CI 漂移检查）：`tool-definitions.json`（模型看到的 surface）、
+`action-keys.json`（每个 action 接受的键，将来供宿主生成器读取，取代「用正则扫桥源码」）、
+`advertised.json`（广告集）、`signatures.json`（紧凑签名索引 `range*, sheet?`——给 `wps_help` 用，
+能把一次 schema 查询省掉）。
+
+**当前债务（下一步的目标）**：raw schema 片段 32/549、带别名的工具 15、带容器的工具 12、
+重命名 58 处、未工具化 action 29 个。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

@@ -173,6 +173,8 @@
     powershell -NoProfile -File scripts\build-host-actions.ps1
                                                    # 由 mcp/scripts/wps-com.ps1 生成 host/wps-actions.ps1
                                                    # 生成前会解析校验，写不出可加载的模块就直接失败
+    node scripts/extract-spec.mjs                  # 从当前工具面 bootstrap 操作规格（迁移期用一次）
+    node scripts/gen-tool-surface.mjs              # spec → spec/*.json（工具面、键表、广告集、签名索引）
     node scripts/gen-skill-tools.mjs               # 由注册表重生成 4 份 reference.md
     node scripts/verify.mjs                        # 23 项：门面、派发、预算、action 数量三方一致
     node scripts/param-contract.mjs                # 211 对参数契约对账，写出 docs/param-contract.md
@@ -185,8 +187,9 @@
 「模型没有自己写 COM 脚本」。**19 项检查、约 65 秒**。profile 不存在时加 `--setup` 一步建好并安装本包。
 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
-当前数字：**310 项测试**（15 个文件）+ **23 项门禁**全绿；广告面 **44 工具 / 23,593 字节**
-（上限 45 / 25,000）；桥 action **259**（生成器断言源码、生成物、期望值三方一致）。
+当前数字：**319 项测试**（16 个文件，含 spec 复现验收 9 项）+ **23 项门禁**全绿；广告面
+**44 工具 / 23,593 字节**（上限 45 / 25,000）；桥 action **231**（生成器断言源码、生成物、期望值三方一致）；
+注册工具 **209**，其中 202 个已进操作规格（spec）。
 
 ### CI 覆盖到哪
 
@@ -194,10 +197,12 @@
 
 1. `npm ci` + `tsc` 构建，再断言 `mcp/dist` 与源码一致（dist 是入库的，不许过期）；
 2. 跑宿主生成器，再断言 `host/wps-actions.ps1` 与桥源码一致（生成器自带解析校验）；
-3. 重生成技能参考表，再断言 `skills/**/reference.md` 与注册表一致；
-4. `node scripts/verify.mjs --static` —— 18 项：广告面、预算、桥 action 数量、`wps_help` 检索与派发守卫；
-5. 参数契约对账，再断言 `docs/param-contract.md` 一致；
-6. 两个不需要 WPS 的测试文件：`test/plugin.test.mjs`(32 项)、`test/com-host.test.mjs`(6 项)。
+3. 由操作规格重生成工具面，再断言 `spec/*.json` 与 spec 一致；跑 `test/spec-reproduction.test.mjs`
+   —— 9 项，含「209 个 schema 与序列化字节数与活体完全一致」这条 P1 验收；
+4. 重生成技能参考表，再断言 `skills/**/reference.md` 与注册表一致；
+5. `node scripts/verify.mjs --static` —— 18 项：广告面、预算、桥 action 数量、`wps_help` 检索与派发守卫；
+6. 参数契约对账，再断言 `docs/param-contract.md` 一致；
+7. 两个不需要 WPS 的测试文件：`test/plugin.test.mjs`(32 项)、`test/com-host.test.mjs`(6 项)。
 
 首次运行（2026-09-13，[run 34760241577](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/runs/34760241577)）**13 步全绿、67 秒**。
 
@@ -229,6 +234,8 @@
 | cordis.patch.yml | DSH 接线：插件入口 + MCP 客户端（serverName 为 wps-office-next） |
 | plugin.js | DSH 入口：发布包内绝对路径、注册 4 个技能 |
 | mcp/src | MCP server（TypeScript）与工具实现、参数闸门、弃用表 |
+| mcp/src/spec | **操作规格（唯一真源）**：工具名 ↔ 桥 action ↔ 参数/类型/必填/效果 |
+| spec/ | 由 spec 生成的产物（入库、CI 漂移检查）：工具面、action 键表、广告集、紧凑签名索引 |
 | mcp/dist | 预构建产物（已入库，安装即用） |
 | mcp/scripts/wps-com.ps1 | **桥的唯一真源**：259 个 COM action |
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改，改桥源码后重跑生成器） |

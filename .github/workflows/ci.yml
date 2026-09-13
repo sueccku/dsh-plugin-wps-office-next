@@ -53,6 +53,15 @@ jobs:
       - name: Committed skill references must match the registry
         run: git diff --exit-code -- skills
 
+      - name: Regenerate the tool surface from the operation spec
+        run: node scripts/gen-tool-surface.mjs
+
+      - name: Committed tool surface must match the spec
+        run: git diff --exit-code -- spec
+
+      - name: Spec reproduces the model-facing surface (P1 acceptance)
+        run: node test/spec-reproduction.test.mjs
+
       - name: Advertised surface, budget, bridge action count and dispatch guards
         run: node scripts/verify.mjs --static
 
