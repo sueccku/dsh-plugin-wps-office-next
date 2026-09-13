@@ -100,9 +100,19 @@
   "effect": "write"
  },
  {
+  "tool": "wps_excel_calculate",
+  "signature": "excel_calculate(all?, sheet?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_excel_clean_data",
   "signature": "excel_clean_data(range*, operations*, sheet?)",
   "effect": "write"
+ },
+ {
+  "tool": "wps_excel_clear_formats",
+  "signature": "excel_clear_formats(range*, sheet?)",
+  "effect": "delete"
  },
  {
   "tool": "wps_excel_clear_range",
@@ -113,6 +123,16 @@
   "tool": "wps_excel_close_workbook",
   "signature": "excel_close_workbook(name?, save?)",
   "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_excel_consolidate",
+  "signature": "excel_consolidate(destination*, sources*, function?, topRow?, leftColumn?, createLinks?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_copy_format",
+  "signature": "excel_copy_format(source*, target*, sheet?)",
+  "effect": "write"
  },
  {
   "tool": "wps_excel_copy_range",
@@ -230,6 +250,16 @@
   "effect": "read"
  },
  {
+  "tool": "wps_excel_get_conditional_formats",
+  "signature": "excel_get_conditional_formats(range*, sheet?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_data_validations",
+  "signature": "excel_get_data_validations(range*, sheet?)",
+  "effect": "read"
+ },
+ {
   "tool": "wps_excel_get_formula",
   "signature": "excel_get_formula(sheet*, cell*)",
   "effect": "read"
@@ -258,6 +288,11 @@
   "tool": "wps_excel_get_sheet_list",
   "signature": "excel_get_sheet_list()",
   "effect": "read"
+ },
+ {
+  "tool": "wps_excel_group_columns",
+  "signature": "excel_group_columns(startColumn*, endColumn*, sheet?)",
+  "effect": "write"
  },
  {
   "tool": "wps_excel_group_rows",
@@ -328,6 +363,21 @@
   "tool": "wps_excel_read_range",
   "signature": "excel_read_range(range*, sheet?, include_header?)",
   "effect": "read"
+ },
+ {
+  "tool": "wps_excel_refresh_links",
+  "signature": "excel_refresh_links()",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_remove_conditional_format",
+  "signature": "excel_remove_conditional_format(range*, index?, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_remove_data_validation",
+  "signature": "excel_remove_data_validation(range*, sheet?)",
+  "effect": "delete"
  },
  {
   "tool": "wps_excel_remove_duplicates",

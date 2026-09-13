@@ -279,12 +279,12 @@ export const subtotalDefinition: ToolDefinition = {
     type: 'object',
     properties: {
       range: { type: 'string', description: '数据范围，如 A1:D100' },
-      groupBy: { type: 'string', description: '分组列标识' },
+      groupBy: { type: 'string', description: '分组依据列在 range 内的序号（从 1 开始），如 range=A1:C4 时用 "1" 按第一列分组' },
       function: { type: 'string', description: '汇总函数', enum: ['sum', 'count', 'average', 'max', 'min'] },
       columns: {
         type: 'array',
         items: { type: 'string' },
-        description: '要汇总的列标识列表',
+        description: '要汇总的列在 range 内的序号列表（从 1 开始），如 [3] 表示对第三列求和',
       },
       sheet: { type: 'string', description: '工作表名称' },
     },

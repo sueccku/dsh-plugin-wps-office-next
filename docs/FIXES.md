@@ -929,6 +929,48 @@ rank/下界/首格/异常消息打出来，才从「循环体没执行」纠正�
 **D1 提前生效**：本波把广告面从 44 推到 48 工具 / 25,097 字节，越过旧的 45 / 25,000 门禁。
 按已锁定的 D1 把上限同步调整为 **60 工具 / 32,000 字节**（`scripts/verify.mjs` 与 `test/deprecated.test.mjs`），
 P5-2 到时只做最终复测。门禁仍然存在，只是跟着决定走——这正是它该有的行为。
+### 39. P2 第一波余项：再挂 10 个 Excel 工具，又挖出两个「从来没生效」的 action（已落地）
+
+第一波的下一半，仍然是**只挂桥里已有、没有出口**的能力：
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_excel_copy_format` | copyFormat | 格式刷：只搬格式，不动值与公式 |
+| `wps_excel_clear_formats` | clearFormats | 清格式留内容 |
+| `wps_excel_get_conditional_formats` / `_remove_conditional_format` | getConditionalFormats / removeConditionalFormat | 条件格式的读与删（新增侧早有 set） |
+| `wps_excel_get_data_validations` / `_remove_data_validation` | getDataValidations / removeDataValidation | 数据验证的读与删 |
+| `wps_excel_refresh_links` | refreshLinks | 刷新外部链接，没有链接时如实报 0 条 |
+| `wps_excel_consolidate` | consolidate | 合并计算 |
+| `wps_excel_calculate` | calculateSheet | 强制重算（整簿或单表） |
+| `wps_excel_group_columns` | groupColumns | 列分组（行分组早有工具） |
+
+刻意**不挂**两个：`getActiveWorkbook`（`get_sheet_info` 已给工作簿与全部工作表名，只有 FullName 是新信息）
+与 `unfreezePanes`（`wps_excel_freeze_panes { freeze: false }` 已覆盖）。同一能力挂两个工具，正是这一轮要减掉的冗余。
+
+验收 `test/excel-missing-halves-2.test.mjs`（30 项，真实 WPS）又抓到**两个从未生效的 action**：
+
+1. **`consolidate` 的函数常量是假的**。桥里写的是 `@{ sum = 9; count = 2; average = 1; max = 4; min = 5 }`，
+   而 `Range.Consolidate` 要的是 `XlConsolidationFunction`：sum=-4157、count=-4112、average=-4106、
+   max=-4136、min=-4139。9 不是这个枚举的合法值，每次调用都抛 HRESULT 0x800A03EC。
+2. **`subtotal` 用了同一张假表**（`Range.Subtotal` 的 Function 也是 XlConsolidationFunction），
+   而它**注册成工具、却一条测试都没有**——典型的有出口所以看起来没问题：没人调用就没人发现。
+
+两处都换成真常量，并给 `subtotal` 补了验收（写 4 行数据 → 分组求和 → 已用范围真的多出汇总行）。
+
+**还有一个 WPS 差异，是靠裸 COM 量出来的**：`Range.Consolidate` 在 WPS 里**只认 R1C1 引用，
+而且表名必须带引号**——`'S1'!R1C1:R4C1` 成功，`S1!A1:A4` 与不带引号的含空格表名都**静默不写任何东西**
+（不抛异常）。Excel 两种引用都认。桥里因此新增 `ConvertTo-ConsolidateSource`，把调用方的 A1 串
+转成 `'表名'!R{行}C{列}`；解析不了的引用原样透传，所以 R1C1 输入仍然可用。
+
+同一轮还把 `consolidate` 的默认值改对了：`topRow` 原本默认 **true**（按标签匹配），纯数字表会**什么都不写**
+（量过：topRow=true 时 D1 空，false 时 D1=1+10）。默认改成 false（按位置逐格相加），
+并在描述里写明合并计算是**按位置**写入（D1=来源1!A1+来源2!A1），不是一个总和。
+`subtotal` 的 `groupBy`/`columns` 描述也改成真实语义：它们是 **range 内的序号**（从 1 开始），不是列名——
+原来写「分组列标识、要汇总的列标识列表」，照字面传 "A" 会被 `[int]` 转换炸掉。
+
+**验收**：30/30 绿。广告面 48 → **51 工具 / 26,652 字节**（`copy_format`/`clear_formats`/`calculate`
+进精选档，其余注册可调用 + `wps_help` 可见）；注册 217 → **227**，桥 action 仍 **231**；
+参数契约被校验的对 205 → **215**，A/B/C/D 仍全 0。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -939,6 +981,9 @@ P5-2 到时只做最终复测。门禁仍然存在，只是跟着决定走——
   `Selection.Address()` 正常。凡是「用 Find 定位、再读地址」的写法在这里都是死的（第 38 条）。
 - **PowerShell 的 `,` 比 `+` 绑得更紧**：`$a[$i + 1, $j + 1]` 不是「两个下标」，而是 `$i + (1, $j) + 1`，
   结果是 `Object[]` 没有 `op_Addition`。二维组取下标的算式必须写成 `$a[($i + 1), ($j + 1)]`。
+- **`Range.Consolidate` 只认 R1C1，且表名必须带引号**：`'S1'!R1C1:R4C1` 能用，
+  `S1!A1:A4` 与不带引号的含空格表名都**静默不写任何东西**（不抛异常）。Excel 两种引用都认。
+  跨应用搬运数据时，这种「不报错的空操作」比报错更难查（第 39 条）。
 
 ## 验证
 
@@ -966,9 +1011,10 @@ P5-2 到时只做最终复测。门禁仍然存在，只是跟着决定走——
 | test/word-lifecycle.test.mjs | 17 | e2e 暴露的 5 个缺陷（第 24～29 条） |
 | test/spec-reproduction.test.mjs | 12 | P1 验收：spec 逐字节复现模型可见面 |
 | test/excel-missing-halves.test.mjs | 18 | P2 第一波：工作表信息、自动尺寸 ×3、自动换行、查找定位、命名范围读删 |
+| test/excel-missing-halves-2.test.mjs | 30 | P2 第一波余项：格式刷/清格式、条件格式与数据验证读删、重算、外部链接、合并计算、列分组、分类汇总 |
 
-合计 **340 项**（17 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
+合计 **370 项**（18 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 205 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 215 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

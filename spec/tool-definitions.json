@@ -374,6 +374,23 @@
   }
  },
  {
+  "name": "wps_excel_calculate",
+  "description": "强制重算公式。all 为 true 时重算整个工作簿，否则只重算指定工作表。使用场景：刚写入公式要立刻拿结果；表格显示的是过期值（手动计算模式）。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "all": {
+     "type": "boolean",
+     "description": "true 重算整个工作簿；默认 false 只重算一张表"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表（all 为 true 时忽略）"
+    }
+   }
+  }
+ },
+ {
   "name": "wps_excel_clean_data",
   "description": "数据清洗工具，支持多种清洗操作的组合。\n\n使用场景：\n- \"把A列的前后空格去掉\" -> 使用 trim 操作\n- \"把日期格式统一成年-月-日\" -> 使用 unify_date 操作\n- \"删除空行\" -> 使用 remove_empty_rows 操作\n\n支持的操作：\n- trim: 去除单元格前后空格\n- remove_duplicates: 删除重复行\n- unify_date: 统一日期格式为 yyyy-mm-dd\n- remove_empty_rows: 删除空行",
   "inputSchema": {
@@ -404,6 +421,26 @@
    "required": [
     "range",
     "operations"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_clear_formats",
+  "description": "清除区域的格式（字体、颜色、边框、数字格式），单元格内容保留。使用场景：格式被弄乱了，恢复成默认样子。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "目标区域，如 A1:D20"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
+    }
+   },
+   "required": [
+    "range"
    ]
   }
  },
@@ -452,6 +489,82 @@
     }
    },
    "required": []
+  }
+ },
+ {
+  "name": "wps_excel_consolidate",
+  "description": "把多块来源区域按指定函数汇总写入目标区域（Excel 的合并计算）。sources 形如 [Sheet1!A1:B4, Sheet2!A1:B4]。使用场景：多张同结构表加总到一张。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "destination": {
+     "type": "string",
+     "description": "汇总结果写入的区域左上角，如 E1"
+    },
+    "sources": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "来源区域列表，如 [Sheet1!A1:B4, Sheet2!A1:B4]"
+    },
+    "function": {
+     "type": "string",
+     "description": "汇总函数，默认 sum",
+     "enum": [
+      "sum",
+      "count",
+      "average",
+      "max",
+      "min"
+     ]
+    },
+    "topRow": {
+     "type": "boolean",
+     "description": "按标签合并：来源首行是标题。默认 false（按位置逐格相加，纯数字表用这个）"
+    },
+    "leftColumn": {
+     "type": "boolean",
+     "description": "按标签合并：来源首列是标题。默认 false"
+    },
+    "createLinks": {
+     "type": "boolean",
+     "description": "与来源建立链接，默认 false"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "目标工作表名或序号；不填则用当前活动工作表"
+    }
+   },
+   "required": [
+    "destination",
+    "sources"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_copy_format",
+  "description": "把一块区域的格式复制到另一块区域（只复制格式，不改数值与公式）。使用场景：把 A1 的样式刷到整个 A 列、统一表头外观。要连值一起搬请用 wps_excel_write_range。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "source": {
+     "type": "string",
+     "description": "格式来源区域，如 A1"
+    },
+    "target": {
+     "type": "string",
+     "description": "格式目标区域，如 A2:A100"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
+    }
+   },
+   "required": [
+    "source",
+    "target"
+   ]
   }
  },
  {
@@ -1102,6 +1215,46 @@
   }
  },
  {
+  "name": "wps_excel_get_conditional_formats",
+  "description": "列出区域上生效的条件格式规则（序号 + 类型），用于先看清楚再改。使用场景：这个表为什么某些格子会变红；删规则之前先确认删哪一条。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "要查看的区域，如 A1:A100"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
+    }
+   },
+   "required": [
+    "range"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_get_data_validations",
+  "description": "读取区域上的数据验证规则（类型、来源公式、提示语）。使用场景：这个下拉框的选项是从哪来的；删规则之前先确认规则内容。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "要查看的区域，如 B2:B100"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
+    }
+   },
+   "required": [
+    "range"
+   ]
+  }
+ },
+ {
   "name": "wps_excel_get_formula",
   "description": "获取Excel指定单元格的公式。",
   "inputSchema": {
@@ -1166,6 +1319,31 @@
   "inputSchema": {
    "type": "object",
    "properties": {}
+  }
+ },
+ {
+  "name": "wps_excel_group_columns",
+  "description": "把一段列折叠分组（分级显示）。列名如 B、E 或列号 2、5。使用场景：把中间的计算列收起来，只留结果列。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "startColumn": {
+     "type": "string",
+     "description": "起始列（列名如 B，或列号）"
+    },
+    "endColumn": {
+     "type": "string",
+     "description": "结束列（列名如 E，或列号）"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
+    }
+   },
+   "required": [
+    "startColumn",
+    "endColumn"
+   ]
   }
  },
  {
@@ -1505,6 +1683,58 @@
     "include_header": {
      "type": "boolean",
      "description": "是否将第一行作为表头返回，默认false"
+    }
+   },
+   "required": [
+    "range"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_refresh_links",
+  "description": "刷新工作簿引用的全部外部链接并报告条数。使用场景：数据源文件更新了，把引用拉一遍。没有链接时如实报告 0 条。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "wps_excel_remove_conditional_format",
+  "description": "删除区域上的条件格式规则。给 index 删指定的一条（序号见 wps_excel_get_conditional_formats），不填则删该区域的全部规则。只删规则，不动内容与普通格式。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "目标区域，如 A1:A100"
+    },
+    "index": {
+     "type": "number",
+     "description": "只删第几条规则（从 1 开始）；不填则删全部"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
+    }
+   },
+   "required": [
+    "range"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_remove_data_validation",
+  "description": "删除区域上的数据验证规则（下拉框、输入限制）。使用场景：去掉这列的下拉限制。只删规则，不动单元格内容。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "目标区域，如 B2:B100"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
     }
    },
    "required": [
@@ -2132,7 +2362,7 @@
     },
     "groupBy": {
      "type": "string",
-     "description": "分组列标识"
+     "description": "分组依据列在 range 内的序号（从 1 开始），如 range=A1:C4 时用 \"1\" 按第一列分组"
     },
     "function": {
      "type": "string",
@@ -2150,7 +2380,7 @@
      "items": {
       "type": "string"
      },
-     "description": "要汇总的列标识列表"
+     "description": "要汇总的列在 range 内的序号列表（从 1 开始），如 [3] 表示对第三列求和"
     },
     "sheet": {
      "type": "string",
@@ -2726,7 +2956,7 @@
     },
     "position": {
      "type": "number",
-     "description": "插入位���（页码），不填则在末尾添加"
+     "description": "插入位置（页码），不填则在末尾添加"
     },
     "title": {
      "type": "string",
@@ -4816,7 +5046,7 @@
  },
  {
   "name": "wps_word_close_document",
-  "description": "关闭 Word 文档，可选是否保存。\n\n使用场景：\n- \"关掉这个文档，别留着\"\n- 一批任务收尾时清理打开的文档\n\n从未保存到磁盘的文档不会被强制保存（不会弹出保存对话框），此时结果里会带 warning 说明。",
+  "description": "关闭 Word 文档，可选是否保存。\n\n使用场景：\n- \"关掉这个文档，别留着\"\n- 一批任务收尾时清理打开的文档\n\n从未保存到磁盘的文档不会被强制保存（不���弹出保存对话框），此时结果里会带 warning 说明。",
   "inputSchema": {
    "type": "object",
    "properties": {

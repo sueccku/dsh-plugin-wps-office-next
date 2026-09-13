@@ -49,8 +49,16 @@
   "range",
   "targetCell"
  ],
+ "calculateSheet": [
+  "all",
+  "sheet"
+ ],
  "cleanData": [
   "operations",
+  "range",
+  "sheet"
+ ],
+ "clearFormats": [
   "range",
   "sheet"
  ],
@@ -62,6 +70,20 @@
  "closeWorkbook": [
   "name",
   "save"
+ ],
+ "consolidate": [
+  "createLinks",
+  "destination",
+  "function",
+  "leftColumn",
+  "sheet",
+  "sources",
+  "topRow"
+ ],
+ "copyFormat": [
+  "sheet",
+  "source",
+  "target"
  ],
  "copyRange": [
   "destination",
@@ -176,6 +198,14 @@
   "row",
   "sheet"
  ],
+ "getConditionalFormats": [
+  "range",
+  "sheet"
+ ],
+ "getDataValidations": [
+  "range",
+  "sheet"
+ ],
  "getFormula": [
   "cell",
   "sheet"
@@ -187,6 +217,11 @@
   "sheet"
  ],
  "getSheetList": [],
+ "groupColumns": [
+  "endColumn",
+  "sheet",
+  "startColumn"
+ ],
  "groupRows": [
   "endRow",
   "sheet",
@@ -253,6 +288,16 @@
   "protect"
  ],
  "getRangeData": [
+  "range",
+  "sheet"
+ ],
+ "refreshLinks": [],
+ "removeConditionalFormat": [
+  "index",
+  "range",
+  "sheet"
+ ],
+ "removeDataValidation": [
   "range",
   "sheet"
  ],

@@ -558,6 +558,27 @@ function Get-AddressSpan([string]$address) {
         ColumnCount = [Math]::Abs($lastCol - $firstCol) + 1
     }
 }
+# WPS's Range.Consolidate only understands R1C1 references, and only when the sheet part is quoted:
+# 'Sheet'!R1C1:R4C2 consolidates, while A1-style (and an unquoted name containing a space) silently
+# writes nothing at all. Excel accepts both forms. Measured with bare COM while giving this action
+# its first tool (docs/FIXES.md 39), so the bridge converts instead of making callers speak R1C1.
+function ConvertTo-ConsolidateSource([string]$reference) {
+    if (-not $reference) { return $null }
+    $rangePart = $reference.Trim()
+    $sheetPart = ''
+    $bang = $rangePart.LastIndexOf('!')
+    if ($bang -ge 0) {
+        $sheetPart = $rangePart.Substring(0, $bang).Trim().Trim("'")
+        $rangePart = $rangePart.Substring($bang + 1).Trim()
+    }
+    $span = Get-AddressSpan $rangePart
+    if ($null -eq $span) { return $reference }
+    $first = 'R' + $span.Row + 'C' + $span.Column
+    $last = 'R' + ($span.Row + $span.RowCount - 1) + 'C' + ($span.Column + $span.ColumnCount - 1)
+    $body = if ($first -eq $last) { $first } else { $first + ':' + $last }
+    if ($sheetPart) { return "'" + $sheetPart + "'!" + $body }
+    return $body
+}
 
 function Get-RangeFromAddress($workbook, [string]$address) {
     if ($address -match "^(?<sheet>[^!]+)!(?<range>.+)$") {
@@ -1664,10 +1685,17 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         $destRange = $sheet.Range($p.destination)
-        $funcMap = @{ sum = 9; count = 2; average = 1; max = 4; min = 5 }
+        # XlConsolidationFunction constants. The old map (9/2/1/4/5) was not a real enum, so every
+        # call died with HRESULT 0x800A03EC - nobody saw it because no tool reached this action
+        # until P2 gave it one and a test (FIXES 39).
+        $funcMap = @{ sum = -4157; count = -4112; average = -4106; max = -4136; min = -4139 }
         $func = $funcMap[$p.function]
-        if ($null -eq $func) { $func = 9 }
-        $destRange.Consolidate($p.sources, $func, $p.topRow, $p.leftColumn, $p.createLinks)
+        if ($null -eq $func) { $func = -4157 }
+        # Sources must reach COM as a plain string array of references: ConvertFrom-Json wraps every
+        # element in a PSObject, and Range.Consolidate accepts the wrapped array without complaining
+        # and then writes nothing at all (measured while giving this action its first tool).
+        $sourceList = [string[]]@($p.sources | ForEach-Object { ConvertTo-ConsolidateSource ([string]$_) })
+        $destRange.Consolidate($sourceList, $func, [bool]$p.topRow, [bool]$p.leftColumn, [bool]$p.createLinks)
         Output-Json @{ success = $true; data = @{ destination = $p.destination; sources = $p.sources } }
     }
 
@@ -2521,9 +2549,10 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
-        $funcMap = @{ sum = 9; count = 2; average = 1; max = 4; min = 5 }
+        # Same XlConsolidationFunction constants as consolidate; the old 9/2/1/4/5 failed every call.
+        $funcMap = @{ sum = -4157; count = -4112; average = -4106; max = -4136; min = -4139 }
         $func = $funcMap[$p.function]
-        if ($null -eq $func) { $func = 9 }
+        if ($null -eq $func) { $func = -4157 }
         $totalCols = $p.totalColumns
         if ($null -eq $totalCols) { $totalCols = $p.totalColumn }
         if ($null -eq $totalCols) { $totalCols = $p.columns }

@@ -37,6 +37,9 @@ exports.STANDARD_TOOLS = [
     'wps_excel_auto_fit',
     'wps_excel_find_in_sheet',
     'wps_excel_get_named_ranges',
+    'wps_excel_copy_format',
+    'wps_excel_clear_formats',
+    'wps_excel_calculate',
     // Word
     'wps_word_get_active_document',
     'wps_word_get_document_text',

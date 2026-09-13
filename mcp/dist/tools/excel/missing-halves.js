@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.missingHalfTools = exports.deleteNamedRangeHandler = exports.deleteNamedRangeDefinition = exports.getNamedRangesHandler = exports.getNamedRangesDefinition = exports.findInSheetHandler = exports.findInSheetDefinition = exports.setWrapTextHandler = exports.setWrapTextDefinition = exports.autoFitRowsHandler = exports.autoFitRowsDefinition = exports.autoFitColumnsHandler = exports.autoFitColumnsDefinition = exports.autoFitHandler = exports.autoFitDefinition = exports.getSheetInfoHandler = exports.getSheetInfoDefinition = void 0;
+exports.missingHalfTools = exports.groupColumnsHandler = exports.groupColumnsDefinition = exports.calculateHandler = exports.calculateDefinition = exports.consolidateHandler = exports.consolidateDefinition = exports.refreshLinksHandler = exports.refreshLinksDefinition = exports.removeDataValidationHandler = exports.removeDataValidationDefinition = exports.getDataValidationsHandler = exports.getDataValidationsDefinition = exports.removeConditionalFormatHandler = exports.removeConditionalFormatDefinition = exports.getConditionalFormatsHandler = exports.getConditionalFormatsDefinition = exports.clearFormatsHandler = exports.clearFormatsDefinition = exports.copyFormatHandler = exports.copyFormatDefinition = exports.deleteNamedRangeHandler = exports.deleteNamedRangeDefinition = exports.getNamedRangesHandler = exports.getNamedRangesDefinition = exports.findInSheetHandler = exports.findInSheetDefinition = exports.setWrapTextHandler = exports.setWrapTextDefinition = exports.autoFitRowsHandler = exports.autoFitRowsDefinition = exports.autoFitColumnsHandler = exports.autoFitColumnsDefinition = exports.autoFitHandler = exports.autoFitDefinition = exports.getSheetInfoHandler = exports.getSheetInfoDefinition = void 0;
 /**
  * Input: 补全类工具的调用参数
  * Output: 表格「读/清/整」另一半能力的执行结果
- * Pos: Excel 补全工具（P2 第一波）。这些能力在桥里早已实现，只是从来没有工具出口——
+ * Pos: Excel 补全工具（P2 第一波 + 余项，共 18 个）。这些能力在桥里早已实现，只是从来没有工具出口——
  *      上游做 demo 时不需要它们，而真实任务里必然要用（读命名范围、清除格式、查位置…）。
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
@@ -263,6 +263,323 @@ const deleteNamedRangeHandler = async (args) => {
     }
 };
 exports.deleteNamedRangeHandler = deleteNamedRangeHandler;
+// ===== P2 第一波余项（10 个）：挂出桥里已有、却一直没出口的 Excel 能力 =====
+/** 格式刷：只搬格式，不动值与公式 */
+exports.copyFormatDefinition = {
+    name: 'wps_excel_copy_format',
+    description: '把一块区域的格式复制到另一块区域（只复制格式，不改数值与公式）。使用场景：把 A1 的样式刷到整个 A 列、统一表头外观。要连值一起搬请用 wps_excel_write_range。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            source: { type: 'string', description: '格式来源区域，如 A1' },
+            target: { type: 'string', description: '格式目标区域，如 A2:A100' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['source', 'target'],
+    },
+};
+const copyFormatHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('copyFormat', { sheet: args.sheet, source: args.source, target: args.target }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '复制格式失败: ' + response.error }], error: response.error };
+        }
+        const source = response.data?.source || String(args.source);
+        const target = response.data?.target || String(args.target);
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已把 ' + source + ' 的格式复制到 ' + target + '（只改外观，值不变）' }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '复制格式出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.copyFormatHandler = copyFormatHandler;
+/** 清除格式：内容留着，外观回到默认 */
+exports.clearFormatsDefinition = {
+    name: 'wps_excel_clear_formats',
+    description: '清除区域的格式（字体、颜色、边框、数字格式），单元格内容保留。使用场景：格式被弄乱了，恢复成默认样子。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            range: { type: 'string', description: '目标区域，如 A1:D20' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['range'],
+    },
+};
+const clearFormatsHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('clearFormats', { sheet: args.sheet, range: args.range }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '清除格式失败: ' + response.error }], error: response.error };
+        }
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的格式已清除（内容保留）' }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '清除格式出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.clearFormatsHandler = clearFormatsHandler;
+/** 条件格式：读与删（新增侧早就有 wps_excel_set_conditional_format） */
+const cfTypeNames = { 1: '单元格值', 2: '公式', 3: '色阶', 4: '数据条', 5: '前 10 项', 6: '图标集' };
+exports.getConditionalFormatsDefinition = {
+    name: 'wps_excel_get_conditional_formats',
+    description: '列出区域上生效的条件格式规则（序号 + 类型），用于先看清楚再改。使用场景：这个表为什么某些格子会变红；删规则之前先确认删哪一条。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            range: { type: 'string', description: '要查看的区域，如 A1:A100' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['range'],
+    },
+};
+const getConditionalFormatsHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('getConditionalFormats', { sheet: args.sheet, range: args.range }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '读取条件格式失败: ' + response.error }], error: response.error };
+        }
+        const formats = response.data?.formats || [];
+        const where = response.data?.range || String(args.range);
+        if (!formats.length) {
+            return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: where + ' 上没有条件格式规则。' }] };
+        }
+        const lines = formats.map((f) => {
+            const name = cfTypeNames[Number(f.type)];
+            return '  ' + f.index + '. 类型 ' + f.type + (name ? '（' + name + '）' : '');
+        });
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: where + ' 上的条件格式（' + formats.length + ' 条）:\n' + lines.join('\n') }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '读取条件格式出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.getConditionalFormatsHandler = getConditionalFormatsHandler;
+exports.removeConditionalFormatDefinition = {
+    name: 'wps_excel_remove_conditional_format',
+    description: '删除区域上的条件格式规则。给 index 删指定的一条（序号见 wps_excel_get_conditional_formats），不填则删该区域的全部规则。只删规则，不动内容与普通格式。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            range: { type: 'string', description: '目标区域，如 A1:A100' },
+            index: { type: 'number', description: '只删第几条规则（从 1 开始）；不填则删全部' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['range'],
+    },
+};
+const removeConditionalFormatHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('removeConditionalFormat', { sheet: args.sheet, range: args.range, index: args.index }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '删除条件格式失败: ' + response.error }], error: response.error };
+        }
+        const scope = args.index === undefined || args.index === null ? '全部规则' : '第 ' + String(args.index) + ' 条规则';
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的条件格式已删除（' + scope + '）' }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '删除条件格式出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.removeConditionalFormatHandler = removeConditionalFormatHandler;
+/** 数据验证：读与删（新增侧早就有 wps_excel_set_data_validation） */
+const dvTypeNames = { 1: '整数', 2: '小数', 3: '序列', 4: '日期', 5: '时间', 6: '文本长度', 7: '自定义' };
+exports.getDataValidationsDefinition = {
+    name: 'wps_excel_get_data_validations',
+    description: '读取区域上的数据验证规则（类型、来源公式、提示语）。使用场景：这个下拉框的选项是从哪来的；删规则之前先确认规则内容。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            range: { type: 'string', description: '要查看的区域，如 B2:B100' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['range'],
+    },
+};
+const getDataValidationsHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('getDataValidations', { sheet: args.sheet, range: args.range }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '读取数据验证失败: ' + response.error }], error: response.error };
+        }
+        const d = response.data || {};
+        const where = d.range || String(args.range);
+        const typeName = dvTypeNames[Number(d.type)];
+        const lines = [where + ' 的数据验证: 类型 ' + d.type + (typeName ? '（' + typeName + '）' : '')];
+        if (d.formula1)
+            lines.push('  来源/条件: ' + d.formula1);
+        if (d.formula2)
+            lines.push('  条件 2: ' + d.formula2);
+        if (d.inputTitle)
+            lines.push('  输入标题: ' + d.inputTitle);
+        if (d.inputMessage)
+            lines.push('  输入提示: ' + d.inputMessage);
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: lines.join('\n') }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '读取数据验证出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.getDataValidationsHandler = getDataValidationsHandler;
+exports.removeDataValidationDefinition = {
+    name: 'wps_excel_remove_data_validation',
+    description: '删除区域上的数据验证规则（下拉框、输入限制）。使用场景：去掉这列的下拉限制。只删规则，不动单元格内容。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            range: { type: 'string', description: '目标区域，如 B2:B100' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['range'],
+    },
+};
+const removeDataValidationHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('removeDataValidation', { sheet: args.sheet, range: args.range }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '删除数据验证失败: ' + response.error }], error: response.error };
+        }
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的数据验证已删除' }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '删除数据验证出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.removeDataValidationHandler = removeDataValidationHandler;
+/** 外部链接刷新 */
+exports.refreshLinksDefinition = {
+    name: 'wps_excel_refresh_links',
+    description: '刷新工作簿引用的全部外部链接并报告条数。使用场景：数据源文件更新了，把引用拉一遍。没有链接时如实报告 0 条。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: { type: 'object', properties: {} },
+};
+const refreshLinksHandler = async (_args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('refreshLinks', {}, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '刷新外部链接失败: ' + response.error }], error: response.error };
+        }
+        const n = response.data?.refreshed || 0;
+        const detail = response.data?.message ? '（' + response.data.message + '）' : '';
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已刷新外部链接 ' + n + ' 条' + detail }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '刷新外部链接出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.refreshLinksHandler = refreshLinksHandler;
+/** 合并计算：把多块来源区域汇总到目标区域 */
+exports.consolidateDefinition = {
+    name: 'wps_excel_consolidate',
+    description: '把多块来源区域按指定函数汇总写入目标区域（Excel 的合并计算）。sources 形如 [Sheet1!A1:B4, Sheet2!A1:B4]。使用场景：多张同结构表加总到一张。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            destination: { type: 'string', description: '汇总结果写入的区域左上角，如 E1' },
+            sources: { type: 'array', items: { type: 'string' }, description: '来源区域列表，如 [Sheet1!A1:B4, Sheet2!A1:B4]' },
+            function: { type: 'string', enum: ['sum', 'count', 'average', 'max', 'min'], description: '汇总函数，默认 sum' },
+            topRow: { type: 'boolean', description: '按标签合并：来源首行是标题。默认 false（按位置逐格相加，纯数字表用这个）' },
+            leftColumn: { type: 'boolean', description: '按标签合并：来源首列是标题。默认 false' },
+            createLinks: { type: 'boolean', description: '与来源建立链接，默认 false' },
+            sheet: { type: 'string', description: '目标工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['destination', 'sources'],
+    },
+};
+const consolidateHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('consolidate', {
+            sheet: args.sheet,
+            destination: args.destination,
+            sources: args.sources,
+            function: args.function,
+            topRow: args.topRow === undefined ? false : args.topRow,
+            leftColumn: args.leftColumn === undefined ? false : args.leftColumn,
+            createLinks: args.createLinks === undefined ? false : args.createLinks,
+        }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '合并计算失败: ' + response.error }], error: response.error };
+        }
+        const sources = response.data?.sources || [];
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已把 ' + sources.length + ' 块来源合并到 ' + (response.data?.destination || String(args.destination)) }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '合并计算出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.consolidateHandler = consolidateHandler;
+/** 强制重算 */
+exports.calculateDefinition = {
+    name: 'wps_excel_calculate',
+    description: '强制重算公式。all 为 true 时重算整个工作簿，否则只重算指定工作表。使用场景：刚写入公式要立刻拿结果；表格显示的是过期值（手动计算模式）。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            all: { type: 'boolean', description: 'true 重算整个工作簿；默认 false 只重算一张表' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表（all 为 true 时忽略）' },
+        },
+    },
+};
+const calculateHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('calculateSheet', { sheet: args.sheet, all: args.all }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '重算失败: ' + response.error }], error: response.error };
+        }
+        const what = response.data?.calculated === 'all' ? '整个工作簿' : '工作表 ' + String(response.data?.calculated || '');
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已重算 ' + what }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '重算出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.calculateHandler = calculateHandler;
+/** 列分组（分级显示）——行分组早有 wps_excel_group_rows */
+exports.groupColumnsDefinition = {
+    name: 'wps_excel_group_columns',
+    description: '把一段列折叠分组（分级显示）。列名如 B、E 或列号 2、5。使用场景：把中间的计算列收起来，只留结果列。',
+    category: tools_1.ToolCategory.SPREADSHEET,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            startColumn: { type: 'string', description: '起始列（列名如 B，或列号）' },
+            endColumn: { type: 'string', description: '结束列（列名如 E，或列号）' },
+            sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+        },
+        required: ['startColumn', 'endColumn'],
+    },
+};
+const groupColumnsHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('groupColumns', { sheet: args.sheet, startColumn: args.startColumn, endColumn: args.endColumn }, wps_1.WpsAppType.SPREADSHEET);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '列分组失败: ' + response.error }], error: response.error };
+        }
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已分组列 ' + (response.data?.grouped || '') }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '列分组出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.groupColumnsHandler = groupColumnsHandler;
 exports.missingHalfTools = [
     { definition: exports.getSheetInfoDefinition, handler: exports.getSheetInfoHandler },
     { definition: exports.autoFitDefinition, handler: exports.autoFitHandler },
@@ -272,6 +589,16 @@ exports.missingHalfTools = [
     { definition: exports.findInSheetDefinition, handler: exports.findInSheetHandler },
     { definition: exports.getNamedRangesDefinition, handler: exports.getNamedRangesHandler },
     { definition: exports.deleteNamedRangeDefinition, handler: exports.deleteNamedRangeHandler },
+    { definition: exports.copyFormatDefinition, handler: exports.copyFormatHandler },
+    { definition: exports.clearFormatsDefinition, handler: exports.clearFormatsHandler },
+    { definition: exports.getConditionalFormatsDefinition, handler: exports.getConditionalFormatsHandler },
+    { definition: exports.removeConditionalFormatDefinition, handler: exports.removeConditionalFormatHandler },
+    { definition: exports.getDataValidationsDefinition, handler: exports.getDataValidationsHandler },
+    { definition: exports.removeDataValidationDefinition, handler: exports.removeDataValidationHandler },
+    { definition: exports.refreshLinksDefinition, handler: exports.refreshLinksHandler },
+    { definition: exports.consolidateDefinition, handler: exports.consolidateHandler },
+    { definition: exports.calculateDefinition, handler: exports.calculateHandler },
+    { definition: exports.groupColumnsDefinition, handler: exports.groupColumnsHandler },
 ];
 exports.default = exports.missingHalfTools;
 //# sourceMappingURL=missing-halves.js.map

@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 表格工具（83）
+## WPS 表格工具（93）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -90,3 +90,13 @@
 | wps_excel_find_in_sheet | 直达 | 在工作表里查找文本并返回每一个命中的单元格地址（不改动任何内容）。 |
 | wps_excel_get_named_ranges | 直达 | 列出工作簿里的全部命名范围及其引用位置。 |
 | wps_excel_delete_named_range | wps_call | 删除指定的命名范围（只删名字，不动单元格内容）。 |
+| wps_excel_copy_format | 直达 | 把一块区域的格式复制到另一块区域（只复制格式，不改数值与公式）。 |
+| wps_excel_clear_formats | 直达 | 清除区域的格式（字体、颜色、边框、数字格式），单元格内容保留。 |
+| wps_excel_get_conditional_formats | wps_call | 列出区域上生效的条件格式规则（序号 + 类型），用于先看清楚再改。 |
+| wps_excel_remove_conditional_format | wps_call | 删除区域上的条件格式规则。 |
+| wps_excel_get_data_validations | wps_call | 读取区域上的数据验证规则（类型、来源公式、提示语）。 |
+| wps_excel_remove_data_validation | wps_call | 删除区域上的数据验证规则（下拉框、输入限制）。 |
+| wps_excel_refresh_links | wps_call | 刷新工作簿引用的全部外部链接并报告条数。 |
+| wps_excel_consolidate | wps_call | 把多块来源区域按指定函数汇总写入目标区域（Excel 的合并计算）。 |
+| wps_excel_calculate | 直达 | 强制重算公式。 |
+| wps_excel_group_columns | wps_call | 把一段列折叠分组（分级显示）。 |

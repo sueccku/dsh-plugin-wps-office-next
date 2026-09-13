@@ -200,7 +200,21 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 - 参数契约：被校验的对 **200 → 205**，A/B/C/D 仍全 0，`UNPARSED` 回到基线 6
 - 预算门禁按已锁定的 **D1** 同步为 60 工具 / 32,000 字节（verify 与 deprecated 测试同步）
 
-下一步：P2 第一波余项（条件格式/数据验证的读删、groupColumns、copyFormat/clearFormats、refreshLinks、
-consolidate、calculateSheet、getActiveWorkbook…），然后 P2-2 ListObject 全族。
+## P2 第一波余项（已落地）
+
+- 再挂 **10 个**：`copy_format`、`clear_formats`、条件格式读/删、数据验证读/删、`refresh_links`、
+  `consolidate`、`calculate`、`group_columns`；刻意不挂 `getActiveWorkbook`（与 `get_sheet_info` 重复）
+  与 `unfreezePanes`（已被 `freeze_panes { freeze: false }` 覆盖）
+- 广告面 **48 → 51 工具 / 26,652 字节**（3 个进精选档）；注册 **217 → 227**；桥 action 仍 **231**
+- **又发现两个从未生效的 action**：`consolidate` 与 `subtotal` 的函数常量用了假的枚举值
+  （9/2/1/4/5，真值是 -4157/-4112/-4106/-4136/-4139）；`subtotal` 甚至已经注册成工具却零测试覆盖
+- **WPS 差异（裸 COM 量出）**：`Range.Consolidate` 只认 R1C1 且表名必须带引号，A1 引用静默不写；
+  桥里新增 `ConvertTo-ConsolidateSource` 做转换，并把 `topRow` 默认改成 false（按位置相加）
+- 验收：`test/excel-missing-halves-2.test.mjs` **30 项**（真实 WPS）；全套 **370 项 / 18 文件**、
+  verify 23、spec 复现 12、参数契约被校验的对 205 → 215，A/B/C/D 仍全 0
+- 未工具化 action 台账 21 → **11**，剩下的是刻意的重复实现（`openFile`/`replaceInSheet`/`unfreezePanes`）
+  与 P3/P4 的 Word/PPT 项（`getBookmarks`/`getComments`/`insertHyperlink`/`getActivePresentation`…）
+
+下一步：**P2-2 ListObject 全族**（新桥代码），然后 P2-3 数据与打印族。
 
 
