@@ -694,6 +694,25 @@ e2e 里模型正是这么绕过去的。
 实测：`E2E OK (19 checks) in 65s`，exit 0；`--setup` 全流程（建 profile → 装包 → 跑验收）
 也实测通过：**46 秒、19 项全绿**。
 
+### 31. CI：只跑不需要 WPS 的那部分（已落地）
+
+`.github/workflows/ci.yml`（GitHub Actions，`windows-latest`）跑六件事，全部不需要 WPS：
+tsc 构建 + `mcp/dist` 漂移检查、宿主生成器 + `host/wps-actions.ps1` 漂移检查、技能表重生成 +
+`skills/**` 漂移检查、`verify.mjs --static`（18 项）、参数契约对账 + 报告漂移检查、
+以及两个静态测试文件（`plugin.test.mjs` 32 项、`com-host.test.mjs` 6 项）。
+
+两处取舍值得记下来：
+
+- **用漂移检查而不是重新生成**：`mcp/dist`、`host/wps-actions.ps1`、`skills/**/reference.md` 都是入库产物。
+  CI 重新生成它们并断言工作区没有变化——「改了源码忘了重建」会立刻失败，而不是等到用户装上来才发现。
+  这能成立的前提是产物可复现：`mcp/package-lock.json` 把 typescript 锁在 5.9.3，dist 的 sourcemap 里也没有绝对路径。
+- **`verify.mjs --static`**：原来 23 项里有 5 项要真实 WPS（`wps_status`、真实派发、`wps_batch`），
+  在没装 WPS 的 runner 上必然失败。现在把这 5 项归入完整模式，静态模式跑 18 项——
+  **跑多少项由模式决定**，而不是「反正 CI 上会红就先注释掉」。
+
+实测：workflow 的每一条命令都在本机按同样顺序干跑过一遍，**11 步 0 失败**、三处漂移检查全干净；
+`npm ci --dry-run` 通过（锁文件与 package.json 一致），workflow 的 YAML 也过了解析器。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

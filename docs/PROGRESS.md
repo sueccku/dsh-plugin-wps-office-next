@@ -131,4 +131,6 @@ e2e 已一键化（第 30 条）：`node scripts/e2e.mjs --profile <name>` 自�
 
 - 其余 15 对重复工具（参数接口不同）；
 - 12 个 builtin 与 pro 工具重复（未广告，但仍出现在 wps_help 目录里）；
-- 只跑静态门禁的 minimal CI（COM 测试只能本机跑，需要单独设计）。
+- ~~只跑静态门禁的 minimal CI~~ 已落地（FIXES 第 31 条）：`.github/workflows/ci.yml` 在 windows-latest 上跑
+  tsc + `mcp/dist` 漂移、宿主生成 + 生成物漂移、技能表重生成 + 漂移、`verify --static`（18 项）、
+  参数契约 + 报告漂移、以及 `plugin.test.mjs` 与 `com-host.test.mjs`；全部步骤已在本机逐条干跑通过。

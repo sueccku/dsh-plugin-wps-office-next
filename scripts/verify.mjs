@@ -1,10 +1,16 @@
 // Smoke + budget verification for the WPS MCP server.
-// Run: node scripts/verify.mjs <entry.js>
+// Run: node scripts/verify.mjs [entry.js] [--static]
+//
+// --static skips the five checks that need a running WPS instance, so CI can run this gate on a
+// runner without WPS. Everything else - the advertised surface, the budget, the bridge action count
+// and the discovery/dispatch guards - is decided before any call reaches the bridge.
 import { spawn } from "node:child_process";
 
 import { readFileSync } from "node:fs";
 
-const entry = process.argv[2] || "mcp/dist/index.js";
+const argv = process.argv.slice(2);
+const staticOnly = argv.includes("--static");
+const entry = argv.find((arg) => !arg.startsWith("--")) || "mcp/dist/index.js";
 const BUDGET = { maxTools: 45, maxSchemaBytes: 25000 };
 // Snapshot of how many actions the bridge dispatches. Ad-hoc source edits have silently dropped a
 // whole case before (a patch script swallowed "slide.unifyFont"), and nothing noticed because every
@@ -64,9 +70,8 @@ for (const curated of ["wps_excel_read_range", "wps_word_insert_text", "wps_ppt_
 check("hidden tail is not advertised", !names.has("wps_ppt_set_animation") && !names.has("wps_common_get_app_info"));
 
 let id = 10;
-const status = await req(id++, "tools/call", { name: "wps_status", arguments: {} });
-check("wps_status", isOk(status), textOf(status).replace(/\s+/g, " ").slice(0, 140));
 
+// Discovery and dispatch guards. These are answered from the registry, so they hold everywhere.
 const help = await req(id++, "tools/call", { name: "wps_help", arguments: {} });
 check("wps_help overview", isOk(help), textOf(help).replace(/\s+/g, " ").slice(0, 140));
 
@@ -77,27 +82,37 @@ check("wps_help returns full schema", isOk(helpTool) && helpToolText.includes("i
 const helpQuery = await req(id++, "tools/call", { name: "wps_help", arguments: { query: "chart" } });
 check("wps_help search", isOk(helpQuery) && textOf(helpQuery).includes("matched"), textOf(helpQuery).replace(/\s+/g, " ").slice(0, 100));
 
-const direct = await req(id++, "tools/call", { name: "wps_common_ping", arguments: {} });
-check("direct call of curated tool", isOk(direct), textOf(direct).replace(/\s+/g, " ").slice(0, 80));
-
-const hidden = await req(id++, "tools/call", { name: "wps_common_get_app_info", arguments: {} });
-check("direct call of hidden tool still works", isOk(hidden), textOf(hidden).replace(/\s+/g, " ").slice(0, 80));
-
-const dispatched = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_common_get_app_info", args: {} } });
-check("wps_call dispatches hidden tool", isOk(dispatched), textOf(dispatched).replace(/\s+/g, " ").slice(0, 80));
-
 const badDispatch = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_not_a_real_tool", args: {} } });
 check("wps_call rejects unknown tool", !isOk(badDispatch), textOf(badDispatch).slice(0, 80));
 
 const facadeGuard = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_call", args: {} } });
 check("wps_call rejects facade recursion", !isOk(facadeGuard), textOf(facadeGuard).slice(0, 80));
 
-const batch = await req(id++, "tools/call", { name: "wps_batch", arguments: { calls: [{ tool: "wps_common_ping", args: {} }, { tool: "wps_common_wire_check", args: {} }] } });
-check("wps_batch runs sequentially", isOk(batch) && textOf(batch).includes("count"), textOf(batch).replace(/\s+/g, " ").slice(0, 100));
+if (staticOnly) {
+  console.log("      --static: skipping the 5 checks that need a running WPS instance");
+} else {
+  // Each of these reaches the bridge, so a machine without WPS cannot run them.
+  const status = await req(id++, "tools/call", { name: "wps_status", arguments: {} });
+  check("wps_status", isOk(status), textOf(status).replace(/\s+/g, " ").slice(0, 140));
+
+  const direct = await req(id++, "tools/call", { name: "wps_common_ping", arguments: {} });
+  check("direct call of curated tool", isOk(direct), textOf(direct).replace(/\s+/g, " ").slice(0, 80));
+
+  const hidden = await req(id++, "tools/call", { name: "wps_common_get_app_info", arguments: {} });
+  check("direct call of hidden tool still works", isOk(hidden), textOf(hidden).replace(/\s+/g, " ").slice(0, 80));
+
+  const dispatched = await req(id++, "tools/call", { name: "wps_call", arguments: { tool: "wps_common_get_app_info", args: {} } });
+  check("wps_call dispatches hidden tool", isOk(dispatched), textOf(dispatched).replace(/\s+/g, " ").slice(0, 80));
+
+  const batch = await req(id++, "tools/call", { name: "wps_batch", arguments: { calls: [{ tool: "wps_common_ping", args: {} }, { tool: "wps_common_wire_check", args: {} }] } });
+  check("wps_batch runs sequentially", isOk(batch) && textOf(batch).includes("count"), textOf(batch).replace(/\s+/g, " ").slice(0, 100));
+}
 
 clearTimeout(timeout);
 if (stderr.trim()) console.log("server stderr tail: " + stderr.trim().split("\n").slice(-3).join(" | ").slice(0, 300));
 const failed = results.filter((r) => !r.ok).length;
-console.log(failed === 0 ? "VERIFY OK (" + results.length + " checks)" : "VERIFY FAILED (" + failed + "/" + results.length + ")");
+console.log(failed === 0
+  ? "VERIFY OK (" + results.length + " checks" + (staticOnly ? ", static" : "") + ")"
+  : "VERIFY FAILED (" + failed + "/" + results.length + ")");
 child.kill();
 process.exit(failed === 0 ? 0 : 1);

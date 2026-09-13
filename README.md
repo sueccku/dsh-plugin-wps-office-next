@@ -1,5 +1,9 @@
 # dsh-plugin-wps-office-next
 
+[![ci](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml/badge.svg)](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml)
+![advertised tools](https://img.shields.io/badge/advertised%20tools-44%2F45-blue)
+![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
+
 专精 Windows/COM 的一站式 DeepSeek Harness 插件：让 DSH 通过 MCP 直接操控 WPS 表格 / 文字 / 演示，
 自带 MCP server、常驻 COM 宿主与技能文档，**不需要安装任何 WPS 加载项，也不需要配置任何环境变量**。
 
@@ -70,8 +74,8 @@
 
 ### 还没做的
 
-- **没有 CI**：静态门禁（tsc / 宿主生成器解析守卫 / `tools/list` 快照 / 预算）可以跑在任何机器上，
-  但一键 e2e 与 310 项测试里有相当一部分要驱动真实 WPS，只能在装了 WPS 的本机跑；
+- **CI 只覆盖静态部分**：tsc + 三处漂移检查 + `verify --static` + 参数契约 + 两个静态测试；
+  一键 e2e 与其余 13 个测试文件要驱动真实 WPS，只能在装了 WPS 的本机跑（没有自托管 runner）；
 - 12 个上游遗留 builtin 工具与 pro 工具重复（未广告，但仍出现在 `wps_help` 目录里）；
 - 其余 15 对「同 action、参数接口不同」的重复工具尚未合并；
 - 9 处 handler 实参静态不可读、1 处桥无键表（动态键）在参数契约报告里列名待查。
@@ -181,6 +185,20 @@
 
 当前数字：**310 项测试**（15 个文件）+ **23 项门禁**全绿；广告面 **44 工具 / 23,593 字节**
 （上限 45 / 25,000）；桥 action **259**（生成器断言源码、生成物、期望值三方一致）。
+
+### CI 覆盖到哪
+
+`.github/workflows/ci.yml`（GitHub Actions，`windows-latest`）**只跑静态那部分**：
+
+1. `npm ci` + `tsc` 构建，再断言 `mcp/dist` 与源码一致（dist 是入库的，不许过期）；
+2. 跑宿主生成器，再断言 `host/wps-actions.ps1` 与桥源码一致（生成器自带解析校验）；
+3. 重生成技能参考表，再断言 `skills/**/reference.md` 与注册表一致；
+4. `node scripts/verify.mjs --static` —— 18 项：广告面、预算、桥 action 数量、`wps_help` 检索与派发守卫；
+5. 参数契约对账，再断言 `docs/param-contract.md` 一致；
+6. 两个不需要 WPS 的测试文件：`test/plugin.test.mjs`(32 项)、`test/com-host.test.mjs`(6 项)。
+
+需要真实 WPS 的 310 项测试与一键 e2e **留在本机**——没有自托管 runner，也不打算为了 CI 去装 WPS。
+`verify.mjs` 的另外 5 项（`wps_status`、真实派发、`wps_batch`）只有完整模式（不带 `--static`）才会跑。
 
 | 测试文件 | 项数 | 覆盖 |
 |---|---|---|

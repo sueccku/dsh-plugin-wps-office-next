@@ -1,0 +1,68 @@
+# Static gates only. These need nothing but the checkout, Node and Windows PowerShell 5.1, so they
+# run on GitHub's windows runner. The 310 unit tests and the one-command e2e drive a real WPS
+# installation and stay local on purpose - see the quality-gate section of README.md and
+# docs/FIXES.md entries 24-30.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-gates:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install the MCP build dependencies
+        working-directory: mcp
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check and build the MCP server
+        working-directory: mcp
+        run: npx tsc
+
+      - name: Committed mcp/dist must match the sources
+        run: git diff --exit-code -- mcp/dist
+
+      - name: Regenerate the COM host and compare it with the committed copy
+        shell: powershell
+        run: |
+          ./scripts/build-host-actions.ps1
+          git diff --exit-code -- host/wps-actions.ps1
+
+      - name: Regenerate the skill reference tables
+        run: node scripts/gen-skill-tools.mjs
+
+      - name: Committed skill references must match the registry
+        run: git diff --exit-code -- skills
+
+      - name: Advertised surface, budget, bridge action count and dispatch guards
+        run: node scripts/verify.mjs --static
+
+      - name: Parameter contract accounting
+        run: node scripts/param-contract.mjs
+
+      - name: Committed contract report must match
+        run: git diff --exit-code -- docs/param-contract.md
+
+      - name: Static unit tests (DSH entry and resident host protocol)
+        run: |
+          node test/plugin.test.mjs
+          node test/com-host.test.mjs
