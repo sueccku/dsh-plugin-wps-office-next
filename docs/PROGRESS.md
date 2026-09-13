@@ -155,3 +155,22 @@ e2e 已一键化（第 30 条）：`node scripts/e2e.mjs --profile <name>` 自�
 
 下一步：**P1 契约真源**（spec + 生成器，验收标准是逐字节复现今天的产物）。
 
+## P1 第一步完成（2026-09-13）
+
+操作规格（spec）成为工具面的真源，见 docs/FIXES.md 第 33 条与 docs/tool-roadmap.md 的 P1 进展行。
+
+- `mcp/src/spec/` —— 209 条操作（202 bridge / 5 门面 / 1 纯 JS / 1 opaque），由 `scripts/extract-spec.mjs`
+  从今天的事实 bootstrap
+- `scripts/gen-tool-surface.mjs` —— spec → `spec/{tool-definitions,action-keys,advertised,signatures}.json`
+- `test/spec-reproduction.test.mjs` —— **P1 验收：9 项全绿**，其中
+  209 个 schema 深度相等、序列化字节数 **121,308 = 121,308**、广告集 44 一致
+- CI 增加三步（重生成工具面 → spec 漂移 → 复现验收），在 5f5a0f2 上 48 秒全绿
+
+**入账的债务**（账本式门禁：涨了会红、降了要手动改数字）：
+重命名 58 处（参数名 ≠ 桥键，分布在 33 个 action）· 未工具化 action 29 个（P2 待办清单）·
+raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
+
+下一步：**P1-3 桥键真源**（复用 `param-contract.mjs` 的调用点解析器，让 spec 说出每个 action 真正读哪些键）
+→ P1-4 三张人手表归零 → P1-5 `param-contract` 退化为相等断言；之后进 P2 Excel 做深。
+
+
