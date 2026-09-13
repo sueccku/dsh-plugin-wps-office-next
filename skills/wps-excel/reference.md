@@ -10,7 +10,7 @@
 | wps_excel_set_formula | 直达 | 在指定单元格设置Excel公式。 |
 | wps_excel_generate_formula | wps_call | 根据自然语言描述生成Excel公式。 |
 | wps_excel_diagnose_formula | wps_call | 诊断公式错误，分析原因并提供修复建议。 |
-| wps_excel_evaluate_formula | wps_call | 计算并返回公式结果 |
+| wps_excel_evaluate_formula | wps_call | 计算并返回公式结果（由 Excel 求值，不写入任何单元格）。 |
 | wps_excel_set_print_area | wps_call | 设置打印区域 |
 | wps_excel_read_range | 直达 | 读取Excel指定范围的单元格数据，返回二维数组格式的数据。 |
 | wps_excel_write_range | 直达 | 向Excel指定范围写入数据。 |

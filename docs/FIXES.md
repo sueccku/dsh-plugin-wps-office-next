@@ -450,6 +450,32 @@ PPT 端到端测试 test/ppt-contract-fixes.test.mjs **42 项全部通过**（�
 4. **出错时返回不合法的 MCP 结果**：`JSON.stringify(undefined)` 让整个 tools/call 结果非法，
    客户端看到的是 -32602 协议错误而不是错误消息。改为合法的内容块。
 
+### 20. 「11 个实参不可知的 handler」：其实只有一个不设防（已修）
+
+之前把这件事记成「11 个 handler 的实参静态不可知」，复核后发现这个说法既高估了风险、
+又低估了覆盖：
+
+- **9 个是「整包转发」**（handler 把调用方对象原样交给桥，例如 `executeMethod('evaluateFormula', args)`）。
+  对这类 handler，**schema 就是桥实际收到的东西**——所以「schema 的键 ⊆ 桥接受的键」
+  是一条可静态执行的检查，正好补上解析不到的缺口。这就是新的 **D 类**；
+- **2 个是客户端 helper 路径**（read_range / write_range 走 `wpsClient.getRangeData/setRangeData`）。
+  它们的键固定在 wps-client.ts 里，于是 sweep 改为从那里读取发送的键，
+  这两个工具因此回到常规校验（对账从 226 对升到 228 对）；
+- 剩下 1 个 `wps_word_proofread_basic` 是**纯本地 JS**，完全不碰 COM，没什么可校验的。
+
+D 类一上线就抓到一个被缺口掩盖的真实错配：
+
+**`wps_excel_evaluate_formula` 的 `cell`**：schema 宣称「目标单元格（可选）」，
+但 action 用 `Application.Evaluate` 求值，**从不读取 cell**。已移除该参数，
+并在描述里写明「由 Excel 求值、不写入任何单元格；要在单元格里求值请用 set_formula」。
+
+顺带说明一处仍然存在的设计性例外：`wps_excel_set_cell_format` 的 action 会遍历嵌套的 `format` 对象，
+参数名无法静态推导，因此**它不进键表、也不受参数闸门保护**——
+这一处靠 test/cell-format.test.mjs 的 16 项回读验证兜底，属于已知例外而不是遗漏。
+
+现状：A/B/C/D 四类全部为 0；未解析 9 个中 8 个由 D 类覆盖，真正无覆盖的只剩
+proofread_basic（无 COM）与 set_cell_format（动态 action，另有专门测试）。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

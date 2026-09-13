@@ -273,13 +273,16 @@ exports.diagnoseFormulaHandler = diagnoseFormulaHandler;
  */
 exports.evaluateFormulaDefinition = {
     name: 'wps_excel_evaluate_formula',
-    description: '计算并返回公式结果',
+    description: `计算并返回公式结果（由 Excel 求值，不写入任何单元格）。
+
+需要在某个单元格里求值并保留公式时，用 wps_excel_set_formula 写入再从该格读值。`,
     category: tools_1.ToolCategory.SPREADSHEET,
     inputSchema: {
         type: 'object',
+        // "cell" used to be declared here but the action evaluates with Application.Evaluate and never
+        // read it, so a caller passing it now gets an explicit error instead of a silent no-op.
         properties: {
             formula: { type: 'string', description: '要计算的公式，如 =SUM(A1:A10)' },
-            cell: { type: 'string', description: '目标单元格（可选），如 A1' },
         },
         required: ['formula'],
     },

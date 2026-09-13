@@ -78,8 +78,9 @@ PPT 侧新增两张由生成器产出的表——别名表（20 条，公开名�
 同时删掉 5 个无法实现的参数（环形图多段 data、组织架构 data、图表 data、渐变 angle/type、页码 startFrom），
 原因都写进 schema 与文档。新增两道门禁：生成器拒绝写出无法解析的模块；verify 断言 action 数量三方一致。
 
-待办：test/ppt-contract-fixes.test.mjs（41 项）已写好但本机 WPS 演示 COM 僵死（Presentations 为 null），
-待环境恢复后跑通再提交。
+已完成：test/ppt-contract-fixes.test.mjs 42 项全绿并提交；技能文档四份已同步（第 19 条）。
+
+待办（原「11 个 handler 实参不可知」已澄清并大部分关闭，见第 20 条）：
 
 ## P4 修复进度（续）
 
@@ -99,7 +100,7 @@ PPT 侧新增两张由生成器产出的表——别名表（20 条，公开名�
 
 待修：
 
-- docs/param-contract.md 里的 85 处「工具发了、桥不读」错配（别名与缺能力），按 Excel → Word → PPT 顺序处理
+- ~~docs/param-contract.md 里的 85 处「工具发了、桥不读」错配~~ 已全部清零（A/B/C/D 四类均为 0）
 - ~~参数校验只检查 required~~ 已由第 13 条的参数名闸门覆盖
 - 统一结果形状、消灭 50 处静默 catch
 - 文档与代码不一致（auto_fit 声明但不存在；tools/index.ts 计数有误）

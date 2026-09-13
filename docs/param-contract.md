@@ -9,12 +9,14 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 | metric | count |
 | --- | --- |
 | tools in the full catalog | 254 |
-| tool/action pairs checked | 226 |
+| tool/action pairs checked | 228 |
 | **A. handler sends a parameter the bridge never reads** | **0** |
 | B. schema advertises a parameter the handler never uses | 0 |
 | **C. nested object carries a property the action never reads** | **0** |
+| **D. pass-through handler advertises a parameter the bridge never reads** | **0** |
 | actions with no key table (guard skipped) | 1 |
-| handlers whose arguments are not statically readable | 11 |
+| handlers whose arguments are not statically readable | 9 |
+| of those, still covered by the D check below | 8 |
 
 ## A. Sent by the tool, never read by the bridge
 
@@ -38,12 +40,14 @@ None.
 
 ## Not checked
 
+A handler listed here is not necessarily unchecked: when it forwards the caller's object unchanged
+(the common pass-through shape), the D check above compares its schema with the bridge directly.
+Only an entry with no action name has no coverage at all.
+
 | tool | reason |
 | --- | --- |
 | `wps_excel_set_cell_format` | bridge has no key table for `setCellFormat` |
 | `wps_excel_text_to_columns` | argument object not statically readable |
-| `wps_excel_read_range` | 0 executeMethod calls |
-| `wps_excel_write_range` | 0 executeMethod calls |
 | `wps_excel_evaluate_formula` | argument object not statically readable |
 | `wps_excel_set_print_area` | argument object not statically readable |
 | `wps_excel_zoom` | argument object not statically readable |

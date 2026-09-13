@@ -71,6 +71,20 @@ function collectKeys(text, braceAt) {
   return keys;
 }
 
+// Some tools go through a wpsClient helper (getRangeData/setRangeData) rather than executeMethod.
+// Their sent keys are fixed inside wps-client.ts, so read them from there instead of guessing.
+const CLIENT_HELPERS = { getRangeData: 'getRangeData', setRangeData: 'setRangeData' };
+function clientHelperKeys() {
+  const map = new Map();
+  let src = '';
+  try { src = readFileSync('mcp/src/client/wps-client.ts', 'utf8'); } catch { return map; }
+  for (const m of src.matchAll(/invokeAction(?:<[^>]*>)?\(\s*'([A-Za-z0-9]+)'\s*,\s*\{([^}]*)\}/g)) {
+    const keys = [...m[2].matchAll(/([A-Za-z_$][\w$]*)\s*:/g)].map((k) => k[1]);
+    map.set(m[1], keys);
+  }
+  return map;
+}
+const HELPER_KEYS = clientHelperKeys();
 function analyseToolSource() {
   const map = new Map();
   const unparsed = [];
@@ -87,9 +101,18 @@ function analyseToolSource() {
         const block = src.slice(from, to);
         // Only a call with an explicitly named action can be traced without executing it.
         const calls = [...block.matchAll(/executeMethod[\s\S]{0,600}?'([A-Za-z][A-Za-z0-9]*)'/g)];
-        if (calls.length !== 1) { unparsed.push({ tool: names[i][1], reason: calls.length + " executeMethod calls" }); continue; }
+        if (calls.length !== 1) {
+          const helper = Object.keys(CLIENT_HELPERS).find((h) => block.includes('wpsClient.' + h + '('));
+          if (helper) {
+            const action = CLIENT_HELPERS[helper];
+            map.set(names[i][1], { action, keys: HELPER_KEYS.get(action) || ['sheet', 'range', 'data'], mentioned: () => true });
+            continue;
+          }
+          unparsed.push({ tool: names[i][1], reason: calls.length + " executeMethod calls", action: calls.length ? calls[0][1] : null });
+          continue;
+        }
         const keys = sentKeys(block, calls[0].index + calls[0][0].length);
-        if (!keys) { unparsed.push({ tool: names[i][1], reason: "argument object not statically readable" }); continue; }
+        if (!keys) { unparsed.push({ tool: names[i][1], reason: "argument object not statically readable", action: calls[0][1] }); continue; }
         // A schema key is dropped only if the handler never mentions it at all; renaming it (for
         // example filePath -> path) is a legitimate adaptation, not a defect.
         const mentioned = (key) => new RegExp("\\b" + key + "\\b").test(block);
@@ -180,6 +203,7 @@ async function bridgeAccepts(action) {
 const classA = []; // handler sends what the bridge never reads
 const classB = []; // schema advertises what the handler never sends
 const classC = []; // a nested object carries properties the action never reads
+const classD = []; // a pass-through handler advertises a parameter the bridge never reads
 const unvalidated = [];
 let checked = 0;
 
@@ -196,6 +220,7 @@ for (const [toolName, info] of TOOLS) {
   const dropped = schema.filter((k) => !info.mentioned(k));
   if (dropped.length) classB.push({ tool: toolName, action: info.action, dropped, sent: info.keys });
 
+
   // Nested objects are merged onto the flat key set before the check, so their property names are
   // part of the contract too - and the tool schemas are the only place they are declared.
   const props = (tool.inputSchema && tool.inputSchema.properties) || {};
@@ -208,11 +233,26 @@ for (const [toolName, info] of TOOLS) {
   }
 }
 
+// A handler whose arguments cannot be read statically is normally a pass-through: it forwards the
+// caller's object unchanged, so its schema describes what reaches the bridge. Checking schema ->
+// bridge is the only static coverage those tools can get - and it is how evaluate_formula's 'cell'
+// was found advertised but never read.
+for (const entry of unparsed) {
+  if (!entry.action) continue;
+  const tool = tools.get(entry.tool);
+  if (!tool) continue;
+  const bridge = await bridgeInfo(entry.action);
+  if (!bridge) continue;
+  const schema = Object.keys((tool.inputSchema && tool.inputSchema.properties) || {});
+  const unknown = schema.filter((k) => !bridge.accepted.has(k));
+  if (unknown.length) classD.push({ tool: entry.tool, action: entry.action, unknown, accepted: [...bridge.accepted] });
+}
+
 await host.invoke("__shutdown", {});
 host.child.kill();
 server.child.kill();
 
-const report = { tools: tools.size, checked, classA, classB, classC, unvalidated, unparsed };
+const report = { tools: tools.size, checked, classA, classB, classC, classD, unvalidated, unparsed };
 
 // The doc is generated so the remaining work is always the real, current list.
 const doc = [
@@ -231,8 +271,10 @@ const doc = [
   "| **A. handler sends a parameter the bridge never reads** | **" + classA.length + "** |",
   "| B. schema advertises a parameter the handler never uses | " + classB.length + " |",
   "| **C. nested object carries a property the action never reads** | **" + classC.length + "** |",
+  "| **D. pass-through handler advertises a parameter the bridge never reads** | **" + classD.length + "** |",
   "| actions with no key table (guard skipped) | " + unvalidated.length + " |",
   "| handlers whose arguments are not statically readable | " + unparsed.length + " |",
+  "| of those, still covered by the D check below | " + unparsed.filter((u) => u.action).length + " |",
   "",
   "## A. Sent by the tool, never read by the bridge",
   "",
@@ -259,6 +301,10 @@ const doc = [
   "",
   "## Not checked",
   "",
+  "A handler listed here is not necessarily unchecked: when it forwards the caller's object unchanged",
+  "(the common pass-through shape), the D check above compares its schema with the bridge directly.",
+  "Only an entry with no action name has no coverage at all.",
+  "",
   "| tool | reason |",
   "| --- | --- |",
   ...unvalidated.map((u) => "| `" + u.tool + "` | bridge has no key table for `" + u.action + "` |"),
@@ -278,6 +324,8 @@ else {
   for (const m of classB) console.log("  " + m.tool + " -> " + m.action + "\n      advertised-but-unused: " + m.dropped.join(", ") + "\n      object sent to the bridge: " + m.sent.join(", "));
   console.log("");
   console.log("C. nested object carries a property the action NEVER READS: " + classC.length);
+  console.log("D. pass-through handler advertises what the bridge NEVER READS: " + classD.length);
+  for (const m of classD) console.log("  " + m.tool + " -> " + m.action + "\n      never read: " + m.unknown.join(", ") + "\n      bridge reads: " + m.accepted.join(", "));
   for (const m of classC) console.log("  " + m.tool + " -> " + m.action + "  [" + m.container + "]\n      unused: " + m.unknown.join(", "));
   console.log("");
   console.log("UNVALIDATED (bridge has no key table for the action): " + unvalidated.length);
@@ -285,4 +333,4 @@ else {
   console.log("UNPARSED (handler arguments not statically readable): " + unparsed.length);
   for (const u of unparsed) console.log("  " + u.tool + " (" + u.reason + ")");
 }
-process.exit(classA.length + classB.length + classC.length === 0 ? 0 : 1);
+process.exit(classA.length + classB.length + classC.length + classD.length === 0 ? 0 : 1);
