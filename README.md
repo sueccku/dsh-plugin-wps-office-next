@@ -60,6 +60,8 @@
 ### 已经实测过的
 
 - 两轮真实 e2e（上表）、产物用独立 COM 会话重开复核；
+- **一键 e2e 验收已跑通**：`node scripts/e2e.mjs --profile <name>` → 19 项检查、65 秒、exit 0；
+  另做过负向验证（超时压到 5 秒 → 10 项 FAIL、exit 1），确认它会真的失败而不只是打印 PASS；
 - 310 项测试 + 23 项门禁全绿，参数契约对账 211 对、四类静默失效均为 0；
 - 常驻宿主的串行化、崩溃重启、超时与 warning 语义；
 - 本机路径安装与 **GitHub 安装**（`79f0c96`）：拉包 → `--dump-config` 出现插件与 MCP 两行 →
@@ -69,7 +71,7 @@
 ### 还没做的
 
 - **没有 CI**：静态门禁（tsc / 宿主生成器解析守卫 / `tools/list` 快照 / 预算）可以跑在任何机器上，
-  但 310 项测试里有相当一部分要驱动真实 WPS，只能在装了 WPS 的本机跑；
+  但一键 e2e 与 310 项测试里有相当一部分要驱动真实 WPS，只能在装了 WPS 的本机跑；
 - 12 个上游遗留 builtin 工具与 pro 工具重复（未广告，但仍出现在 `wps_help` 目录里）；
 - 其余 15 对「同 action、参数接口不同」的重复工具尚未合并；
 - 9 处 handler 实参静态不可读、1 处桥无键表（动态键）在参数契约报告里列名待查。
@@ -169,6 +171,13 @@
     node scripts/verify.mjs                        # 23 项：门面、派发、预算、action 数量三方一致
     node scripts/param-contract.mjs                # 211 对参数契约对账，写出 docs/param-contract.md
     node test/xxx.test.mjs                         # 逐文件跑；需要本机装好 WPS
+    node scripts/e2e.mjs --profile <name>          # 一键端到端验收；需要该 profile 已装本包 + 本机 WPS
+
+端到端验收是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造一份 fixture 工作簿
+（裸 COM，刻意不走本插件，免得用具自己的 bug 伪造输入）→ 跑一个真实 headless 任务 → 逐帧解会话日志
+打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「操作结果里没有缺陷标记」
+「模型没有自己写 COM 脚本」。**19 项检查、约 65 秒**。profile 不存在时加 `--setup` 一步建好并安装本包。
+轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
 当前数字：**310 项测试**（15 个文件）+ **23 项门禁**全绿；广告面 **44 工具 / 23,593 字节**
 （上限 45 / 25,000）；桥 action **259**（生成器断言源码、生成物、期望值三方一致）。
@@ -202,7 +211,7 @@
 | mcp/scripts/wps-com.ps1 | **桥的唯一真源**：259 个 COM action |
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改，改桥源码后重跑生成器） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
-| scripts/ | doctor、verify、参数契约、生成器、工具面分析、延迟基准 |
+| scripts/ | doctor、verify、参数契约、一键 e2e、生成器、工具面分析、延迟基准 |
 | test/ | 15 个回归测试文件、310 项断言（需要本机 WPS） |
 | baseline/ | 上游基线快照与 28 行缺陷清单（逐条标注 已修/部分修/仍开/不修） |
 | docs/ | FIXES（修复记录）、PROGRESS（进度）、param-contract（生成的契约报告） |

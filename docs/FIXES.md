@@ -658,6 +658,42 @@ e2e 里模型正是这么绕过去的。
 
 预算：广告面 43 → **44 工具 / 23,593 字节**（上限 45 / 25,000），注册目录 235 → 237，桥 action 仍 259。
 
+### 30. e2e 一键化：一条命令跑完并断言（已落地）
+
+第 24 条的两轮验证是手工做的：造 fixture、跑任务、写脚本解会话日志、再用眼睛看结果。手工步骤永远不会失败，
+也就拦不住回归。现在固化成 `scripts/e2e.mjs`：
+
+    node scripts/e2e.mjs --profile <name>            # 19 项检查，约 65 秒
+    node scripts/e2e.mjs --profile <name> --setup    # profile 不存在就先建好并装上本包，再跑
+
+它做五件事，每一步的证据都留在 `test/.artifacts/e2e/<run>/`：
+
+1. **自己造 fixture**（裸 COM，刻意不走本插件——用具自己的 bug 去伪造输入，测出来的东西没意义）；
+2. 跑一个真实 headless 任务（`DSH_PERMISSION_MODE=danger-full-access`，并显式清掉 `DSH_TOOLS_MODE`，
+   保证走的是**广告工具面**而不是 PTC 的 `run_code`）；
+3. 找这次运行的会话日志并**逐帧解码**后打印轨迹；
+4. 用裸 COM 重开产物核对：工作表、降序合计、簇状柱形图（ChartType 51）、文档里的各地区合计；
+5. 行为断言：收尾后 0 个残留文档；**操作类结果**里没有 7 个已知缺陷标记；模型没有在自己写的 pwsh 里碰 COM
+   （`New-Object -ComObject` / `Ket.Application` 等）；用了 `wps_status`、≥8 次 wps 工具
+   （含 `wps_batch` / `wps_call` 的批内成员）、≥2 个技能，且 Word 文档是插件工具建的。
+
+**跑通的过程中它也抓出三处自己的 bug**，照实记下——这三个坑对任何写 e2e 的人都会遇到：
+
+- 会话目录**少看了一层**（真实结构是 `sessions/<encoded-cwd>/<session-id>/session.v3.jsonl.zstd`），
+  于是「找不到会话」让 4 个行为断言全部 FAIL。**这正是它该有的样子**：找不到证据就失败，而不是默认通过；
+- 缺陷标记扫到了**技能文档正文**（技能里本来就在教「遇到 `unknown parameter(` 怎么办」），于是误报；
+  改为只扫 `wps_*` 的操作结果、并排除 `wps_help`（它返回的就是文档）；
+- 只在**顶层**工具名里找 `wps_word_create_document`，而它是在 `wps_batch` 里被调用的，于是误判「没用插件建文档」；
+  改为展开 `wps_batch.calls[].tool` 与 `wps_call.tool`。
+- `--setup` 用 `join()` 拼出 `@deepseek-ai\dsh-base` 去匹配 dump-config 输出，而那份输出用的是正斜杠，
+  于是明明建好了却报失败；改为直接校验 profile 的 `package.json`。
+
+另外做了**负向验证**：把 `--timeout` 压到 5 秒，得到 **10 项 FAIL、exit 1**——确认这个门禁会真的失败，
+而不只是「打印一堆 PASS」。
+
+实测：`E2E OK (19 checks) in 65s`，exit 0；`--setup` 全流程（建 profile → 装包 → 跑验收）
+也实测通过：**46 秒、19 项全绿**。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
