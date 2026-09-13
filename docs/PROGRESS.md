@@ -215,6 +215,18 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 - 未工具化 action 台账 21 → **11**，剩下的是刻意的重复实现（`openFile`/`replaceInSheet`/`unfreezePanes`）
   与 P3/P4 的 Word/PPT 项（`getBookmarks`/`getComments`/`insertHyperlink`/`getActivePresentation`…）
 
-下一步：**P2-2 ListObject 全族**（新桥代码），然后 P2-3 数据与打印族。
+## P2-2 表（ListObject）全族（已落地）
+
+- **新 COM 代码**（P2 里第一次）：桥 action **231 → 239**、注册工具 **227 → 235**、8 个 action + 8 个工具
+  （建表 / 读结构 / 加行 / 删行 / 改名与样式 / 总计行 / 调整范围 / 转回区域）
+- 广告面 **51 → 54 工具 / 28,793 字节**（create / get / add_row 进精选档）
+- 裸 COM 先量支持面：WPS 的 ListObject 完整可用（含 `=SUBTOTAL(109,[Amount])` 这种结构化引用）；
+  `XlTotalsCalculation` 实测 1=sum … 8=var（9/10 报错）
+- **WPS 差异**：`ListRows.Delete()`/`Add()` 之后同一个表对象仍返回旧几何，必须重新解析一次再报告
+- 验收 `test/excel-list-object.test.mjs` **25 项**（真实 WPS）；全套 **395 项 / 19 文件**、verify 23、
+  spec 复现 12、参数契约被校验的对 215 → **223**，A/B/C/D 仍全 0
+
+下一步：**P2-3 数据与打印族**（CSV/文本导入导出、页面设置、页眉页脚、打印标题与预览、标签色、
+分级显示、公式审计、合并计算进阶）。
 
 

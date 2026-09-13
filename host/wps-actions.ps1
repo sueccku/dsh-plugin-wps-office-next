@@ -584,6 +584,63 @@ function ConvertTo-ConsolidateSource([string]$reference) {
     return $body
 }
 
+
+function Get-ListObjectByName($sheet, $table) {
+    # Enumerate instead of calling Item(name) then Item(index): PowerShell caches a COM member's binder
+    # after its first use, so the second argument shape fails. Enumeration sidesteps that entirely.
+    $target = $null
+    if ($null -ne $table -and "$table" -ne "") { $target = [string]$table }
+    $seen = 0
+    foreach ($lo in @($sheet.ListObjects)) {
+        $seen = $seen + 1
+        if ($null -eq $target) { return $lo }
+        if ("$($lo.Name)" -eq $target) { return $lo }
+    }
+    if ($null -ne $target -and $target -match '^\d+$') {
+        $idx = [int]$target
+        if ($idx -ge 1 -and $idx -le $seen) { return $sheet.ListObjects.Item($idx) }
+    }
+    return $null
+}
+
+function Get-ListObjectAddress($lo, [string]$fallback) {
+    # Range.Address() only answers for ranges the resident host reached itself, and a table must never
+    # report an empty address, so fall back to whatever range the caller supplied.
+    try {
+        $addr = [string]$lo.Range.Address()
+        if ($addr) { return $addr }
+    } catch { }
+    return $fallback
+}
+
+function Get-ListObjectInfo($lo, [string]$sheetName, [string]$fallback) {
+    $columns = @()
+    try {
+        for ($i = 1; $i -le [int]$lo.ListColumns.Count; $i++) {
+            $columns += @{ index = $i; name = [string]$lo.ListColumns.Item($i).Name }
+        }
+    } catch { Add-WpsWarning $_.Exception.Message }
+    $rows = 0
+    try { $rows = [int]$lo.ListRows.Count } catch { $rows = 0 }
+    $hasTotals = $false
+    try { $hasTotals = [bool]$lo.ShowTotals } catch { $hasTotals = $false }
+    $style = ""
+    try { $style = [string]$lo.TableStyle.Name } catch { $style = "" }
+    $refs = @()
+    foreach ($c in $columns) { $refs += ([string]$lo.Name + "[" + $c.name + "]") }
+    return @{
+        sheet = $sheetName
+        name = [string]$lo.Name
+        range = (Get-ListObjectAddress $lo $fallback)
+        columns = $columns
+        columnCount = $columns.Count
+        rows = $rows
+        hasTotals = $hasTotals
+        tableStyle = $style
+        structuredRefs = $refs
+    }
+}
+
 function Get-RangeFromAddress($workbook, [string]$address) {
     if ($address -match "^(?<sheet>[^!]+)!(?<range>.+)$") {
         $sheetName = $matches.sheet.Trim("'")
@@ -636,6 +693,7 @@ $script:ActionParamKeys = @{
     'addConditionalFormat' = @('backgroundColor', 'colorScaleType', 'condition', 'fontColor', 'format', 'operator', 'range', 'sheet', 'type', 'value', 'value1', 'value2')
     'addDataValidation' = @('errorMessage', 'errorTitle', 'formula', 'formula1', 'formula2', 'inputMessage', 'inputTitle', 'list', 'operator', 'range', 'sheet', 'showDropdown', 'type', 'validationType')
     'addEmphasisAnimation' = @('duration', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
+    'addListRow' = @('sheet', 'table', 'values')
     'addMasterElement' = @('color', 'element', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
     'addPptHyperlink' = @('address', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress', 'url')
     'addShape' = @('fillColor', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'type', 'width')
@@ -665,6 +723,7 @@ $script:ActionParamKeys = @{
     'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
     'createChart' = @('chartType', 'chartTypeName', 'dataRange', 'left', 'position', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
     'createDocument' = @()
+    'createListObject' = @('hasHeaders', 'name', 'range', 'sheet', 'tableStyle')
     'createNamedRange' = @('name', 'range', 'sheet')
     'createPivotTable' = @('columnFields', 'destinationCell', 'destinationSheet', 'filterFields', 'rowFields', 'sourceRange', 'tableName', 'valueFields')
     'createPresentation' = @()
@@ -672,6 +731,7 @@ $script:ActionParamKeys = @{
     'createWorkbook' = @('name')
     'deleteCellComment' = @('cell', 'sheet')
     'deleteColumns' = @('column', 'count', 'sheet', 'startColumn')
+    'deleteListRow' = @('rowIndex', 'sheet', 'table')
     'deleteNamedRange' = @('name')
     'deletePptImage' = @('imageIndex', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
     'deleteRows' = @('count', 'row', 'sheet', 'startRow')
@@ -715,6 +775,7 @@ $script:ActionParamKeys = @{
     'getDocumentText' = @()
     'getExcelContext' = @('sheet')
     'getFormula' = @('cell', 'sheet')
+    'getListObjects' = @('sheet')
     'getNamedRanges' = @()
     'getOpenDocuments' = @()
     'getOpenPresentations' = @()
@@ -778,6 +839,7 @@ $script:ActionParamKeys = @{
     'replacePptImage' = @('filePath', 'imagePath', 'name', 'path', 'presentationName', 'shapeIndex', 'slideIndex')
     'replacePptText' = @('find', 'findText', 'presentationName', 'replace', 'replaceText')
     'replaceRange' = @('endPos', 'startPos', 'text')
+    'resizeListObject' = @('range', 'sheet', 'table')
     'save' = @()
     'saveAs' = @('appType', 'format', 'path')
     'set3DDepth' = @('depth', 'depthColor', 'lighting', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
@@ -798,6 +860,7 @@ $script:ActionParamKeys = @{
     'setHyperlink' = @('address', 'cell', 'screenTip', 'sheet', 'subAddress', 'text', 'textToDisplay', 'url')
     'setImageStyle' = @('border', 'cropBottom', 'cropLeft', 'cropRight', 'cropTop', 'height', 'imageIndex', 'left', 'name', 'opacity', 'presentationName', 'rotation', 'shadow', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'top', 'width')
     'setLineSpacing' = @('lineSpacing', 'paragraphIndex')
+    'setListObjectTotals' = @('column', 'function', 'sheet', 'show', 'table')
     'setMasterBackground' = @('background', 'color', 'colors', 'imagePath', 'presentationName', 'type')
     'setNumberFormat' = @('format', 'name', 'oldName', 'range', 'sheet')
     'setPageSetup' = @('bottomMargin', 'leftMargin', 'orientation', 'paperSize', 'rightMargin', 'topMargin')
@@ -853,9 +916,11 @@ $script:ActionParamKeys = @{
     'transpose' = @('destination', 'destinationCell', 'sheet', 'source', 'sourceRange', 'targetCell')
     'unfreezePanes' = @()
     'unifyFont' = @('fontName', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex')
+    'unlistListObject' = @('sheet', 'table')
     'unmergeCells' = @('range', 'sheet')
     'unprotectSheet' = @('password', 'sheet')
     'updateChart' = @('chartIndex', 'chartName', 'chartType', 'colors', 'dataRange', 'legendPosition', 'sheet', 'showDataLabels', 'showLegend', 'title')
+    'updateListObject' = @('name', 'sheet', 'showAutoFilter', 'showHeaders', 'table', 'tableStyle')
     'updatePivotTable' = @('addColumnFields', 'addFilterFields', 'addRowFields', 'addValueFields', 'pivotTableCell', 'pivotTableName', 'refresh', 'removeColumnFields', 'removeFilterFields', 'removeRowFields', 'removeValueFields', 'sheet', 'updateValueFields')
     'wireCheck' = @()
     'wrapText' = @('range', 'sheet', 'wrap')
@@ -2632,6 +2697,169 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $excel.ActiveWindow.FreezePanes = $false
         Output-Json @{ success = $true; data = @{ message = "窗格冻结已取消" } }
+    }
+
+# ==================== Excel 表（ListObject）====================
+    # P2-2 的新 COM 代码。WPS 对 ListObject 支持完整（建表/总计行/结构化引用/Resize/Unlist 都实测可用），
+    # 桥里此前一条都没有。"table" 既接受表名（表1 / Sales）也接受该表所在的 1 基序号。
+
+    "createListObject" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        if (-not $p.range) { Output-Json @{ success = $false; error = "range required" }; return }
+        # xlYes=1 / xlNo=2 / xlGuess=0. Default xlYes: a data block handed to a table tool has a header
+        # row in almost every case, and guessing can silently promote the first data row to headers.
+        $hasHeaders = 1
+        if ($null -ne $p.hasHeaders -and -not [bool]$p.hasHeaders) { $hasHeaders = 2 }
+        $source = $sheet.Range([string]$p.range)
+        try {
+            $lo = $sheet.ListObjects.Add(1, $source, $null, $hasHeaders)
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        if ($p.name) { try { $lo.Name = [string]$p.name } catch { Add-WpsWarning ("list object rename failed: " + $_.Exception.Message) } }
+        if ($p.tableStyle) { try { $lo.TableStyle = [string]$p.tableStyle } catch { Add-WpsWarning ("list object style failed: " + $_.Exception.Message) } }
+        Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name ([string]$p.range)) }
+    }
+
+    "getListObjects" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        $targets = @()
+        if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") {
+            $targets += $wb.Sheets.Item($p.sheet)
+        } else {
+            for ($i = 1; $i -le $wb.Sheets.Count; $i++) { $targets += $wb.Sheets.Item($i) }
+        }
+        $tables = @()
+        foreach ($sheet in $targets) {
+            $count = 0
+            try { $count = [int]$sheet.ListObjects.Count } catch { $count = 0 }
+            for ($i = 1; $i -le $count; $i++) {
+                try { $tables += (Get-ListObjectInfo $sheet.ListObjects.Item($i) $sheet.Name "") } catch { Add-WpsWarning $_.Exception.Message }
+            }
+        }
+        Output-Json @{ success = $true; data = @{ tables = $tables; count = $tables.Count } }
+    }
+
+    "addListRow" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $lo = Get-ListObjectByName $sheet $p.table
+        if ($null -eq $lo) { Output-Json @{ success = $false; error = "table not found on this sheet" }; return }
+        try { $null = $lo.ListRows.Add() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        if ($null -ne $p.values) {
+            $vals = @($p.values)
+            if ($vals.Count -gt 0) {
+                $matrix = New-Object 'object[,]' 1, $vals.Count
+                for ($c = 0; $c -lt $vals.Count; $c++) {
+                    $v = $vals[$c]
+                    if ($null -eq $v) { $matrix[0, $c] = $null }
+                    elseif ($v -is [bool]) { $matrix[0, $c] = [bool]$v }
+                    elseif ($v -is [int] -or $v -is [long] -or $v -is [double] -or $v -is [decimal]) { $matrix[0, $c] = [double]$v }
+                    else { $matrix[0, $c] = [string]$v }
+                }
+                $rowCount = [int]$lo.ListRows.Count
+                $rowRange = $lo.ListRows.Item($rowCount).Range
+                $rowRange.PSObject.Properties['Value2'].Value = $matrix
+            }
+        }
+        # Same stale-geometry behaviour as deleteListRow, so re-resolve before describing the table.
+        $lo = Get-ListObjectByName $sheet ([string]$lo.Name)
+        Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name "") }
+    }
+
+    "deleteListRow" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $lo = Get-ListObjectByName $sheet $p.table
+        if ($null -eq $lo) { Output-Json @{ success = $false; error = "table not found on this sheet" }; return }
+        $total = 0
+        try { $total = [int]$lo.ListRows.Count } catch { $total = 0 }
+        $idx = [int]$p.rowIndex
+        if ($idx -lt 1 -or $idx -gt $total) { Output-Json @{ success = $false; error = ("rowIndex " + $idx + " out of range 1.." + $total) }; return }
+        $name = [string]$lo.Name
+        try { $lo.ListRows.Item($idx).Delete() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        # WPS keeps the pre-delete geometry on the object we already hold (ListRows.Count still reports
+        # the old number, Range still the old address) until the ListObject is looked up again, so the
+        # result would describe the table as it was. Re-resolve before reporting.
+        $lo = Get-ListObjectByName $sheet $name
+        Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name "") }
+    }
+
+    "updateListObject" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $lo = Get-ListObjectByName $sheet $p.table
+        if ($null -eq $lo) { Output-Json @{ success = $false; error = "table not found on this sheet" }; return }
+        try {
+            if ($p.name) { $lo.Name = [string]$p.name }
+            if ($p.tableStyle) { $lo.TableStyle = [string]$p.tableStyle }
+            if ($null -ne $p.showHeaders) { $lo.ShowHeaders = [bool]$p.showHeaders }
+            if ($null -ne $p.showAutoFilter) { $lo.ShowAutoFilter = [bool]$p.showAutoFilter }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name "") }
+    }
+
+    "setListObjectTotals" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $lo = Get-ListObjectByName $sheet $p.table
+        if ($null -eq $lo) { Output-Json @{ success = $false; error = "table not found on this sheet" }; return }
+        try {
+            if ($null -ne $p.show) { $lo.ShowTotals = [bool]$p.show }
+            if ($p.column) {
+                $col = $null
+                $i = 0
+                foreach ($c in @($lo.ListColumns)) {
+                    $i = $i + 1
+                    if ("$($c.Name)" -eq [string]$p.column -or "$i" -eq [string]$p.column) { $col = $c; break }
+                }
+                if ($null -eq $col) { Output-Json @{ success = $false; error = "column not found in this table" }; return }
+                if (-not [bool]$lo.ShowTotals) { $lo.ShowTotals = $true }
+                # XlTotalsCalculation. Measured against WPS with bare COM (the enum order is not the
+                # order of the total-row menu): 1=sum 2=average 3=count 4=countNums 5=max 6=min
+                # 7=stdDev 8=var; 9 and 10 are rejected.
+                $calcMap = @{ sum = 1; average = 2; count = 3; countNums = 4; max = 5; min = 6; stdDev = 7; var = 8; none = 0 }
+                $calc = $calcMap[[string]$p.function]
+                if ($null -eq $calc) { $calc = 1 }
+                $col.TotalsCalculation = $calc
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name "") }
+    }
+
+    "resizeListObject" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $lo = Get-ListObjectByName $sheet $p.table
+        if ($null -eq $lo) { Output-Json @{ success = $false; error = "table not found on this sheet" }; return }
+        if (-not $p.range) { Output-Json @{ success = $false; error = "range required" }; return }
+        try { $null = $lo.Resize($sheet.Range([string]$p.range)) } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name ([string]$p.range)) }
+    }
+
+    "unlistListObject" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $lo = Get-ListObjectByName $sheet $p.table
+        if ($null -eq $lo) { Output-Json @{ success = $false; error = "table not found on this sheet" }; return }
+        $info = Get-ListObjectInfo $lo $sheet.Name ""
+        try { $lo.Unlist() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{
+            sheet = $info.sheet; name = $info.name; range = $info.range; columns = $info.columns
+            columnCount = $info.columnCount; message = "表已转回普通区域（数据与格式保留）"
+        } }
     }
 
     "findInSheet" {

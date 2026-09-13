@@ -25,6 +25,11 @@
   "cell",
   "comment"
  ],
+ "addListRow": [
+  "sheet",
+  "table",
+  "values"
+ ],
  "autoFilter": [
   "column",
   "criteria",
@@ -104,6 +109,13 @@
   "showLegend",
   "title"
  ],
+ "createListObject": [
+  "hasHeaders",
+  "name",
+  "range",
+  "sheet",
+  "tableStyle"
+ ],
  "createPivotTable": [
   "columnFields",
   "destinationCell",
@@ -127,6 +139,11 @@
   "column",
   "count",
   "sheet"
+ ],
+ "deleteListRow": [
+  "rowIndex",
+  "sheet",
+  "table"
  ],
  "deleteNamedRange": [
   "name"
@@ -208,6 +225,9 @@
  ],
  "getFormula": [
   "cell",
+  "sheet"
+ ],
+ "getListObjects": [
   "sheet"
  ],
  "getNamedRanges": [],
@@ -311,6 +331,11 @@
   "newName",
   "oldName"
  ],
+ "resizeListObject": [
+  "range",
+  "sheet",
+  "table"
+ ],
  "setArrayFormula": [
   "formula",
   "range",
@@ -365,6 +390,13 @@
   "sheet",
   "text",
   "url"
+ ],
+ "setListObjectTotals": [
+  "column",
+  "function",
+  "sheet",
+  "show",
+  "table"
  ],
  "createNamedRange": [
   "name",
@@ -432,6 +464,10 @@
   "sheet",
   "source"
  ],
+ "unlistListObject": [
+  "sheet",
+  "table"
+ ],
  "unmergeCells": [
   "range",
   "sheet"
@@ -450,6 +486,14 @@
   "showDataLabels",
   "showLegend",
   "title"
+ ],
+ "updateListObject": [
+  "name",
+  "sheet",
+  "showAutoFilter",
+  "showHeaders",
+  "table",
+  "tableStyle"
  ],
  "updatePivotTable": [
   "addColumnFields",

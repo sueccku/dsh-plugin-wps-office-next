@@ -75,6 +75,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_excel_add_list_row",
+  "signature": "excel_add_list_row(table*, values?, sheet?)",
+  "effect": "read"
+ },
+ {
   "tool": "wps_excel_auto_filter",
   "signature": "excel_auto_filter(range*, column?, criteria?, sheet?)",
   "effect": "write"
@@ -150,6 +155,11 @@
   "effect": "lifecycle"
  },
  {
+  "tool": "wps_excel_create_list_object",
+  "signature": "excel_create_list_object(range*, name?, hasHeaders?, tableStyle?, sheet?)",
+  "effect": "lifecycle"
+ },
+ {
   "tool": "wps_excel_create_pivot_table",
   "signature": "excel_create_pivot_table(sourceRange*, destinationCell*, rowFields*, columnFields?, valueFields*, filterFields?, tableName?, destinationSheet?)",
   "effect": "lifecycle"
@@ -172,6 +182,11 @@
  {
   "tool": "wps_excel_delete_columns",
   "signature": "excel_delete_columns(column*, count?, sheet?)",
+  "effect": "delete"
+ },
+ {
+  "tool": "wps_excel_delete_list_row",
+  "signature": "excel_delete_list_row(table*, rowIndex*, sheet?)",
   "effect": "delete"
  },
  {
@@ -262,6 +277,11 @@
  {
   "tool": "wps_excel_get_formula",
   "signature": "excel_get_formula(sheet*, cell*)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_list_objects",
+  "signature": "excel_get_list_objects(sheet?)",
   "effect": "read"
  },
  {
@@ -390,6 +410,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_excel_resize_list_object",
+  "signature": "excel_resize_list_object(table*, range*, sheet?)",
+  "effect": "read"
+ },
+ {
   "tool": "wps_excel_set_array_formula",
   "signature": "excel_set_array_formula(range*, formula*, sheet?)",
   "effect": "write"
@@ -438,6 +463,11 @@
   "tool": "wps_excel_set_hyperlink",
   "signature": "excel_set_hyperlink(cell*, url*, text?, sheet?)",
   "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_list_object_totals",
+  "signature": "excel_set_list_object_totals(table*, show?, column?, function?, sheet?)",
+  "effect": "read"
  },
  {
   "tool": "wps_excel_set_named_range",
@@ -510,6 +540,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_excel_unlist_list_object",
+  "signature": "excel_unlist_list_object(table*, sheet?)",
+  "effect": "read"
+ },
+ {
   "tool": "wps_excel_unmerge_cells",
   "signature": "excel_unmerge_cells(range*, sheet?)",
   "effect": "delete"
@@ -523,6 +558,11 @@
   "tool": "wps_excel_update_chart",
   "signature": "excel_update_chart(chart_index?, chart_name?, title?, chart_type?, show_legend?, legend_position?, show_data_labels?, data_range?, colors?, sheet?)",
   "effect": "write"
+ },
+ {
+  "tool": "wps_excel_update_list_object",
+  "signature": "excel_update_list_object(table*, name?, tableStyle?, showHeaders?, showAutoFilter?, sheet?)",
+  "effect": "read"
  },
  {
   "tool": "wps_excel_update_pivot_table",

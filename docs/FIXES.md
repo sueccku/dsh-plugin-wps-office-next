@@ -971,6 +971,43 @@ P5-2 到时只做最终复测。门禁仍然存在，只是跟着决定走——
 **验收**：30/30 绿。广告面 48 → **51 工具 / 26,652 字节**（`copy_format`/`clear_formats`/`calculate`
 进精选档，其余注册可调用 + `wps_help` 可见）；注册 217 → **227**，桥 action 仍 **231**；
 参数契约被校验的对 205 → **215**，A/B/C/D 仍全 0。
+### 40. P2-2：表（ListObject）全族，8 个 action + 8 个工具（新 COM 代码）
+
+P2 第二波是**新 COM 代码**——第一波只是把已有 action 挂出出口，这一波桥里此前没有任何 ListObject 能力：
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_excel_create_list_object` | createListObject | 区域 → 表（表头/筛选/结构化引用），可命名、可指定首行是否标题与表格样式 |
+| `wps_excel_get_list_objects` | getListObjects | 列出工作簿或某个表上的全部表：范围、行列数、列名、样式、总计行开关、结构化引用 |
+| `wps_excel_add_list_row` | addListRow | 追加一行并可写入该行的值 |
+| `wps_excel_delete_list_row` | deleteListRow | 删除第 N 行（表体行，从 1 开始） |
+| `wps_excel_update_list_object` | updateListObject | 改名 / 换样式 / 显隐表头行 / 显隐筛选按钮 |
+| `wps_excel_set_list_object_totals` | setListObjectTotals | 开关总计行 + 指定某列汇总方式（写 SUBTOTAL） |
+| `wps_excel_resize_list_object` | resizeListObject | 调整表覆盖的范围 |
+| `wps_excel_unlist_list_object` | unlistListObject | 转回普通区域（数据与格式保留） |
+
+**动手前先用裸 COM 量支持面**。WPS 的 ListObject 实现是完整的：建表、ListColumns/ListRows、
+DataBodyRange/HeaderRowRange/TotalsRowRange、TableStyle 赋值、Resize、Unlist 都可用，
+总计行写出来的就是 `=SUBTOTAL(109,[Amount])`——结构化引用真的生效。所以这一族能直接做，不需要绕路。
+
+**枚举值不凭记忆**（FIXES 39 刚吃过一次）：`XlTotalsCalculation` 实测 1=sum 2=average 3=count
+4=countNums 5=max 6=min 7=stdDev 8=var，9/10 直接报“值不在预期的范围内”。总量一次、再写代码。
+
+**又抓到一个 WPS 差异**：`ListRows.Delete()` / `Add()` 之后，**手里那个 ListObject 仍返回变更前的几何
+信息**——`ListRows.Count` 还是旧值、`Range.Address()` 还是旧地址，表现就是“删掉一行，工具却报告表还是
+4 行”。修法是在结构性变更后**重新解析一次表对象**再报告。这个缺陷只在“把读回来的结构给人看”的工具里
+才会暴露：桥里第一波那些只回 `success` 的 action 永远发现不了它。
+
+**验收**：`test/excel-list-object.test.mjs` **25 项**（真实 WPS）：建表 → 读结构（含结构化引用）→
+加行（回读 A5:C5 确认真的落进表里）→ 删行 → 总计行（读 C5 公式确认 `SUBTOTAL(109,[Amount])`，
+换函数后变 `SUBTOTAL(103,…)`）→ 关总计行 → 换样式 → 改名（并确认旧名不再解析）→ 调整范围 →
+转回区域 → 数据仍在。
+
+**一条写测试的教训**：第一版我把同一个 action 在断言里调用了两次（`ok(await call(...)) && text.includes(...)`），
+第二次调用当然失败，5 个检查因此误报。改成“先取结果、再断言”后 25/25——**测量本身也要被检查**。
+
+**数字**：桥 action 231 → **239**、注册工具 227 → **235**、广告面 51 → **54 工具 / 28,793 字节**
+（`create` / `get` / `add_row` 进精选档）。`verify.mjs` 的 `EXPECTED_ACTIONS` 台账按规矩**故意**改到 239。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -984,6 +1021,8 @@ P5-2 到时只做最终复测。门禁仍然存在，只是跟着决定走——
 - **`Range.Consolidate` 只认 R1C1，且表名必须带引号**：`'S1'!R1C1:R4C1` 能用，
   `S1!A1:A4` 与不带引号的含空格表名都**静默不写任何东西**（不抛异常）。Excel 两种引用都认。
   跨应用搬运数据时，这种「不报错的空操作」比报错更难查（第 39 条）。
+- **表对象在结构性变更后不刷新**：`ListRows.Delete()`/`Add()` 之后，手里那个 ListObject 仍返回旧的
+  `ListRows.Count` 与旧的 `Range.Address()`，要重新取一次对象才是新结构。Excel 会当场更新（第 40 条）。
 
 ## 验证
 
@@ -1012,9 +1051,10 @@ P5-2 到时只做最终复测。门禁仍然存在，只是跟着决定走——
 | test/spec-reproduction.test.mjs | 12 | P1 验收：spec 逐字节复现模型可见面 |
 | test/excel-missing-halves.test.mjs | 18 | P2 第一波：工作表信息、自动尺寸 ×3、自动换行、查找定位、命名范围读删 |
 | test/excel-missing-halves-2.test.mjs | 30 | P2 第一波余项：格式刷/清格式、条件格式与数据验证读删、重算、外部链接、合并计算、列分组、分类汇总 |
+| test/excel-list-object.test.mjs | 25 | P2-2 表（ListObject）：建表/读结构/增删行/总计行/样式/改名/范围/转回区域 |
 
-合计 **370 项**（18 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
+合计 **395 项**（19 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 215 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 223 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

@@ -340,6 +340,33 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_excel_add_list_row",
+        "action": "addListRow",
+        "app": "excel",
+        "summary": "给表末尾追加一行，可同时写入这一行的值（按列顺序）。列的格式与公式会自动带上。使用场景：往结构化表格里持续追加记录。",
+        "params": {
+            "table": {
+                "type": "string",
+                "description": "表名（如 表1、Sales）或该表在工作表上的序号（从 1 开始）",
+                "required": true
+            },
+            "values": {
+                "type": "array",
+                "description": "按列顺序写这一行的值，如 [\"华东\", \"A\", 10]；数字请写数字（写成字符串会当文本写进单元格）。不填只加一个空行"
+            },
+            "sheet": {
+                "type": "string",
+                "description": "工作表名或序号；不填则用当前活动工作表"
+            }
+        },
+        "effect": "read",
+        "advertised": true,
+        "required": [
+            "table"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_excel_auto_filter",
         "action": "autoFilter",
         "app": "excel",
@@ -830,6 +857,41 @@ exports.operations = [
         }
     }),
     (0, types_1.op)({
+        "tool": "wps_excel_create_list_object",
+        "action": "createListObject",
+        "app": "excel",
+        "summary": "把一块区域变成「表」（ListObject）：自动带表头与筛选按钮，并可用结构化引用（表名[列名]）写公式，之后能按表加行/删行/加总计行。使用场景：数据要反复增删、要按列筛选、要用结构化引用。默认认为首行是标题。",
+        "params": {
+            "range": {
+                "type": "string",
+                "description": "建表的数据区域，含表头，如 A1:C10",
+                "required": true
+            },
+            "name": {
+                "type": "string",
+                "description": "表名（不填由 WPS 自动命名，如 表1）；这个名字要能写进公式"
+            },
+            "hasHeaders": {
+                "type": "boolean",
+                "description": "首行是否为标题，默认 true；纯数据请传 false"
+            },
+            "tableStyle": {
+                "type": "string",
+                "description": "表格样式名，如 TableStyleMedium2；不填用 WPS 默认"
+            },
+            "sheet": {
+                "type": "string",
+                "description": "工作表名或序号；不填则用当前活动工作表"
+            }
+        },
+        "effect": "lifecycle",
+        "advertised": true,
+        "required": [
+            "range"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_excel_create_pivot_table",
         "action": "createPivotTable",
         "app": "excel",
@@ -1024,6 +1086,35 @@ exports.operations = [
         "advertised": false,
         "required": [
             "column"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_delete_list_row",
+        "action": "deleteListRow",
+        "app": "excel",
+        "summary": "删除表里的第几行（表体行，从 1 开始，不含表头）。使用场景：剔除一条记录。要按条件删请先 read_range 找到行号，或者直接重写整块数据。",
+        "params": {
+            "table": {
+                "type": "string",
+                "description": "表名（如 表1、Sales）或该表在工作表上的序号（从 1 开始）",
+                "required": true
+            },
+            "rowIndex": {
+                "type": "number",
+                "description": "删第几行（表体行，从 1 开始，不含表头）",
+                "required": true
+            },
+            "sheet": {
+                "type": "string",
+                "description": "工作表名或序号；不填则用当前活动工作表"
+            }
+        },
+        "effect": "delete",
+        "advertised": false,
+        "required": [
+            "table",
+            "rowIndex"
         ],
         "engine": "bridge"
     }),
@@ -1520,6 +1611,21 @@ exports.operations = [
             "sheet",
             "cell"
         ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_get_list_objects",
+        "action": "getListObjects",
+        "app": "excel",
+        "summary": "列出工作簿（或指定工作表）里的全部「表」及其结构：名字、范围、行列数、列名、表格样式、总计行开关，以及每列可直接写进公式的结构化引用。使用场景：先看清有哪几张表、列名叫什么，再决定怎么改。",
+        "params": {
+            "sheet": {
+                "type": "string",
+                "description": "只看这张工作表；不填则列出整个工作簿"
+            }
+        },
+        "effect": "read",
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -2134,6 +2240,35 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_excel_resize_list_object",
+        "action": "resizeListObject",
+        "app": "excel",
+        "summary": "调整表覆盖的区域（长短变化），表名、样式与结构化引用都保留。使用场景：数据变长了，把表扩到新范围。",
+        "params": {
+            "table": {
+                "type": "string",
+                "description": "表名（如 表1、Sales）或该表在工作表上的序号（从 1 开始）",
+                "required": true
+            },
+            "range": {
+                "type": "string",
+                "description": "表的新范围，含表头，如 A1:C20",
+                "required": true
+            },
+            "sheet": {
+                "type": "string",
+                "description": "工作表名或序号；不填则用当前活动工作表"
+            }
+        },
+        "effect": "read",
+        "advertised": false,
+        "required": [
+            "table",
+            "range"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_excel_set_array_formula",
         "action": "setArrayFormula",
         "app": "excel",
@@ -2523,6 +2658,52 @@ exports.operations = [
         "required": [
             "cell",
             "url"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_set_list_object_totals",
+        "action": "setListObjectTotals",
+        "app": "excel",
+        "summary": "开/关总计行，并可指定某一列的汇总方式。总计行写的是 SUBTOTAL 公式，会随筛选结果变化，这也正是它和普通求和公式的区别。使用场景：给金额列加合计。",
+        "params": {
+            "table": {
+                "type": "string",
+                "description": "表名（如 表1、Sales）或该表在工作表上的序号（从 1 开始）",
+                "required": true
+            },
+            "show": {
+                "type": "boolean",
+                "description": "是否显示总计行；不填则保持现状（指定 column 时自动打开）"
+            },
+            "column": {
+                "type": "string",
+                "description": "要设置汇总方式的列（列名或序号）；不填只开关总计行"
+            },
+            "function": {
+                "type": "string",
+                "description": "汇总方式，默认 sum",
+                "enum": [
+                    "sum",
+                    "average",
+                    "count",
+                    "countNums",
+                    "max",
+                    "min",
+                    "stdDev",
+                    "var",
+                    "none"
+                ]
+            },
+            "sheet": {
+                "type": "string",
+                "description": "工作表名或序号；不填则用当前活动工作表"
+            }
+        },
+        "effect": "read",
+        "advertised": false,
+        "required": [
+            "table"
         ],
         "engine": "bridge"
     }),
@@ -2921,6 +3102,29 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_excel_unlist_list_object",
+        "action": "unlistListObject",
+        "app": "excel",
+        "summary": "把表转回普通区域（数据与格式保留）：结构化引用、筛选按钮与表对象都会消失。使用场景：交付前清掉表对象，避免对方打开时出现意料之外的引用。",
+        "params": {
+            "table": {
+                "type": "string",
+                "description": "表名（如 表1、Sales）或该表在工作表上的序号（从 1 开始）",
+                "required": true
+            },
+            "sheet": {
+                "type": "string",
+                "description": "工作表名或序号；不填则用当前活动工作表"
+            }
+        },
+        "effect": "read",
+        "advertised": false,
+        "required": [
+            "table"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_excel_unmerge_cells",
         "action": "unmergeCells",
         "app": "excel",
@@ -3047,6 +3251,45 @@ exports.operations = [
             "show_data_labels": "showDataLabels",
             "data_range": "dataRange"
         }
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_update_list_object",
+        "action": "updateListObject",
+        "app": "excel",
+        "summary": "改表本身的设置：改名、换表格样式、显示或隐藏表头行、显示或隐藏筛选按钮。使用场景：表名要能写进公式、筛选按钮碍事要关掉、换一个配色。",
+        "params": {
+            "table": {
+                "type": "string",
+                "description": "表名（如 表1、Sales）或该表在工作表上的序号（从 1 开始）",
+                "required": true
+            },
+            "name": {
+                "type": "string",
+                "description": "新的表名（要能写进公式，不能与已有表名或命名范围重复）"
+            },
+            "tableStyle": {
+                "type": "string",
+                "description": "新的表格样式名，如 TableStyleMedium2"
+            },
+            "showHeaders": {
+                "type": "boolean",
+                "description": "是否显示表头行"
+            },
+            "showAutoFilter": {
+                "type": "boolean",
+                "description": "是否显示表头里的筛选按钮"
+            },
+            "sheet": {
+                "type": "string",
+                "description": "工作表名或序号；不填则用当前活动工作表"
+            }
+        },
+        "effect": "read",
+        "advertised": false,
+        "required": [
+            "table"
+        ],
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_excel_update_pivot_table",
@@ -6071,7 +6314,7 @@ exports.operations = [
         "tool": "wps_word_close_document",
         "action": "closeDocument",
         "app": "word",
-        "summary": "关闭 Word 文档，可选是否保存。\n\n使用场景：\n- \"关掉这个文档，别留着\"\n- 一批任务收尾时清理打开的文档\n\n从未保存到磁盘的文档不会被强制保存（不���弹出保存对话框），此时结果里会带 warning 说明。",
+        "summary": "关闭 Word 文档，可选是否保存。\n\n使用场景：\n- \"关掉这个文档，别留着\"\n- 一批任务收尾时清理打开的文档\n\n从未保存到磁盘的文档不会被强制保存（不会弹出保存对话框），此时结果里会带 warning 说明。",
         "params": {
             "name": {
                 "type": "string",

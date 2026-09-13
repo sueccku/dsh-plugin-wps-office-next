@@ -22,6 +22,7 @@ const data_advanced_1 = require("./data-advanced");
 const row_column_1 = require("./row-column");
 const comment_protect_1 = require("./comment-protect");
 const missing_halves_1 = require("./missing-halves");
+const list_object_1 = require("./list-object");
 /**
  * 所有Excel相关的Tools
  * 包含：
@@ -35,6 +36,8 @@ const missing_halves_1 = require("./missing-halves");
  * - 批注保护Tools: delete_cell_comment, get_cell_comments, unprotect_sheet, lock_cells, set_array_formula, insert_excel_image, set_hyperlink
  * - 补全Tools（P2 第一波）: get_sheet_info, auto_fit(/columns/rows), set_wrap_text, find_in_sheet,
  *   get_named_ranges, delete_named_range
+ * - 表Tools（P2-2）: create_list_object, get_list_objects, add_list_row, delete_list_row,
+ *   update_list_object, set_list_object_totals, resize_list_object, unlist_list_object
  */
 exports.excelTools = [
     ...formula_1.formulaTools,
@@ -48,6 +51,7 @@ exports.excelTools = [
     ...row_column_1.rowColumnTools,
     ...comment_protect_1.commentProtectTools,
     ...missing_halves_1.missingHalfTools,
+    ...list_object_1.listObjectTools,
 ];
 // 分别导出，方便按需使用
 var formula_2 = require("./formula");

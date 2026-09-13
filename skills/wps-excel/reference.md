@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 表格工具（93）
+## WPS 表格工具（101）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -100,3 +100,11 @@
 | wps_excel_consolidate | wps_call | 把多块来源区域按指定函数汇总写入目标区域（Excel 的合并计算）。 |
 | wps_excel_calculate | 直达 | 强制重算公式。 |
 | wps_excel_group_columns | wps_call | 把一段列折叠分组（分级显示）。 |
+| wps_excel_create_list_object | 直达 | 把一块区域变成「表」（ListObject）：自动带表头与筛选按钮，并可用结构化引用（表名[列名]）写公式，之后能按表加行/删行/加总计行。 |
+| wps_excel_get_list_objects | 直达 | 列出工作簿（或指定工作表）里的全部「表」及其结构：名字、范围、行列数、列名、表格样式、总计行开关，以及每列可直接写进公式的结构化引用。 |
+| wps_excel_add_list_row | 直达 | 给表末尾追加一行，可同时写入这一行的值（按列顺序）。 |
+| wps_excel_delete_list_row | wps_call | 删除表里的第几行（表体行，从 1 开始，不含表头）。 |
+| wps_excel_update_list_object | wps_call | 改表本身的设置：改名、换表格样式、显示或隐藏表头行、显示或隐藏筛选按钮。 |
+| wps_excel_set_list_object_totals | wps_call | 开/关总计行，并可指定某一列的汇总方式。 |
+| wps_excel_resize_list_object | wps_call | 调整表覆盖的区域（长短变化），表名、样式与结构化引用都保留。 |
+| wps_excel_unlist_list_object | wps_call | 把表转回普通区域（数据与格式保留）：结构化引用、筛选按钮与表对象都会消失。 |

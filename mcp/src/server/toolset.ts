@@ -46,6 +46,9 @@ export const STANDARD_TOOLS: string[] = [
   'wps_excel_copy_format',
   'wps_excel_clear_formats',
   'wps_excel_calculate',
+  'wps_excel_create_list_object',
+  'wps_excel_get_list_objects',
+  'wps_excel_add_list_row',
   // Word
   'wps_word_get_active_document',
   'wps_word_get_document_text',

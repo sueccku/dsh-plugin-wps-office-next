@@ -18,6 +18,7 @@ import { dataAdvancedTools } from './data-advanced';
 import { rowColumnTools } from './row-column';
 import { commentProtectTools } from './comment-protect';
 import { missingHalfTools } from './missing-halves';
+import { listObjectTools } from './list-object';
 
 /**
  * 所有Excel相关的Tools
@@ -32,6 +33,8 @@ import { missingHalfTools } from './missing-halves';
  * - 批注保护Tools: delete_cell_comment, get_cell_comments, unprotect_sheet, lock_cells, set_array_formula, insert_excel_image, set_hyperlink
  * - 补全Tools（P2 第一波）: get_sheet_info, auto_fit(/columns/rows), set_wrap_text, find_in_sheet,
  *   get_named_ranges, delete_named_range
+ * - 表Tools（P2-2）: create_list_object, get_list_objects, add_list_row, delete_list_row,
+ *   update_list_object, set_list_object_totals, resize_list_object, unlist_list_object
  */
 export const excelTools: RegisteredTool[] = [
   ...formulaTools,
@@ -45,6 +48,7 @@ export const excelTools: RegisteredTool[] = [
   ...rowColumnTools,
   ...commentProtectTools,
   ...missingHalfTools,
+  ...listObjectTools,
 ];
 
 // 分别导出，方便按需使用
