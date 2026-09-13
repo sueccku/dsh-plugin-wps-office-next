@@ -1043,8 +1043,8 @@ export const addTextboxHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
-      name: string;
-      slideIndex: number;
+      name?: string;
+      slideIndex?: number;
     }>(
       'addTextBox',
       {
@@ -1060,14 +1060,18 @@ export const addTextboxHandler: ToolHandler = async (
       WpsAppType.PRESENTATION
     );
 
-    if (response.success && response.data) {
+    if (response.success) {
+      // Report what was asked for: the action's payload does not always carry these back, and the
+      // message used to print "第 undefined 页 / 名称: undefined".
+      const targetSlide = response.data?.slideIndex ?? slideIndex ?? 1;
+      const shapeName = response.data?.name ? `\n名称: ${response.data.name}` : '';
       return {
         id: uuidv4(),
         success: true,
         content: [
           {
             type: 'text',
-            text: `文本框添加成功！\n幻灯片: 第 ${response.data.slideIndex} 页\n名称: ${response.data.name}${text ? `\n内容: "${text}"` : ''}${fontSize ? `\n字号: ${fontSize}` : ''}${fontName ? `\n字体: ${fontName}` : ''}`,
+            text: `文本框添加成功！\n幻灯片: 第 ${targetSlide} 页${shapeName}${text ? `\n内容: "${text}"` : ''}${fontSize ? `\n字号: ${fontSize}` : ''}${fontName ? `\n字体: ${fontName}` : ''}`,
           },
         ],
       };

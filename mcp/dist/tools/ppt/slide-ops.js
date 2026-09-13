@@ -870,14 +870,18 @@ const addTextboxHandler = async (args) => {
             fontSize,
             fontName,
         }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success && response.data) {
+        if (response.success) {
+            // Report what was asked for: the action's payload does not always carry these back, and the
+            // message used to print "第 undefined 页 / 名称: undefined".
+            const targetSlide = response.data?.slideIndex ?? slideIndex ?? 1;
+            const shapeName = response.data?.name ? `\n名称: ${response.data.name}` : '';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
                 content: [
                     {
                         type: 'text',
-                        text: `文本框添加成功！\n幻灯片: 第 ${response.data.slideIndex} 页\n名称: ${response.data.name}${text ? `\n内容: "${text}"` : ''}${fontSize ? `\n字号: ${fontSize}` : ''}${fontName ? `\n字体: ${fontName}` : ''}`,
+                        text: `文本框添加成功！\n幻灯片: 第 ${targetSlide} 页${shapeName}${text ? `\n内容: "${text}"` : ''}${fontSize ? `\n字号: ${fontSize}` : ''}${fontName ? `\n字体: ${fontName}` : ''}`,
                     },
                 ],
             };

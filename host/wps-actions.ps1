@@ -15,75 +15,65 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 
 # ==================== COM Object Getters ====================
 
-function Get-WpsExcel {
-    try { return [System.Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application') }
-    catch {
-        try {
-            $app = New-Object -ComObject 'Ket.Application'
-            if ($app) { return $app }
-        } catch {
-            try {
-                $clsid = (Get-ItemProperty -Path 'HKCU:\Software\Classes\Ket.Application\CLSID' -ErrorAction Stop).'(default)'
-                if ($clsid) {
-                    $type = [Type]::GetTypeFromCLSID($clsid)
-                    if ($type) {
-                        $app = [Activator]::CreateInstance($type)
-                        if ($app) { return $app }
-                    }
-                }
-            } catch {}
-        }
-        return $null
-    }
+function Test-WpsSlideIndex($pres, $value) {
+    # WPS reports Slides.Count as 0 for decks created through COM, so the upper bound cannot be
+    # trusted: a strict check rejected every valid slide in such a deck. The lower bound is always
+    # enforced, and the upper bound only when the count is actually known.
+    if ($null -eq $value) { return $true }
+    $index = [int]$value
+    if ($index -lt 1) { return $false }
+    $total = 0
+    try { $total = [int]$pres.Slides.Count } catch { $total = 0 }
+    if ($total -le 0) { return $true }
+    return ($index -le $total)
+}
+function Test-WpsAppUsable($app, [string]$kind) {
+    # The acquisition chain can hand back an object that is not usable: [Activator]::CreateInstance
+    # on a Coclass produces an instance whose collection is null, and a stale ROT entry behaves the
+    # same way. Every later call then dies with 'cannot call a method on a null-valued expression',
+    # which says nothing about the real cause, so every candidate is checked before it is accepted.
+    if ($null -eq $app) { return $false }
+    try {
+        if ($kind -eq 'excel') { return ($null -ne $app.Workbooks) }
+        if ($kind -eq 'ppt') { return ($null -ne $app.Presentations) }
+        return ($null -ne $app.Documents)
+    } catch { return $false }
 }
 
-function Get-WpsWord {
-    try { return [System.Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application') }
-    catch {
-        try {
-            $app = New-Object -ComObject 'Kwps.Application'
-            if ($app) { return $app }
-        } catch {
-            try {
-                $clsid = (Get-ItemProperty -Path 'HKCU:\Software\Classes\Kwps.Application\CLSID' -ErrorAction Stop).'(default)'
-                if ($clsid) {
-                    $type = [Type]::GetTypeFromCLSID($clsid)
-                    if ($type) {
-                        $app = [Activator]::CreateInstance($type)
-                        if ($app) { return $app }
-                    }
-                }
-            } catch {}
-        }
-        return $null
-    }
+function Reset-WpsApp([string]$kind) {
+    # Drop the cached instance so the next Get-WpsApp acquires a fresh one.
+    $cacheName = 'WpsAppCache_' + $kind
+    Remove-Variable -Name $cacheName -Scope Script -ErrorAction SilentlyContinue
 }
 
-function Get-WpsPpt {
-    try { return [System.Runtime.InteropServices.Marshal]::GetActiveObject('Kwpp.Application') }
-    catch {
-        try {
-            $app = New-Object -ComObject Kwpp.Application
-            try { $app.Visible = $true } catch {}
-            return $app
-        } catch {
-            try {
-                $clsid = (Get-ItemProperty -Path 'HKCU:\Software\Classes\Kwpp.Application\CLSID' -ErrorAction Stop).'(default)'
-                if ($clsid) {
-                    $type = [Type]::GetTypeFromCLSID($clsid)
-                    if ($type) {
-                        $app = [Activator]::CreateInstance($type)
-                        if ($app) {
-                            try { $app.Visible = $true } catch {}
-                            return $app
-                        }
-                    }
-                }
-            } catch {}
-        }
-        return $null
+function Get-WpsApp([string]$kind) {
+    # One validated instance per process: re-acquiring can return a broken object even after a good
+    # acquisition, and a resident host would pay for that on every action.
+    $cacheName = 'WpsAppCache_' + $kind
+    $cached = Get-Variable -Name $cacheName -Scope Script -ErrorAction SilentlyContinue
+    if ($null -ne $cached -and (Test-WpsAppUsable $cached.Value $kind)) { return $cached.Value }
+    $progId = @{ excel = 'Ket.Application'; ppt = 'Kwpp.Application'; word = 'Kwps.Application' }[$kind]
+    if ($null -eq $progId) { return $null }
+    $candidates = @()
+    try { $candidates += [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId) } catch { }
+    try { $candidates += (New-Object -ComObject $progId) } catch { }
+    # NOTE: [Activator]::CreateInstance on the Coclass is deliberately not used. It returns an
+    # instance whose Presentations/Workbooks collection looks fine but whose Add() dereferences an
+    # uninitialised document manager, so it fails with 'cannot call a method on a null-valued
+    # expression' only later, far from the cause.
+    foreach ($candidate in $candidates) {
+        if (-not (Test-WpsAppUsable $candidate $kind)) { continue }
+        if ($kind -ne 'excel') { try { $candidate.Visible = $true } catch { } }
+        Set-Variable -Name $cacheName -Scope Script -Value $candidate
+        return $candidate
     }
+    return $null
 }
+function Get-WpsExcel { return Get-WpsApp 'excel' }
+
+function Get-WpsWord { return Get-WpsApp 'word' }
+
+function Get-WpsPpt { return Get-WpsApp 'ppt' }
 
 # 解析目标演示文稿：优先按 presentationName 精确定位（避免多文稿打开时 ActivePresentation 漂移），
 # 未提供则回退到当前活动文稿；提供了但找不到则返回 $null（让调用方报明确错误，而不是误改其它文稿）。
@@ -1043,7 +1033,20 @@ return }
     "createPresentation" {
         # NOTE: the result must not be dereferenced - WPS's Presentations.Add() returns null, and its
         # new deck can have zero slides. Whether a deck is usable is answered by addSlide/getSlideCount.
-        $ppt.Presentations.Add() | Out-Null
+        # A hollow application instance exposes Presentations but fails inside Add(); retry once
+        # with a freshly acquired instance before giving up.
+        $addError = $null
+        for ($attempt = 1; $attempt -le 2; $attempt++) {
+            try {
+                $null = $ppt.Presentations.Add()
+                $addError = $null
+                break
+            } catch {
+                $addError = $_.Exception.Message
+                if ($attempt -eq 1) { Reset-WpsApp 'ppt'; $ppt = Get-WpsPpt }
+            }
+        }
+        if ($null -ne $addError) { Output-Json @{ success = $false; error = ("cannot create a presentation: " + $addError) }; return }
         Output-Json @{ success = $true }
     }
 
@@ -4559,9 +4562,11 @@ return }
     }
 
     "addAnimation" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
+        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
         if ($null -eq $p.shapeName -and $null -eq $p.shapeIndex) { Output-Json @{ success = $false; error = "shapeIndex/shapeName is required" }; return }
         $shape = $slide.Shapes.Item($(if ($null -ne $p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
@@ -4579,9 +4584,11 @@ return }
     }
 
     "setSlideTransition" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
+        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
         $effect = Get-PptEntryEffect $p.effect
         if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown transition '" + $p.effect + "'; use none/cut/fade/dissolve/push/wipe/split/reveal/cover/curtains or a PpEntryEffect number") }; return }
@@ -4678,7 +4685,7 @@ return }
         # slideIndex restricts the scheme to one slide; without it every slide is recoloured.
         $firstSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { 1 }
         $lastSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { $pres.Slides.Count }
-        if ($firstSlide -lt 1 -or $lastSlide -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
+        if (-not (Test-WpsSlideIndex $pres $firstSlide)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         for ($i = $firstSlide; $i -le $lastSlide; $i++) {
             $slide = $pres.Slides.Item($i)
             for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
@@ -5056,9 +5063,11 @@ return }
     }
 
     "createDonutChart" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
+        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
         $centerX = if ($p.centerX) { $p.centerX } else { 360 }
         $centerY = if ($p.centerY) { $p.centerY } else { 280 }
@@ -5747,6 +5756,8 @@ return }
     }
 
     "applyTransitionToAll" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         $effect = Get-PptEntryEffect $p.transition
         if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown transition '" + $p.transition + "'; use none/cut/fade/dissolve/push/wipe/split/reveal/cover/curtains or a PpEntryEffect number") }; return }
@@ -5936,7 +5947,7 @@ return }
         $includeBody = if ($null -ne $p.includeBody) { [bool]$p.includeBody } else { $true }
         $firstSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { 1 }
         $lastSlide = if ($null -ne $p.slideIndex) { [int]$p.slideIndex } else { $pres.Slides.Count }
-        if ($firstSlide -lt 1 -or $lastSlide -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
+        if (-not (Test-WpsSlideIndex $pres $firstSlide)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $count = 0
         for ($i = $firstSlide; $i -le $lastSlide; $i++) {
             $slide = $pres.Slides.Item($i)
@@ -6007,7 +6018,7 @@ return }
     "set3DRotation" {
         $pres = Get-TargetPres $ppt $p
         $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
+        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
         $shape = $slide.Shapes.Item($(if ($null -ne $p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
         # ThreeD angles are Single; handing the binder an Int32 raised "invalid cast".

@@ -408,9 +408,17 @@ excel-range 12/12；8000 格读取 15ms。
 
 参数契约 sweep：**A=0、B=0、C=0**（212 对工具/action 全部一致），验证门禁 23 项通过。
 
-PPT 端到端测试（test/ppt-contract-fixes.test.mjs，41 项）已写好但**尚未提交**：
-本机 WPS 演示的 COM 目前僵死（Kwpp.Application 的 Presentations 为 null，新建实例也一样），
-而同一组用例在本轮早期是通过的，因此判断为环境问题而非代码回归。
+PPT 端到端测试 test/ppt-contract-fixes.test.mjs **42 项全部通过**（真实 WPS，写-改-回读）。
+
+排障过程中定位到一个此前一直存在的**根因缺陷**：获取应用对象的兜底链里
+`[Activator]::CreateInstance` 会返回"空壳"实例——`Presentations` 看似非空，
+但 `Add()` 内部解引用未初始化的文档管理器，报的是
+"cannot call a method on a null-valued expression"，与真正的原因相距极远。
+现已**移除该兜底**，改为只认 `GetActiveObject` 与 `New-Object`，并加可用性校验与进程内缓存；
+`createPresentation` 在失败时会弃用缓存实例重试一次。
+
+同一批还修掉：我新加的 slideIndex 上界校验依赖 `Slides.Count`，
+而 WPS 对 COM 新建的文稿**恒报 0**，导致所有合法页码被拒——改为"下界必查、上界仅在计数可信时查"。
 
 ## 新发现的 WPS / Office 差异
 

@@ -59,16 +59,15 @@ export const createPresentationHandler: ToolHandler = async (
     );
 
     // A fresh WPS deck has zero slides and the action reports no name, so the message must not
-    // depend on a payload field: it used to print "名称: undefined".
-
-    if (response.success && response.data) {
+    // depend on a payload field: it used to print "名称: undefined". Success is what matters.
+    if (response.success) {
       return {
         id: uuidv4(),
         success: true,
         content: [
           {
             type: 'text',
-            text: response.data.slideCount
+            text: response.data?.slideCount
               ? `新建演示文稿成功！\n幻灯片数: ${response.data.slideCount}`
               : '新建演示文稿成功！（新文稿暂无幻灯片，请先 add_slide）',
           },
