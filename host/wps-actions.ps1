@@ -566,6 +566,42 @@ function Get-AddressSpan([string]$address) {
 # 'Sheet'!R1C1:R4C2 consolidates, while A1-style (and an unquoted name containing a space) silently
 # writes nothing at all. Excel accepts both forms. Measured with bare COM while giving this action
 # its first tool (docs/FIXES.md 39), so the bridge converts instead of making callers speak R1C1.
+function Get-SheetSettingsSnapshot($sheet) {
+    # 一次把「页面设置 + 打印 + 页眉页脚 + 工作表外观」读全。每个字段单独 try/catch：WPS 对某些未设置过
+    # 的属性会直接抛，而一个字段读不到不该让整份快照变成错误。
+    $ps = $sheet.PageSetup
+    $data = @{ sheet = $sheet.Name; orientation = $null; orientationName = ""; paperSize = $null }
+    $fields = @(
+        @('orientation', 'Orientation'), @('paperSize', 'PaperSize'), @('zoom', 'Zoom'),
+        @('fitToPagesWide', 'FitToPagesWide'), @('fitToPagesTall', 'FitToPagesTall'),
+        @('topMargin', 'TopMargin'), @('bottomMargin', 'BottomMargin'), @('leftMargin', 'LeftMargin'),
+        @('rightMargin', 'RightMargin'), @('headerMargin', 'HeaderMargin'), @('footerMargin', 'FooterMargin'),
+        @('centerHorizontally', 'CenterHorizontally'), @('centerVertically', 'CenterVertically'),
+        @('printGridlines', 'PrintGridlines'), @('printHeadings', 'PrintHeadings'),
+        @('printArea', 'PrintArea'), @('printTitleRows', 'PrintTitleRows'), @('printTitleColumns', 'PrintTitleColumns'),
+        @('leftHeader', 'LeftHeader'), @('centerHeader', 'CenterHeader'), @('rightHeader', 'RightHeader'),
+        @('leftFooter', 'LeftFooter'), @('centerFooter', 'CenterFooter'), @('rightFooter', 'RightFooter')
+    )
+    foreach ($field in $fields) {
+        try { $data[$field[0]] = (Get-ComValue $ps $field[1]) } catch { $data[$field[0]] = $null }
+    }
+    if ([int]$data.orientation -eq 2) { $data.orientationName = "landscape" } else { $data.orientationName = "portrait" }
+    try { $data.visible = [int]$sheet.Visible } catch { $data.visible = $null }
+    try { $data.tabColor = [int]$sheet.Tab.Color } catch { $data.tabColor = $null }
+    # Tab.Color 清掉之后读回的是 0（黑），不是“没设置”，只有 ColorIndex = xlColorIndexNone(-4142) 能分清。
+    try { $data.tabColorIndex = [int]$sheet.Tab.ColorIndex } catch { $data.tabColorIndex = $null }
+    try { $data.hPageBreaks = [int]$sheet.HPageBreaks.Count } catch { $data.hPageBreaks = 0 }
+    return $data
+}
+
+function Get-RangeAddressSafe($range, [string]$fallback) {
+    try {
+        $addr = [string]$range.Address()
+        if ($addr) { return $addr }
+    } catch { }
+    return $fallback
+}
+
 function ConvertTo-ConsolidateSource([string]$reference) {
     if (-not $reference) { return $null }
     $rangePart = $reference.Trim()
@@ -775,6 +811,7 @@ $script:ActionParamKeys = @{
     'getDocumentText' = @()
     'getExcelContext' = @('sheet')
     'getFormula' = @('cell', 'sheet')
+    'getFormulaAudit' = @('cell', 'clearArrows', 'sheet', 'showDependents', 'showPrecedents')
     'getListObjects' = @('sheet')
     'getNamedRanges' = @()
     'getOpenDocuments' = @()
@@ -786,6 +823,7 @@ $script:ActionParamKeys = @{
     'getSelection' = @()
     'getShapes' = @('presentationName', 'slideIndex')
     'getSheetList' = @()
+    'getSheetSettings' = @('sheet')
     'getSlideCount' = @('presentationName')
     'getSlideInfo' = @('index', 'presentationName', 'slideIndex')
     'getSlideMaster' = @('presentationName')
@@ -839,6 +877,7 @@ $script:ActionParamKeys = @{
     'replacePptImage' = @('filePath', 'imagePath', 'name', 'path', 'presentationName', 'shapeIndex', 'slideIndex')
     'replacePptText' = @('find', 'findText', 'presentationName', 'replace', 'replaceText')
     'replaceRange' = @('endPos', 'startPos', 'text')
+    'resetPageBreaks' = @('sheet')
     'resizeListObject' = @('range', 'sheet', 'table')
     'save' = @()
     'saveAs' = @('appType', 'format', 'path')
@@ -863,6 +902,7 @@ $script:ActionParamKeys = @{
     'setListObjectTotals' = @('column', 'function', 'sheet', 'show', 'table')
     'setMasterBackground' = @('background', 'color', 'colors', 'imagePath', 'presentationName', 'type')
     'setNumberFormat' = @('format', 'name', 'oldName', 'range', 'sheet')
+    'setOutlineLevels' = @('columnLevels', 'rowLevels', 'sheet', 'summaryColumn', 'summaryRow')
     'setPageSetup' = @('bottomMargin', 'leftMargin', 'orientation', 'paperSize', 'rightMargin', 'topMargin')
     'setParagraph' = @('alignment', 'firstLineIndent', 'leftIndent', 'lineSpacing', 'range', 'rightIndent', 'spaceAfter', 'spaceBefore')
     'setPptChartData' = @('chartIndex', 'chartName', 'data', 'presentationName', 'slideIndex')
@@ -887,6 +927,10 @@ $script:ActionParamKeys = @{
     'setShapeText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
     'setShapeTransparency' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'transparency')
     'setShapeZOrder' = @('name', 'order', 'presentationName', 'shapeIndex', 'slideIndex', 'zOrder')
+    'setSheetAppearance' = @('sheet', 'tabColor', 'visible')
+    'setSheetHeaderFooter' = @('centerFooter', 'centerHeader', 'leftFooter', 'leftHeader', 'rightFooter', 'rightHeader', 'sheet')
+    'setSheetPageSetup' = @('bottomMargin', 'centerHorizontally', 'centerVertically', 'fitToPagesTall', 'fitToPagesWide', 'footerMargin', 'headerMargin', 'leftMargin', 'orientation', 'paperSize', 'printGridlines', 'printHeadings', 'rightMargin', 'sheet', 'topMargin', 'zoom')
+    'setSheetPrintTitles' = @('printTitleColumns', 'printTitleRows', 'sheet')
     'setSlideBackground' = @('background', 'color', 'colors', 'imagePath', 'presentationName', 'slideIndex', 'type')
     'setSlideContent' = @('content', 'presentationName', 'slideIndex')
     'setSlideLayout' = @('index', 'layout', 'presentationName', 'slideIndex')
@@ -2859,6 +2903,201 @@ return }
         Output-Json @{ success = $true; data = @{
             sheet = $info.sheet; name = $info.name; range = $info.range; columns = $info.columns
             columnCount = $info.columnCount; message = "表已转回普通区域（数据与格式保留）"
+        } }
+    }
+
+# ==================== Excel 页面设置 / 打印 / 外观 / 公式审计（P2-3）====================
+    # Excel 此前完全没有页面设置与打印能力（桥里的 setPageSetup / insertPageBreak 都是 Word 的）。
+    # 打印与打印预览刻意不做成工具：前者是物理副作用，后者会开模态窗口把常驻宿主卡住。
+
+    "getSheetSettings" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        Output-Json @{ success = $true; data = (Get-SheetSettingsSnapshot $sheet) }
+    }
+
+    "setSheetPageSetup" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $ps = $sheet.PageSetup
+        $applied = @()
+        try {
+            if ($p.orientation) {
+                if ("$($p.orientation)".ToLower().StartsWith("land")) { $ps.Orientation = 2 } else { $ps.Orientation = 1 }
+                $applied += "orientation"
+            }
+            if ($p.paperSize) {
+                # xlPaperA4=9 A3=8 A5=11 B5=13 letter=1 legal=5 tabloid=3；也接受直接给数字。
+                $paperMap = @{ a4 = 9; a3 = 8; a5 = 11; b5 = 13; letter = 1; legal = 5; tabloid = 3 }
+                $paper = $paperMap["$($p.paperSize)".ToLower()]
+                if ($null -eq $paper -and "$($p.paperSize)" -match '^d+$') { $paper = [int]$p.paperSize }
+                if ($null -eq $paper) { Output-Json @{ success = $false; error = ("unknown paperSize: " + $p.paperSize) }; return }
+                $ps.PaperSize = $paper
+                $applied += "paperSize"
+            }
+            if ($null -ne $p.topMargin) { $ps.TopMargin = [double]$p.topMargin; $applied += "topMargin" }
+            if ($null -ne $p.bottomMargin) { $ps.BottomMargin = [double]$p.bottomMargin; $applied += "bottomMargin" }
+            if ($null -ne $p.leftMargin) { $ps.LeftMargin = [double]$p.leftMargin; $applied += "leftMargin" }
+            if ($null -ne $p.rightMargin) { $ps.RightMargin = [double]$p.rightMargin; $applied += "rightMargin" }
+            if ($null -ne $p.headerMargin) { $ps.HeaderMargin = [double]$p.headerMargin; $applied += "headerMargin" }
+            if ($null -ne $p.footerMargin) { $ps.FooterMargin = [double]$p.footerMargin; $applied += "footerMargin" }
+            # Zoom 与 FitToPages 互斥：设置 FitToPages 前必须先把 Zoom 置 False，否则缩放比例优先。
+            if ($null -ne $p.fitToPagesWide -or $null -ne $p.fitToPagesTall) {
+                $ps.Zoom = $false
+                if ($null -ne $p.fitToPagesWide) { $ps.FitToPagesWide = [int]$p.fitToPagesWide }
+                if ($null -ne $p.fitToPagesTall) { $ps.FitToPagesTall = [int]$p.fitToPagesTall }
+                $applied += "fitToPages"
+            }
+            if ($null -ne $p.zoom) { $ps.Zoom = [int]$p.zoom; $applied += "zoom" }
+            if ($null -ne $p.centerHorizontally) { $ps.CenterHorizontally = [bool]$p.centerHorizontally; $applied += "centerHorizontally" }
+            if ($null -ne $p.centerVertically) { $ps.CenterVertically = [bool]$p.centerVertically; $applied += "centerVertically" }
+            if ($null -ne $p.printGridlines) { $ps.PrintGridlines = [bool]$p.printGridlines; $applied += "printGridlines" }
+            if ($null -ne $p.printHeadings) { $ps.PrintHeadings = [bool]$p.printHeadings; $applied += "printHeadings" }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ applied = $applied; settings = (Get-SheetSettingsSnapshot $sheet) } }
+    }
+
+    "setSheetPrintTitles" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $ps = $sheet.PageSetup
+        $applied = @()
+        try {
+            if ($null -ne $p.printTitleRows) { $ps.PrintTitleRows = [string]$p.printTitleRows; $applied += "printTitleRows" }
+            if ($null -ne $p.printTitleColumns) { $ps.PrintTitleColumns = [string]$p.printTitleColumns; $applied += "printTitleColumns" }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ applied = $applied; settings = (Get-SheetSettingsSnapshot $sheet) } }
+    }
+
+    "setSheetHeaderFooter" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $ps = $sheet.PageSetup
+        $applied = @()
+        try {
+            if ($null -ne $p.leftHeader) { $ps.LeftHeader = [string]$p.leftHeader; $applied += "leftHeader" }
+            if ($null -ne $p.centerHeader) { $ps.CenterHeader = [string]$p.centerHeader; $applied += "centerHeader" }
+            if ($null -ne $p.rightHeader) { $ps.RightHeader = [string]$p.rightHeader; $applied += "rightHeader" }
+            if ($null -ne $p.leftFooter) { $ps.LeftFooter = [string]$p.leftFooter; $applied += "leftFooter" }
+            if ($null -ne $p.centerFooter) { $ps.CenterFooter = [string]$p.centerFooter; $applied += "centerFooter" }
+            if ($null -ne $p.rightFooter) { $ps.RightFooter = [string]$p.rightFooter; $applied += "rightFooter" }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ applied = $applied; settings = (Get-SheetSettingsSnapshot $sheet) } }
+    }
+
+    "setSheetAppearance" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $applied = @()
+        try {
+            if ($null -ne $p.visible) {
+                $value = $p.visible
+                $code = $null
+                if ($value -is [bool]) {
+                    if ($value) { $code = -1 } else { $code = 0 }
+                } else {
+                    $text = "$value".ToLower()
+                    if ($text -eq "veryhidden") { $code = 2 }
+                    elseif ($text -eq "hidden" -or $text -eq "false" -or $text -eq "0") { $code = 0 }
+                    elseif ($text -eq "visible" -or $text -eq "true" -or $text -eq "-1") { $code = -1 }
+                }
+                if ($null -eq $code) { Output-Json @{ success = $false; error = ("unknown visible value: " + $value) }; return }
+                $sheet.Visible = $code
+                $applied += "visible"
+            }
+            # 空字符串表示“恢复默认标签色”：xlColorIndexNone = -4142，赋 Color 是做不到这件事的。
+            if ($null -ne $p.tabColor) {
+                if ("$($p.tabColor)" -eq "") {
+                    $sheet.Tab.ColorIndex = -4142
+                } else {
+                    $color = Convert-HexColorToRgbInt ([string]$p.tabColor)
+                    if ($null -eq $color) { Output-Json @{ success = $false; error = ("unrecognized color: " + $p.tabColor) }; return }
+                    $sheet.Tab.Color = $color
+                }
+                $applied += "tabColor"
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ applied = $applied; settings = (Get-SheetSettingsSnapshot $sheet) } }
+    }
+
+    "setOutlineLevels" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $applied = @()
+        try {
+            if ($null -ne $p.rowLevels -or $null -ne $p.columnLevels) {
+                $rows = 1
+                if ($null -ne $p.rowLevels) { $rows = [int]$p.rowLevels }
+                $cols = 1
+                if ($null -ne $p.columnLevels) { $cols = [int]$p.columnLevels }
+                $null = $sheet.Outline.ShowLevels($rows, $cols)
+                $applied += "levels"
+            }
+            # xlSummaryAbove=0 / xlSummaryBelow=1（默认 below）；xlSummaryOnLeft=-1 / xlSummaryOnRight=0。
+            if ($p.summaryRow) {
+                if ("$($p.summaryRow)".ToLower() -eq "above") { $sheet.Outline.SummaryRow = 0 } else { $sheet.Outline.SummaryRow = 1 }
+                $applied += "summaryRow"
+            }
+            if ($p.summaryColumn) {
+                if ("$($p.summaryColumn)".ToLower() -eq "left") { $sheet.Outline.SummaryColumn = -1 } else { $sheet.Outline.SummaryColumn = 0 }
+                $applied += "summaryColumn"
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{
+            applied = $applied; sheet = $sheet.Name
+            summaryRow = (Get-ComValue $sheet.Outline "SummaryRow")
+            summaryColumn = (Get-ComValue $sheet.Outline "SummaryColumn")
+        } }
+    }
+
+    "resetPageBreaks" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        try { $sheet.ResetAllPageBreaks() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $count = 0
+        try { $count = [int]$sheet.HPageBreaks.Count } catch { $count = 0 }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; hPageBreaks = $count; message = "手动分页符已清除" } }
+    }
+
+    "getFormulaAudit" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        if (-not $p.cell) { Output-Json @{ success = $false; error = "cell required" }; return }
+        $cell = $sheet.Range([string]$p.cell)
+        try {
+            if ($p.clearArrows) { $sheet.ClearArrows() }
+            if ($p.showPrecedents) { $cell.ShowPrecedents() }
+            if ($p.showDependents) { $cell.ShowDependents() }
+        } catch { Add-WpsWarning ("arrow drawing failed: " + $_.Exception.Message) }
+        $pre = 0; $dep = 0; $direct = 0
+        $preAddr = ""; $depAddr = ""
+        try { $pre = [int]$cell.Precedents.Count } catch { $pre = 0 }
+        try { $dep = [int]$cell.Dependents.Count } catch { $dep = 0 }
+        try { $direct = [int]$cell.DirectPrecedents.Count } catch { $direct = 0 }
+        try { $preAddr = Get-RangeAddressSafe $cell.Precedents "" } catch { $preAddr = "" }
+        try { $depAddr = Get-RangeAddressSafe $cell.Dependents "" } catch { $depAddr = "" }
+        $formula = ""
+        try { $formula = [string]$cell.Formula } catch { $formula = "" }
+        # 常量格上 Formula 返回的是值本身（不是空串），所以“是不是公式”只能问 HasFormula。
+        $hasFormula = $false
+        try { $hasFormula = [bool](Get-ComValue $cell "HasFormula") } catch { $hasFormula = $false }
+        Output-Json @{ success = $true; data = @{
+            sheet = $sheet.Name; cell = [string]$p.cell; formula = $formula; hasFormula = $hasFormula
+            precedents = $pre; dependents = $dep; directPrecedents = $direct
+            precedentAddress = $preAddr; dependentAddress = $depAddr
         } }
     }
 

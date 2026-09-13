@@ -122,7 +122,7 @@
 | P2-0 | 覆盖矩阵 + 实测 | 产出 `docs/tool-coverage.md`（对象 × 动词 × {action, tool, advertised, WPS支持, 证据}）；每项标 支持/部分/不支持；**待核实**：桥里 Excel 形状/文本框有 141 处命中，是否有出口 |
 | P2-1（**已完成**：18 个已挂，FIXES 38/39） | 挂出已有能力（零 COM 成本） | 21 个 Excel 缺口全部挂工具：named range get/delete、条件格式 get/remove、数据验证 get/remove、autofit×3、wrapText、groupColumns、unfreezePanes、findInSheet/replaceInSheet、copyFormat/clearFormats、refreshLinks、consolidate、calculateSheet、getExcelContext、getActiveWorkbook、openFile；**used range / sheet info 升为一等公民**（范围地址、行列数、表头、可见性、标签色） |
 | P2-2（**已完成**，FIXES 40） | ListObject 全族（新桥代码） | 从区域建表、列表/读取结构、增删行、总计行、表格样式、转回区域、resize、结构化引用、表内自动筛选 |
-| P2-3 | 数据与打印族 | CSV/文本导入导出、页面设置（方向/纸张/边距/缩放/居中）、页眉页脚、打印标题、打印预览、工作表标签色与隐藏/显示、分级显示(Outline)、公式审计（依赖/被依赖/数组公式）、合并计算 |
+| P2-3（**已完成**，FIXES 41） | 数据与打印族 | CSV/文本导入导出、页面设置（方向/纸张/边距/缩放/居中）、页眉页脚、打印标题、打印预览、工作表标签色与隐藏/显示、分级显示(Outline)、公式审计（依赖/被依赖/数组公式）、合并计算 |
 | P2-4 | 高级项（按实测） | 透视表删除/缓存/刷新、单变量求解(goalseek)、场景管理器、外部数据刷新、迷你图、切片器、图表删除与系列级设置 |
 | P2-5 | Excel 重场景 e2e | 新增一个真实 Excel 任务进一键 e2e（第二场景），覆盖 ListObject + 条件格式 + 打印设置 |
 

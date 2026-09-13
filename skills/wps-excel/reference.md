@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 表格工具（101）
+## WPS 表格工具（109）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -108,3 +108,11 @@
 | wps_excel_set_list_object_totals | wps_call | 开/关总计行，并可指定某一列的汇总方式。 |
 | wps_excel_resize_list_object | wps_call | 调整表覆盖的区域（长短变化），表名、样式与结构化引用都保留。 |
 | wps_excel_unlist_list_object | wps_call | 把表转回普通区域（数据与格式保留）：结构化引用、筛选按钮与表对象都会消失。 |
+| wps_excel_get_sheet_settings | 直达 | 读一张工作表的页面设置、打印设置、页眉页脚与外观：方向、纸张、页边距（磅）、缩放或按页适配、是否居中、打印区域与打印标题、页眉页脚、可见性、标签色、手动分页符数量。 |
+| wps_excel_set_sheet_page_setup | 直达 | 设置工作表的页面：方向、纸张、页边距、缩放、是否居中、是否打印网格线与行列标题。 |
+| wps_excel_set_sheet_print_titles | wps_call | 设置打印时每页重复的行/列（打印标题）：如行 $1:$1 让表头每页都出现，列 $A:$A 让第一列每页都出现。 |
+| wps_excel_set_sheet_header_footer | wps_call | 设置打印页眉页脚。 |
+| wps_excel_set_sheet_appearance | wps_call | 设置工作表的可见性与标签色：可见 / 隐藏 / 深度隐藏（veryHidden，用户界面上无法取消隐藏），以及标签颜色（十六进制如 #FF9900）。 |
+| wps_excel_set_outline_levels | wps_call | 控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇 |
+| wps_excel_reset_page_breaks | wps_call | 清除工作表上的手动分页符，恢复按内容自动分页。 |
+| wps_excel_get_formula_audit | wps_call | 审计一个单元格的公式依赖：它引用了谁（precedents）、谁引用了它（dependents）、直接引用几处，并可选在界面上画出追踪箭头。 |

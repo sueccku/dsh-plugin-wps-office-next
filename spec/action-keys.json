@@ -227,6 +227,13 @@
   "cell",
   "sheet"
  ],
+ "getFormulaAudit": [
+  "cell",
+  "clearArrows",
+  "sheet",
+  "showDependents",
+  "showPrecedents"
+ ],
  "getListObjects": [
   "sheet"
  ],
@@ -237,6 +244,9 @@
   "sheet"
  ],
  "getSheetList": [],
+ "getSheetSettings": [
+  "sheet"
+ ],
  "groupColumns": [
   "endColumn",
   "sheet",
@@ -331,6 +341,9 @@
   "newName",
   "oldName"
  ],
+ "resetPageBreaks": [
+  "sheet"
+ ],
  "resizeListObject": [
   "range",
   "sheet",
@@ -407,12 +420,56 @@
   "range",
   "sheet"
  ],
+ "setOutlineLevels": [
+  "columnLevels",
+  "rowLevels",
+  "sheet",
+  "summaryColumn",
+  "summaryRow"
+ ],
  "setPrintArea": [
   "range"
  ],
  "setRowHeight": [
   "height",
   "row",
+  "sheet"
+ ],
+ "setSheetAppearance": [
+  "sheet",
+  "tabColor",
+  "visible"
+ ],
+ "setSheetHeaderFooter": [
+  "centerFooter",
+  "centerHeader",
+  "leftFooter",
+  "leftHeader",
+  "rightFooter",
+  "rightHeader",
+  "sheet"
+ ],
+ "setSheetPageSetup": [
+  "bottomMargin",
+  "centerHorizontally",
+  "centerVertically",
+  "fitToPagesTall",
+  "fitToPagesWide",
+  "footerMargin",
+  "headerMargin",
+  "leftMargin",
+  "orientation",
+  "paperSize",
+  "printGridlines",
+  "printHeadings",
+  "rightMargin",
+  "sheet",
+  "topMargin",
+  "zoom"
+ ],
+ "setSheetPrintTitles": [
+  "printTitleColumns",
+  "printTitleRows",
   "sheet"
  ],
  "wrapText": [

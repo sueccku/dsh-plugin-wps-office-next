@@ -23,6 +23,7 @@ const row_column_1 = require("./row-column");
 const comment_protect_1 = require("./comment-protect");
 const missing_halves_1 = require("./missing-halves");
 const list_object_1 = require("./list-object");
+const sheet_settings_1 = require("./sheet-settings");
 /**
  * 所有Excel相关的Tools
  * 包含：
@@ -38,6 +39,8 @@ const list_object_1 = require("./list-object");
  *   get_named_ranges, delete_named_range
  * - 表Tools（P2-2）: create_list_object, get_list_objects, add_list_row, delete_list_row,
  *   update_list_object, set_list_object_totals, resize_list_object, unlist_list_object
+ * - 页面与打印Tools（P2-3）: get_sheet_settings, set_sheet_page_setup, set_sheet_print_titles,
+ *   set_sheet_header_footer, set_sheet_appearance, set_outline_levels, reset_page_breaks, get_formula_audit
  */
 exports.excelTools = [
     ...formula_1.formulaTools,
@@ -52,6 +55,7 @@ exports.excelTools = [
     ...comment_protect_1.commentProtectTools,
     ...missing_halves_1.missingHalfTools,
     ...list_object_1.listObjectTools,
+    ...sheet_settings_1.sheetSettingsTools,
 ];
 // 分别导出，方便按需使用
 var formula_2 = require("./formula");

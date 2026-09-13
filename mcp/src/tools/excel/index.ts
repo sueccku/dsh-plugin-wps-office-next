@@ -19,6 +19,7 @@ import { rowColumnTools } from './row-column';
 import { commentProtectTools } from './comment-protect';
 import { missingHalfTools } from './missing-halves';
 import { listObjectTools } from './list-object';
+import { sheetSettingsTools } from './sheet-settings';
 
 /**
  * 所有Excel相关的Tools
@@ -35,6 +36,8 @@ import { listObjectTools } from './list-object';
  *   get_named_ranges, delete_named_range
  * - 表Tools（P2-2）: create_list_object, get_list_objects, add_list_row, delete_list_row,
  *   update_list_object, set_list_object_totals, resize_list_object, unlist_list_object
+ * - 页面与打印Tools（P2-3）: get_sheet_settings, set_sheet_page_setup, set_sheet_print_titles,
+ *   set_sheet_header_footer, set_sheet_appearance, set_outline_levels, reset_page_breaks, get_formula_audit
  */
 export const excelTools: RegisteredTool[] = [
   ...formulaTools,
@@ -49,6 +52,7 @@ export const excelTools: RegisteredTool[] = [
   ...commentProtectTools,
   ...missingHalfTools,
   ...listObjectTools,
+  ...sheetSettingsTools,
 ];
 
 // 分别导出，方便按需使用

@@ -1613,6 +1613,41 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_get_formula_audit",
+    "action": "getFormulaAudit",
+    "app": "excel",
+    "summary": "审计一个单元格的公式依赖：它引用了谁（precedents）、谁引用了它（dependents）、直接引用几处，并可选在界面上画出追踪箭头。使用场景：\"这个数是怎么算出来的\"、\"改这个格子会影响哪些单元格\"。",
+    "params": {
+      "cell": {
+        "type": "string",
+        "description": "要审计的单元格，如 C5",
+        "required": true
+      },
+      "showPrecedents": {
+        "type": "boolean",
+        "description": "在界面上画出引用来源箭头"
+      },
+      "showDependents": {
+        "type": "boolean",
+        "description": "在界面上画出被引用箭头"
+      },
+      "clearArrows": {
+        "type": "boolean",
+        "description": "先清除工作表上的所有追踪箭头"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "read",
+    "advertised": false,
+    "required": [
+      "cell"
+    ],
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_get_list_objects",
     "action": "getListObjects",
     "app": "excel",
@@ -1679,6 +1714,21 @@ export const operations: OperationSpec[] = [
     "app": "excel",
     "summary": "获取当前工作簿的所有工作表列表，包含名称、索引和是否为活动工作表。",
     "params": {},
+    "effect": "read",
+    "advertised": true,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_get_sheet_settings",
+    "action": "getSheetSettings",
+    "app": "excel",
+    "summary": "读一张工作表的页面设置、打印设置、页眉页脚与外观：方向、纸张、页边距（磅）、缩放或按页适配、是否居中、打印区域与打印标题、页眉页脚、可见性、标签色、手动分页符数量。使用场景：打印前先看清现状；改完再回读确认。",
+    "params": {
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
     "effect": "read",
     "advertised": true,
     "engine": "bridge"
@@ -2239,6 +2289,21 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_reset_page_breaks",
+    "action": "resetPageBreaks",
+    "app": "excel",
+    "summary": "清除工作表上的手动分页符，恢复按内容自动分页。使用场景：手工插过分页符之后想回到自动分页。",
+    "params": {
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_resize_list_object",
     "action": "resizeListObject",
     "app": "excel",
@@ -2761,6 +2826,45 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
+    "tool": "wps_excel_set_outline_levels",
+    "action": "setOutlineLevels",
+    "app": "excel",
+    "summary": "控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇总行在上还是下、汇总列在左还是右。使用场景：分组之后把明细收起来只留汇总。",
+    "params": {
+      "rowLevels": {
+        "type": "number",
+        "description": "行显示到第几级（1 表示只显示第 1 级，深层的折叠）"
+      },
+      "columnLevels": {
+        "type": "number",
+        "description": "列显示到第几级"
+      },
+      "summaryRow": {
+        "type": "string",
+        "description": "汇总行在明细的上方还是下方",
+        "enum": [
+          "above",
+          "below"
+        ]
+      },
+      "summaryColumn": {
+        "type": "string",
+        "description": "汇总列在明细的左侧还是右侧",
+        "enum": [
+          "left",
+          "right"
+        ]
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
     "tool": "wps_excel_set_print_area",
     "action": "setPrintArea",
     "app": "excel",
@@ -2806,6 +2910,184 @@ export const operations: OperationSpec[] = [
       "row",
       "height"
     ],
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_set_sheet_appearance",
+    "action": "setSheetAppearance",
+    "app": "excel",
+    "summary": "设置工作表的可见性与标签色：可见 / 隐藏 / 深度隐藏（veryHidden，用户界面上无法取消隐藏），以及标签颜色（十六进制如 #FF9900）。使用场景：把中间计算表藏起来、给关键工作表标个颜色。",
+    "params": {
+      "visible": {
+        "type": "string",
+        "description": "可见性，默认不变；veryHidden 在界面上无法恢复，脚本可恢复",
+        "enum": [
+          "visible",
+          "hidden",
+          "veryHidden"
+        ]
+      },
+      "tabColor": {
+        "type": "string",
+        "description": "标签颜色，如 #FF9900；传空字符串恢复默认"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_set_sheet_header_footer",
+    "action": "setSheetHeaderFooter",
+    "app": "excel",
+    "summary": "设置打印页眉页脚。文本里可以用 Excel 的域代码：&P 页码、&N 总页数、&D 日期、&T 时间、&F 文件名、&A 工作表名。使用场景：页脚写「第 &P 页 / 共 &N 页」。",
+    "params": {
+      "leftHeader": {
+        "type": "string",
+        "description": "页眉左侧文本；传空字符串清除"
+      },
+      "centerHeader": {
+        "type": "string",
+        "description": "页眉中间文本"
+      },
+      "rightHeader": {
+        "type": "string",
+        "description": "页眉右侧文本"
+      },
+      "leftFooter": {
+        "type": "string",
+        "description": "页脚左侧文本"
+      },
+      "centerFooter": {
+        "type": "string",
+        "description": "页脚中间文本，如 第 &P 页 / 共 &N 页"
+      },
+      "rightFooter": {
+        "type": "string",
+        "description": "页脚右侧文本"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_set_sheet_page_setup",
+    "action": "setSheetPageSetup",
+    "app": "excel",
+    "summary": "设置工作表的页面：方向、纸张、页边距、缩放、是否居中、是否打印网格线与行列标题。页边距单位是磅（1 厘米 ≈ 28.35 磅），与 Word 侧一致。缩放比例与按页适配互斥，同时给以后者为准。使用场景：把表调成横向 A4、一页宽、水平居中再打印。",
+    "params": {
+      "orientation": {
+        "type": "string",
+        "description": "纸张方向，默认纵向",
+        "enum": [
+          "portrait",
+          "landscape"
+        ]
+      },
+      "paperSize": {
+        "type": "string",
+        "description": "纸张大小，默认不变（当前多为 A4）",
+        "enum": [
+          "A4",
+          "A3",
+          "A5",
+          "B5",
+          "letter",
+          "legal",
+          "tabloid"
+        ]
+      },
+      "topMargin": {
+        "type": "number",
+        "description": "上边距（磅）"
+      },
+      "bottomMargin": {
+        "type": "number",
+        "description": "下边距（磅）"
+      },
+      "leftMargin": {
+        "type": "number",
+        "description": "左边距（磅）"
+      },
+      "rightMargin": {
+        "type": "number",
+        "description": "右边距（磅）"
+      },
+      "headerMargin": {
+        "type": "number",
+        "description": "页眉距顶边（磅）"
+      },
+      "footerMargin": {
+        "type": "number",
+        "description": "页脚距底边（磅）"
+      },
+      "zoom": {
+        "type": "number",
+        "description": "缩放百分比（如 90）；与 fitToPages* 互斥"
+      },
+      "fitToPagesWide": {
+        "type": "number",
+        "description": "按页适配：横向压到几页宽（1 表示一页宽）"
+      },
+      "fitToPagesTall": {
+        "type": "number",
+        "description": "按页适配：纵向压到几页高"
+      },
+      "centerHorizontally": {
+        "type": "boolean",
+        "description": "水平居中打印"
+      },
+      "centerVertically": {
+        "type": "boolean",
+        "description": "垂直居中打印"
+      },
+      "printGridlines": {
+        "type": "boolean",
+        "description": "打印网格线"
+      },
+      "printHeadings": {
+        "type": "boolean",
+        "description": "打印行号列标"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": true,
+    "engine": "bridge"
+  }),
+  op({
+    "tool": "wps_excel_set_sheet_print_titles",
+    "action": "setSheetPrintTitles",
+    "app": "excel",
+    "summary": "设置打印时每页重复的行/列（打印标题）：如行 $1:$1 让表头每页都出现，列 $A:$A 让第一列每页都出现。使用场景：多页表格打印出来每一页都有表头。",
+    "params": {
+      "printTitleRows": {
+        "type": "string",
+        "description": "每页重复的行，如 $1:$1；传空字符串清除"
+      },
+      "printTitleColumns": {
+        "type": "string",
+        "description": "每页重复的列，如 $A:$A；传空字符串清除"
+      },
+      "sheet": {
+        "type": "string",
+        "description": "工作表名或序号；不填则用当前活动工作表"
+      }
+    },
+    "effect": "write",
+    "advertised": false,
     "engine": "bridge"
   }),
   op({
@@ -4691,7 +4973,7 @@ export const operations: OperationSpec[] = [
     "params": {
       "slideIndex": {
         "type": "number",
-        "description": "幻灯片页码（从1开始）",
+        "description": "幻��片页码（从1开始）",
         "required": true
       },
       "shapeIndex": {

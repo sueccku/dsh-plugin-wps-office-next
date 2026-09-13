@@ -1008,6 +1008,45 @@ DataBodyRange/HeaderRowRange/TotalsRowRange、TableStyle 赋值、Resize、Unlis
 
 **数字**：桥 action 231 → **239**、注册工具 227 → **235**、广告面 51 → **54 工具 / 28,793 字节**
 （`create` / `get` / `add_row` 进精选档）。`verify.mjs` 的 `EXPECTED_ACTIONS` 台账按规矩**故意**改到 239。
+### 41. P2-3：Excel 页面设置 / 打印 / 外观 / 公式审计，8 个 action + 8 个工具
+
+侦察先发现一件事：**Excel 此前完全没有页面设置能力**。桥里确实有 `setPageSetup` 与 `insertPageBreak`，
+但两个都是 **Word** 的 action（由 word/format.ts 与 word/content.ts 驱动），Excel 侧只有 `setPrintArea`。
+工具面在这一块是空的。
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_excel_get_sheet_settings` | getSheetSettings | 一次读全：方向/纸张/页边距/缩放或按页适配/居中/网格线/打印区域/打印标题/页眉页脚/可见性/标签色/手动分页符 |
+| `wps_excel_set_sheet_page_setup` | setSheetPageSetup | 方向、纸张、六个页边距（磅）、缩放或按页适配、居中、打印网格线与行列标题 |
+| `wps_excel_set_sheet_print_titles` | setSheetPrintTitles | 每页重复的行/列（`$1:$1`、`$A:$A`） |
+| `wps_excel_set_sheet_header_footer` | setSheetHeaderFooter | 页眉页脚六个位置，支持 `&P`/`&N`/`&D`/`&F`/`&A` 域代码 |
+| `wps_excel_set_sheet_appearance` | setSheetAppearance | 可见 / 隐藏 / 深度隐藏（veryHidden）+ 标签色 |
+| `wps_excel_set_outline_levels` | setOutlineLevels | 分级显示展开到第几级 + 汇总行/列位置 |
+| `wps_excel_reset_page_breaks` | resetPageBreaks | 清除手动分页符 |
+| `wps_excel_get_formula_audit` | getFormulaAudit | 引用来源 / 被引用 / 直接引用，可选画出追踪箭头 |
+
+**刻意不做的两件事**（这是决定，不是遗漏）：**打印**（`PrintOut`）是物理副作用，模型不该随手触发；
+**打印预览**（`PrintPreview`）会开模态窗口，把常驻宿主卡住——整条自动化链路都在等它。
+两者都改成「把设置调好、由人来打印」。要的话可以单独评估（例如放进一个显式、会警告的工具）。
+
+**测试抓到两处「成功但说错」**，都在我自己的新代码里：
+
+1. **清掉标签色之后读回的不是「默认」**：`Tab.Color` 返回 0（黑），快照会显示成 `标签色: 0`，
+   用户分不清「黑色」与「没设过」。修法是同时读 `Tab.ColorIndex`，等于 -4142（xlColorIndexNone）
+   才显示 `(默认)`。
+2. **常量格上 `Range.Formula` 返回的是值本身**（例如 `Region`），所以「这不是公式」不能靠
+   `formula === ''` 判断。快照里加 `HasFormula`，文案改成 `不是公式，是常量（当前值: Region）`。
+
+两条的共同点是：工具没报错，只是把事情**描述错了**——只有断言输出文本的测试才抓得到这类问题。
+
+**验收**：`test/excel-page-setup.test.mjs` **24 项**（真实 WPS）：读快照 → 横向 A3 → 页边距与居中 →
+按页适配 → 缩放 90% → 非法纸张被拒 → 打印标题 → 页眉页脚 → 标签色（含清回默认）→ 隐藏/深度隐藏/恢复
+→ 非法可见性被拒 → 分级显示 → 清除分页符 → 公式审计（引用来源 2 处、被引用 1 处、常量格如实说明、
+缺 `cell` 被拒）。写测试时还发现自己漏传 `sheet`：那几次设置其实落在「新建后成为活动表」的 Extra 上——
+工具行为没错，是测试没锁住目标，已改成显式传 sheet。
+
+**数字**：桥 action 239 → **247**、注册工具 235 → **243**、广告面 54 → **56 工具 / 30,885 字节**
+（离 D1 上限 32,000 只剩 1,115 字节——P5-2 的重定已经不是可选项）。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1052,9 +1091,10 @@ DataBodyRange/HeaderRowRange/TotalsRowRange、TableStyle 赋值、Resize、Unlis
 | test/excel-missing-halves.test.mjs | 18 | P2 第一波：工作表信息、自动尺寸 ×3、自动换行、查找定位、命名范围读删 |
 | test/excel-missing-halves-2.test.mjs | 30 | P2 第一波余项：格式刷/清格式、条件格式与数据验证读删、重算、外部链接、合并计算、列分组、分类汇总 |
 | test/excel-list-object.test.mjs | 25 | P2-2 表（ListObject）：建表/读结构/增删行/总计行/样式/改名/范围/转回区域 |
+| test/excel-page-setup.test.mjs | 24 | P2-3 页面设置/打印标题/页眉页脚/外观/分级显示/分页符/公式审计 |
 
-合计 **395 项**（19 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
+合计 **419 项**（20 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 60 工具 / 32,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 223 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 231 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

@@ -280,6 +280,11 @@
   "effect": "read"
  },
  {
+  "tool": "wps_excel_get_formula_audit",
+  "signature": "excel_get_formula_audit(cell*, showPrecedents?, showDependents?, clearArrows?, sheet?)",
+  "effect": "read"
+ },
+ {
   "tool": "wps_excel_get_list_objects",
   "signature": "excel_get_list_objects(sheet?)",
   "effect": "read"
@@ -307,6 +312,11 @@
  {
   "tool": "wps_excel_get_sheet_list",
   "signature": "excel_get_sheet_list()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_excel_get_sheet_settings",
+  "signature": "excel_get_sheet_settings(sheet?)",
   "effect": "read"
  },
  {
@@ -410,6 +420,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_excel_reset_page_breaks",
+  "signature": "excel_reset_page_breaks(sheet?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_excel_resize_list_object",
   "signature": "excel_resize_list_object(table*, range*, sheet?)",
   "effect": "read"
@@ -480,6 +495,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_excel_set_outline_levels",
+  "signature": "excel_set_outline_levels(rowLevels?, columnLevels?, summaryRow?, summaryColumn?, sheet?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_excel_set_print_area",
   "signature": "excel_set_print_area(range*)",
   "effect": "write"
@@ -487,6 +507,26 @@
  {
   "tool": "wps_excel_set_row_height",
   "signature": "excel_set_row_height(row*, height*, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_sheet_appearance",
+  "signature": "excel_set_sheet_appearance(visible?, tabColor?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_sheet_header_footer",
+  "signature": "excel_set_sheet_header_footer(leftHeader?, centerHeader?, rightHeader?, leftFooter?, centerFooter?, rightFooter?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_sheet_page_setup",
+  "signature": "excel_set_sheet_page_setup(orientation?, paperSize?, topMargin?, bottomMargin?, leftMargin?, rightMargin?, headerMargin?, footerMargin?, zoom?, fitToPagesWide?, fitToPagesTall?, centerHorizontally?, centerVertically?, printGridlines?, printHeadings?, sheet?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_excel_set_sheet_print_titles",
+  "signature": "excel_set_sheet_print_titles(printTitleRows?, printTitleColumns?, sheet?)",
   "effect": "write"
  },
  {

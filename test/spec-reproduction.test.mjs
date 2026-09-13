@@ -142,7 +142,7 @@ for (const op of spec.operations) {
 check('every parameter has a declared destination', unresolved === 0, unresolved + ' unresolved; ' + localParams + " local to the handler, " + containerParams + ' flattened by a container');
 check('every bridge parameter lands on a key the bridge reads', keyMismatch.length === 0, keyMismatch.length ? keyMismatch.slice(0, 6).join(', ') : aliased + ' of them differ only by name');
 check('alias debt did not grow (P1-4 target: 0)', aliased <= ALIAS_DEBT, aliased + ' of ' + ALIAS_DEBT + ' recorded');
-check('untooled-action backlog did not grow (P2 target: down to 0)', untooled.length <= UNTOOLED_ACTIONS, untooled.length + ' of ' + UNTOOLED_ACTIONS + ' recorded (ListObject, print/page setup, pivot cache, getComments, getBookmarks, ...)');
+check('untooled-action backlog did not grow (P2 target: down to 0)', untooled.length <= UNTOOLED_ACTIONS, untooled.length + ' of ' + UNTOOLED_ACTIONS + ' recorded (pivot cache, openFile/replaceInSheet duplicates, getComments, getBookmarks, getActivePresentation, ...)');
 
 // The bridge-side compatibility table is declared in the spec (mcp/src/spec/aliases.ts) and emitted as
 // spec/param-aliases.json; the per-tool analysis view lives in operations.ts. They describe the same
