@@ -611,21 +611,17 @@
   "range",
   "sheet"
  ],
- "addAnimation": [
+ "setAnimation": [
+  "delayIncrement",
+  "duration",
   "effect",
+  "effectKind",
+  "presentationName",
+  "preset",
+  "shapeIndex",
   "shapeName",
   "slideIndex",
   "trigger"
- ],
- "addAnimationPreset": [
-  "preset",
-  "shapeIndex",
-  "slideIndex"
- ],
- "addEmphasisAnimation": [
-  "effect",
-  "shapeIndex",
-  "slideIndex"
  ],
  "addMasterElement": [
   "element"
@@ -843,15 +839,6 @@
   "slideIndex",
   "style"
  ],
- "setPptDateTime": [
-  "autoUpdate",
-  "format",
-  "visible"
- ],
- "setPptFooter": [
-  "show",
-  "text"
- ],
  "setShapeEffect": [
   "borderColor",
   "borderEnabled",
@@ -912,6 +899,15 @@
   "content",
   "slideIndex"
  ],
+ "setSlideFooter": [
+  "autoUpdate",
+  "dateFormat",
+  "footerText",
+  "presentationName",
+  "showDate",
+  "showFooter",
+  "showSlideNumber"
+ ],
  "setSlideLayout": [
   "layout",
   "slideIndex"
@@ -919,9 +915,6 @@
  "setSlideNotes": [
   "notes",
   "slideIndex"
- ],
- "setSlideNumber": [
-  "visible"
  ],
  "setSlideSize": [
   "height",
@@ -952,23 +945,21 @@
   "tableIndex",
   "text"
  ],
- "setPptTableCellStyle": [
+ "setPptTableFormat": [
+  "backgroundColor",
+  "bold",
   "col",
+  "fontColor",
+  "fontSize",
+  "height",
+  "left",
+  "presentationName",
   "row",
   "slideIndex",
-  "style",
-  "tableIndex"
- ],
- "setPptTableRowStyle": [
-  "row",
-  "slideIndex",
-  "style",
-  "tableIndex"
- ],
- "setPptTableStyle": [
-  "slideIndex",
-  "style",
-  "tableIndex"
+  "tableIndex",
+  "tableName",
+  "top",
+  "width"
  ],
  "setTextBoxStyle": [
   "slideIndex",

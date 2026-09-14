@@ -18,12 +18,6 @@
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /**
- * 添加动画效果
- * 为指定幻灯片上的形状添加动画
- */
-export declare const addAnimationDefinition: ToolDefinition;
-export declare const addAnimationHandler: ToolHandler;
-/**
  * 移除动画效果
  * 从指定幻灯片中移除指定的动画
  */
@@ -41,18 +35,6 @@ export declare const getAnimationsHandler: ToolHandler;
  */
 export declare const setAnimationOrderDefinition: ToolDefinition;
 export declare const setAnimationOrderHandler: ToolHandler;
-/**
- * 添加预设入场动画
- * 提供常用的入场动画预设，简化动画添加流程
- */
-export declare const addAnimationPresetDefinition: ToolDefinition;
-export declare const addAnimationPresetHandler: ToolHandler;
-/**
- * 添加强调动画
- * 为已有形状添加强调型动画效果，用于突出显示
- */
-export declare const addEmphasisAnimationDefinition: ToolDefinition;
-export declare const addEmphasisAnimationHandler: ToolHandler;
 /**
  * 设置幻灯片切换效果
  * 为幻灯片设置页面切换动画
@@ -74,6 +56,9 @@ export declare const applyTransitionToAllHandler: ToolHandler;
 /**
  * 导出所有动画与切换相关的Tools
  */
+/** 动画：入场/退场、强调、整页预设（P4 由三个工具合并而来） */
+export declare const setAnimationDefinition: ToolDefinition;
+export declare const setAnimationHandler: ToolHandler;
 export declare const animationTools: RegisteredTool[];
 export default animationTools;
 //# sourceMappingURL=animation.d.ts.map

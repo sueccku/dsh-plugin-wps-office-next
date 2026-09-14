@@ -15,7 +15,7 @@
  * - wps_ppt_set_table_row_style: 设置表格行样式
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tableTools = exports.setPptTableRowStyleHandler = exports.setPptTableRowStyleDefinition = exports.setPptTableCellStyleHandler = exports.setPptTableCellStyleDefinition = exports.setPptTableStyleHandler = exports.setPptTableStyleDefinition = exports.getPptTableCellHandler = exports.getPptTableCellDefinition = exports.setPptTableCellHandler = exports.setPptTableCellDefinition = exports.insertPptTableHandler = exports.insertPptTableDefinition = void 0;
+exports.tableTools = exports.setPptTableFormatHandler = exports.setPptTableFormatDefinition = exports.getPptTableCellHandler = exports.getPptTableCellDefinition = exports.setPptTableCellHandler = exports.setPptTableCellDefinition = exports.insertPptTableHandler = exports.insertPptTableDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -249,264 +249,59 @@ const getPptTableCellHandler = async (args) => {
 };
 exports.getPptTableCellHandler = getPptTableCellHandler;
 /**
- * 设置表格整体样式
- * 支持边框、背景色、字体等整体样式配置
- */
-exports.setPptTableStyleDefinition = {
-    name: 'wps_ppt_set_table_style',
-    description: `设置PPT表格的整体样式。
-
-支持的样式属性（通过style对象传入）：
-- borderColor: 边框颜色（如 "#000000"）
-- borderWidth: 边框宽度（磅）
-- backgroundColor: 背景色（如 "#FFFFFF"）
-- fontName: 字体名称（如 "微软雅黑"）
-- fontSize: 字体大小（磅）
-- fontColor: 字体颜色（如 "#333333"）
-- headerBackground: 表头行背景色
-- alternateRowColor: 隔行变色颜色
-
-使用场景：
-- "设置表格为蓝色主题"
-- "修改表格边框和背景"
-- "美化表格样式"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            tableIndex: {
-                type: 'number',
-                description: '表格索引（从1开始）',
-            },
-            style: {
-                type: 'object',
-                description: '样式配置对象，包含borderColor、borderWidth、backgroundColor、fontName、fontSize、fontColor、headerBackground、alternateRowColor等属性',
-            },
-        },
-        required: ['slideIndex', 'tableIndex', 'style'],
-    },
-};
-const setPptTableStyleHandler = async (args) => {
-    const { slideIndex, tableIndex, style } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setPptTableStyle', { slideIndex, tableIndex, style }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            const styleKeys = Object.keys(style).join('、');
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `表格样式设置成功！\n幻灯片: 第 ${slideIndex} 页\n表格: 第 ${tableIndex} 个\n已设置属性: ${styleKeys}`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置表格样式失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置表格样式出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setPptTableStyleHandler = setPptTableStyleHandler;
-/**
- * 设置表格单元格样式
- * 修改指定单元格的样式（字体、颜色、背景等）
- */
-exports.setPptTableCellStyleDefinition = {
-    name: 'wps_ppt_set_table_cell_style',
-    description: `设置PPT表格中指定单元格的样式。
-
-支持的样式属性（通过style对象传入）：
-- backgroundColor: 单元格背景色
-- fontName: 字体名称
-- fontSize: 字体大小（磅）
-- fontColor: 字体颜色
-- bold: 是否加粗（boolean）
-- italic: 是否斜体（boolean）
-- alignment: 文本对齐方式（left/center/right）
-- verticalAlignment: 垂直对齐方式（top/middle/bottom）
-
-使用场景：
-- "把表格第1行第1列的背景设为蓝色"
-- "加粗标题单元格"
-- "设置单元格居中对齐"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            tableIndex: {
-                type: 'number',
-                description: '表格索引（从1开始）',
-            },
-            row: {
-                type: 'number',
-                description: '行号（从1开始）',
-            },
-            col: {
-                type: 'number',
-                description: '列号（从1开始）',
-            },
-            style: {
-                type: 'object',
-                description: '样式配置对象，包含backgroundColor、fontName、fontSize、fontColor、bold、italic、alignment、verticalAlignment等属性',
-            },
-        },
-        required: ['slideIndex', 'tableIndex', 'row', 'col', 'style'],
-    },
-};
-const setPptTableCellStyleHandler = async (args) => {
-    const { slideIndex, tableIndex, row, col, style } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setPptTableCellStyle', { slideIndex, tableIndex, row, col, style }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            const styleKeys = Object.keys(style).join('、');
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `单元格样式设置成功！\n幻灯片: 第 ${slideIndex} 页\n表格: 第 ${tableIndex} 个\n位置: 第 ${row} 行第 ${col} 列\n已设置属性: ${styleKeys}`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置单元格样式失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置单元格样式出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setPptTableCellStyleHandler = setPptTableCellStyleHandler;
-/**
- * 设置表格行样式
- * 批量修改指定行的样式
- */
-exports.setPptTableRowStyleDefinition = {
-    name: 'wps_ppt_set_table_row_style',
-    description: `设置PPT表格中指定行的样式。
-
-支持的样式属性（通过style对象传入）：
-- backgroundColor: 行背景色
-- fontName: 字体名称
-- fontSize: 字体大小（磅）
-- fontColor: 字体颜色
-- bold: 是否加粗（boolean）
-- italic: 是否斜体（boolean）
-- alignment: 文本对齐方式（left/center/right）
-- height: 行高（磅）
-
-使用场景：
-- "把表头行设为蓝色背景白色字"
-- "加粗第一行"
-- "设置表格行高"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            tableIndex: {
-                type: 'number',
-                description: '表格索引（从1开始）',
-            },
-            row: {
-                type: 'number',
-                description: '行号（从1开始）',
-            },
-            style: {
-                type: 'object',
-                description: '样式配置对象，包含backgroundColor、fontName、fontSize、fontColor、bold、italic、alignment、height等属性',
-            },
-        },
-        required: ['slideIndex', 'tableIndex', 'row', 'style'],
-    },
-};
-const setPptTableRowStyleHandler = async (args) => {
-    const { slideIndex, tableIndex, row, style } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setPptTableRowStyle', { slideIndex, tableIndex, row, style }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            const styleKeys = Object.keys(style).join('、');
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `表格行样式设置成功！\n幻灯片: 第 ${slideIndex} 页\n表格: 第 ${tableIndex} 个\n行: 第 ${row} 行\n已设置属性: ${styleKeys}`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置行样式失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置行样式出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setPptTableRowStyleHandler = setPptTableRowStyleHandler;
-/**
  * 导出所有表格相关的Tools
  */
+/** 表格外观：位置尺寸 + 单元格/整行/整表样式（P4 由三个工具合并而来） */
+exports.setPptTableFormatDefinition = {
+    name: 'wps_ppt_set_table_format',
+    description: '设置表格的外观与样式。位置尺寸：left/top/width/height。样式作用域：给 row 和 col 就只改那一格，只给 row 改一整行，都不给但有样式键就改整张表；样式键为 backgroundColor/fontColor/fontSize/bold。使用场景：给表头行加底色、把表格挪到中间。',
+    category: tools_1.ToolCategory.PRESENTATION,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            left: { type: 'number', description: '表格左边缘位置' },
+            top: { type: 'number', description: '表格上边缘位置' },
+            width: { type: 'number', description: '表格宽度' },
+            height: { type: 'number', description: '表格高度' },
+            row: { type: 'number', description: '第几行（从 1 开始）；与 col 一起用就是单元格' },
+            col: { type: 'number', description: '第几列（从 1 开始）' },
+            backgroundColor: { type: 'string', description: '底纹颜色，十六进制如 #D9E2F3' },
+            fontColor: { type: 'string', description: '文字颜色，十六进制如 #1A365D' },
+            fontSize: { type: 'number', description: '字号' },
+            bold: { type: 'boolean', description: '是否加粗' },
+            slideIndex: { type: 'number', description: '第几页（从 1 开始），默认 1' },
+            tableIndex: { type: 'number', description: '该页第几张表（从 1 开始），默认 1' },
+            tableName: { type: 'string', description: '表格形状名；给了它就用名称定位' },
+            presentationName: { type: 'string', description: '演示文稿名；不填用当前文稿' },
+        },
+    },
+};
+const setPptTableFormatHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('setPptTableFormat', {
+            presentationName: args.presentationName, slideIndex: args.slideIndex, tableIndex: args.tableIndex, tableName: args.tableName,
+            row: args.row, col: args.col, backgroundColor: args.backgroundColor, fontColor: args.fontColor,
+            fontSize: args.fontSize, bold: args.bold, left: args.left, top: args.top, width: args.width, height: args.height,
+        }, wps_1.WpsAppType.PRESENTATION);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '设置表格外观失败: ' + response.error }], error: response.error };
+        }
+        const d = response.data || {};
+        const applied = d.applied || [];
+        const scopeName = d.scope === 'cell' ? '单元格' : d.scope === 'row' ? '整行' : d.scope === 'table' ? '整张表' : '仅位置尺寸';
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '表格 ' + String(d.name || '') + ' 已更新（作用域 ' + scopeName + '，已应用 ' + applied.join(', ') + '）' }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '设置表格外观出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.setPptTableFormatHandler = setPptTableFormatHandler;
 exports.tableTools = [
+    { definition: exports.setPptTableFormatDefinition, handler: exports.setPptTableFormatHandler },
     { definition: exports.insertPptTableDefinition, handler: exports.insertPptTableHandler },
     { definition: exports.setPptTableCellDefinition, handler: exports.setPptTableCellHandler },
     { definition: exports.getPptTableCellDefinition, handler: exports.getPptTableCellHandler },
-    { definition: exports.setPptTableStyleDefinition, handler: exports.setPptTableStyleHandler },
-    { definition: exports.setPptTableCellStyleDefinition, handler: exports.setPptTableCellStyleHandler },
-    { definition: exports.setPptTableRowStyleDefinition, handler: exports.setPptTableRowStyleHandler },
 ];
 exports.default = exports.tableTools;
 //# sourceMappingURL=table.js.map

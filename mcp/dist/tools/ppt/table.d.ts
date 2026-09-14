@@ -33,26 +33,11 @@ export declare const setPptTableCellHandler: ToolHandler;
 export declare const getPptTableCellDefinition: ToolDefinition;
 export declare const getPptTableCellHandler: ToolHandler;
 /**
- * 设置表格整体样式
- * 支持边框、背景色、字体等整体样式配置
- */
-export declare const setPptTableStyleDefinition: ToolDefinition;
-export declare const setPptTableStyleHandler: ToolHandler;
-/**
- * 设置表格单元格样式
- * 修改指定单元格的样式（字体、颜色、背景等）
- */
-export declare const setPptTableCellStyleDefinition: ToolDefinition;
-export declare const setPptTableCellStyleHandler: ToolHandler;
-/**
- * 设置表格行样式
- * 批量修改指定行的样式
- */
-export declare const setPptTableRowStyleDefinition: ToolDefinition;
-export declare const setPptTableRowStyleHandler: ToolHandler;
-/**
  * 导出所有表格相关的Tools
  */
+/** 表格外观：位置尺寸 + 单元格/整行/整表样式（P4 由三个工具合并而来） */
+export declare const setPptTableFormatDefinition: ToolDefinition;
+export declare const setPptTableFormatHandler: ToolHandler;
 export declare const tableTools: RegisteredTool[];
 export default tableTools;
 //# sourceMappingURL=table.d.ts.map

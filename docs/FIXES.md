@@ -1259,6 +1259,32 @@ P4 是**减法**，与前三阶段的加法不同。第一波做两件事：
 
 **数字**：PPT 工具 **88 → 82**、注册工具 279 → **273**、桥 action 279 → **273**；广告面不变
 （被删的都不在精选档）。测试 **509 → 524 项 / 25 文件**。
+### 49. P4 第二波：三组合并（动画 / 表格样式 / 页脚三件套）
+
+按用户要求，把剩下三组碎片 setter 也合并掉：
+
+| 合并前 | 合并后 | 合并方式 |
+|---|---|---|
+| `add_animation` + `add_animation_preset` + `add_emphasis_animation` | **`wps_ppt_add_animation`** | 给 `preset` 走整页预设；给 `effectKind=emphasis` 走强调；否则入场/退场 |
+| `set_table_style` + `set_table_cell_style` + `set_table_row_style` | **`wps_ppt_set_table_format`** | 用 `row`/`col` 定作用域：两者都有＝单元格，只有 row＝整行，都没有但有样式键＝整张表；并吸收原 `set_table_style` 的位置尺寸职责 |
+| `set_slide_number` + `set_ppt_footer` + `set_ppt_date_time` | **`wps_ppt_set_slide_footer`** | 一次设页码 / 页脚文字 / 日期，只改给出来的项 |
+
+**两个被自己的验收抓到的缺陷**（都是合并过程中引入的）：
+
+1. **`setAnimation` 的 preset/emphasis 分支漏了 `exit`**——输出完还继续走到入场分支，于是
+   `effectKind=emphasis` + `effect=pulse` 会被入场分支当成非法效果再报一次错，宿主回给工具的是后一个错误。
+   教训：**合并分支时，每个提前返回的分支都要 `exit`**。
+2. **页脚工具没报告「页脚本身」的可见性**——旧测试里那条「footer reports hidden」要的正是它，
+   而我合并时只报告了页码与日期。补上 `footerVisible` 后通过。这是「旧断言在保护你没写坏新代码」的例子。
+
+**顺带**：`ALIAS_DEBT` 台账 62 → **59**（三组合并消掉 3 处改名），棘轮跟着收紧。
+
+**验收**：`test/ppt-slimming.test.mjs` 扩到 **32 项**——合并后的表格格式化三种作用域（单元格/整行/仅位置）
+与空操作拒绝、页脚一次设三件套与空操作拒绝、动画缺形状被拒，加上 **15 个被删工具名逐个确认已无法解析**。
+既有 `ppt-contract-fixes` 里 6 项按新契约改写，57/57 绿。
+
+**数字**：PPT 工具 82 → **76**（P4 合计 88 → 76）、注册 273 → **267**、桥 action 273 → **267**；
+广告面不变（66 / 35,568 字节）。测试 524 → **541 项 / 25 文件**。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1298,7 +1324,7 @@ P4 是**减法**，与前三阶段的加法不同。第一波做两件事：
 | test/merged-tools.test.mjs | 31 | 合并后的转发、参数改名与隐藏 |
 | test/warnings.test.mjs | 7 | warnings 机制：尽力而为的失败如实回传 |
 | test/ppt-contract-fixes.test.mjs | 56 | PPT 参数契约逐项修复（P4 后 3D 那项改为测合并工具） |
-| test/ppt-slimming.test.mjs | 16 | P4 合并后的形状效果工具 + 七个被删工具确认消失 |
+| test/ppt-slimming.test.mjs | 32 | P4 合并后的形状效果/表格/页脚工具 + 15 个被删工具确认消失 |
 | test/word-lifecycle.test.mjs | 17 | e2e 暴露的 5 个缺陷（第 24～29 条） |
 | test/spec-reproduction.test.mjs | 12 | P1 验收：spec 逐字节复现模型可见面 |
 | test/excel-missing-halves.test.mjs | 18 | P2 第一波：工作表信息、自动尺寸 ×3、自动换行、查找定位、命名范围读删 |
@@ -1310,8 +1336,8 @@ P4 是**减法**，与前三阶段的加法不同。第一波做两件事：
 | test/word-produce.test.mjs | 19 | P3-3 页码/分栏/修订接受拒绝/批注删除 |
 | test/word-longtail.test.mjs | 20 | P3-4 内容控件/脚注尾注/索引/交叉引用/CSV 邮件合并 |
 
-合计 **524 项**（25 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **541 项**（25 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 261 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

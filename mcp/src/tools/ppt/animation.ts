@@ -30,106 +30,6 @@ import { WpsAppType } from '../../types/wps';
 
 // ==================== 1. 添加动画效果 ====================
 
-/**
- * 添加动画效果
- * 为指定幻灯片上的形状添加动画
- */
-export const addAnimationDefinition: ToolDefinition = {
-  name: 'wps_ppt_add_animation',
-  description: `为幻灯片中的形状添加动画效果。
-
-使用场景：
-- "给第1页第2个形状加个淡入动画"
-- "为标题添加飞入效果"
-- "添加动画让元素依次出现"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      slideIndex: {
-        type: 'number',
-        description: '幻灯片页码（从1开始）',
-      },
-      shapeIndex: {
-        type: 'number',
-        description: '形状索引（从1开始）',
-      },
-      effect: {
-        type: 'string',
-        description: '动画效果名称，如 "fadeIn"、"flyIn"、"wipe" 等',
-      },
-      trigger: {
-        type: 'string',
-        description: '触发方式',
-        enum: ['onClick', 'withPrevious', 'afterPrevious'],
-      },
-    },
-    required: ['slideIndex', 'shapeIndex', 'effect'],
-  },
-};
-
-export const addAnimationHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, effect, trigger } = args as {
-    slideIndex: number;
-    shapeIndex: number;
-    effect: string;
-    trigger?: string;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      animationIndex: number;
-    }>(
-      'addAnimation',
-      {
-        slideIndex,
-        shapeIndex,
-        effect,
-        trigger: trigger || 'onClick',
-      },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success && response.data) {
-      const triggerName: Record<string, string> = {
-        onClick: '单击时',
-        withPrevious: '与上一动画同时',
-        afterPrevious: '上一动画之后',
-      };
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `动画添加成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n效果: ${effect}\n触发: ${triggerName[trigger || 'onClick'] || trigger}\n动画序号: ${response.data.animationIndex}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `添加动画失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `添加动画出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
-
 // ==================== 2. 移除动画效果 ====================
 
 /**
@@ -390,207 +290,7 @@ export const setAnimationOrderHandler: ToolHandler = async (
 
 // ==================== 5. 添加预设入场动画 ====================
 
-/**
- * 添加预设入场动画
- * 提供常用的入场动画预设，简化动画添加流程
- */
-export const addAnimationPresetDefinition: ToolDefinition = {
-  name: 'wps_ppt_add_animation_preset',
-  description: `为形状添加预设入场动画效果。
-
-支持的预设：
-- fadeIn: 淡入
-- flyIn: 飞入
-- wipe: 擦除
-- zoom: 缩放
-- bounce: 弹跳
-- spin: 旋转
-
-使用场景：
-- "给标题加个淡入效果"
-- "让这个形状飞入"
-- "添加弹跳入场动画"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      slideIndex: {
-        type: 'number',
-        description: '幻灯片页码（从1开始）',
-      },
-      shapeIndex: {
-        type: 'number',
-        description: '形状索引（从1开始）',
-      },
-      preset: {
-        type: 'string',
-        description: '预设动画类型',
-        enum: ['fadeIn', 'flyIn', 'wipe', 'zoom', 'bounce', 'spin'],
-      },
-    },
-    required: ['slideIndex', 'shapeIndex', 'preset'],
-  },
-};
-
-export const addAnimationPresetHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, preset } = args as {
-    slideIndex: number;
-    shapeIndex: number;
-    preset: string;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      animationIndex: number;
-    }>(
-      'addAnimationPreset',
-      { slideIndex, shapeIndex, preset },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success && response.data) {
-      const presetName: Record<string, string> = {
-        fadeIn: '淡入',
-        flyIn: '飞入',
-        wipe: '擦除',
-        zoom: '缩放',
-        bounce: '弹跳',
-        spin: '旋转',
-      };
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `预设动画添加成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n预设: ${presetName[preset] || preset}\n动画序号: ${response.data.animationIndex}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `添加预设动画失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `添加预设动画出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
-
 // ==================== 6. 添加强调动画 ====================
-
-/**
- * 添加强调动画
- * 为已有形状添加强调型动画效果，用于突出显示
- */
-export const addEmphasisAnimationDefinition: ToolDefinition = {
-  name: 'wps_ppt_add_emphasis_animation',
-  description: `为形状添加强调动画效果，用于在演示时突出显示元素。
-
-支持的效果：
-- pulse: 脉冲
-- spin: 陀螺旋
-- grow: 放大/缩小
-- teeter: 跷跷板
-- colorPulse: 颜色脉冲
-
-使用场景：
-- "让这个元素闪烁突出"
-- "添加脉冲强调效果"
-- "让图片旋转强调"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      slideIndex: {
-        type: 'number',
-        description: '幻灯片页码（从1开始）',
-      },
-      shapeIndex: {
-        type: 'number',
-        description: '形状索引（从1开始）',
-      },
-      effect: {
-        type: 'string',
-        description: '强调动画效果',
-        enum: ['pulse', 'spin', 'grow', 'teeter', 'colorPulse'],
-      },
-    },
-    required: ['slideIndex', 'shapeIndex', 'effect'],
-  },
-};
-
-export const addEmphasisAnimationHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, effect } = args as {
-    slideIndex: number;
-    shapeIndex: number;
-    effect: string;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      animationIndex: number;
-    }>(
-      'addEmphasisAnimation',
-      { slideIndex, shapeIndex, effect },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success && response.data) {
-      const effectName: Record<string, string> = {
-        pulse: '脉冲',
-        spin: '陀螺旋',
-        grow: '放大/缩小',
-        teeter: '跷跷板',
-        colorPulse: '颜色脉冲',
-      };
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `强调动画添加成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n效果: ${effectName[effect] || effect}\n动画序号: ${response.data.animationIndex}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `添加强调动画失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `添加强调动画出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
 
 // ==================== 7. 设置幻灯片切换效果 ====================
 
@@ -853,13 +553,58 @@ export const applyTransitionToAllHandler: ToolHandler = async (
 /**
  * 导出所有动画与切换相关的Tools
  */
+/** 动画：入场/退场、强调、整页预设（P4 由三个工具合并而来） */
+export const setAnimationDefinition: ToolDefinition = {
+  name: 'wps_ppt_add_animation',
+  description: '给形状加动画，三种用法：给 preset 就按预设给整页（或指定形状）加依次出场的动画；给 effect 且 effectKind=emphasis 加强调动画；只给 effect 则加入场/退场动画。使用场景：让要点逐个出现、强调某个数字。',
+  category: ToolCategory.PRESENTATION,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      preset: { type: 'string', enum: ['fadeIn', 'flyIn', 'zoomIn', 'wipeIn', 'appear'], description: '整页预设动画；给了它就忽略 effect' },
+      effect: { type: 'string', description: '效果名：入场/退场用 fadeIn/flyIn/wipeIn/zoomIn/bounceIn/spinIn/fadeOut/flyOut；强调用 pulse/spin/grow/teeter' },
+      effectKind: { type: 'string', enum: ['entrance', 'emphasis'], description: '效果类别，默认 entrance' },
+      trigger: { type: 'string', enum: ['onClick', 'withPrevious', 'afterPrevious'], description: '触发方式，默认 onClick' },
+      duration: { type: 'number', description: '强调动画时长（秒），默认 0.5' },
+      delayIncrement: { type: 'number', description: '预设动画里每个形状之间的延迟增量（秒），默认 0.3' },
+      slideIndex: { type: 'number', description: '第几页（从 1 开始），默认 1' },
+      shapeIndex: { type: 'number', description: '形状序号（从 1 开始）' },
+      shapeName: { type: 'string', description: '形状名称；给了它就用名称定位' },
+      presentationName: { type: 'string', description: '演示文稿名；不填用当前文稿' },
+    },
+  },
+};
+
+export const setAnimationHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
+  try {
+    const response = await wpsClient.executeMethod<{ mode?: string; preset?: string; effect?: string; animatedShapes?: number; shape?: string; isExit?: boolean }>(
+      'setAnimation',
+      {
+        presentationName: args.presentationName, slideIndex: args.slideIndex, shapeIndex: args.shapeIndex, shapeName: args.shapeName,
+        preset: args.preset, effect: args.effect, effectKind: args.effectKind, trigger: args.trigger,
+        duration: args.duration, delayIncrement: args.delayIncrement,
+      },
+      WpsAppType.PRESENTATION
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: '添加动画失败: ' + response.error }], error: response.error };
+    }
+    const d = response.data || {};
+    const lines = ['动画已添加（' + (d.mode === 'preset' ? '整页预设' : d.mode === 'emphasis' ? '强调' : '入场/退场') + '）'];
+    if (d.mode === 'preset') lines.push('  预设: ' + String(d.preset) + '；作用形状数: ' + String(d.animatedShapes ?? 0));
+    else lines.push('  形状: ' + String(d.shape) + '；效果: ' + String(d.effect));
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: lines.join('\n') }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '添加动画出错: ' + errMsg }], error: errMsg };
+  }
+};
+
 export const animationTools: RegisteredTool[] = [
-  { definition: addAnimationDefinition, handler: addAnimationHandler },
+  { definition: setAnimationDefinition, handler: setAnimationHandler },
   { definition: removeAnimationDefinition, handler: removeAnimationHandler },
   { definition: getAnimationsDefinition, handler: getAnimationsHandler },
   { definition: setAnimationOrderDefinition, handler: setAnimationOrderHandler },
-  { definition: addAnimationPresetDefinition, handler: addAnimationPresetHandler },
-  { definition: addEmphasisAnimationDefinition, handler: addEmphasisAnimationHandler },
   { definition: setSlideTransitionDefinition, handler: setSlideTransitionHandler },
   { definition: removeSlideTransitionDefinition, handler: removeSlideTransitionHandler },
   { definition: applyTransitionToAllDefinition, handler: applyTransitionToAllHandler },

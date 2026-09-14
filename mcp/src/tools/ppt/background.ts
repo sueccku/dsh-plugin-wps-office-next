@@ -282,245 +282,6 @@ export const setBackgroundImageHandler: ToolHandler = async (
 
 // ==================== 页面信息 (3) ====================
 
-/**
- * 设置幻灯片页码显示
- * 控制页码的显示/隐藏和起始编号
- */
-export const setSlideNumberDefinition: ToolDefinition = {
-  name: 'wps_ppt_set_slide_number',
-  description: `设置幻灯片页码的显示状态和起始编号。
-
-使用场景：
-- "显示页码"
-- "隐藏幻灯片编号"
-- "页码从第2页开始编号"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      show: {
-        type: 'boolean',
-        description: '是否显示页码',
-      },
-    },
-    required: ['show'],
-  },
-};
-
-export const setSlideNumberHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { show } = args as {
-    show: boolean;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'setSlideNumber',
-      { show },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success) {
-      // The slide-number start is not exposed by the presentation object model, so the parameter
-      // was removed rather than reported as applied while nothing changed.
-      const text = `幻灯片页码设置成功！\n显示状态: ${show ? '显示' : '隐藏'}`;
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [{ type: 'text', text }],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `设置页码失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `设置页码出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
-
-/**
- * 设置PPT页脚
- * 控制页脚文本的显示/隐藏
- */
-export const setPptFooterDefinition: ToolDefinition = {
-  name: 'wps_ppt_set_ppt_footer',
-  description: `设置演示文稿页脚文本。
-
-使用场景：
-- "添加页脚'公司名称'"
-- "设置页脚为'机密文件'"
-- "隐藏页脚"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      text: {
-        type: 'string',
-        description: '页脚文本内容',
-      },
-      show: {
-        type: 'boolean',
-        description: '是否显示页脚，默认为true',
-      },
-    },
-    required: ['text'],
-  },
-};
-
-export const setPptFooterHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { text, show } = args as {
-    text: string;
-    show?: boolean;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'setPptFooter',
-      { text, show: show !== false },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success) {
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `页脚设置成功！\n页脚文本: ${text}\n显示状态: ${show !== false ? '显示' : '隐藏'}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `设置页脚失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `设置页脚出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
-
-/**
- * 设置PPT日期时间
- * 控制日期时间占位符的显示和格式
- */
-export const setPptDateTimeDefinition: ToolDefinition = {
-  name: 'wps_ppt_set_ppt_date_time',
-  description: `设置演示文稿日期时间显示。
-
-支持的日期格式（format）：
-- "YYYY-MM-DD": 如 2026-03-21
-- "YYYY/MM/DD": 如 2026/03/21
-- "MM/DD/YYYY": 如 03/21/2026
-- "DD/MM/YYYY": 如 21/03/2026
-
-使用场景：
-- "显示日期时间"
-- "设置自动更新日期"
-- "隐藏日期"`,
-  category: ToolCategory.PRESENTATION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      show: {
-        type: 'boolean',
-        description: '是否显示日期时间',
-      },
-      autoUpdate: {
-        type: 'boolean',
-        description: '是否自动更新日期时间，默认为true',
-      },
-      format: {
-        type: 'string',
-        description: '日期时间格式，如 "YYYY-MM-DD"',
-      },
-    },
-    required: ['show'],
-  },
-};
-
-export const setPptDateTimeHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { show, autoUpdate, format } = args as {
-    show: boolean;
-    autoUpdate?: boolean;
-    format?: string;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'setPptDateTime',
-      { show, autoUpdate, format },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success) {
-      let text = `日期时间设置成功！\n显示状态: ${show ? '显示' : '隐藏'}`;
-      if (show) {
-        text += `\n自动更新: ${autoUpdate !== false ? '是' : '否'}`;
-        if (format) {
-          text += `\n格式: ${format}`;
-        }
-      }
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [{ type: 'text', text }],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `设置日期时间失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `设置日期时间出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
-
 // ==================== 高级形状 (2) ====================
 
 /**
@@ -700,13 +461,55 @@ export const setShapeZOrderHandler: ToolHandler = async (
 /**
  * 导出所有背景、页面信息、高级形状相关的Tools
  */
+/** 页脚三件套：页码 / 页脚文字 / 日期（P4 由三个工具合并而来） */
+export const setSlideFooterDefinition: ToolDefinition = {
+  name: 'wps_ppt_set_slide_footer',
+  description: '一次设置演示文稿的页脚三件套：幻灯片编号、页脚文字、日期时间，以及日期的显示格式。只改给出来的项。使用场景：交付前统一加上页码与「内部资料」。',
+  category: ToolCategory.PRESENTATION,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      showSlideNumber: { type: 'boolean', description: '是否显示幻灯片编号' },
+      footerText: { type: 'string', description: '页脚文字' },
+      showFooter: { type: 'boolean', description: '是否显示页脚；给了 footerText 而不给它就默认显示' },
+      showDate: { type: 'boolean', description: '是否显示日期' },
+      dateFormat: { type: 'string', description: '日期显示格式，如 YYYY-MM-DD（按当前日期渲染成固定文本）' },
+      autoUpdate: { type: 'boolean', description: '日期是否由程序自动刷新；false 表示钉住当前日期' },
+      presentationName: { type: 'string', description: '演示文稿名；不填用当前文稿' },
+    },
+  },
+};
+
+export const setSlideFooterHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
+  try {
+    const response = await wpsClient.executeMethod<{ applied?: string[]; footerText?: string; footerVisible?: boolean; slideNumberVisible?: boolean; dateVisible?: boolean }>(
+      'setSlideFooter',
+      {
+        presentationName: args.presentationName, showSlideNumber: args.showSlideNumber, footerText: args.footerText,
+        showFooter: args.showFooter, showDate: args.showDate, dateFormat: args.dateFormat, autoUpdate: args.autoUpdate,
+      },
+      WpsAppType.PRESENTATION
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: '设置页脚失败: ' + response.error }], error: response.error };
+    }
+    const d = response.data || {};
+    const applied = d.applied || [];
+    const lines = ['页脚已更新（' + applied.join(', ') + '）'];
+    lines.push('  页脚: ' + (d.footerVisible ? '显示' : '隐藏') + '；文字: ' + (d.footerText ? d.footerText : '(空)'));
+    lines.push('  幻灯片编号: ' + (d.slideNumberVisible ? '显示' : '隐藏') + '；日期: ' + (d.dateVisible ? '显示' : '隐藏'));
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: lines.join('\n') }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '设置页脚出错: ' + errMsg }], error: errMsg };
+  }
+};
+
 export const backgroundTools: RegisteredTool[] = [
+  { definition: setSlideFooterDefinition, handler: setSlideFooterHandler },
   { definition: setSlideBackgroundDefinition, handler: setSlideBackgroundHandler },
   { definition: setBackgroundColorDefinition, handler: setBackgroundColorHandler },
   { definition: setBackgroundImageDefinition, handler: setBackgroundImageHandler },
-  { definition: setSlideNumberDefinition, handler: setSlideNumberHandler },
-  { definition: setPptFooterDefinition, handler: setPptFooterHandler },
-  { definition: setPptDateTimeDefinition, handler: setPptDateTimeHandler },
   { definition: duplicateShapeDefinition, handler: duplicateShapeHandler },
   { definition: setShapeZOrderDefinition, handler: setShapeZOrderHandler },
 ];

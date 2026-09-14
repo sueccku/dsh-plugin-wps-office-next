@@ -3416,104 +3416,67 @@
  },
  {
   "name": "wps_ppt_add_animation",
-  "description": "为幻灯片中的形状添加动画效果。\n\n使用场景：\n- \"给第1页第2个形状加个淡入动画\"\n- \"为标题添加飞入效果\"\n- \"添加动画让元素依次出现\"",
+  "description": "给形状加动画，三种用法：给 preset 就按预设给整页（或指定形状）加依次出场的动画；给 effect 且 effectKind=emphasis 加强调动画；只给 effect 则加入场/退场动画。使用场景：让要点逐个出现、强调某个数字。",
   "inputSchema": {
    "type": "object",
    "properties": {
-    "slideIndex": {
-     "type": "number",
-     "description": "幻灯片页码（从1开始）"
-    },
-    "shapeIndex": {
-     "type": "number",
-     "description": "形状索引（从1开始）"
+    "preset": {
+     "type": "string",
+     "description": "整页预设动画；给了它就忽略 effect",
+     "enum": [
+      "fadeIn",
+      "flyIn",
+      "zoomIn",
+      "wipeIn",
+      "appear"
+     ]
     },
     "effect": {
      "type": "string",
-     "description": "动画效果名称，如 \"fadeIn\"、\"flyIn\"、\"wipe\" 等"
+     "description": "效果名：入场/退场用 fadeIn/flyIn/wipeIn/zoomIn/bounceIn/spinIn/fadeOut/flyOut；强调用 pulse/spin/grow/teeter"
+    },
+    "effectKind": {
+     "type": "string",
+     "description": "效果类别，默认 entrance",
+     "enum": [
+      "entrance",
+      "emphasis"
+     ]
     },
     "trigger": {
      "type": "string",
-     "description": "触发方式",
+     "description": "触发方式，默认 onClick",
      "enum": [
       "onClick",
       "withPrevious",
       "afterPrevious"
      ]
-    }
-   },
-   "required": [
-    "slideIndex",
-    "shapeIndex",
-    "effect"
-   ]
-  }
- },
- {
-  "name": "wps_ppt_add_animation_preset",
-  "description": "为形状添加预设入场动画效果。\n\n支持的预设：\n- fadeIn: 淡入\n- flyIn: 飞入\n- wipe: 擦除\n- zoom: 缩放\n- bounce: 弹跳\n- spin: 旋转\n\n使用场景：\n- \"给标题加个淡入效果\"\n- \"让这个形状飞入\"\n- \"添加弹跳入场动画\"",
-  "inputSchema": {
-   "type": "object",
-   "properties": {
+    },
+    "duration": {
+     "type": "number",
+     "description": "强调动画时长（秒），默认 0.5"
+    },
+    "delayIncrement": {
+     "type": "number",
+     "description": "预设动画里每个形状之间的延迟增量（秒），默认 0.3"
+    },
     "slideIndex": {
      "type": "number",
-     "description": "幻灯片页码（从1开始）"
+     "description": "第几页（从 1 开始），默认 1"
     },
     "shapeIndex": {
      "type": "number",
-     "description": "形状索引（从1开始）"
+     "description": "形状序号（从 1 开始）"
     },
-    "preset": {
+    "shapeName": {
      "type": "string",
-     "description": "预设动画类型",
-     "enum": [
-      "fadeIn",
-      "flyIn",
-      "wipe",
-      "zoom",
-      "bounce",
-      "spin"
-     ]
-    }
-   },
-   "required": [
-    "slideIndex",
-    "shapeIndex",
-    "preset"
-   ]
-  }
- },
- {
-  "name": "wps_ppt_add_emphasis_animation",
-  "description": "为形状添加强调动画效果，用于在演示时突出显示元素。\n\n支持的效果：\n- pulse: 脉冲\n- spin: 陀螺旋\n- grow: 放大/缩小\n- teeter: 跷跷板\n- colorPulse: 颜色脉冲\n\n使用场景：\n- \"让这个元素闪烁突出\"\n- \"添加脉冲强调效果\"\n- \"让图片旋转强调\"",
-  "inputSchema": {
-   "type": "object",
-   "properties": {
-    "slideIndex": {
-     "type": "number",
-     "description": "幻灯片页码（从1开始）"
+     "description": "形状名称；给了它就用名称定位"
     },
-    "shapeIndex": {
-     "type": "number",
-     "description": "形状索引（从1开始）"
-    },
-    "effect": {
+    "presentationName": {
      "type": "string",
-     "description": "强调动画效果",
-     "enum": [
-      "pulse",
-      "spin",
-      "grow",
-      "teeter",
-      "colorPulse"
-     ]
+     "description": "演示文稿名；不填用当前文稿"
     }
-   },
-   "required": [
-    "slideIndex",
-    "shapeIndex",
-    "effect"
-   ]
+   }
   }
  },
  {
@@ -4607,7 +4570,7 @@
    "properties": {
     "slideIndex": {
      "type": "number",
-     "description": "幻灯片���码（从1开始）"
+     "description": "幻灯片页码（从1开始）"
     },
     "imageIndex": {
      "type": "number",
@@ -4760,50 +4723,6 @@
     "slideIndex",
     "chartIndex",
     "style"
-   ]
-  }
- },
- {
-  "name": "wps_ppt_set_ppt_date_time",
-  "description": "设置演示文稿日期时间显示。\n\n支持的日期格式（format）：\n- \"YYYY-MM-DD\": 如 2026-03-21\n- \"YYYY/MM/DD\": 如 2026/03/21\n- \"MM/DD/YYYY\": 如 03/21/2026\n- \"DD/MM/YYYY\": 如 21/03/2026\n\n使用场景：\n- \"显示日期时间\"\n- \"设置自动更新日期\"\n- \"隐藏日期\"",
-  "inputSchema": {
-   "type": "object",
-   "properties": {
-    "show": {
-     "type": "boolean",
-     "description": "是否显示日期时间"
-    },
-    "autoUpdate": {
-     "type": "boolean",
-     "description": "是否自动更新日期时间，默认为true"
-    },
-    "format": {
-     "type": "string",
-     "description": "日期时间格式，如 \"YYYY-MM-DD\""
-    }
-   },
-   "required": [
-    "show"
-   ]
-  }
- },
- {
-  "name": "wps_ppt_set_ppt_footer",
-  "description": "设置演示文稿页脚文本。\n\n使用场景：\n- \"添加页脚'公司名称'\"\n- \"设置页脚为'机密文件'\"\n- \"隐藏页脚\"",
-  "inputSchema": {
-   "type": "object",
-   "properties": {
-    "text": {
-     "type": "string",
-     "description": "页脚文本内容"
-    },
-    "show": {
-     "type": "boolean",
-     "description": "是否显示页脚，默认为true"
-    }
-   },
-   "required": [
-    "text"
    ]
   }
  },
@@ -5098,6 +5017,43 @@
   }
  },
  {
+  "name": "wps_ppt_set_slide_footer",
+  "description": "一次设置演示文稿的页脚三件套：幻灯片编号、页脚文字、日期时间，以及日期的显示格式。只改给出来的项。使用场景：交付前统一加上页码与「内部资料」。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "showSlideNumber": {
+     "type": "boolean",
+     "description": "是否显示幻灯片编号"
+    },
+    "footerText": {
+     "type": "string",
+     "description": "页脚文字"
+    },
+    "showFooter": {
+     "type": "boolean",
+     "description": "是否显示页脚；给了 footerText 而不给它就默认显示"
+    },
+    "showDate": {
+     "type": "boolean",
+     "description": "是否显示日期"
+    },
+    "dateFormat": {
+     "type": "string",
+     "description": "日期显示格式，如 YYYY-MM-DD（按当前日期渲染成固定文本）"
+    },
+    "autoUpdate": {
+     "type": "boolean",
+     "description": "日期是否由程序自动刷新；false 表示钉住当前日期"
+    },
+    "presentationName": {
+     "type": "string",
+     "description": "演示文稿名；不填用当前文稿"
+    }
+   }
+  }
+ },
+ {
   "name": "wps_ppt_set_slide_layout",
   "description": "设置幻灯片的版式布局。\n\n支持的布局类型：\n- title: 标题页\n- title_content: 标题+内容\n- blank: 空白页\n- two_column: 两栏内容\n- comparison: 对比布局\n- section_header: 节标题\n- title_only: 仅标题\n\n使用场景：\n- \"把这页改成空白布局\"\n- \"设置为两栏内容\"\n- \"改成标题页版式\"",
   "inputSchema": {
@@ -5136,22 +5092,6 @@
    "required": [
     "slideIndex",
     "notes"
-   ]
-  }
- },
- {
-  "name": "wps_ppt_set_slide_number",
-  "description": "设置幻灯片页码的显示状态和起始编号。\n\n使用场景：\n- \"显示页码\"\n- \"隐藏幻灯片编号\"\n- \"页码从第2页开始编号\"",
-  "inputSchema": {
-   "type": "object",
-   "properties": {
-    "show": {
-     "type": "boolean",
-     "description": "是否显示页码"
-    }
-   },
-   "required": [
-    "show"
    ]
   }
  },
@@ -5303,96 +5243,68 @@
   }
  },
  {
-  "name": "wps_ppt_set_table_cell_style",
-  "description": "设置PPT表格中指定单元格的样式。\n\n支持的样式属性（通过style对象传入）：\n- backgroundColor: 单元格背景色\n- fontName: 字体名称\n- fontSize: 字体大小（磅）\n- fontColor: 字体颜色\n- bold: 是否加粗（boolean）\n- italic: 是否斜体（boolean）\n- alignment: 文本对齐方式（left/center/right）\n- verticalAlignment: 垂直对齐方式（top/middle/bottom）\n\n使用场景：\n- \"把表格第1行第1列的背景设为蓝色\"\n- \"加粗标题单元格\"\n- \"设置单元格居中对齐\"",
+  "name": "wps_ppt_set_table_format",
+  "description": "设置表格的外观与样式。位置尺寸：left/top/width/height。样式作用域：给 row 和 col 就只改那一格，只给 row 改一整行，都不给但有样式键就改整张表；样式键为 backgroundColor/fontColor/fontSize/bold。使用场景：给表头行加底色、把表格挪到中间。",
   "inputSchema": {
    "type": "object",
    "properties": {
-    "slideIndex": {
+    "left": {
      "type": "number",
-     "description": "幻灯片页码（从1开始）"
+     "description": "表格左边缘位置"
     },
-    "tableIndex": {
+    "top": {
      "type": "number",
-     "description": "表格索引（从1开始）"
+     "description": "表格上边缘位置"
+    },
+    "width": {
+     "type": "number",
+     "description": "表格宽度"
+    },
+    "height": {
+     "type": "number",
+     "description": "表格高度"
     },
     "row": {
      "type": "number",
-     "description": "行号（从1开始）"
+     "description": "第几行（从 1 开始）；与 col 一起用就是单元格"
     },
     "col": {
      "type": "number",
-     "description": "列号（从1开始）"
+     "description": "第几列（从 1 开始）"
     },
-    "style": {
-     "type": "object",
-     "description": "样式配置对象，包含backgroundColor、fontName、fontSize、fontColor、bold、italic、alignment、verticalAlignment等属性"
-    }
-   },
-   "required": [
-    "slideIndex",
-    "tableIndex",
-    "row",
-    "col",
-    "style"
-   ]
-  }
- },
- {
-  "name": "wps_ppt_set_table_row_style",
-  "description": "设置PPT表格中指定行的样式。\n\n支持的样式属性（通过style对象传入）：\n- backgroundColor: 行背景色\n- fontName: 字体名称\n- fontSize: 字体大小（磅）\n- fontColor: 字体颜色\n- bold: 是否加粗（boolean）\n- italic: 是否斜体（boolean）\n- alignment: 文本对齐方式（left/center/right）\n- height: 行高（磅）\n\n使用场景：\n- \"把表头行设为蓝色背景白色字\"\n- \"加粗第一行\"\n- \"设置表格行高\"",
-  "inputSchema": {
-   "type": "object",
-   "properties": {
+    "backgroundColor": {
+     "type": "string",
+     "description": "底纹颜色，十六进制如 #D9E2F3"
+    },
+    "fontColor": {
+     "type": "string",
+     "description": "文字颜色，十六进制如 #1A365D"
+    },
+    "fontSize": {
+     "type": "number",
+     "description": "字号"
+    },
+    "bold": {
+     "type": "boolean",
+     "description": "是否加粗"
+    },
     "slideIndex": {
      "type": "number",
-     "description": "幻灯片页码（从1开始）"
+     "description": "第几页（从 1 开始），默认 1"
     },
     "tableIndex": {
      "type": "number",
-     "description": "表格索引（从1开始）"
+     "description": "该页第几张表（从 1 开始），默认 1"
     },
-    "row": {
-     "type": "number",
-     "description": "行号（从1开始）"
+    "tableName": {
+     "type": "string",
+     "description": "表格形状名；给了它就用名称定位"
     },
-    "style": {
-     "type": "object",
-     "description": "样式配置对象，包含backgroundColor、fontName、fontSize、fontColor、bold、italic、alignment、height等属性"
+    "presentationName": {
+     "type": "string",
+     "description": "演示文稿名；不填用当前文稿"
     }
-   },
-   "required": [
-    "slideIndex",
-    "tableIndex",
-    "row",
-    "style"
-   ]
-  }
- },
- {
-  "name": "wps_ppt_set_table_style",
-  "description": "设置PPT表格的整体样式。\n\n支持的样式属性（通过style对象传入）：\n- borderColor: 边框颜色（如 \"#000000\"）\n- borderWidth: 边框宽度（磅）\n- backgroundColor: 背景色（如 \"#FFFFFF\"）\n- fontName: 字体名称（如 \"微软雅黑\"）\n- fontSize: 字体大小（磅）\n- fontColor: 字体颜色（如 \"#333333\"）\n- headerBackground: 表头行背景色\n- alternateRowColor: 隔行变色颜色\n\n使用场景：\n- \"设置表格为蓝色主题\"\n- \"修改表格边框和背景\"\n- \"美化表格样式\"",
-  "inputSchema": {
-   "type": "object",
-   "properties": {
-    "slideIndex": {
-     "type": "number",
-     "description": "幻灯片页码（从1开始）"
-    },
-    "tableIndex": {
-     "type": "number",
-     "description": "表格索引（从1开始）"
-    },
-    "style": {
-     "type": "object",
-     "description": "样式配置对象，包含borderColor、borderWidth、backgroundColor、fontName、fontSize、fontColor、headerBackground、alternateRowColor等属性"
-    }
-   },
-   "required": [
-    "slideIndex",
-    "tableIndex",
-    "style"
-   ]
+   }
   }
  },
  {

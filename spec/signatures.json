@@ -661,17 +661,7 @@
  },
  {
   "tool": "wps_ppt_add_animation",
-  "signature": "ppt_add_animation(slideIndex*, shapeIndex*, effect*, trigger?)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_add_animation_preset",
-  "signature": "ppt_add_animation_preset(slideIndex*, shapeIndex*, preset*)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_add_emphasis_animation",
-  "signature": "ppt_add_emphasis_animation(slideIndex*, shapeIndex*, effect*)",
+  "signature": "ppt_add_animation(preset?, effect?, effectKind?, trigger?, duration?, delayIncrement?, slideIndex?, shapeIndex?, shapeName?, presentationName?)",
   "effect": "write"
  },
  {
@@ -930,16 +920,6 @@
   "effect": "write"
  },
  {
-  "tool": "wps_ppt_set_ppt_date_time",
-  "signature": "ppt_set_ppt_date_time(show*, autoUpdate?, format?)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_ppt_footer",
-  "signature": "ppt_set_ppt_footer(text*, show?)",
-  "effect": "write"
- },
- {
   "tool": "wps_ppt_set_shape_effect",
   "signature": "ppt_set_shape_effect(shapeIndex?, name?, slideIndex?, presentationName?, shadowEnabled?, shadowColor?, shadowTransparency?, shadowBlur?, shadowOffsetX?, shadowOffsetY?, borderEnabled?, borderColor?, borderWidth?, borderStyle?, gradientColor1?, gradientColor2?, transparency?)",
   "effect": "write"
@@ -980,6 +960,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_ppt_set_slide_footer",
+  "signature": "ppt_set_slide_footer(showSlideNumber?, footerText?, showFooter?, showDate?, dateFormat?, autoUpdate?, presentationName?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_ppt_set_slide_layout",
   "signature": "ppt_set_slide_layout(slideIndex*, layout*)",
   "effect": "write"
@@ -987,11 +972,6 @@
  {
   "tool": "wps_ppt_set_slide_notes",
   "signature": "ppt_set_slide_notes(slideIndex*, notes*)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_slide_number",
-  "signature": "ppt_set_slide_number(show*)",
   "effect": "write"
  },
  {
@@ -1025,18 +1005,8 @@
   "effect": "write"
  },
  {
-  "tool": "wps_ppt_set_table_cell_style",
-  "signature": "ppt_set_table_cell_style(slideIndex*, tableIndex*, row*, col*, style*)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_table_row_style",
-  "signature": "ppt_set_table_row_style(slideIndex*, tableIndex*, row*, style*)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_table_style",
-  "signature": "ppt_set_table_style(slideIndex*, tableIndex*, style*)",
+  "tool": "wps_ppt_set_table_format",
+  "signature": "ppt_set_table_format(left?, top?, width?, height?, row?, col?, backgroundColor?, fontColor?, fontSize?, bold?, slideIndex?, tableIndex?, tableName?, presentationName?)",
   "effect": "write"
  },
  {

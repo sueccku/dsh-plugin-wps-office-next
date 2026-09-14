@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 演示工具（82）
+## WPS 演示工具（76）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -42,12 +42,10 @@
 | wps_ppt_get_slide_title | wps_call | 获取指定幻灯片的标题。 |
 | wps_ppt_set_slide_subtitle | wps_call | 设置幻灯片的副标题。 |
 | wps_ppt_set_slide_content | 直达 | 设置幻灯片的正文内容区域。 |
+| wps_ppt_set_slide_footer | wps_call | 一次设置演示文稿的页脚三件套：幻灯片编号、页脚文字、日期时间，以及日期的显示格式。 |
 | wps_ppt_set_slide_background | wps_call | 设置幻灯片背景，支持多种背景类型。 |
 | wps_ppt_set_background_color | wps_call | 设置幻灯片背景为指定颜色。 |
 | wps_ppt_set_background_image | wps_call | 设置幻灯片背景为指定图片。 |
-| wps_ppt_set_slide_number | wps_call | 设置幻灯片页码的显示状态和起始编号。 |
-| wps_ppt_set_ppt_footer | wps_call | 设置演示文稿页脚文本。 |
-| wps_ppt_set_ppt_date_time | wps_call | 设置演示文稿日期时间显示。 |
 | wps_ppt_duplicate_shape | wps_call | 复制幻灯片中的指定形状。 |
 | wps_ppt_set_shape_z_order | wps_call | 设置形状在幻灯片中的层级顺序（Z轴排列）。 |
 | wps_ppt_set_shape_effect | wps_call | 给形状设置视觉效果：阴影、边框、渐变填充、填充透明度；只改给出来的项，其余保持原样。 |
@@ -62,12 +60,10 @@
 | wps_ppt_set_image_style | wps_call | 设置幻灯片中指定图片的样式。 |
 | wps_ppt_export_slide_as_image | 直达 | 将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。 |
 | wps_ppt_replace_ppt_image | wps_call | 原位替换幻灯片中的某张图片：保留原图的位置、尺寸、旋转角度，删除旧图后在同一矩形内插入新图。 |
-| wps_ppt_add_animation | wps_call | 为幻灯片中的形状添加动画效果。 |
+| wps_ppt_add_animation | wps_call | 给形状加动画，三种用法：给 preset 就按预设给整页（或指定形状）加依次出场的动画；给 effect 且 effectKind=emphasis 加强调动画；只给 effect |
 | wps_ppt_remove_animation | wps_call | 移除幻灯片中指定的动画效果。 |
 | wps_ppt_get_animations | wps_call | 获取幻灯片上所有动画效果的列表。 |
 | wps_ppt_set_animation_order | wps_call | 调整动画在时间线上的播放顺序。 |
-| wps_ppt_add_animation_preset | wps_call | 为形状添加预设入场动画效果。 |
-| wps_ppt_add_emphasis_animation | wps_call | 为形状添加强调动画效果，用于在演示时突出显示元素。 |
 | wps_ppt_set_slide_transition | wps_call | 设置幻灯片的页面切换效果。 |
 | wps_ppt_remove_slide_transition | wps_call | 移除幻灯片的切换效果。 |
 | wps_ppt_apply_transition_to_all | wps_call | 为所有幻灯片应用统一的切换效果。 |
@@ -82,10 +78,8 @@
 | wps_ppt_find_ppt_text | wps_call | 在演示文稿中搜索指定文本。 |
 | wps_ppt_replace_ppt_text | wps_call | 在演示文稿中查找并替换文本。 |
 | wps_ppt_start_slide_show | wps_call | 开始幻灯片放映。 |
+| wps_ppt_set_table_format | wps_call | 设置表格的外观与样式。 |
 | wps_ppt_insert_table | 直达 | 在幻灯片中插入表格。 |
 | wps_ppt_set_table_cell | wps_call | 设置PPT表格中指定单元格的文本内容。 |
 | wps_ppt_get_table_cell | wps_call | 获取PPT表格中指定单元格的文本内容。 |
-| wps_ppt_set_table_style | wps_call | 设置PPT表格的整体样式。 |
-| wps_ppt_set_table_cell_style | wps_call | 设置PPT表格中指定单元格的样式。 |
-| wps_ppt_set_table_row_style | wps_call | 设置PPT表格中指定行的样式。 |
 | wps_ppt_set_background_gradient | wps_call | 为幻灯片设置渐变色背景。 |

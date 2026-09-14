@@ -102,7 +102,8 @@ for (const m of keysSeg.matchAll(/^\s*'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)
 //   UNTOOLED_ACTIONS bridge actions no operation drives yet: the P2 backlog of capability that
 //                    already exists but has no tool.
 const spec = require(resolve('mcp/dist/spec/operations.js'));
-const ALIAS_DEBT = 62;
+// P4's three merges removed three renamed parameters (59), so the ratchet moves down with them.
+const ALIAS_DEBT = 59;
 // P2 tooled 10 of the 21, and P3-1 tooled the four Word gaps, so the ratchet moves down with them:
 // 21 -> 11 -> 7. What is left is deliberate (duplicate implementations) or belongs to P4.
 const UNTOOLED_ACTIONS = 7;

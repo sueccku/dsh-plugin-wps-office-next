@@ -3639,6 +3639,169 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ name = $shape.Name; applied = $applied } }
     }
 
+# P4 第二波：三组合并（FIXES 49）。
+    #   addAnimation + addAnimationPreset + addEmphasisAnimation -> setAnimation（preset / effectKind 分派）
+    #   setPptTableStyle + setPptTableCellStyle + setPptTableRowStyle -> setPptTableFormat（row/col 定作用域）
+    #   setSlideNumber + setPptFooter + setPptDateTime -> setSlideFooter（一次设完页脚三件套）
+
+    "setAnimation" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; exit }
+        $slide = $pres.Slides.Item($slideIndex)
+        $timeline = $slide.TimeLine
+        # 预设模式：给 preset 就是"整页（或指定形状）按顺序出场"，不指定形状则作用于每个形状。
+        if ($p.preset) {
+            $presets = @{ fadeIn = @{ effect = 10; duration = 0.5 }; flyIn = @{ effect = 2; duration = 0.5 }; zoomIn = @{ effect = 53; duration = 0.4 }; wipeIn = @{ effect = 22; duration = 0.5 }; appear = @{ effect = 1; duration = 0 } }
+            $config = $presets[[string]$p.preset]
+            if ($null -eq $config) { Output-Json @{ success = $false; error = ("unknown preset '" + $p.preset + "'; use fadeIn/flyIn/zoomIn/wipeIn/appear") }; exit }
+            $delay = 0
+            $delayIncrement = if ($p.delayIncrement) { [double]$p.delayIncrement } else { 0.3 }
+            $onlyShape = $null
+            if ($null -ne $p.shapeName -and "$($p.shapeName)" -ne "") { $onlyShape = $p.shapeName }
+            elseif ($null -ne $p.shapeIndex) { $onlyShape = $p.shapeIndex }
+            $firstShape = 1
+            $lastShape = [int]$slide.Shapes.Count
+            if ($null -ne $onlyShape) { $firstShape = [int]$onlyShape; $lastShape = [int]$onlyShape }
+            if ($firstShape -lt 1 -or $firstShape -gt $slide.Shapes.Count) { Output-Json @{ success = $false; error = "shapeIndex is out of range" }; exit }
+            $animated = 0
+            for ($i = $firstShape; $i -le $lastShape; $i++) {
+                $shape = $slide.Shapes.Item($i)
+                try {
+                    $effectObject = $timeline.MainSequence.AddEffect($shape, $config.effect, 0, 1)
+                    $effectObject.Timing.Duration = $config.duration
+                    $effectObject.Timing.TriggerDelayTime = $delay
+                    $delay += $delayIncrement
+                    $animated++
+                } catch { Add-WpsWarning $_.Exception.Message }
+            }
+            Output-Json @{ success = $true; data = @{ mode = "preset"; preset = [string]$p.preset; animatedShapes = $animated; shapeIndex = $onlyShape } }
+            exit
+        }
+        if ($null -eq $p.shapeName -and $null -eq $p.shapeIndex) { Output-Json @{ success = $false; error = "shapeIndex/shapeName is required (or give preset to animate the whole slide)" }; exit }
+        $shape = $slide.Shapes.Item($(if ($null -ne $p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
+        if ("$($p.effectKind)".ToLower() -eq "emphasis") {
+            $effectType = if ($p.effect) { "$($p.effect)" } else { "pulse" }
+            $effectMap = @{ pulse = 63; spin = 15; grow = 53; teeter = 28 }
+            $effectId = if ($effectMap[$effectType]) { $effectMap[$effectType] } else { 63 }
+            $effectObject = $timeline.MainSequence.AddEffect($shape, $effectId, 0, 2)
+            $effectObject.Timing.Duration = if ($p.duration) { [double]$p.duration } else { 0.5 }
+            Output-Json @{ success = $true; data = @{ mode = "emphasis"; shape = $shape.Name; effect = $effectType } }
+            exit
+        }
+        $effect = Get-PptAnimEffect $p.effect
+        if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown animation '" + $p.effect + "'; use fadeIn/flyIn/wipeIn/zoomIn/bounceIn/spinIn/fadeOut/flyOut or a MsoAnimEffect number") }; exit }
+        $triggerMap = @{ onClick = 1; withPrevious = 2; afterPrevious = 3 }
+        $trigger = if ($null -ne $p.trigger -and $triggerMap[[string]$p.trigger]) { $triggerMap[[string]$p.trigger] } else { 1 }
+        $effectObject = $slide.TimeLine.MainSequence.AddEffect($shape, $effect, 1, $trigger)
+        $exitNames = @("fadeout", "flyout")
+        $isExit = ($exitNames -contains ([string]$p.effect).ToLower())
+        if ($isExit) { try { $effectObject.Exit = -1 } catch { Add-WpsWarning $_.Exception.Message } }
+        Output-Json @{ success = $true; data = @{ mode = "entrance"; shape = $shape.Name; effect = $effect; trigger = $trigger; isExit = $isExit } }
+    }
+
+    "setPptTableFormat" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        $slide = $pres.Slides.Item($slideIndex)
+        $shape = $null
+        $tableCount = 0
+        $targetIndex = if ($p.tableIndex) { [int]$p.tableIndex } else { 1 }
+        if ($p.tableName) {
+            $shape = $slide.Shapes.Item($p.tableName)
+        } else {
+            for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
+                $s = $slide.Shapes.Item($i)
+                if ($s.HasTable) { $tableCount++; if ($tableCount -eq $targetIndex) { $shape = $s; break } }
+            }
+        }
+        if ($null -eq $shape -or -not $shape.HasTable) { Output-Json @{ success = $false; error = "Table not found" }; exit }
+        $applied = @()
+        if ($null -ne $p.left) { $shape.Left = $p.left; $applied += "left" }
+        if ($null -ne $p.top) { $shape.Top = $p.top; $applied += "top" }
+        if ($null -ne $p.width) { $shape.Width = $p.width; $applied += "width" }
+        if ($null -ne $p.height) { $shape.Height = $p.height; $applied += "height" }
+        # 作用域：给了 row+col 就是那一格；只给 row 是整行；都没给但有样式键就是整张表。
+        $cells = @()
+        $scope = "none"
+        if ($null -ne $p.row -and $null -ne $p.col) {
+            $cells += $shape.Table.Cell([int]$p.row, [int]$p.col).Shape
+            $scope = "cell"
+        } elseif ($null -ne $p.row) {
+            $row = $shape.Table.Rows.Item([int]$p.row)
+            for ($c = 1; $c -le $row.Cells.Count; $c++) { $cells += $row.Cells.Item($c).Shape }
+            $scope = "row"
+        } elseif ($null -ne $p.backgroundColor -or $null -ne $p.fontColor -or $null -ne $p.fontSize -or $null -ne $p.bold) {
+            for ($r = 1; $r -le $shape.Table.Rows.Count; $r++) {
+                $row = $shape.Table.Rows.Item($r)
+                for ($c = 1; $c -le $row.Cells.Count; $c++) { $cells += $row.Cells.Item($c).Shape }
+            }
+            $scope = "table"
+        }
+        foreach ($cellShape in $cells) {
+            if ($p.backgroundColor) {
+                $bg = Convert-HexColorToRgbInt([string]$p.backgroundColor)
+                if ($null -ne $bg) {
+                    $cellShape.Fill.Visible = $true
+                    $cellShape.Fill.Solid()
+                    $cellShape.Fill.ForeColor.RGB = $bg
+                    if ($applied -notcontains "backgroundColor") { $applied += "backgroundColor" }
+                }
+            }
+            if ($p.fontColor) {
+                $fc = Convert-HexColorToRgbInt([string]$p.fontColor)
+                if ($null -ne $fc) { $cellShape.TextFrame.TextRange.Font.Color.RGB = $fc; if ($applied -notcontains "fontColor") { $applied += "fontColor" } }
+            }
+            if ($p.fontSize) { $cellShape.TextFrame.TextRange.Font.Size = $p.fontSize; if ($applied -notcontains "fontSize") { $applied += "fontSize" } }
+            if ($null -ne $p.bold) { $cellShape.TextFrame.TextRange.Font.Bold = $p.bold; if ($applied -notcontains "bold") { $applied += "bold" } }
+        }
+        if ($applied.Count -eq 0) { Output-Json @{ success = $false; error = "nothing to apply: give geometry or cell style properties" }; exit }
+        Output-Json @{ success = $true; data = @{ name = $shape.Name; scope = $scope; applied = $applied } }
+    }
+
+    "setSlideFooter" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
+        $headers = $pres.SlideMaster.HeadersFooters
+        $applied = @()
+        if ($null -ne $p.showSlideNumber) { $headers.SlideNumber.Visible = [bool]$p.showSlideNumber; $applied += "slideNumber" }
+        if ($null -ne $p.showFooter -or ($null -ne $p.footerText -and "$($p.footerText)" -ne "")) {
+            $visible = if ($null -ne $p.showFooter) { [bool]$p.showFooter } else { $true }
+            $headers.Footer.Visible = $visible
+            if ($null -ne $p.footerText) { $headers.Footer.Text = [string]$p.footerText }
+            $applied += "footer"
+        }
+        if ($null -ne $p.showDate -or $null -ne $p.dateFormat -or $null -ne $p.autoUpdate) {
+            $headers.DateAndTime.Visible = if ($null -ne $p.showDate) { [bool]$p.showDate } else { $true }
+            $applied += "dateTime"
+        }
+        $dateTime = $headers.DateAndTime
+        # autoUpdate=true 表示让程序自己刷新日期；false 就把文本钉住。
+        $useFixed = $null
+        if ($null -ne $p.autoUpdate) { $useFixed = -not [bool]$p.autoUpdate }
+        if ($null -ne $p.dateFormat -and "$($p.dateFormat)" -ne "") {
+            $pattern = "$($p.dateFormat)".ToUpper().Replace("YYYY", "yyyy").Replace("DD", "dd")
+            try {
+                $dateTime.UseFormat = $false
+                $dateTime.Text = (Get-Date).ToString($pattern)
+                $dateTime.Visible = $true
+            } catch {
+                Output-Json @{ success = $false; error = ("unsupported date format '" + "$($p.dateFormat)" + "': " + $_.Exception.Message) }; exit
+            }
+        }
+        if ($useFixed -eq $true) { $dateTime.UseFormat = $false; $dateTime.Text = "" }
+        if ($applied.Count -eq 0) { Output-Json @{ success = $false; error = "nothing to apply: give footer/date/slide-number properties" }; exit }
+        Output-Json @{ success = $true; data = @{ applied = $applied; footerText = [string]$headers.Footer.Text; footerVisible = [bool]$headers.Footer.Visible; slideNumberVisible = [bool]$headers.SlideNumber.Visible; dateVisible = [bool]$headers.DateAndTime.Visible } }
+    }
+
     "findInSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
@@ -5446,97 +5609,11 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ row = $p.row; col = $p.col; value = $value; rowCount = $rowCount; colCount = $colCount } }
     }
 
-    "setPptTableStyle" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.tableName) { $p.tableName } else { $p.tableIndex }))
-        if ($null -ne $p.left) { $shape.Left = $p.left }
-        if ($null -ne $p.top) { $shape.Top = $p.top }
-        if ($null -ne $p.width) { $shape.Width = $p.width }
-        if ($null -ne $p.height) { $shape.Height = $p.height }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
 
-    "setPptTableCellStyle" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $null
-        $tableCount = 0
-        $targetIndex = if ($p.tableIndex) { $p.tableIndex } else { 1 }
-        if ($p.tableName) {
-            $shape = $slide.Shapes.Item($p.tableName)
-        } else {
-            for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
-                $s = $slide.Shapes.Item($i)
-                if ($s.HasTable) {
-                    $tableCount++
-                    if ($tableCount -eq $targetIndex) { $shape = $s; break }
-                }
-            }
-        }
-        if ($null -eq $shape -or -not $shape.HasTable) { Output-Json @{ success = $false; error = "Table not found" }; exit }
-        $cell = $shape.Table.Cell($p.row, $p.col)
-        $cellShape = $cell.Shape
-        if ($p.backgroundColor) {
-            $bg = Convert-HexColorToRgbInt([string]$p.backgroundColor)
-            if ($null -ne $bg) { $cellShape.Fill.Visible = $true; $cellShape.Fill.Solid(); $cellShape.Fill.ForeColor.RGB = $bg }
-        }
-        if ($p.fontColor) {
-            $fc = Convert-HexColorToRgbInt([string]$p.fontColor)
-            if ($null -ne $fc) { $cellShape.TextFrame.TextRange.Font.Color.RGB = $fc }
-        }
-        if ($p.fontSize) { $cellShape.TextFrame.TextRange.Font.Size = $p.fontSize }
-        if ($null -ne $p.bold) { $cellShape.TextFrame.TextRange.Font.Bold = $p.bold }
-        Output-Json @{ success = $true; data = @{ row = $p.row; col = $p.col } }
-    }
 
-    "setPptTableRowStyle" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $null
-        $tableCount = 0
-        $targetIndex = if ($p.tableIndex) { $p.tableIndex } else { 1 }
-        if ($p.tableName) {
-            $shape = $slide.Shapes.Item($p.tableName)
-        } else {
-            for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
-                $s = $slide.Shapes.Item($i)
-                if ($s.HasTable) {
-                    $tableCount++
-                    if ($tableCount -eq $targetIndex) { $shape = $s; break }
-                }
-            }
-        }
-        if ($null -eq $shape -or -not $shape.HasTable) { Output-Json @{ success = $false; error = "Table not found" }; exit }
-        $rowIndex = if ($p.row) { $p.row } else { 1 }
-        $row = $shape.Table.Rows.Item($rowIndex)
-        for ($c = 1; $c -le $row.Cells.Count; $c++) {
-            $cellShape = $row.Cells.Item($c).Shape
-            if ($p.backgroundColor) {
-                $bg = Convert-HexColorToRgbInt([string]$p.backgroundColor)
-                if ($null -ne $bg) { $cellShape.Fill.Visible = $true; $cellShape.Fill.Solid(); $cellShape.Fill.ForeColor.RGB = $bg }
-            }
-            if ($p.fontColor) {
-                $fc = Convert-HexColorToRgbInt([string]$p.fontColor)
-                if ($null -ne $fc) { $cellShape.TextFrame.TextRange.Font.Color.RGB = $fc }
-            }
-            if ($p.fontSize) { $cellShape.TextFrame.TextRange.Font.Size = $p.fontSize }
-            if ($null -ne $p.bold) { $cellShape.TextFrame.TextRange.Font.Bold = $p.bold }
-        }
-        Output-Json @{ success = $true; data = @{ row = $rowIndex } }
-    }
+
+
+
 
 
 
@@ -5710,28 +5787,7 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ name = $shape.Name; chartType = $chartType; title = $p.title; titleError = $titleError } }
     }
 
-    "addAnimation" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
-        if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; exit }
-        $slide = $pres.Slides.Item($slideIndex)
-        if ($null -eq $p.shapeName -and $null -eq $p.shapeIndex) { Output-Json @{ success = $false; error = "shapeIndex/shapeName is required" }; exit }
-        $shape = $slide.Shapes.Item($(if ($null -ne $p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
-        $effect = Get-PptAnimEffect $p.effect
-        if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown animation '" + $p.effect + "'; use fadeIn/flyIn/wipeIn/zoomIn/bounceIn/spinIn/fadeOut/flyOut or a MsoAnimEffect number") }; exit }
-        # trigger maps to MsoAnimTriggerType: onClick=1, withPrevious=2, afterPrevious=3.
-        $triggerMap = @{ onClick = 1; withPrevious = 2; afterPrevious = 3 }
-        $trigger = if ($null -ne $p.trigger -and $triggerMap[[string]$p.trigger]) { $triggerMap[[string]$p.trigger] } else { 1 }
-        $effectObject = $slide.TimeLine.MainSequence.AddEffect($shape, $effect, 1, $trigger)
-        $exitNames = @("fadeout", "flyout")
-        if ($null -ne $p.effect -and $exitNames -contains ([string]$p.effect).ToLower()) {
-            try { $effectObject.Exit = -1 } catch { Add-WpsWarning $_.Exception.Message }
-        }
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; effect = $effect; trigger = $trigger; isExit = ($exitNames -contains ([string]$p.effect).ToLower()) } }
-    }
+
 
     "setSlideTransition" {
         $ppt = Get-WpsPpt
@@ -5784,68 +5840,9 @@ switch ($Action) {
 
 
 
-    "addAnimationPreset" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
 
-        $preset = if ($p.preset) { $p.preset } else { "fadeIn" }
-        $timeline = $slide.TimeLine
-        $delay = 0
-        $delayIncrement = if ($p.delayIncrement) { $p.delayIncrement } else { 0.3 }
-        $presets = @{ fadeIn = @{ effect = 10; duration = 0.5 }; flyIn = @{ effect = 2; duration = 0.5 }; zoomIn = @{ effect = 53; duration = 0.4 }; wipeIn = @{ effect = 22; duration = 0.5 }; appear = @{ effect = 1; duration = 0 } }
-        $config = $presets[$preset]
-        if ($null -eq $config) { $config = $presets["fadeIn"] }
-        $animatedCount = 0
 
-        # shapeIndex/shapeName animates one shape; without either the preset hits every shape.
-        $onlyShape = $null
-        if ($null -ne $p.shapeName -and "$($p.shapeName)" -ne "") { $onlyShape = $p.shapeName }
-        elseif ($null -ne $p.shapeIndex) { $onlyShape = $p.shapeIndex }
-        $firstShape = 1
-        $lastShape = $slide.Shapes.Count
-        if ($null -ne $onlyShape) {
-            $firstShape = [int]$onlyShape
-            $lastShape = [int]$onlyShape
-            if ($firstShape -lt 1 -or $firstShape -gt $slide.Shapes.Count) { Output-Json @{ success = $false; error = "shapeIndex is out of range" }; exit }
-        }
 
-        for ($i = $firstShape; $i -le $lastShape; $i++) {
-            $shape = $slide.Shapes.Item($i)
-            try {
-                $effect = $timeline.MainSequence.AddEffect($shape, $config.effect, 0, 1)
-                $effect.Timing.Duration = $config.duration
-                $effect.Timing.TriggerDelayTime = $delay
-                $delay += $delayIncrement
-                $animatedCount++
-            } catch { Add-WpsWarning $_.Exception.Message }
-        }
-
-        Output-Json @{ success = $true; data = @{ preset = $preset; animatedShapes = $animatedCount; shapeIndex = $onlyShape } }
-    }
-
-    "addEmphasisAnimation" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
-
-        $effectType = if ($p.effect) { $p.effect } else { "pulse" }
-        $effectMap = @{ pulse = 63; spin = 15; grow = 53; teeter = 28 }
-        $effectId = if ($effectMap[$effectType]) { $effectMap[$effectType] } else { 63 }
-
-        $timeline = $slide.TimeLine
-        $effect = $timeline.MainSequence.AddEffect($shape, $effectId, 0, 2)
-        $effect.Timing.Duration = if ($p.duration) { $p.duration } else { 0.5 }
-
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; effect = $effectType } }
-    }
 
 
 
@@ -6088,56 +6085,11 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ shapeName = $shape.Name } }
     }
 
-    "setSlideNumber" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        if ($null -ne $p.visible) { $pres.SlideMaster.HeadersFooters.SlideNumber.Visible = $p.visible }
-        Output-Json @{ success = $true; data = @{ visible = $p.visible } }
-    }
 
-    "setPptFooter" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        # show was advertised but never read, so the footer could not be hidden again.
-        $visible = if ($null -ne $p.show) { [bool]$p.show } else { $true }
-        $pres.SlideMaster.HeadersFooters.Footer.Visible = $visible
-        $pres.SlideMaster.HeadersFooters.Footer.Text = if ($p.text) { $p.text } else { "" }
-        Output-Json @{ success = $true; data = @{ text = $p.text; visible = $visible } }
-    }
 
-    "setPptDateTime" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $pres.SlideMaster.HeadersFooters.DateAndTime.Visible = if ($p.visible -ne $null) { $p.visible } else { $true }
-        $dateTime = $pres.SlideMaster.HeadersFooters.DateAndTime
-        # autoUpdate=true means the application refreshes the date itself; false pins the text.
-        $useFixed = $null
-        if ($null -ne $p.useFixed) { $useFixed = [bool]$p.useFixed }
-        elseif ($null -ne $p.autoUpdate) { $useFixed = -not [bool]$p.autoUpdate }
-        if ($null -ne $p.format -and "$($p.format)" -ne "") {
-            # The tool passes a display format such as YYYY-MM-DD, not the COM format enum, so render it.
-            $pattern = "$($p.format)".ToUpper().Replace("YYYY", "yyyy").Replace("DD", "dd")
-            try {
-                $dateTime.UseFormat = $false
-                $dateTime.Text = (Get-Date).ToString($pattern)
-                $dateTime.Visible = $true
-            } catch {
-                Output-Json @{ success = $false; error = ("unsupported date format '" + "$($p.format)" + "': " + $_.Exception.Message) }
-                exit
-            }
-        }
-        if ($useFixed) {
-            $dateTime.UseFormat = $false
-            $dateTime.Text = if ($p.text) { $p.text } else { "" }
-        }
-        Output-Json @{ success = $true; data = @{ visible = $dateTime.Visible; useFixed = $useFixed; text = $dateTime.Text } }
-    }
+
+
+
 
     "findPptText" {
         $ppt = Get-WpsPpt

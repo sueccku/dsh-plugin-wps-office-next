@@ -43,11 +43,28 @@ check('calling it with no effect is rejected, not a silent no-op', !ok(nothing) 
 const badStyle = await call('wps_ppt_set_shape_effect', { slideIndex: 1, shapeIndex: 1, borderStyle: 'wavy' });
 check('an unknown border style is rejected', !ok(badStyle) && textOf(badStyle).includes('unknown borderStyle'), textOf(badStyle).slice(0, 120));
 
-const removed = ['wps_ppt_set_shape_shadow', 'wps_ppt_set_shape_gradient', 'wps_ppt_set_shape_border', 'wps_ppt_set_shape_transparency', 'wps_ppt_set_3d_rotation', 'wps_ppt_set_3d_depth', 'wps_ppt_set_3d_material'];
+const removed = ['wps_ppt_set_shape_shadow', 'wps_ppt_set_shape_gradient', 'wps_ppt_set_shape_border', 'wps_ppt_set_shape_transparency', 'wps_ppt_set_3d_rotation', 'wps_ppt_set_3d_depth', 'wps_ppt_set_3d_material', 'wps_ppt_add_animation_preset', 'wps_ppt_add_emphasis_animation', 'wps_ppt_set_table_style', 'wps_ppt_set_table_cell_style', 'wps_ppt_set_table_row_style', 'wps_ppt_set_slide_number', 'wps_ppt_set_ppt_footer', 'wps_ppt_set_ppt_date_time'];
 for (const name of removed) {
   const res = await call('wps_call', { tool: name, args: {} });
   check(name.replace('wps_ppt_', '') + ' no longer resolves', textOf(res).includes('未知工具'), textOf(res).slice(0, 70));
 }
+
+// P4 second wave: the merged table / animation / footer tools.
+check('a table is inserted (existing tool)', ok(await call('wps_ppt_insert_table', { slideIndex: 1, rows: 2, cols: 3 })), '');
+const cellScope = await text('wps_ppt_set_table_format', { slideIndex: 1, tableIndex: 1, row: 1, col: 1, backgroundColor: '#D9E2F3', bold: true });
+check('table format styles a single cell', cellScope.includes('作用域 单元格') && cellScope.includes('backgroundColor') && cellScope.includes('bold'), cellScope.slice(0, 150));
+const rowScope = await text('wps_ppt_set_table_format', { slideIndex: 1, tableIndex: 1, row: 2, fontColor: '#1A365D' });
+check('table format styles a whole row when only row is given', rowScope.includes('作用域 整行') && rowScope.includes('fontColor'), rowScope.slice(0, 150));
+const geometry = await text('wps_ppt_set_table_format', { slideIndex: 1, tableIndex: 1, left: 120, top: 90 });
+check('table format moves the table', geometry.includes('left') && geometry.includes('top') && geometry.includes('仅位置尺寸'), geometry.slice(0, 150));
+const tableNothing = await call('wps_ppt_set_table_format', { slideIndex: 1, tableIndex: 1 });
+check('table format with nothing to change is rejected', !ok(tableNothing) && textOf(tableNothing).includes('nothing to apply'), textOf(tableNothing).slice(0, 120));
+const footer = await text('wps_ppt_set_slide_footer', { showSlideNumber: true, footerText: '内部资料', showDate: true });
+check('footer tool sets all three parts at once', footer.includes('slideNumber') && footer.includes('footer') && footer.includes('dateTime') && footer.includes('内部资料'), footer.replace(/\n/g, ' | ').slice(0, 170));
+const footerNothing = await call('wps_ppt_set_slide_footer', {});
+check('footer tool with nothing to change is rejected', !ok(footerNothing) && textOf(footerNothing).includes('nothing to apply'), textOf(footerNothing).slice(0, 120));
+const animNothing = await call('wps_ppt_add_animation', { slideIndex: 1 });
+check('animation without shape or preset is rejected', !ok(animNothing) && textOf(animNothing).includes('shapeIndex/shapeName is required'), textOf(animNothing).slice(0, 120));
 
 check('presentation closed', ok(await call('wps_ppt_close_presentation', { save: false })), '');
 const open = await text('wps_ppt_get_open_presentations', {});

@@ -35,24 +35,6 @@ export declare const setBackgroundColorHandler: ToolHandler;
 export declare const setBackgroundImageDefinition: ToolDefinition;
 export declare const setBackgroundImageHandler: ToolHandler;
 /**
- * 设置幻灯片页码显示
- * 控制页码的显示/隐藏和起始编号
- */
-export declare const setSlideNumberDefinition: ToolDefinition;
-export declare const setSlideNumberHandler: ToolHandler;
-/**
- * 设置PPT页脚
- * 控制页脚文本的显示/隐藏
- */
-export declare const setPptFooterDefinition: ToolDefinition;
-export declare const setPptFooterHandler: ToolHandler;
-/**
- * 设置PPT日期时间
- * 控制日期时间占位符的显示和格式
- */
-export declare const setPptDateTimeDefinition: ToolDefinition;
-export declare const setPptDateTimeHandler: ToolHandler;
-/**
  * 复制形状
  * 在同一幻灯片内复制指定形状
  */
@@ -67,6 +49,9 @@ export declare const setShapeZOrderHandler: ToolHandler;
 /**
  * 导出所有背景、页面信息、高级形状相关的Tools
  */
+/** 页脚三件套：页码 / 页脚文字 / 日期（P4 由三个工具合并而来） */
+export declare const setSlideFooterDefinition: ToolDefinition;
+export declare const setSlideFooterHandler: ToolHandler;
 export declare const backgroundTools: RegisteredTool[];
 export default backgroundTools;
 //# sourceMappingURL=background.d.ts.map

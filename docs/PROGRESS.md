@@ -343,7 +343,20 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 - 未做：把 PPT 压到 ~55 需要继续合并「文本/表格/动画」几族 setter；当前 82 是**功能完整**的减法结果，
   再往下就要动仍在用的能力了（例如动画三种 add 与表格三套 style）——留给下一波按需要决定
 
-下一步：**P4 第二波**（可选：合并动画三合一、表格样式三套合一）与 **P5 收尾**（`execute_method` 决策、
-广告面与预算重定、文档与技能重生成、发布准备）。
+## P4 第二波（已落地）——P4 PPT 收敛完成
+
+- 三组合并：动画（add_animation + preset + emphasis → `add_animation`，用 preset/effectKind 分派）、
+  表格样式（table/cell/row_style → `set_table_format`，用 row/col 定作用域）、
+  页脚（slide_number + footer + date_time → `set_slide_footer`）
+- **两个被自己验收抓到的缺陷**：`setAnimation` 的 preset/emphasis 分支漏了 `exit`（会继续走到入场
+  分支再报一次错）；页脚工具没报告「页脚本身」的可见性（旧断言正好在测它）。教训：合并分支时每个
+  提前返回的分支都要 exit
+- `ALIAS_DEBT` 台账 62 → **59**（合并消掉 3 处改名）
+- PPT 工具 82 → **76**（P4 合计 **88 → 76**）、注册 273 → **267**、桥 action 273 → **267**；广告面不变
+- `test/ppt-slimming.test.mjs` 扩到 **32 项**（含 15 个被删工具名逐个确认无法解析）；
+  全套 **541 项 / 25 文件**、verify 23、spec 复现 12、参数契约 255 对 A/B/C/D 全 0
+
+下一步：**P5 收尾**（`execute_method` 去留决策、广告面与预算最终重定、文档与技能参考表重生成、
+发布准备 CHANGELOG/tag/Release —— 按约定「真正要发时再做」）。
 
 

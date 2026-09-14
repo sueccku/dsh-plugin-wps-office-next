@@ -44,10 +44,11 @@ check("textbox added", ok(tb), text(tb).replace(/\s+/g, " ").slice(0, 60));
 check("set_slide_transition accepts transition+duration", ok(await call("wps_ppt_set_transition", { slideIndex: 1, transition: "fade", duration: 1 })), "");
 check("set_slide_transition accepts effect", ok(await call("wps_ppt_set_slide_transition", { slideIndex: 1, effect: "fade", duration: 0.5 })), "");
 check("apply_transition_to_all accepts effect", ok(await call("wps_ppt_apply_transition_to_all", { effect: "fade" })), "");
-check("footer can be shown", ok(await call("wps_ppt_set_ppt_footer", { text: "probe", show: true })), "");
-check("footer reports hidden", text(await call("wps_ppt_set_ppt_footer", { text: "probe", show: false })).includes("隐藏"), "");
-check("slide number accepts show", ok(await call("wps_ppt_set_slide_number", { show: true })), "");
-check("date time accepts autoUpdate+format", ok(await call("wps_ppt_set_ppt_date_time", { show: true, autoUpdate: false, format: "YYYY-MM-DD", text: "2026-01-01" })), "");
+// P4 merged the three footer tools into one; the checks follow the new surface.
+check("footer can be shown", ok(await call("wps_ppt_set_slide_footer", { footerText: "probe", showFooter: true })), "");
+check("footer reports hidden", text(await call("wps_ppt_set_slide_footer", { footerText: "probe", showFooter: false })).includes("隐藏"), "");
+check("slide number accepts show", ok(await call("wps_ppt_set_slide_footer", { showSlideNumber: true })), "");
+check("date time accepts autoUpdate+format", ok(await call("wps_ppt_set_slide_footer", { showDate: true, autoUpdate: false, dateFormat: "YYYY-MM-DD" })), "");
 
 // The scenario wrappers (KPI cards, timeline, flow chart, gauge, donut, progress bar, page
 // indicator, title decoration, org chart, mini chart, colour scheme) were removed from the tool
@@ -89,8 +90,9 @@ for (const s of await shapeAt(1)) {
 check("recipe: recolour shapes via set_shape_fill", recoloured > 0, "recoloured=" + recoloured);
 
 // animation targeting + trigger
-check("animation preset accepts shapeIndex", ok(await call("wps_ppt_add_animation_preset", { slideIndex: 1, preset: "fadeIn", shapeIndex: 1 })), "");
-check("animation preset rejects an out-of-range shape", !ok(await call("wps_ppt_add_animation_preset", { slideIndex: 1, preset: "fadeIn", shapeIndex: 99 })), "");
+check("animation preset accepts shapeIndex", ok(await call("wps_ppt_add_animation", { slideIndex: 1, preset: "fadeIn", shapeIndex: 1 })), "");
+check("animation preset rejects an out-of-range shape", !ok(await call("wps_ppt_add_animation", { slideIndex: 1, preset: "fadeIn", shapeIndex: 99 })), "");
+check("animation emphasis accepts an effect", ok(await call("wps_ppt_add_animation", { slideIndex: 1, shapeIndex: 1, effect: "pulse", effectKind: "emphasis" })), "");
 check("add_animation accepts shapeIndex+trigger", ok(await call("wps_ppt_add_animation", { slideIndex: 1, shapeIndex: 1, effect: 10, trigger: "onClick" })), "");
 check("remove_animation accepts animationIndex", ok(await call("wps_ppt_remove_animation", { slideIndex: 1, animationIndex: 1 })), "");
 

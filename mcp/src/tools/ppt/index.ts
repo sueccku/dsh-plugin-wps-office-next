@@ -170,12 +170,6 @@ export {
   setBackgroundColorHandler,
   setBackgroundImageDefinition,
   setBackgroundImageHandler,
-  setSlideNumberDefinition,
-  setSlideNumberHandler,
-  setPptFooterDefinition,
-  setPptFooterHandler,
-  setPptDateTimeDefinition,
-  setPptDateTimeHandler,
   duplicateShapeDefinition,
   duplicateShapeHandler,
   setShapeZOrderDefinition,
@@ -211,18 +205,12 @@ export {
 } from './image';
 
 export {
-  addAnimationDefinition,
-  addAnimationHandler,
   removeAnimationDefinition,
   removeAnimationHandler,
   getAnimationsDefinition,
   getAnimationsHandler,
   setAnimationOrderDefinition,
   setAnimationOrderHandler,
-  addAnimationPresetDefinition,
-  addAnimationPresetHandler,
-  addEmphasisAnimationDefinition,
-  addEmphasisAnimationHandler,
   setSlideTransitionDefinition,
   setSlideTransitionHandler,
   removeSlideTransitionDefinition,
@@ -267,12 +255,6 @@ export {
   setPptTableCellHandler,
   getPptTableCellDefinition,
   getPptTableCellHandler,
-  setPptTableStyleDefinition,
-  setPptTableStyleHandler,
-  setPptTableCellStyleDefinition,
-  setPptTableCellStyleHandler,
-  setPptTableRowStyleDefinition,
-  setPptTableRowStyleHandler,
 } from './table';
 
 export {
@@ -281,3 +263,8 @@ export {
 } from './beautify-advanced';
 
 export default pptTools;
+
+// P4: merged tools (their fragments were re-exported in the blocks above and are gone now).
+export { setAnimationDefinition, setAnimationHandler } from './animation';
+export { setPptTableFormatDefinition, setPptTableFormatHandler } from './table';
+export { setSlideFooterDefinition, setSlideFooterHandler } from './background';
