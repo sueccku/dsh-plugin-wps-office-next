@@ -26,7 +26,7 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 - `Tool executed: wps_status ... success: true`
 
 客户端侧：模型推理中明确出现 wps-office-next 技能，最终回答为该工具返回的 connected 字段值 true，进程退出码 0。
-测试 profile 已在验证后删除，可用 README 中的一条命令重建。
+测试 profile 已在验证后删除；要重建只需 `node scripts/e2e.mjs --profile <name> --setup`（它会自动建 profile 并安装本仓库）。
 
 ## 工具面实测
 

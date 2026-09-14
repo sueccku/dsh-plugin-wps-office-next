@@ -1323,6 +1323,30 @@ P4 是**减法**，与前三阶段的加法不同。第一波做两件事：
 
 对比起点：上游基线是 250 个工具 / 141,872 schema 字节；现在广告面 69 / 37,573（降 73.5%），
 而能力比基线更全（Excel 深水、Word 全量、PPT 精简）。
+### 51. v0.2.0 发布后：把 README「让 AI 照做」的安装指引逐条实测
+
+README 被重写成两段式（用户复制一段话给 AI，AI 再照「给 AI 的安装指引」执行）。这些命令**别人会照着做**，
+所以逐条实测了一遍：
+
+| 指引 | 实测结果 |
+|---|---|
+| profile 探测脚本（从 dsh 进程命令行读 profile） | 输出 `web`，与正在运行的 GUI 一致 ✓ |
+| codeload 备用地址（`.../tar.gz/refs/tags/v0.2.0`） | HEAD 200 / `application/x-gzip`；真装 4.1 秒成功 ✓ |
+| `--dump-config \| Select-String wps` 应出现两个 id | 实测出现 `wps-office-next-plugin` 与 `mcp-wps-office-next` ✓ |
+| `scripts\doctor.mjs` | 存在，输出 `DOCTOR OK (1 warning)` ✓ |
+| `dsh plugin … remove` | 子命令存在（别名 rm / uninstall）✓ |
+| 「单次批量最多 50 项」 | 源码 `raw.length > 50` 即拒绝 ✓ |
+| 数字声明（69 / 267 / 37,573 / 541 / 255 / 70 / 40,000） | 与实测一致 ✓ |
+
+**发现并修掉一处会把人带偏的文档缺陷**：`dsh plugin add` 失败时，dsh 会补一句通用提示——
+「git-hosted plugins build on install via their prepare script, which pnpm blocks until allowed —
+add the exact key under allowBuilds」。**本包没有 `prepare` 脚本、也没有原生依赖，永远不需要改
+`allowBuilds`**；那句话只是 pnpm 失败后的兜底文案。真正的原因是这台机器**连不上 github.com**
+（`ERR_PNPM_GIT_RESOLVE_FAILED`，实测 21 秒超时）。照着 dsh 的提示去改 `pnpm-workspace.yaml` 只会白费功夫，
+所以 README 里加了显式提醒（安装指引 + 排错表各一处），并注明 codeload 兜底已实测。
+
+顺带把 `docs/PROGRESS.md` 里「可用 README 中的一条命令重建测试 profile」改成具体命令
+（`node scripts/e2e.mjs --profile <name> --setup`）——原来那句指向已经不存在的章节写法。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

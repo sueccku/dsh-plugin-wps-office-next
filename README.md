@@ -17,6 +17,8 @@ DSH 会自己打开 WPS、一步步做完、保存文件，再把结果告诉你
 - 不用配置任何环境变量；
 - 不用写代码——用中文把事情说清楚就行。
 
+> **安装很简单**：见下面的「安装」一节——把那一段话整段复制粘贴给你的 DSH AI，剩下的交给它。
+
 > 本插件只负责「操作 WPS」这一件事。所有改动都发生在你本机已经打开的 WPS 里，插件本身不联网、不会把文件传到别处。
 > 真正会看到文档内容的是你正在使用的 AI 模型，敏感文件请按你所用的模型服务的隐私政策自行判断。
 
@@ -84,77 +86,123 @@ DSH 会自己打开 WPS、一步步做完、保存文件，再把结果告诉你
 | 批量套模板 | 把《合同模板.docx》里的 {甲方}、{金额} 换成这张表里的数据，逐行生成 30 份，并都导出 PDF |
 | 清理收尾 | 看看我现在开着哪些 WPS 文件，没保存的先帮我存到桌面 |
 
-## 安装前准备
+## 安装：把下面这段话复制给你的 DSH AI
 
-请先对照下面这张表确认环境（缺一项都装不起来）：
+你**不需要自己敲命令**。打开 DSH 新建一个会话，把下面整段复制粘贴进去发送，剩下的交给它：
 
-| 项目 | 要求 | 怎么确认 |
+```text
+请帮我在本机安装 DeepSeek Harness 插件 dsh-plugin-wps-office-next
+（仓库：github.com/sueccku/dsh-plugin-wps-office-next）。
+
+用途：装上之后，我可以用中文让你操作本机的 WPS 表格 / 文字 / 演示
+（读写数据、排版、做图表、转 PDF 等）。
+
+请按下面的步骤执行，遇到不确定的地方先问我：
+
+1. 环境检查：本插件只支持 64 位 Windows 10/11 + WPS Office 12.1+（64 位）；
+   还需要 Node.js ≥ 22.19 和 pnpm。不满足的项目直接告诉我，不要硬装。
+2. 判断我当前正在使用的 DSH profile（我从浏览器/桌面界面使用 DSH，通常是 web）。
+3. 执行安装（把 <profile> 换成上一步判断出的名字）：
+   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.2.0
+   如果报 ERR_PNPM_GIT_RESOLVE_FAILED 或连不上 github.com，改用这个地址重试：
+   dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.2.0
+4. 用下面这条命令确认接线成功（输出里应出现 wps-office-next-plugin 与 mcp-wps-office-next）：
+   dsh --profile <profile> --dump-config | Select-String wps
+5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
+   插件是在 DSH 启动时加载的，必须重启才会生效。
+6. 我重启回来后，先提醒我启动 WPS 并打开一个表格/文档，然后调用 wps_status，
+   确认返回 connected: true（此时 advertisedTools 应为 69，registeredTools 应为 267）。
+
+安装、排错与卸载的完整说明见 README 的「给 AI 的安装指引」一节：
+https://github.com/sueccku/dsh-plugin-wps-office-next#给-ai-的安装指引
+```
+
+> **唯一需要你亲自做的一步**：AI 装完后，按它说的**完全关闭再重新打开 DSH**。
+> 重启后新建一个会话，问一句「WPS 连上了吗」即可。
+
+动手前顺手确认两件事就够了：系统是 **64 位 Windows**，WPS 是 **12.1 及以上的 64 位版本**。
+其余环境（Node.js、pnpm 等）AI 会自己检查，缺什么它会告诉你怎么办。
+
+## 给 AI 的安装指引
+
+> 这一节是写给你 DSH 里的那个 AI 看的。用户把上一节那段话发给你之后，按这里执行；
+> 用户也可以把整节内容一起发给你。
+
+### 1. 环境要求
+
+| 项目 | 要求 | 检查方式 |
 |---|---|---|
-| 操作系统 | **64 位 Windows 10 / 11** | 设置 → 系统 → 关于 → 看「系统类型」是否有「64 位」 |
-| WPS Office | **12.1 或更高版本，且为 64 位** | 打开 WPS →「设置 / 关于」看版本号；不支持 32 位，也不支持「多组件模式」安装 |
-| Node.js | **22.19 或更高** | 在 PowerShell 里运行 `node --version` |
-| pnpm | 任意较新版本 | 在 PowerShell 里运行 `pnpm --version`；没有就 `npm install -g pnpm` |
-| DeepSeek Harness | 能正常启动 | 在 PowerShell 里运行 `dsh --version` |
+| 操作系统 | 64 位 Windows 10 / 11 | `(Get-CimInstance Win32_OperatingSystem).OSArchitecture` 为 `64-bit` |
+| WPS Office | 12.1 或更高，64 位 | 能创建 COM 对象 `Ket.Application` / `Kwps.Application` / `Kwpp.Application` |
+| Node.js | ≥ 22.19 | `node --version` |
+| pnpm | 任意较新版本 | `pnpm --version`；缺失则 `npm install -g pnpm` |
+| DSH | 能正常启动 | `dsh --version` |
 
-> Windows PowerShell 5.1 是 Windows 10 / 11 自带的，**不需要另外安装**。
-> 还没装 Node.js 的话，去 https://nodejs.org 下载 LTS 版安装即可（会一并装上 npm）。
+Windows PowerShell 5.1 是 Windows 自带的，不需要安装。硬性条件不满足时如实告诉用户，不要硬装。
 
-## 安装（一步一步来）
+### 2. 判断要装进哪个 profile
 
-全程只要打开一次 PowerShell 窗口，把命令复制进去、回车就行。
-
-### 第 0 步：完全关闭 DSH
-
-关掉浏览器里的 DSH 页面或桌面窗口，并确认后台没有 DSH 在运行。
-插件是在 **DSH 启动时加载**的，所以装完必须重启它才会生效。
-
-### 第 1 步：打开 PowerShell
-
-开始菜单搜索 `PowerShell`，打开「Windows PowerShell」。**不需要管理员权限**。
-
-### 第 2 步：确认 pnpm 可用
-
-输入：
+插件必须装进**用户当前正在使用的那个 profile**，否则重启后没有任何效果。按顺序尝试：
 
 ```powershell
-pnpm --version
+# 从正在运行的 dsh 进程命令行里读出 profile
+$cl = (Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
+        Where-Object { $_.CommandLine -match 'dsh.*bin\.js' } |
+        Select-Object -First 1).CommandLine
+if ($cl -match '--profile\s+(\S+)') { $profile = $Matches[1] }
+elseif ($cl -match 'bin\.js"?\s+(\S+)') { $profile = $Matches[1] }
+$profile
 ```
 
-- 能显示版本号（例如 `10.x` / `12.x`）→ 继续下一步。
-- 提示「不是内部或外部命令」→ 先运行 `npm install -g pnpm`，再回来确认。
+- 常见结果：`web`（浏览器 / 桌面界面，最常见）、`headless`（命令行跑一次性任务）。
+- 读不到时：若 `$env:DSH_WEB_URL` 有值，基本可以判定是 `web`。
+- 仍不确定：看 `$env:DSH_HOME\profiles` 下有哪些目录，或者直接问用户「你平时是怎么启动 DSH 的」。
+- `dsh plugin` 会把不存在的 profile 自动初始化，所以**装错 profile 不会报错，只会"装完没反应"**，
+  宁可多问用户一句。
 
-### 第 3 步：安装插件
+### 3. 执行安装
 
 ```powershell
-dsh plugin --profile web add github:sueccku/dsh-plugin-wps-office-next#v0.2.0
+dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.2.0
 ```
 
-关于 `--profile web`：
+- 包内已带预构建产物，**没有任何构建步骤**，正常不需要额外处理，也不会出现"构建脚本被拦截"的问题。
+- 报 `ERR_PNPM_GIT_RESOLVE_FAILED`、`could not connect to server`、连接超时等，是这台机器访问
+  github.com 不稳定，改用 GitHub 打包地址重试（已实测可行）：
 
-| 你平时怎么用 DSH | 就用哪个 profile |
-|---|---|
-| 在浏览器 / 桌面窗口里聊天（最常见） | `web` |
-| 在命令行里跑一次性任务 | `headless` |
-| 自己起过别的名字 | 换成那个名字 |
+  ```powershell
+  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.2.0
+  ```
 
-命令会联网下载插件，然后输出 pnpm 的安装日志，最后回到命令提示符。首次为某个 profile 装插件时，
-DSH 可能提示 `initialized profile ...`，这是正常的。
+- **注意 dsh 事后那句「构建脚本被拦截 / allowBuilds」提示**：本包没有任何 `prepare` 脚本，也没装
+  `esbuild` 之类的原生依赖，所以**永远不需要**改 `allowBuilds`。dsh 在 pnpm 失败时会补上这句通用提示，
+  照着改只会白费功夫——**先看真正的错误**：如果是 `ERR_PNPM_GIT_RESOLVE_FAILED` / `Failed to connect to
+  github.com`，用上面的 codeload 地址重试即可（这一条已实测：4.1 秒装好）。
+- 如果因为沙箱 / 权限限制写不了 `$env:DSH_HOME`（受限会话里常见），向用户申请一次授权后重试；
+  或者把命令原样交给用户，让他在 PowerShell 里跑一次。
+- 如果用本地克隆的仓库安装：`dsh plugin --profile <profile> add <仓库绝对路径>`。
 
-> 如果你是把本仓库克隆到本地来用，也可以直接用本地路径安装：
-> `dsh plugin --profile web add D:\一些目录\dsh-plugin-wps-office-next`（改成你自己的实际路径）。
+### 4. 确认接线成功（不用重启就能查）
 
-### 第 4 步：重新启动 DSH
+```powershell
+dsh --profile <profile> --dump-config | Select-String wps
+```
 
-按你平时的方式重新打开 DSH（例如重新运行 `dsh web`，或双击你平时的启动方式）。**不重启，插件不会生效。**
+输出里应出现 `wps-office-next-plugin` 和 `mcp-wps-office-next`（分别对应 DSH 插件入口和 MCP 客户端）。
+同时确认 profile 的 `package.json` 里 `dsh.profile.bundles` 已包含 `dsh-plugin-wps-office-next`
+——`dsh plugin add` 会自动加，不需要手改。
 
-### 第 5 步：验证是否成功
+### 5. 让用户重启，然后验证
 
-1. 先启动 **WPS**，随便打开一个表格 / 文档 / 演示（`connected` 为 true 需要 WPS 正在运行）。
-2. 在 DSH 里新建一个会话，发一句话：
+插件在 DSH 启动时加载，**必须重启**。请明确告诉用户：
 
-   > 调用 wps_status，告诉我 WPS 连上了没有。
+> 请完全关闭 DSH 再重新打开（例如关掉窗口后重新运行 `dsh web`），然后回来告诉我。
 
-3. 预期能看到类似这样的结果：
+用户回来之后：
+
+1. 先让他启动 WPS，并打开一个表格 / 文档 / 演示；
+2. 调用 `wps_status`，确认 `connected: true`；
+3. 正常结果形如：
 
    ```
    connected: true
@@ -162,39 +210,48 @@ DSH 可能提示 `initialized profile ...`，这是正常的。
    registeredTools: 267
    ```
 
-看到 `connected: true` 就说明装好了，可以开始用了。**第一次调用**可能慢 1 秒左右，之后每次只要 1–2 毫秒。
+第一次调用可能慢约 1 秒（COM 宿主冷启动），之后 1–2 毫秒，属于正常。
 
-## 如果哪里不对
+### 6. 排错
 
 | 现象 | 原因 | 怎么办 |
 |---|---|---|
-| `pnpm not found on PATH` | 没装 pnpm | 运行 `npm install -g pnpm` 后重试 |
-| `dsh` 不是内部或外部命令 | DSH 没装或不在 PATH | 确认 DSH 已正确安装，重开一个 PowerShell 窗口 |
-| 装完在 DSH 里毫无反应 | 没有重启 DSH | 完全关闭再重新启动 DSH |
-| `connected: false` | WPS 没启动，或没打开任何文档 | 启动 WPS 12.1+（64 位）并打开一个文件，然后重试；不要反复空转重试 |
-| 提示平台 / Node 版本不符 | 系统或 Node 太旧 | 检查是否 64 位 Windows、`node --version` 是否 ≥ 22.19 |
-| 提示 WPS 是 32 位 / 多组件模式 | 环境不支持 | 换成 64 位完整安装的 WPS |
-| 操作时而成功时而失败 | 多个程序同时在驱动 WPS | 关闭多余的 DSH 会话或其它自动化工具 |
+| `pnpm not found on PATH` | 没装 pnpm | `npm install -g pnpm` 后重试 |
+| `ERR_PNPM_GIT_RESOLVE_FAILED` / 连不上 github.com | 网络 | 改用上面的 codeload 打包地址 |
+| dsh 提示 `allowBuilds` / 「构建脚本被拦截」 | 那是 dsh 在 pnpm 失败后补的通用提示，不是真因 | 看真错误；本包没有构建步骤，别去改 `allowBuilds` |
+| `dsh` 不是内部或外部命令 | DSH 未安装或不在 PATH | 确认 DSH 已安装，重开终端 |
+| 装完毫无反应 | 装错 profile，或没重启 | 用第 2 步重新确认 profile；确认已重启 |
+| `connected: false` | WPS 没启动 / 没打开文档 | 让用户启动 WPS 12.1+（64 位）并打开一个文件；不要反复空转重试 |
+| 平台 / Node 版本不符 | 系统或 Node 太旧 | 需要 64 位 Windows 与 Node ≥ 22.19 |
+| WPS 是 32 位 / 多组件模式 | 环境不支持 | 换 64 位完整安装的 WPS |
+| 操作时好时坏 | 多程序同时驱动 WPS | 关掉多余的 DSH 会话或自动化工具 |
 
-### 完整环境自检
-
-想一次把所有环境项都查清楚，可以在安装目录里运行自检脚本（只读，不改任何东西）：
+### 7. 完整环境自检（可选）
 
 ```powershell
-cd "$env:DSH_HOME\profiles\web\node_modules\dsh-plugin-wps-office-next"
+cd "$env:DSH_HOME\profiles\<profile>\node_modules\dsh-plugin-wps-office-next"
 node scripts\doctor.mjs
 ```
 
-它会逐项检查系统位数、Node 版本、PowerShell STA、包内容是否完整、WPS 能否连上，
-最后打印 `DOCTOR OK` 或指出具体的错误。
+逐项检查系统位数、Node 版本、PowerShell STA、包内容是否完整、WPS 能否连上，最后打印 `DOCTOR OK` 或具体错误。
 
 ## 卸载
+
+卸载同样可以交给 AI，把下面这句发给它就行：
+
+```text
+请帮我卸载 DSH 插件 dsh-plugin-wps-office-next：先判断我当前使用的 profile，
+然后执行 dsh plugin --profile <profile> remove dsh-plugin-wps-office-next，
+完成后告诉我需要重启 DSH。
+```
+
+自己动手的话，就是这一条命令（把 `web` 换成你的 profile），然后重启 DSH：
 
 ```powershell
 dsh plugin --profile web remove dsh-plugin-wps-office-next
 ```
 
-然后重启 DSH。插件**不会往 WPS 里装任何东西**，所以卸载它不影响 WPS 本身。
+插件**不会往 WPS 里装任何东西**，所以卸载它不影响 WPS 本身。
 
 ## 重要注意事项
 
