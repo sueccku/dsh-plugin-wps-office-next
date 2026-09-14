@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-wps-office-next",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": false,
   "description": "用中文对话操控 WPS 表格 / 文字 / 演示的 DeepSeek Harness 插件（仅 Windows x64 / COM）。自带 MCP server、常驻 COM 宿主与技能文档，免装 WPS 加载项、免配环境变量。",
   "type": "module",

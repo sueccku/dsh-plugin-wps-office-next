@@ -2,6 +2,35 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.2.1（仅文档与打包修正，无行为变化）
+
+功能与 0.2.0 完全一致：工具数、广告面、参数契约、桥 action 都没有任何改动。这一版只修文档与打包。
+
+### 改动
+
+- **README 重写为面向使用者的两段式**：新增「它适合谁 / 能帮你做什么 / 你可以这样提要求」，安装改成
+  「把一段话复制给你的 DSH AI」+ 一节写给 AI 的 7 步安装指引（环境要求、判断 profile、执行安装、
+  确认接线、重启验证、排错表、环境自检），并补上卸载、重要注意事项与已知限制；技术细节收进折叠区。
+- **`CHANGELOG.md` 现在会随包安装**（此前 `files` 白名单漏了它，0.2.0 的安装包里没有这个文件）。
+  `README.md`、`LICENSE`、`THIRD_PARTY_NOTICES.md` 原本就在白名单里，现在文档齐了。
+- **安装指引逐条实测过**：profile 探测脚本、codeload 备用地址、`--dump-config` 的接线检查、
+  `scripts/doctor.mjs`、`remove` 子命令、批量上限 50——全部与本仓库实际行为一致。
+- **修掉一处会把人带偏的提示**：`dsh plugin add` 失败时，dsh 会补一句「构建脚本被拦截 / 请加 allowBuilds」
+  的通用兜底文案；本包没有 `prepare` 脚本、也没有原生依赖，**永远不需要改 allowBuilds**。
+  真因通常是这台机器连不上 github.com，用 codeload 地址重试即可（README 已写明）。
+
+### 安装
+
+```powershell
+dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.2.1
+```
+
+连不上 github.com 时改用：
+
+```powershell
+dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.2.1
+```
+
 ## 0.2.0（首个发布）
 
 把 [lc2panda/wps-skills](https://github.com/lc2panda/wps-skills) 与
