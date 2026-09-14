@@ -1233,6 +1233,32 @@ P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已�
 
 **数字**：桥 action 271 → **279**、注册工具 271 → **279**、广告面 64 → **66 工具 / 35,568 字节**
 （`mail_merge`、`get_notes` 进精选档）。测试 **489 → 509 项 / 24 文件**。
+### 48. P4：PPT 做减法第一波——四个碎片 setter 合并成一个，3D 族按 D3 删除
+
+P4 是**减法**，与前三阶段的加法不同。第一波做两件事：
+
+1. **P4-2 聚合碎片 setter**：`set_shape_shadow` / `set_shape_gradient` / `set_shape_border` /
+   `set_shape_transparency` 四个工具（各带一套同义却不同名的键：`color`/`weight`/`style`/`color1`/`color2`/
+   `stops`/`transparency`…）合并为 **`wps_ppt_set_shape_effect`**：阴影、边框、渐变、透明度四族改用
+   **带前缀的明确键**（`shadowColor`、`borderWidth`、`gradientColor1`、`transparency`…），只改给出来的项，
+   并回报 `applied` 列表。四个 action 也一并从桥里删除——只删工具不删 action，那些 action 会变成
+   「没有工具驱动」，把未工具化台账从 7 顶上去。
+2. **D3 明确放弃的 3D 族删除**：`set_3d_rotation` / `set_3d_depth` / `set_3d_material` 三个工具与
+   三个 action 一并删除。
+
+**加了一个「空操作」闸门**：合并后的工具在**一个效果都没给**时直接报错（`nothing to apply`），
+而不是回一个「成功」却什么都没做——这正是 P2/P3 反复遇到的「成功但没做事」的预防。
+
+**过程里踩的坑**（值得记）：第一版删除脚本用「块文本长度」算删除区间，遇到 CRLF 就切错位置，
+生成出 69 个 parse error；改成按行正则匹配（`^    }$` / `^};$`，都允许 `\r?`）后一次成功。
+教训：**用字符偏移做文本外科手术时，必须先确认换行符**——这个仓库的文件里 CRLF 与 LF 是混着的。
+
+**验收**：`test/ppt-slimming.test.mjs` **16 项**（真实 WPS Presentation）：合并工具一次应用四族效果并
+逐项回报、只给一项时只报那一项、什么都不给被拒、非法线型被拒，以及**七个被删的工具名逐个确认已无法解析**。
+既有 `ppt-contract-fixes.test.mjs` 里 4 项针对旧工具的检查按新契约改写（3D 那项删除），56/56 绿。
+
+**数字**：PPT 工具 **88 → 82**、注册工具 279 → **273**、桥 action 279 → **273**；广告面不变
+（被删的都不在精选档）。测试 **509 → 524 项 / 25 文件**。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1271,7 +1297,8 @@ P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已�
 | test/file-ops.test.mjs | 11 | 另存/打开的路径、按应用转换、页眉页脚分节 |
 | test/merged-tools.test.mjs | 31 | 合并后的转发、参数改名与隐藏 |
 | test/warnings.test.mjs | 7 | warnings 机制：尽力而为的失败如实回传 |
-| test/ppt-contract-fixes.test.mjs | 57 | PPT 参数契约逐项修复 |
+| test/ppt-contract-fixes.test.mjs | 56 | PPT 参数契约逐项修复（P4 后 3D 那项改为测合并工具） |
+| test/ppt-slimming.test.mjs | 16 | P4 合并后的形状效果工具 + 七个被删工具确认消失 |
 | test/word-lifecycle.test.mjs | 17 | e2e 暴露的 5 个缺陷（第 24～29 条） |
 | test/spec-reproduction.test.mjs | 12 | P1 验收：spec 逐字节复现模型可见面 |
 | test/excel-missing-halves.test.mjs | 18 | P2 第一波：工作表信息、自动尺寸 ×3、自动换行、查找定位、命名范围读删 |
@@ -1283,8 +1310,8 @@ P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已�
 | test/word-produce.test.mjs | 19 | P3-3 页码/分栏/修订接受拒绝/批注删除 |
 | test/word-longtail.test.mjs | 20 | P3-4 内容控件/脚注尾注/索引/交叉引用/CSV 邮件合并 |
 
-合计 **509 项**（24 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **524 项**（25 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 267 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 261 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

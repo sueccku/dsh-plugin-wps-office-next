@@ -19,7 +19,7 @@
  * - wps_ppt_group_shapes: 组合多个形状
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.shapeBasicTools = exports.groupShapesHandler = exports.groupShapesDefinition = exports.distributeShapesHandler = exports.distributeShapesDefinition = exports.alignShapesHandler = exports.alignShapesDefinition = exports.setShapeTransparencyHandler = exports.setShapeTransparencyDefinition = exports.setShapeBorderHandler = exports.setShapeBorderDefinition = exports.setShapeGradientHandler = exports.setShapeGradientDefinition = exports.setShapeShadowHandler = exports.setShapeShadowDefinition = exports.setShapePositionHandler = exports.setShapePositionDefinition = exports.getShapesHandler = exports.getShapesDefinition = exports.deleteShapeHandler = exports.deleteShapeDefinition = void 0;
+exports.shapeBasicTools = exports.setShapeEffectHandler = exports.setShapeEffectDefinition = exports.groupShapesHandler = exports.groupShapesDefinition = exports.distributeShapesHandler = exports.distributeShapesDefinition = exports.alignShapesHandler = exports.alignShapesDefinition = exports.setShapePositionHandler = exports.setShapePositionDefinition = exports.getShapesHandler = exports.getShapesDefinition = exports.deleteShapeHandler = exports.deleteShapeDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -221,307 +221,9 @@ const setShapePositionHandler = async (args) => {
 };
 exports.setShapePositionHandler = setShapePositionHandler;
 // ==================== 4. 设置形状阴影 ====================
-exports.setShapeShadowDefinition = {
-    name: 'wps_ppt_set_shape_shadow',
-    description: `设置幻灯片中指定形状的阴影效果。
-
-shadow对象属性：
-- enabled: 是否启用阴影 (boolean)
-- color: 阴影颜色，如 "#000000"
-- blur: 模糊半径（磅）
-- offsetX: 水平偏移（磅）
-- offsetY: 垂直偏移（磅）
-- opacity: 透明度 (0-1)
-
-使用场景：
-- "给这个形状加阴影"
-- "设置阴影效果"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            shapeIndex: {
-                type: 'number',
-                description: '形状索引（从1开始）',
-            },
-            shadow: {
-                type: 'object',
-                description: '阴影配置对象',
-                properties: {
-                    enabled: { type: 'boolean', description: '是否启用阴影' },
-                    color: { type: 'string', description: '阴影颜色' },
-                    blur: { type: 'number', description: '模糊半径（磅）' },
-                    offsetX: { type: 'number', description: '水平偏移（磅）' },
-                    offsetY: { type: 'number', description: '垂直偏移（磅）' },
-                    opacity: { type: 'number', description: '透明度 (0-1)' },
-                },
-            },
-        },
-        required: ['slideIndex', 'shapeIndex', 'shadow'],
-    },
-};
-const setShapeShadowHandler = async (args) => {
-    const { slideIndex, shapeIndex, shadow } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setShapeShadow', { slideIndex, shapeIndex, shadow }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `形状阴影设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置形状阴影失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置形状阴影出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setShapeShadowHandler = setShapeShadowHandler;
 // ==================== 5. 设置形状渐变填充 ====================
-exports.setShapeGradientDefinition = {
-    name: 'wps_ppt_set_shape_gradient',
-    description: `设置幻灯片中指定形状的渐变填充效果。
-
-gradient对象属性：
-gradient对象属性：
-- stops: 渐变色标数组 [{color: "#FF0000", position: 0}, {color: "#0000FF", position: 1}]（当前仅支持两个色标）
-注意：渐变角度与类型在 WPS 上不可设置（会挂起 COM 调用），因此不再提供 angle/type 参数。
-
-使用场景：
-- "给形状加渐变色"
-- "设置从红到蓝的渐变"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            shapeIndex: {
-                type: 'number',
-                description: '形状索引（从1开始）',
-            },
-            gradient: {
-                type: 'object',
-                description: '渐变配置对象',
-                properties: {
-                    stops: {
-                        type: 'array',
-                        description: '渐变色标数组',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                color: { type: 'string', description: '颜色值' },
-                                position: { type: 'number', description: '位置 (0-1)' },
-                            },
-                        },
-                    },
-                },
-            },
-        },
-        required: ['slideIndex', 'shapeIndex', 'gradient'],
-    },
-};
-const setShapeGradientHandler = async (args) => {
-    const { slideIndex, shapeIndex, gradient } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setShapeGradient', { slideIndex, shapeIndex, gradient }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `形状渐变填充设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置形状渐变失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置形状渐变出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setShapeGradientHandler = setShapeGradientHandler;
 // ==================== 6. 设置形状边框 ====================
-exports.setShapeBorderDefinition = {
-    name: 'wps_ppt_set_shape_border',
-    description: `设置幻灯片中指定形状的边框样式。
-
-border对象属性：
-- enabled: 是否启用边框 (boolean)
-- color: 边框颜色，如 "#000000"
-- weight: 边框粗细（磅）
-- style: 边框样式，如 "solid"(实线)、"dash"(虚线)、"dot"(点线)
-
-使用场景：
-- "给形状加边框"
-- "设置红色虚线边框"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            shapeIndex: {
-                type: 'number',
-                description: '形状索引（从1开始）',
-            },
-            border: {
-                type: 'object',
-                description: '边框配置对象',
-                properties: {
-                    enabled: { type: 'boolean', description: '是否启用边框' },
-                    color: { type: 'string', description: '边框颜色' },
-                    weight: { type: 'number', description: '边框粗细（磅）' },
-                    style: { type: 'string', description: '边框样式', enum: ['solid', 'dash', 'dot', 'dash_dot', 'dash_dot_dot'] },
-                },
-            },
-        },
-        required: ['slideIndex', 'shapeIndex', 'border'],
-    },
-};
-const setShapeBorderHandler = async (args) => {
-    const { slideIndex, shapeIndex, border } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setShapeBorder', { slideIndex, shapeIndex, border }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `形状边框设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置形状边框失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置形状边框出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setShapeBorderHandler = setShapeBorderHandler;
 // ==================== 7. 设置形状透明度 ====================
-exports.setShapeTransparencyDefinition = {
-    name: 'wps_ppt_set_shape_transparency',
-    description: `设置幻灯片中指定形状的透明度。
-
-使用场景：
-- "把这个形状设为半透明"
-- "设置形状透明度为50%"`,
-    category: tools_1.ToolCategory.PRESENTATION,
-    inputSchema: {
-        type: 'object',
-        properties: {
-            slideIndex: {
-                type: 'number',
-                description: '幻灯片页码（从1开始）',
-            },
-            shapeIndex: {
-                type: 'number',
-                description: '形状索引（从1开始）',
-            },
-            transparency: {
-                type: 'number',
-                description: '透明度值 (0-100)，0为完全不透明，100为完全透明',
-            },
-        },
-        required: ['slideIndex', 'shapeIndex', 'transparency'],
-    },
-};
-const setShapeTransparencyHandler = async (args) => {
-    const { slideIndex, shapeIndex, transparency } = args;
-    try {
-        const response = await wps_client_1.wpsClient.executeMethod('setShapeTransparency', { slideIndex, shapeIndex, transparency }, wps_1.WpsAppType.PRESENTATION);
-        if (response.success) {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `形状透明度设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n透明度: ${transparency}%`,
-                    },
-                ],
-            };
-        }
-        else {
-            return {
-                id: (0, uuid_1.v4)(),
-                success: false,
-                content: [{ type: 'text', text: `设置形状透明度失败: ${response.error}` }],
-                error: response.error,
-            };
-        }
-    }
-    catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: `设置形状透明度出错: ${errMsg}` }],
-            error: errMsg,
-        };
-    }
-};
-exports.setShapeTransparencyHandler = setShapeTransparencyHandler;
 // ==================== 8. 对齐多个形状 ====================
 exports.alignShapesDefinition = {
     name: 'wps_ppt_align_shapes',
@@ -741,14 +443,61 @@ exports.groupShapesHandler = groupShapesHandler;
 /**
  * 导出所有形状基础相关的Tools
  */
+/** 形状效果：阴影 / 边框 / 渐变 / 透明度（P4-2 由四个碎片 setter 合并而来） */
+exports.setShapeEffectDefinition = {
+    name: 'wps_ppt_set_shape_effect',
+    description: '给形状设置视觉效果：阴影、边框、渐变填充、填充透明度；只改给出来的项，其余保持原样。使用场景：给标题条加阴影、给方框加描边、给卡片做渐变。',
+    category: tools_1.ToolCategory.PRESENTATION,
+    inputSchema: {
+        type: 'object',
+        properties: {
+            shapeIndex: { type: 'number', description: '形状序号（从 1 开始）；给了 name 就用 name' },
+            name: { type: 'string', description: '形状名称' },
+            slideIndex: { type: 'number', description: '第几页（从 1 开始），默认 1' },
+            presentationName: { type: 'string', description: '演示文稿名；不填用当前文稿' },
+            shadowEnabled: { type: 'boolean', description: '是否显示阴影' },
+            shadowColor: { type: 'string', description: '阴影颜色，十六进制如 #333333' },
+            shadowTransparency: { type: 'number', description: '阴影透明度 0-1' },
+            shadowBlur: { type: 'number', description: '阴影模糊半径' },
+            shadowOffsetX: { type: 'number', description: '阴影水平偏移' },
+            shadowOffsetY: { type: 'number', description: '阴影垂直偏移' },
+            borderEnabled: { type: 'boolean', description: '是否显示边框' },
+            borderColor: { type: 'string', description: '边框颜色，十六进制如 #1A365D' },
+            borderWidth: { type: 'number', description: '边框粗细（磅）' },
+            borderStyle: { type: 'string', enum: ['solid', 'dash', 'dot', 'dash_dot', 'dash_dot_dot'], description: '边框线型' },
+            gradientColor1: { type: 'string', description: '渐变起始色' },
+            gradientColor2: { type: 'string', description: '渐变结束色' },
+            transparency: { type: 'number', description: '填充透明度 0-1' },
+        },
+    },
+};
+const setShapeEffectHandler = async (args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('setShapeEffect', {
+            presentationName: args.presentationName, slideIndex: args.slideIndex, name: args.name, shapeIndex: args.shapeIndex,
+            shadowEnabled: args.shadowEnabled, shadowColor: args.shadowColor, shadowTransparency: args.shadowTransparency,
+            shadowBlur: args.shadowBlur, shadowOffsetX: args.shadowOffsetX, shadowOffsetY: args.shadowOffsetY,
+            borderEnabled: args.borderEnabled, borderColor: args.borderColor, borderWidth: args.borderWidth, borderStyle: args.borderStyle,
+            gradientColor1: args.gradientColor1, gradientColor2: args.gradientColor2, transparency: args.transparency,
+        }, wps_1.WpsAppType.PRESENTATION);
+        if (!response.success) {
+            return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '设置形状效果失败: ' + response.error }], error: response.error };
+        }
+        const applied = response.data?.applied || [];
+        const head = '形状 ' + (response.data?.name || '') + (applied.length ? ' 已更新（' + applied.join(', ') + '）' : ' 没有变化');
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: head }] };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '设置形状效果出错: ' + errMsg }], error: errMsg };
+    }
+};
+exports.setShapeEffectHandler = setShapeEffectHandler;
 exports.shapeBasicTools = [
+    { definition: exports.setShapeEffectDefinition, handler: exports.setShapeEffectHandler },
     { definition: exports.deleteShapeDefinition, handler: exports.deleteShapeHandler },
     { definition: exports.getShapesDefinition, handler: exports.getShapesHandler },
     { definition: exports.setShapePositionDefinition, handler: exports.setShapePositionHandler },
-    { definition: exports.setShapeShadowDefinition, handler: exports.setShapeShadowHandler },
-    { definition: exports.setShapeGradientDefinition, handler: exports.setShapeGradientHandler },
-    { definition: exports.setShapeBorderDefinition, handler: exports.setShapeBorderHandler },
-    { definition: exports.setShapeTransparencyDefinition, handler: exports.setShapeTransparencyHandler },
     { definition: exports.alignShapesDefinition, handler: exports.alignShapesHandler },
     { definition: exports.distributeShapesDefinition, handler: exports.distributeShapesHandler },
     { definition: exports.groupShapesDefinition, handler: exports.groupShapesHandler },

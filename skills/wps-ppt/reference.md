@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 演示工具（88）
+## WPS 演示工具（82）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -50,13 +50,10 @@
 | wps_ppt_set_ppt_date_time | wps_call | 设置演示文稿日期时间显示。 |
 | wps_ppt_duplicate_shape | wps_call | 复制幻灯片中的指定形状。 |
 | wps_ppt_set_shape_z_order | wps_call | 设置形状在幻灯片中的层级顺序（Z轴排列）。 |
+| wps_ppt_set_shape_effect | wps_call | 给形状设置视觉效果：阴影、边框、渐变填充、填充透明度；只改给出来的项，其余保持原样。 |
 | wps_ppt_delete_shape | wps_call | 删除幻灯片中指定的形状。 |
 | wps_ppt_get_shapes | 直达 | 获取幻灯片中所有形状的列表信息。 |
 | wps_ppt_set_shape_position | wps_call | 设置幻灯片中指定形状的位置和大小。 |
-| wps_ppt_set_shape_shadow | wps_call | 设置幻灯片中指定形状的阴影效果。 |
-| wps_ppt_set_shape_gradient | wps_call | 设置幻灯片中指定形状的渐变填充效果。 |
-| wps_ppt_set_shape_border | wps_call | 设置幻灯片中指定形状的边框样式。 |
-| wps_ppt_set_shape_transparency | wps_call | 设置幻灯片中指定形状的透明度。 |
 | wps_ppt_align_shapes | wps_call | 对齐幻灯片中的多个形状。 |
 | wps_ppt_distribute_shapes | wps_call | 等距分布幻灯片中的多个形状。 |
 | wps_ppt_group_shapes | wps_call | 将幻灯片中的多个形状组合为一个组。 |
@@ -80,9 +77,6 @@
 | wps_ppt_get_slide_master | wps_call | 获取当前演示文稿的母版信息。 |
 | wps_ppt_set_master_background | wps_call | 设置母版背景样式。 |
 | wps_ppt_add_master_element | wps_call | 向母版中添加新元素。 |
-| wps_ppt_set_3d_rotation | wps_call | 设置幻灯片中形状的3D旋转效果。 |
-| wps_ppt_set_3d_depth | wps_call | 设置幻灯片中形状的3D挤出深度。 |
-| wps_ppt_set_3d_material | wps_call | 设置幻灯片中形状的3D材质效果。 |
 | wps_ppt_add_ppt_hyperlink | wps_call | 为幻灯片中的形状添加超链接。 |
 | wps_ppt_remove_ppt_hyperlink | wps_call | 移除幻灯片中形状的超链接。 |
 | wps_ppt_find_ppt_text | wps_call | 在演示文稿中搜索指定文本。 |

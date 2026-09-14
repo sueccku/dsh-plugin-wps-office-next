@@ -880,21 +880,6 @@
   "effect": "write"
  },
  {
-  "tool": "wps_ppt_set_3d_depth",
-  "signature": "ppt_set_3d_depth(slideIndex*, shapeIndex*, depth*)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_3d_material",
-  "signature": "ppt_set_3d_material(slideIndex*, shapeIndex*, material*)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_3d_rotation",
-  "signature": "ppt_set_3d_rotation(slideIndex*, shapeIndex*, rotation*)",
-  "effect": "write"
- },
- {
   "tool": "wps_ppt_set_active_target",
   "signature": "ppt_set_active_target(name?, clear?)",
   "effect": "write"
@@ -955,8 +940,8 @@
   "effect": "write"
  },
  {
-  "tool": "wps_ppt_set_shape_border",
-  "signature": "ppt_set_shape_border(slideIndex*, shapeIndex*, border*)",
+  "tool": "wps_ppt_set_shape_effect",
+  "signature": "ppt_set_shape_effect(shapeIndex?, name?, slideIndex?, presentationName?, shadowEnabled?, shadowColor?, shadowTransparency?, shadowBlur?, shadowOffsetX?, shadowOffsetY?, borderEnabled?, borderColor?, borderWidth?, borderStyle?, gradientColor1?, gradientColor2?, transparency?)",
   "effect": "write"
  },
  {
@@ -965,18 +950,8 @@
   "effect": "write"
  },
  {
-  "tool": "wps_ppt_set_shape_gradient",
-  "signature": "ppt_set_shape_gradient(slideIndex*, shapeIndex*, gradient*)",
-  "effect": "write"
- },
- {
   "tool": "wps_ppt_set_shape_position",
   "signature": "ppt_set_shape_position(slideIndex*, shapeIndex*, left*, top*, width?, height?)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_shape_shadow",
-  "signature": "ppt_set_shape_shadow(slideIndex*, shapeIndex*, shadow*)",
   "effect": "write"
  },
  {
@@ -987,11 +962,6 @@
  {
   "tool": "wps_ppt_set_shape_text",
   "signature": "ppt_set_shape_text(slideIndex*, shapeIndex*, text*)",
-  "effect": "write"
- },
- {
-  "tool": "wps_ppt_set_shape_transparency",
-  "signature": "ppt_set_shape_transparency(slideIndex*, shapeIndex*, transparency*)",
   "effect": "write"
  },
  {

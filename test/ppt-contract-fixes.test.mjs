@@ -140,13 +140,13 @@ for (const [i, kpi] of [["A", "销售额¥128万"], ["B", "增长+15%"], ["C", "
   check("recipe: kpi card " + kpi[0] + " text", ok(await textShape(2, idx, String(kpi[1]))), "");
 }
 
-// nested style objects
-check("shape shadow accepts a shadow object", ok(await call("wps_ppt_set_shape_shadow", { slideIndex: 1, shapeIndex: 1, shadow: { enabled: true, color: "#000000", blur: 4, offsetX: 2, offsetY: 2, opacity: 0.5 } })), "");
-check("shape border accepts a border object", ok(await call("wps_ppt_set_shape_border", { slideIndex: 1, shapeIndex: 1, border: { enabled: true, color: "#FF0000", weight: 2, style: "dash" } })), "");
-check("shape gradient accepts stops", ok(await call("wps_ppt_set_shape_gradient", { slideIndex: 1, shapeIndex: 1, gradient: { stops: [{ color: "#FF0000", position: 0 }, { color: "#0000FF", position: 1 }] } })), "");
-check("shape gradient rejects the unsupported angle", !ok(await call("wps_ppt_set_shape_gradient", { slideIndex: 1, shapeIndex: 1, gradient: { angle: 45, stops: [{ color: "#FF0000" }, { color: "#0000FF" }] } })), "");
-check("unknown border style fails loudly", !ok(await call("wps_ppt_set_shape_border", { slideIndex: 1, shapeIndex: 1, border: { style: "zigzag" } })), "");
-check("3d rotation accepts a rotation object", ok(await call("wps_ppt_set_3d_rotation", { slideIndex: 1, shapeIndex: 1, rotation: { rotationX: 20, rotationY: 30 } })), "");
+// P4-2: the four fragmented setters became one structured tool, and P4 dropped the 3D family (D3),
+// so the contract checks follow the surface instead of the tools that no longer exist.
+check("shape effect applies a shadow", ok(await call("wps_ppt_set_shape_effect", { slideIndex: 1, shapeIndex: 1, shadowEnabled: true, shadowColor: "#000000", shadowBlur: 4, shadowOffsetX: 2, shadowOffsetY: 2, shadowTransparency: 0.5 })), "");
+check("shape effect applies a border", ok(await call("wps_ppt_set_shape_effect", { slideIndex: 1, shapeIndex: 1, borderEnabled: true, borderColor: "#FF0000", borderWidth: 2, borderStyle: "dash" })), "");
+check("shape effect applies a two-colour gradient", ok(await call("wps_ppt_set_shape_effect", { slideIndex: 1, shapeIndex: 1, gradientColor1: "#FF0000", gradientColor2: "#0000FF" })), "");
+check("shape effect rejects an unknown border style", !ok(await call("wps_ppt_set_shape_effect", { slideIndex: 1, shapeIndex: 1, borderStyle: "zigzag" })), "");
+check("shape effect rejects a call with no effect at all", !ok(await call("wps_ppt_set_shape_effect", { slideIndex: 1, shapeIndex: 1 })), "");
 
 // slide image: the action used to be Word's insertImage, and image style takes a nested object
 const img = await call("wps_ppt_insert_slide_image", { slideIndex: 2, imagePath: path.resolve(PROBE_PNG), left: 40, top: 40 });

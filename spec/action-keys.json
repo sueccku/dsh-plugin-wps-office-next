@@ -803,21 +803,6 @@
   "find",
   "replace"
  ],
- "set3DDepth": [
-  "depth",
-  "shapeIndex",
-  "slideIndex"
- ],
- "set3DMaterial": [
-  "material",
-  "shapeIndex",
-  "slideIndex"
- ],
- "set3DRotation": [
-  "rotation",
-  "shapeIndex",
-  "slideIndex"
- ],
  "setAnimationOrder": [
   "from",
   "slideIndex",
@@ -867,18 +852,27 @@
   "show",
   "text"
  ],
- "setShapeBorder": [
-  "border",
+ "setShapeEffect": [
+  "borderColor",
+  "borderEnabled",
+  "borderStyle",
+  "borderWidth",
+  "gradientColor1",
+  "gradientColor2",
+  "name",
+  "presentationName",
+  "shadowBlur",
+  "shadowColor",
+  "shadowEnabled",
+  "shadowOffsetX",
+  "shadowOffsetY",
+  "shadowTransparency",
   "shapeIndex",
-  "slideIndex"
+  "slideIndex",
+  "transparency"
  ],
  "setShapeFill": [
   "color",
-  "shapeIndex",
-  "slideIndex"
- ],
- "setShapeGradient": [
-  "gradient",
   "shapeIndex",
   "slideIndex"
  ],
@@ -889,11 +883,6 @@
   "slideIndex",
   "top",
   "width"
- ],
- "setShapeShadow": [
-  "shadow",
-  "shapeIndex",
-  "slideIndex"
  ],
  "setShapeStyle": [
   "fillColor",
@@ -907,11 +896,6 @@
   "shapeIndex",
   "slideIndex",
   "text"
- ],
- "setShapeTransparency": [
-  "shapeIndex",
-  "slideIndex",
-  "transparency"
  ],
  "setShapeZOrder": [
   "shapeIndex",

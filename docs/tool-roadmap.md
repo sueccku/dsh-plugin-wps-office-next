@@ -85,7 +85,7 @@
 | ↳ P1 完成 | 五步全部落地（FIXES 33–37） | spec 209 条 + 生成器 + 验收 **12 项全绿**；调用点解析器共享；每个参数都有明确去向（未归类 0）；**三张手写表全部归零**（aliases / containers / helperKeys 都进 spec，每次都以宿主产物逐字节未变作证）；动态 action 未声明即失败 | **P2 Excel 做深**：第一波挂出 20 个已实现却无出口的 Excel action + used range 一等公民。剩余债务：别名 62（两种改名机制已分清）、未工具化 action 29、raw schema 32 | — |
 | **P2 Excel 做深** | 一站式表格 | 5 个波次（§5.3） | **已完成**：37 个新工具、5 个真实 WPS 验收测试、两场景一键 e2e 28 项全绿 | P1 |
 | **P3 Word 做深** | 一站式文档 | 挂已有 4 项 + 表格读写 + 文档生产族 | **已完成**：33 个新工具、66 项验收；水印与文档属性实测 WPS 不支持（如实记档） | P1 |
-| **P4 PPT 收敛** | 做减法 | 删死代码、聚合碎片 setter、保留结构能力 | PPT 工具 87→~55，配方承接美化 | P1 |
+| **P4 PPT 收敛** | 做减法 | 删死代码、聚合碎片 setter、保留结构能力 | 进行中：死代码已在 P0-3 删除；P4 第一波 88→82（形状效果四合一 + 3D 族按 D3 删除） | P1 |
 | **P5 收尾** | 发布准备 | execute_method 决策、广告面与预算重定、文档与技能重生成 | 门禁全绿 + e2e 扩展场景 | P2–P4 |
 
 ## 5. 分阶段任务清单
@@ -140,8 +140,8 @@
 | ID | 内容 | 验收 |
 |---|---|---|
 | P4-1 | 删 22 场景 action + 3 点号重复 + 4 重复标签（与 P0-3 合并执行） | action 数下降 |
-| P4-2 | 聚合碎片 setter：`shape_shadow`/`shape_gradient`/`shape_border`/`shape_transparency`/`3d_*`/`image_style`/`table_cell_style`/`table_row_style` → 归并为少量结构化工具 | PPT 工具 87 → ~55 |
-| P4-3 | 保留结构能力：版式列表、主题、演示尺寸、母版、节、结束放映 | 结构性操作不缺 |
+| P4-2（**第一波已完成**，FIXES 48） | 聚合碎片 setter：`shape_shadow`/`shape_gradient`/`shape_border`/`shape_transparency`/`3d_*`/`image_style`/`table_cell_style`/`table_row_style` → 归并为少量结构化工具 | PPT 工具 87 → ~55 |
+| P4-3（**已具备**） | 保留结构能力：版式列表、主题、演示尺寸、母版、节、结束放映 | 结构性操作不缺 |
 | P4-4 | 技能配方承接美化类需求（已有「组合配方」一节） | 技能文档同步 |
 
 ### P5 收尾

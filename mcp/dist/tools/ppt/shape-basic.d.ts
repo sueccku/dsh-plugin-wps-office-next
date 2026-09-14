@@ -24,14 +24,6 @@ export declare const getShapesDefinition: ToolDefinition;
 export declare const getShapesHandler: ToolHandler;
 export declare const setShapePositionDefinition: ToolDefinition;
 export declare const setShapePositionHandler: ToolHandler;
-export declare const setShapeShadowDefinition: ToolDefinition;
-export declare const setShapeShadowHandler: ToolHandler;
-export declare const setShapeGradientDefinition: ToolDefinition;
-export declare const setShapeGradientHandler: ToolHandler;
-export declare const setShapeBorderDefinition: ToolDefinition;
-export declare const setShapeBorderHandler: ToolHandler;
-export declare const setShapeTransparencyDefinition: ToolDefinition;
-export declare const setShapeTransparencyHandler: ToolHandler;
 export declare const alignShapesDefinition: ToolDefinition;
 export declare const alignShapesHandler: ToolHandler;
 export declare const distributeShapesDefinition: ToolDefinition;
@@ -41,6 +33,9 @@ export declare const groupShapesHandler: ToolHandler;
 /**
  * 导出所有形状基础相关的Tools
  */
+/** 形状效果：阴影 / 边框 / 渐变 / 透明度（P4-2 由四个碎片 setter 合并而来） */
+export declare const setShapeEffectDefinition: ToolDefinition;
+export declare const setShapeEffectHandler: ToolHandler;
 export declare const shapeBasicTools: RegisteredTool[];
 export default shapeBasicTools;
 //# sourceMappingURL=shape-basic.d.ts.map

@@ -36,24 +36,6 @@ export declare const setMasterBackgroundHandler: ToolHandler;
  */
 export declare const addMasterElementDefinition: ToolDefinition;
 export declare const addMasterElementHandler: ToolHandler;
-/**
- * 设置3D旋转
- * 为形状设置3D旋转效果
- */
-export declare const set3DRotationDefinition: ToolDefinition;
-export declare const set3DRotationHandler: ToolHandler;
-/**
- * 设置3D深度
- * 为形状设置3D挤出深度
- */
-export declare const set3DDepthDefinition: ToolDefinition;
-export declare const set3DDepthHandler: ToolHandler;
-/**
- * 设置3D材质
- * 为形状设置3D材质效果
- */
-export declare const set3DMaterialDefinition: ToolDefinition;
-export declare const set3DMaterialHandler: ToolHandler;
 export declare const addPptHyperlinkDefinition: ToolDefinition;
 export declare const addPptHyperlinkHandler: ToolHandler;
 /**

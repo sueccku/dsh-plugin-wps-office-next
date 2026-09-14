@@ -5285,102 +5285,6 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
-    "tool": "wps_ppt_set_3d_depth",
-    "action": "set3DDepth",
-    "app": "ppt",
-    "summary": "设置幻灯片中形状的3D挤出深度。\n\n通过调整深度值使形状产生立体挤出效果。\n\n使用场景：\n- \"给形状添加3D深度\"\n- \"设置立体厚度\"\n- \"增加形状深度效果\"",
-    "params": {
-      "slideIndex": {
-        "type": "number",
-        "description": "幻灯片页码（从1开始）",
-        "required": true
-      },
-      "shapeIndex": {
-        "type": "number",
-        "description": "形状索引（从1开始）",
-        "required": true
-      },
-      "depth": {
-        "type": "number",
-        "description": "挤出深度值（磅），如 20、50、100",
-        "required": true
-      }
-    },
-    "effect": "write",
-    "advertised": false,
-    "required": [
-      "slideIndex",
-      "shapeIndex",
-      "depth"
-    ],
-    "engine": "bridge"
-  }),
-  op({
-    "tool": "wps_ppt_set_3d_material",
-    "action": "set3DMaterial",
-    "app": "ppt",
-    "summary": "设置幻灯片中形状的3D材质效果。\n\n支持的材质类型：\n- matte: 哑光\n- plastic: 塑料\n- metal: 金属\n- wireframe: 线框\n- soft_edge: 柔化边缘\n- flat: 平面\n- dark_edge: 暗边\n\n使用场景：\n- \"给形状设置金属材质\"\n- \"改成塑料质感\"\n- \"用哑光效果\"",
-    "params": {
-      "slideIndex": {
-        "type": "number",
-        "description": "幻灯片页码（从1开始）",
-        "required": true
-      },
-      "shapeIndex": {
-        "type": "number",
-        "description": "形状索引（从1开始）",
-        "required": true
-      },
-      "material": {
-        "type": "string",
-        "description": "材质类型：matte(哑光)、plastic(塑料)、metal(金属)、wireframe(线框)、soft_edge(柔化)、flat(平面)、dark_edge(暗边)",
-        "required": true
-      }
-    },
-    "effect": "write",
-    "advertised": false,
-    "required": [
-      "slideIndex",
-      "shapeIndex",
-      "material"
-    ],
-    "engine": "bridge"
-  }),
-  op({
-    "tool": "wps_ppt_set_3d_rotation",
-    "action": "set3DRotation",
-    "app": "ppt",
-    "summary": "设置幻灯片中形状的3D旋转效果。\n\n通过调整X/Y/Z轴旋转角度实现3D透视效果。\n\n使用场景：\n- \"给形状添加3D旋转效果\"\n- \"设置3D透视角度\"\n- \"让形状有立体感\"",
-    "params": {
-      "slideIndex": {
-        "type": "number",
-        "description": "幻灯片页码（从1开始）",
-        "required": true
-      },
-      "shapeIndex": {
-        "type": "number",
-        "description": "形状索引（从1开始）",
-        "required": true
-      },
-      "rotation": {
-        "type": "object",
-        "description": "旋转参数对象，如 {rotX:30,rotY:45,rotZ:0,perspective:50}",
-        "required": true
-      }
-    },
-    "effect": "write",
-    "advertised": false,
-    "required": [
-      "slideIndex",
-      "shapeIndex",
-      "rotation"
-    ],
-    "engine": "bridge",
-    "containers": [
-      "rotation"
-    ]
-  }),
-  op({
     "tool": "wps_ppt_set_active_target",
     "action": "getOpenPresentations",
     "app": "ppt",
@@ -5557,7 +5461,7 @@ export const operations: OperationSpec[] = [
     "params": {
       "slideIndex": {
         "type": "number",
-        "description": "幻灯片页码（从1开始）",
+        "description": "幻灯片���码（从1开始）",
         "required": true
       },
       "imageIndex": {
@@ -5795,67 +5699,90 @@ export const operations: OperationSpec[] = [
     "engine": "bridge"
   }),
   op({
-    "tool": "wps_ppt_set_shape_border",
-    "action": "setShapeBorder",
+    "tool": "wps_ppt_set_shape_effect",
+    "action": "setShapeEffect",
     "app": "ppt",
-    "summary": "设置幻灯片中指定形状的边框样式。\n\nborder对象属性：\n- enabled: 是否启用边框 (boolean)\n- color: 边框颜色，如 \"#000000\"\n- weight: 边框粗细（磅）\n- style: 边框样式，如 \"solid\"(实线)、\"dash\"(虚线)、\"dot\"(点线)\n\n使用场景：\n- \"给形状加边框\"\n- \"设置红色虚线边框\"",
+    "summary": "给形状设置视觉效果：阴影、边框、渐变填充、填充透明度；只改给出来的项，其余保持原样。使用场景：给标题条加阴影、给方框加描边、给卡片做渐变。",
     "params": {
-      "slideIndex": {
-        "type": "number",
-        "description": "幻灯片页码（从1开始）",
-        "required": true
-      },
       "shapeIndex": {
         "type": "number",
-        "description": "形状索引（从1开始）",
-        "required": true
+        "description": "形状序号（从 1 开始）；给了 name 就用 name"
       },
-      "border": {
-        "type": "object",
-        "description": "边框配置对象",
-        "schema": {
-          "type": "object",
-          "description": "边框配置对象",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "description": "是否启用边框"
-            },
-            "color": {
-              "type": "string",
-              "description": "边框颜色"
-            },
-            "weight": {
-              "type": "number",
-              "description": "边框粗细（磅）"
-            },
-            "style": {
-              "type": "string",
-              "description": "边框样式",
-              "enum": [
-                "solid",
-                "dash",
-                "dot",
-                "dash_dot",
-                "dash_dot_dot"
-              ]
-            }
-          }
-        },
-        "required": true
+      "name": {
+        "type": "string",
+        "description": "形状名称"
+      },
+      "slideIndex": {
+        "type": "number",
+        "description": "第几页（从 1 开始），默认 1"
+      },
+      "presentationName": {
+        "type": "string",
+        "description": "演示文稿名；不填用当前文稿"
+      },
+      "shadowEnabled": {
+        "type": "boolean",
+        "description": "是否显示阴影"
+      },
+      "shadowColor": {
+        "type": "string",
+        "description": "阴影颜色，十六进制如 #333333"
+      },
+      "shadowTransparency": {
+        "type": "number",
+        "description": "阴影透明度 0-1"
+      },
+      "shadowBlur": {
+        "type": "number",
+        "description": "阴影模糊半径"
+      },
+      "shadowOffsetX": {
+        "type": "number",
+        "description": "阴影水平偏移"
+      },
+      "shadowOffsetY": {
+        "type": "number",
+        "description": "阴影垂直偏移"
+      },
+      "borderEnabled": {
+        "type": "boolean",
+        "description": "是否显示边框"
+      },
+      "borderColor": {
+        "type": "string",
+        "description": "边框颜色，十六进制如 #1A365D"
+      },
+      "borderWidth": {
+        "type": "number",
+        "description": "边框粗细（磅）"
+      },
+      "borderStyle": {
+        "type": "string",
+        "description": "边框线型",
+        "enum": [
+          "solid",
+          "dash",
+          "dot",
+          "dash_dot",
+          "dash_dot_dot"
+        ]
+      },
+      "gradientColor1": {
+        "type": "string",
+        "description": "渐变起始色"
+      },
+      "gradientColor2": {
+        "type": "string",
+        "description": "渐变结束色"
+      },
+      "transparency": {
+        "type": "number",
+        "description": "填充透明度 0-1"
       }
     },
     "effect": "write",
     "advertised": false,
-    "required": [
-      "slideIndex",
-      "shapeIndex",
-      "border"
-    ],
-    "engine": "bridge",
-    "containers": [
-      "border"
-    ]
+    "engine": "bridge"
   }),
   op({
     "tool": "wps_ppt_set_shape_fill",
@@ -5887,63 +5814,6 @@ export const operations: OperationSpec[] = [
       "color"
     ],
     "engine": "bridge"
-  }),
-  op({
-    "tool": "wps_ppt_set_shape_gradient",
-    "action": "setShapeGradient",
-    "app": "ppt",
-    "summary": "设置幻灯片中指定形状的渐变填充效果。\n\ngradient对象属性：\ngradient对象属性：\n- stops: 渐变色标数组 [{color: \"#FF0000\", position: 0}, {color: \"#0000FF\", position: 1}]（当前仅支持两个色标）\n注意：渐变角度与类型在 WPS 上不可设置（会挂起 COM 调用），因此不再提供 angle/type 参数。\n\n使用场景：\n- \"给形状加渐变色\"\n- \"设置从红到蓝的渐变\"",
-    "params": {
-      "slideIndex": {
-        "type": "number",
-        "description": "幻灯片页码（从1开始）",
-        "required": true
-      },
-      "shapeIndex": {
-        "type": "number",
-        "description": "形状索引（从1开始）",
-        "required": true
-      },
-      "gradient": {
-        "type": "object",
-        "description": "渐变配置对象",
-        "schema": {
-          "type": "object",
-          "description": "渐变配置对象",
-          "properties": {
-            "stops": {
-              "type": "array",
-              "description": "渐变色标数组",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "color": {
-                    "type": "string",
-                    "description": "颜色值"
-                  },
-                  "position": {
-                    "type": "number",
-                    "description": "位置 (0-1)"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "required": true
-      }
-    },
-    "effect": "write",
-    "advertised": false,
-    "required": [
-      "slideIndex",
-      "shapeIndex",
-      "gradient"
-    ],
-    "engine": "bridge",
-    "containers": [
-      "gradient"
-    ]
   }),
   op({
     "tool": "wps_ppt_set_shape_position",
@@ -5989,70 +5859,6 @@ export const operations: OperationSpec[] = [
       "top"
     ],
     "engine": "bridge"
-  }),
-  op({
-    "tool": "wps_ppt_set_shape_shadow",
-    "action": "setShapeShadow",
-    "app": "ppt",
-    "summary": "设置幻灯片中指定形状的阴影效果。\n\nshadow对象属性：\n- enabled: 是否启用阴影 (boolean)\n- color: 阴影颜色，如 \"#000000\"\n- blur: 模糊半径（磅）\n- offsetX: 水平偏移（磅）\n- offsetY: 垂直偏移（磅）\n- opacity: 透明度 (0-1)\n\n使用场景：\n- \"给这个形状加阴影\"\n- \"设置阴影效果\"",
-    "params": {
-      "slideIndex": {
-        "type": "number",
-        "description": "幻灯片页码（从1开始）",
-        "required": true
-      },
-      "shapeIndex": {
-        "type": "number",
-        "description": "形状索引（从1开始）",
-        "required": true
-      },
-      "shadow": {
-        "type": "object",
-        "description": "阴影配置对象",
-        "schema": {
-          "type": "object",
-          "description": "阴影配置对象",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "description": "是否启用阴影"
-            },
-            "color": {
-              "type": "string",
-              "description": "阴影颜色"
-            },
-            "blur": {
-              "type": "number",
-              "description": "模糊半径（磅）"
-            },
-            "offsetX": {
-              "type": "number",
-              "description": "水平偏移（磅）"
-            },
-            "offsetY": {
-              "type": "number",
-              "description": "垂直偏移（磅）"
-            },
-            "opacity": {
-              "type": "number",
-              "description": "透明度 (0-1)"
-            }
-          }
-        },
-        "required": true
-      }
-    },
-    "effect": "write",
-    "advertised": false,
-    "required": [
-      "slideIndex",
-      "shapeIndex",
-      "shadow"
-    ],
-    "engine": "bridge",
-    "containers": [
-      "shadow"
-    ]
   }),
   op({
     "tool": "wps_ppt_set_shape_style",
@@ -6118,37 +5924,6 @@ export const operations: OperationSpec[] = [
       "slideIndex",
       "shapeIndex",
       "text"
-    ],
-    "engine": "bridge"
-  }),
-  op({
-    "tool": "wps_ppt_set_shape_transparency",
-    "action": "setShapeTransparency",
-    "app": "ppt",
-    "summary": "设置幻灯片中指定形状的透明度。\n\n使用场景：\n- \"把这个形状设为半透明\"\n- \"设置形状透明度为50%\"",
-    "params": {
-      "slideIndex": {
-        "type": "number",
-        "description": "幻灯片页码（从1开始）",
-        "required": true
-      },
-      "shapeIndex": {
-        "type": "number",
-        "description": "形状索引（从1开始）",
-        "required": true
-      },
-      "transparency": {
-        "type": "number",
-        "description": "透明度值 (0-100)，0为完全不透明，100为完全透明",
-        "required": true
-      }
-    },
-    "effect": "write",
-    "advertised": false,
-    "required": [
-      "slideIndex",
-      "shapeIndex",
-      "transparency"
     ],
     "engine": "bridge"
   }),

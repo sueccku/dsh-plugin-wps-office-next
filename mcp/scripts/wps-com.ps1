@@ -3589,6 +3589,56 @@ switch ($Action) {
         } }
     }
 
+# P4-2：把 setShapeShadow / setShapeGradient / setShapeBorder / setShapeTransparency 四个碎片 setter
+    # 合并成一个结构化工具（见 docs/FIXES.md 48）。目标解析与四个碎片完全一致。
+    "setShapeEffect" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
+        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
+        $slide = $pres.Slides.Item($slideIndex)
+        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $applied = @()
+        if ($null -ne $p.shadowEnabled) { $shape.Shadow.Visible = $(if ([bool]$p.shadowEnabled) { -1 } else { 0 }); $applied += "shadowEnabled" }
+        if ($p.shadowColor) {
+            $shadowColor = Convert-HexColorToRgbInt([string]$p.shadowColor)
+            if ($null -ne $shadowColor) { $shape.Shadow.ForeColor.RGB = $shadowColor; $applied += "shadowColor" }
+        }
+        if ($null -ne $p.shadowTransparency) { $shape.Shadow.Transparency = [double]$p.shadowTransparency; $applied += "shadowTransparency" }
+        if ($null -ne $p.shadowBlur) { $shape.Shadow.Blur = [double]$p.shadowBlur; $applied += "shadowBlur" }
+        if ($null -ne $p.shadowOffsetX) { $shape.Shadow.OffsetX = [double]$p.shadowOffsetX; $applied += "shadowOffsetX" }
+        if ($null -ne $p.shadowOffsetY) { $shape.Shadow.OffsetY = [double]$p.shadowOffsetY; $applied += "shadowOffsetY" }
+        if ($null -ne $p.borderEnabled) { $shape.Line.Visible = $(if ([bool]$p.borderEnabled) { -1 } else { 0 }); $applied += "borderEnabled" }
+        if ($p.borderColor) {
+            $borderColor = Convert-HexColorToRgbInt([string]$p.borderColor)
+            if ($null -ne $borderColor) { $shape.Line.ForeColor.RGB = $borderColor; $applied += "borderColor" }
+        }
+        if ($null -ne $p.borderWidth) { $shape.Line.Weight = [single]$p.borderWidth; $applied += "borderWidth" }
+        if ($p.borderStyle) {
+            $dashMap = @{ solid = 1; dash = 4; dot = 3; dash_dot = 5; dash_dot_dot = 6 }
+            $dash = $dashMap[[string]$p.borderStyle]
+            if ($null -eq $dash) { Output-Json @{ success = $false; error = ("unknown borderStyle '" + $p.borderStyle + "'; use solid/dash/dot/dash_dot/dash_dot_dot") }; exit }
+            $shape.Line.DashStyle = $dash
+            $applied += "borderStyle"
+        }
+        if ($p.gradientColor1 -or $p.gradientColor2) {
+            $shape.Fill.TwoColorGradient(1, 1)
+            if ($p.gradientColor1) {
+                $c1 = Convert-HexColorToRgbInt([string]$p.gradientColor1)
+                if ($null -ne $c1) { $shape.Fill.ForeColor.RGB = $c1; $applied += "gradientColor1" }
+            }
+            if ($p.gradientColor2) {
+                $c2 = Convert-HexColorToRgbInt([string]$p.gradientColor2)
+                if ($null -ne $c2) { $shape.Fill.BackColor.RGB = $c2; $applied += "gradientColor2" }
+            }
+        }
+        if ($null -ne $p.transparency) { $shape.Fill.Transparency = [double]$p.transparency; $applied += "transparency" }
+        # 一个效果都没给就是空操作——直接报错，而不是回一个“成功”却什么都没做。
+        if ($applied.Count -eq 0) { Output-Json @{ success = $false; error = "nothing to apply: give at least one effect property" }; exit }
+        Output-Json @{ success = $true; data = @{ name = $shape.Name; applied = $applied } }
+    }
+
     "findInSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
@@ -5488,27 +5538,7 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ row = $rowIndex } }
     }
 
-    "setShapeShadow" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
-        $shape.Shadow.Visible = $true
-        if ($p.color) {
-            $shadowColor = Convert-HexColorToRgbInt([string]$p.color)
-            if ($null -ne $shadowColor) { $shape.Shadow.ForeColor.RGB = $shadowColor }
-        }
-        if ($null -ne $p.transparency) { $shape.Shadow.Transparency = $p.transparency }
-        if ($null -ne $p.blur) { $shape.Shadow.Blur = $p.blur }
-        if ($null -ne $p.offsetX) { $shape.Shadow.OffsetX = $p.offsetX }
-        if ($null -ne $p.offsetY) { $shape.Shadow.OffsetY = $p.offsetY }
-        if ($null -ne $p.enabled) { $shape.Shadow.Visible = $(if ([bool]$p.enabled) { -1 } else { 0 }) }
-        if ($null -ne $p.opacity) { $shape.Shadow.Transparency = [double]$p.opacity }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
+
 
     "setBackgroundGradient" {
         $ppt = Get-WpsPpt
@@ -5531,70 +5561,11 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex } }
     }
 
-    "setShapeGradient" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
-        $shape.Fill.TwoColorGradient(1, 1)
-        if ($p.color1) {
-            $c1 = Convert-HexColorToRgbInt([string]$p.color1)
-            if ($null -ne $c1) { $shape.Fill.ForeColor.RGB = $c1 }
-        }
-        if ($p.color2) {
-            $c2 = Convert-HexColorToRgbInt([string]$p.color2)
-            if ($null -ne $c2) { $shape.Fill.BackColor.RGB = $c2 }
-        }
-        # The tool may describe the fill with stops instead of two colours, and may ask for an angle.
-        if ($null -ne $p.stops) {
-            $stops = @($p.stops)
-            if ($stops.Count -ne 2) { Output-Json @{ success = $false; error = ("only two gradient stops are supported; got " + $stops.Count) }; exit }
-            $c1 = Convert-HexColorToRgbInt ([string]$stops[0].color)
-            $c2 = Convert-HexColorToRgbInt ([string]$stops[1].color)
-            if ($null -ne $c1) { $shape.Fill.ForeColor.RGB = $c1 }
-            if ($null -ne $c2) { $shape.Fill.BackColor.RGB = $c2 }
-        }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
 
-    "setShapeBorder" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
-        if ($p.color) {
-            $borderColor = Convert-HexColorToRgbInt([string]$p.color)
-            if ($null -ne $borderColor) { $shape.Line.ForeColor.RGB = $borderColor }
-        }
-        if ($p.width) { $shape.Line.Weight = $p.width }
-        if ($null -ne $p.enabled) { $shape.Line.Visible = $(if ([bool]$p.enabled) { -1 } else { 0 }) }
-        if ($null -ne $p.weight) { $shape.Line.Weight = [single]$p.weight }
-        if ($null -ne $p.style) {
-            $dashMap = @{ solid = 1; dash = 4; dot = 3; dash_dot = 5; dash_dot_dot = 6 }
-            $dash = $dashMap[[string]$p.style]
-            if ($null -eq $dash) { Output-Json @{ success = $false; error = ("unknown border style '" + $p.style + "'; use solid/dash/dot/dash_dot/dash_dot_dot") }; exit }
-            $shape.Line.DashStyle = $dash
-        }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
 
-    "setShapeTransparency" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
-        if ($null -ne $p.transparency) { $shape.Fill.Transparency = $p.transparency }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
+
+
+
 
     "setShapeRoundness" {
         $ppt = Get-WpsPpt
@@ -5936,72 +5907,11 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ name = $shape.Name; type = $type } }
     }
 
-    "set3DRotation" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
 
-        $shape.ThreeD.RotationX = if ($p.rotationX -ne $null) { $p.rotationX } else { 0 }
-        $shape.ThreeD.RotationY = if ($p.rotationY -ne $null) { $p.rotationY } else { 0 }
-        $shape.ThreeD.RotationZ = if ($p.rotationZ -ne $null) { $p.rotationZ } else { 0 }
 
-        if ($p.preset) {
-            $presets = @{ isometric = @{ x = 45; y = 45; z = 0 }; perspective = @{ x = 30; y = 30; z = 0 }; oblique = @{ x = 20; y = 60; z = 0 }; tiltLeft = @{ x = 0; y = -30; z = 0 }; tiltRight = @{ x = 0; y = 30; z = 0 } }
-            $preset = $presets[$p.preset]
-            if ($preset) {
-                $shape.ThreeD.RotationX = $preset.x
-                $shape.ThreeD.RotationY = $preset.y
-                $shape.ThreeD.RotationZ = $preset.z
-            }
-        }
 
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; rotationX = $shape.ThreeD.RotationX; rotationY = $shape.ThreeD.RotationY } }
-    }
 
-    "set3DDepth" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
 
-        $depth = if ($p.depth) { $p.depth } else { 20 }
-        $shape.ThreeD.Depth = $depth
-        if ($p.depthColor) {
-            $colorValue = Convert-HexColorToRgbInt([string]$p.depthColor)
-            if ($null -ne $colorValue) { $shape.ThreeD.ExtrusionColor.RGB = $colorValue }
-        }
-        if ($p.lighting) {
-            $lightingMap = @{ bright = 1; normal = 2; dim = 3; flat = 4 }
-            $lightingValue = if ($lightingMap[$p.lighting]) { $lightingMap[$p.lighting] } else { 2 }
-            $shape.ThreeD.PresetLighting = $lightingValue
-        }
-
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; depth = $depth } }
-    }
-
-    "set3DMaterial" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
-
-        $material = if ($p.material) { $p.material } else { "plastic" }
-        $materialMap = @{ matte = 1; plastic = 2; metal = 3; wireFrame = 4; glass = 5 }
-        $materialValue = if ($materialMap[$material]) { $materialMap[$material] } else { 2 }
-        $shape.ThreeD.PresetMaterial = $materialValue
-
-        Output-Json @{ success = $true; data = @{ shape = $shape.Name; material = $material } }
-    }
 
 
     "setPptChartData" {
