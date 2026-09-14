@@ -10,8 +10,8 @@
 //      driving WPS through the plugin instead of writing its own COM script
 //
 // Usage:
-//   node scripts/e2e.mjs --profile wpse2e          run the acceptance test
-//   node scripts/e2e.mjs --profile wpse2e --setup  create that profile and install this repo first
+//   node scripts/e2e.mjs --profile <name>          run the acceptance test
+//   node scripts/e2e.mjs --profile <name> --setup  create that profile and install this repo first
 //
 // Exit code is 0 only when every check passes. Evidence stays in test/.artifacts/e2e/<run>/.
 import { spawn, spawnSync } from 'node:child_process';

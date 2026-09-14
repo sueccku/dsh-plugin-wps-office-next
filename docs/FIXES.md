@@ -587,6 +587,8 @@ align_shapes 的 shapeIndices 变可选。
 前 23 条都是读代码或单点测试找出来的。为了知道**模型真的用起来是什么样**，跑了一次真实端到端：
 新建 headless profile（`dsh --profile wpse2e --from-default-profile headless`）→
 `dsh plugin --profile wpse2e add D:\dsh\a` → 给一个跨应用任务，事后把会话日志逐帧解码，
+（`wpse2e` 是当次用的临时 profile，事后已回收；要复现这条只需 `node scripts/e2e.mjs --profile <name> --setup`，
+它会自动建 profile 并安装本仓库。）
 复盘每一次工具调用（`$DSH_HOME/sessions/--D-dsh-a--/session-*.jsonl.zstd` 是**追加式拼接的
 多个 zstd 帧**，Node 只解第一帧，必须按帧边界切分才能拿到全部事件）。
 

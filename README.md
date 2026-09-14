@@ -1,153 +1,256 @@
 # dsh-plugin-wps-office-next
 
 [![ci](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml/badge.svg)](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml)
-![advertised tools](https://img.shields.io/badge/advertised%20tools-44%2F45-blue)
+![advertised tools](https://img.shields.io/badge/advertised%20tools-69%20%2F%20267-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
+![license](https://img.shields.io/badge/license-MIT-green)
 
-专精 Windows/COM 的一站式 DeepSeek Harness 插件：让 DSH 通过 MCP 直接操控 WPS 表格 / 文字 / 演示，
-自带 MCP server、常驻 COM 宿主与技能文档，**不需要安装任何 WPS 加载项，也不需要配置任何环境变量**。
+在 **DeepSeek Harness（DSH）** 里，用中文说话就能操作 **WPS 表格 / 文字 / 演示**。
 
-本项目是 [lc2panda/wps-skills](https://github.com/lc2panda/wps-skills) 与
-[CatNebulaaaa/wps-dsh-plugin](https://github.com/CatNebulaaaa/wps-dsh-plugin) 的独立合并演进版。
-非官方项目，与金山办公、DeepSeek 及上游作者无隶属关系。
+装好之后，你可以直接提这样的要求：
 
-> **当前状态**：功能完整可用，已在真实 DSH + 真实 WPS 上完成端到端验证，并发布 **v0.2.0**（GitHub Release）。
-> 仅 GitHub 分发、不发 npm；变更见 [CHANGELOG.md](CHANGELOG.md)，细节见下方「当前进展」。
+> 把桌面上的《销售明细.xlsx》按地区汇总到一张新工作表，降序排列，再画一张柱状图，最后导出成 PDF。
 
-## 能做什么
+DSH 会自己打开 WPS、一步步做完、保存文件，再把结果告诉你。**你不需要会编程，也不需要记任何命令。**
 
-一个包覆盖 WPS 三大应用，共 **267 个 MCP 工具**（每次请求只广告其中 69 个，其余按需查询后调用）：
+- 不用给 WPS 装加载项；
+- 不用配置任何环境变量；
+- 不用写代码——用中文把事情说清楚就行。
 
-| 应用 | 代表能力 |
+> 本插件只负责「操作 WPS」这一件事。所有改动都发生在你本机已经打开的 WPS 里，插件本身不联网、不会把文件传到别处。
+> 真正会看到文档内容的是你正在使用的 AI 模型，敏感文件请按你所用的模型服务的隐私政策自行判断。
+
+---
+
+## 它适合谁
+
+- **每天都在 WPS 里做重复操作的人**：整理表格、批量改格式、按模板生成文档、把 Excel 数据做成 Word 报告或 PPT。
+- **已经用 DSH 处理文字工作的人**：希望 AI 直接动手改文件，而不是只给一段「你可以这样操作」的说明。
+- **不想学 Office 自动化的人**：VBA、Python、PowerShell 脚本统统不用碰。
+
+## 能帮你做什么
+
+### 表格（WPS 表格 / Excel）
+
+- 读取、写入、批量填充单元格区域；跨工作表搬运数据
+- 排序、筛选、去重、分列、分类汇总、合并计算
+- 公式与重新计算、单变量求解（从目标倒推输入）
+- 单元格格式、数字格式、条件格式、数据验证
+- 图表（含标题与数据标签）、透视表（创建 / 刷新 / 清除）
+- 表格对象、命名范围、批注、冻结窗格、分级显示
+- 页面设置与打印（打印标题、页眉页脚、横向 A4）
+- 导出图片、转 PDF、另存为其他格式
+
+### 文字（WPS 文字 / Word）
+
+- 新建、打开、保存、另存、关闭文档
+- 读写正文与段落；设置字体、样式、行距、对齐
+- 查找与替换（「只查找」和「替换」是两种明确的行为，不会误改文档）
+- 表格的读写与编辑（增删行列、合并拆分、套用样式）
+- 页眉页脚、页码、分节、分栏、页面设置
+- 目录、书签、超链接、脚注尾注、索引、交叉引用、内容控件
+- 批注与修订（查看、接受 / 拒绝）、文档字数统计
+- 按 CSV 数据做**邮件合并**：一次批量生成几十份新文档，母版不动
+
+### 演示（WPS 演示 / PPT）
+
+- 新建、打开、保存演示文稿
+- 增删幻灯片、套用版式、设置标题与正文
+- 文本框与形状、填充与字体、形状效果
+- 插入表格、图片；统一表格样式
+- 切换与动画、演讲者备注
+- 把幻灯片导出成图片
+
+### 跨应用与通用
+
+- **在三个应用之间搬运数据**：例如「Excel 里算好的数据写进 Word 报告，再导出 PDF」
+- 保存 / 另存为、格式互转（含转 PDF）
+- 查看当前打开了哪些工作簿 / 文档 / 演示，以及连接状态
+- 批量执行（一次最多 50 个操作），减少来回等待
+
+> 完整工具清单见 [skills/](skills/) 各目录下的 reference.md；在 DSH 里也可以直接问「WPS 能做哪些事」。
+
+## 你可以这样提要求
+
+下面都是可以直接照抄、改一改就能用的例子：
+
+| 想做的事 | 就这样说 |
 |---|---|
-| 表格（Excel） | 读写区域、单元格格式与数字格式、公式与求值、排序筛选、条件格式、透视表、图表、批注、冻结窗格、导出图片、转 PDF |
-| 文字（Word） | 新建/打开/保存/关闭文档、读写正文与段落、样式与字体、查找替换（区分「只查找」与「替换」）、页眉页脚、分节符、目录、模板字段、页面设置、批注、修订 |
-| 演示（PPT） | 新建/打开演示、幻灯片增删与版式、形状与文本框、填充与字体、表格、图片、切换与动画、演讲者备注、导出幻灯片为图片 |
-| 通用 | 连接状态、保存/另存、格式转换、可执行任意桥 action 的通用派发器 |
+| 汇总表格 | 把桌面《销售明细.xlsx》按地区汇总到新工作表，降序，并加一张簇状柱形图 |
+| 排版与导出 | 这张表表头加粗、冻结首行、数字用千分位，然后转成 PDF 放到同一个文件夹 |
+| 合并多份文件 | 把这个文件夹里所有 .xlsx 的第一张工作表合并成一张总表 |
+| 改文档不改原件 | 读我打开的这份 Word，把所有「待定」换成「已确认」，另存一份副本，不要改原件 |
+| 生成 PPT | 把这份报告的大纲做成 8 页 PPT，每页一个要点 |
+| 批量套模板 | 把《合同模板.docx》里的 {甲方}、{金额} 换成这张表里的数据，逐行生成 30 份，并都导出 PDF |
+| 清理收尾 | 看看我现在开着哪些 WPS 文件，没保存的先帮我存到桌面 |
 
-## 当前进展
+## 安装前准备
 
-| 阶段 | 状态 |
+请先对照下面这张表确认环境（缺一项都装不起来）：
+
+| 项目 | 要求 | 怎么确认 |
+|---|---|---|
+| 操作系统 | **64 位 Windows 10 / 11** | 设置 → 系统 → 关于 → 看「系统类型」是否有「64 位」 |
+| WPS Office | **12.1 或更高版本，且为 64 位** | 打开 WPS →「设置 / 关于」看版本号；不支持 32 位，也不支持「多组件模式」安装 |
+| Node.js | **22.19 或更高** | 在 PowerShell 里运行 `node --version` |
+| pnpm | 任意较新版本 | 在 PowerShell 里运行 `pnpm --version`；没有就 `npm install -g pnpm` |
+| DeepSeek Harness | 能正常启动 | 在 PowerShell 里运行 `dsh --version` |
+
+> Windows PowerShell 5.1 是 Windows 10 / 11 自带的，**不需要另外安装**。
+> 还没装 Node.js 的话，去 https://nodejs.org 下载 LTS 版安装即可（会一并装上 npm）。
+
+## 安装（一步一步来）
+
+全程只要打开一次 PowerShell 窗口，把命令复制进去、回车就行。
+
+### 第 0 步：完全关闭 DSH
+
+关掉浏览器里的 DSH 页面或桌面窗口，并确认后台没有 DSH 在运行。
+插件是在 **DSH 启动时加载**的，所以装完必须重启它才会生效。
+
+### 第 1 步：打开 PowerShell
+
+开始菜单搜索 `PowerShell`，打开「Windows PowerShell」。**不需要管理员权限**。
+
+### 第 2 步：确认 pnpm 可用
+
+输入：
+
+```powershell
+pnpm --version
+```
+
+- 能显示版本号（例如 `10.x` / `12.x`）→ 继续下一步。
+- 提示「不是内部或外部命令」→ 先运行 `npm install -g pnpm`，再回来确认。
+
+### 第 3 步：安装插件
+
+```powershell
+dsh plugin --profile web add github:sueccku/dsh-plugin-wps-office-next#v0.2.0
+```
+
+关于 `--profile web`：
+
+| 你平时怎么用 DSH | 就用哪个 profile |
 |---|---|
-| P0 基线审计（上游 25 处缺陷逐条定位） | 完成，见 [baseline/known-defects.md](baseline/known-defects.md) |
-| P1 合仓（两个上游合成单一 DSH bundle） | 完成 |
-| P2 常驻 COM 宿主（取代每次新起 PowerShell） | 完成，冷启动约 1.0s，稳态 1–2ms |
-| P3 工具面收敛（250 → 44 个广告工具） | 完成；P2 做深后广告面 56，预算按 D1 两次上抬到 70 工具 / 40,000 字节 |
-| P4 缺陷修复（工具面/参数契约/静默失败） | 完成，29 条修复记入 [docs/FIXES.md](docs/FIXES.md) |
-| P5 技能文档（路由 + 三个应用 + 生成的参考表） | 完成，4 个技能 541 项测试覆盖 |
-| 真实端到端验证 | 完成两轮，见下 |
-| 发布（tag / Release） | **已完成 v0.2.0**（GitHub-only；按约定不发 npm） |
+| 在浏览器 / 桌面窗口里聊天（最常见） | `web` |
+| 在命令行里跑一次性任务 | `headless` |
+| 自己起过别的名字 | 换成那个名字 |
 
-### 端到端验证做了什么
+命令会联网下载插件，然后输出 pnpm 的安装日志，最后回到命令提示符。首次为某个 profile 装插件时，
+DSH 可能提示 `initialized profile ...`，这是正常的。
 
-在独立 headless profile 上给了模型一个跨应用任务：打开一份 12 行销售明细 →
-按「地区」汇总写入新工作表并降序 → 画簇状柱形图 → 新建 Word 文档写结论并另存 → 保存并关闭两个文件。
+> 如果你是把本仓库克隆到本地来用，也可以直接用本地路径安装：
+> `dsh plugin --profile web add D:\一些目录\dsh-plugin-wps-office-next`（改成你自己的实际路径）。
 
-| 轮次 | 耗时 | 结果 | 产物复核（另起 COM 会话重开文件） |
-|---|---|---|---|
-| 第 1 轮 | 72s / exit 0 | 全部完成 | 汇总 4 行正确、图表 ChartType=51 带标题、Word 标题1+正文 145 字符、收尾 0 文档残留 |
-| 第 2 轮（修复后） | 65s / exit 0 | 全部完成 | 同上，并额外验证数字格式 `#,##0` 与表头加粗 |
+### 第 4 步：重新启动 DSH
 
-两轮都复盘了每一次工具调用（读 DSH 会话日志）。第 1 轮暴露的 5 个真实缺陷已全部修复并加了回归测试：
+按你平时的方式重新打开 DSH（例如重新运行 `dsh web`，或双击你平时的启动方式）。**不重启，插件不会生效。**
 
-1. `wps_help` 的自由文本检索把整条查询当子串匹配，"新建 文档 create new" 一律 0 命中 →
-   改为按 token 打分 + 中文二元组覆盖率；
-2. `wps_excel_get_open_workbooks` 把对象数组直接 join，每个工作簿都显示成 `[object Object]`；
-3. `wps_word_get_active_document` 打印 `页数: undefined`，并把未落盘文档的名字当成路径；
-4. `wps_excel_set_formula` 每次都回读「计算结果: null」，多格目标在常驻宿主里直接失败
-   （改为按 A1 地址逐格广播，并提示「同一公式写入多个单元格、不做相对引用调整」）；
-5. Word 连隐藏的建/关文档工具都没有（Excel/PPT 都有），补上 `wps_word_create_document`
-   与 `wps_word_close_document`。
+### 第 5 步：验证是否成功
 
-完整复盘（含失败现场与实测数据）见 [docs/FIXES.md](docs/FIXES.md) 第 24～29 条。
+1. 先启动 **WPS**，随便打开一个表格 / 文档 / 演示（`connected` 为 true 需要 WPS 正在运行）。
+2. 在 DSH 里新建一个会话，发一句话：
 
-### 已经实测过的
+   > 调用 wps_status，告诉我 WPS 连上了没有。
 
-- 两轮真实 e2e（上表）、产物用独立 COM 会话重开复核；
-- **一键 e2e 验收已跑通**：`node scripts/e2e.mjs --profile <name>` → 28 项检查、两个真实场景、exit 0；
-  另做过负向验证（超时压到 5 秒 → 10 项 FAIL、exit 1），确认它会真的失败而不只是打印 PASS；
-- 541 项测试 + 23 项门禁全绿，参数契约对账 255 对、四类静默失效均为 0；
-- **CI 在 GitHub 的 windows-latest 上跑通**（首次运行 13 步全绿、67 秒）：tsc 与三处产物漂移检查
-  在干净的 runner 上复现，不需要本机任何环境；
-- 常驻宿主的串行化、崩溃重启、超时与 warning 语义；
-- 本机路径安装与 **GitHub 安装**（`79f0c96`）：拉包 → `--dump-config` 出现插件与 MCP 两行 →
-  真跑一次 `wps_status`，7 秒返回 `connected/44/237/193`（P0 清理后注册数已降到 209，该次实测记录保留原值）；
-- 关闭文档不弹模态框、不泄漏未保存文档（收尾后已打开工作簿/文档均为 0）。
+3. 预期能看到类似这样的结果：
 
-### 还没做的
+   ```
+   connected: true
+   advertisedTools: 69
+   registeredTools: 267
+   ```
 
-- **CI 只覆盖静态部分**：tsc + 三处漂移检查 + `verify --static` + 参数契约 + 两个静态测试；
-  一键 e2e 与其余 13 个测试文件要驱动真实 WPS，只能在装了 WPS 的本机跑（没有自托管 runner）；
-- ~~12 个上游遗留 builtin 工具与 pro 工具重复~~ **已清理**（FIXES 第 32 条）：删 11 个，只留 `wps_execute_method` 逃生舱；
-- 其余 15 对「同 action、参数接口不同」的重复工具尚未合并；
-- 9 处 handler 实参静态不可读、1 处桥无键表（动态键）在参数契约报告里列名待查。
+看到 `connected: true` 就说明装好了，可以开始用了。**第一次调用**可能慢 1 秒左右，之后每次只要 1–2 毫秒。
 
-## 安装
+## 如果哪里不对
 
-前置：**Windows x64**、**WPS Office 12.1+ x64**（不支持 x86 与多组件模式）、
-**Node 22.19+**、**Windows PowerShell 5.1**（常驻宿主会断言 PowerShell 主版本为 5）。
+| 现象 | 原因 | 怎么办 |
+|---|---|---|
+| `pnpm not found on PATH` | 没装 pnpm | 运行 `npm install -g pnpm` 后重试 |
+| `dsh` 不是内部或外部命令 | DSH 没装或不在 PATH | 确认 DSH 已正确安装，重开一个 PowerShell 窗口 |
+| 装完在 DSH 里毫无反应 | 没有重启 DSH | 完全关闭再重新启动 DSH |
+| `connected: false` | WPS 没启动，或没打开任何文档 | 启动 WPS 12.1+（64 位）并打开一个文件，然后重试；不要反复空转重试 |
+| 提示平台 / Node 版本不符 | 系统或 Node 太旧 | 检查是否 64 位 Windows、`node --version` 是否 ≥ 22.19 |
+| 提示 WPS 是 32 位 / 多组件模式 | 环境不支持 | 换成 64 位完整安装的 WPS |
+| 操作时而成功时而失败 | 多个程序同时在驱动 WPS | 关闭多余的 DSH 会话或其它自动化工具 |
 
-任选一种装法，然后正常启动该 profile：
+### 完整环境自检
 
-    # 从本仓库绝对路径（开发用）
-    dsh plugin --profile <name> add <本仓库绝对路径>
+想一次把所有环境项都查清楚，可以在安装目录里运行自检脚本（只读，不改任何东西）：
 
-    # 从 GitHub（建议固定 commit）
-    dsh plugin --profile <name> add github:sueccku/dsh-plugin-wps-office-next#<sha>
+```powershell
+cd "$env:DSH_HOME\profiles\web\node_modules\dsh-plugin-wps-office-next"
+node scripts\doctor.mjs
+```
 
-两条都实测过。GitHub 安装的记录（commit `79f0c96`）：pnpm 拉取 121 个包、7.6s 完成，
-`dsh --profile <name> --dump-config` 里出现 `wps-office-next-plugin` 与 `mcp-wps-office-next` 两行，
-包内含 `mcp/dist/index.js`、`host/wps-actions.ps1` 与 4 个技能目录。
+它会逐项检查系统位数、Node 版本、PowerShell STA、包内容是否完整、WPS 能否连上，
+最后打印 `DOCTOR OK` 或指出具体的错误。
 
-装完可以直接冒烟：在新的 profile 里让 DSH 调一次 `wps_status`。GitHub 安装的那一份实测
-**7 秒**返回 `connected: true、advertisedTools: 44、registeredTools: 237、hiddenTools: 193`（当时的数字；P0 清理后为 209 / 165），
-说明包内的 MCP server 与 COM 宿主都能正常起来。
+## 卸载
 
-注意：按 GitHub 方式安装时，pnpm 只打包 `package.json` 的 `files` 白名单，
-因此 `test/`、`docs/`、`baseline/` **不在安装结果里**——它们是给仓库看的，运行不需要。
+```powershell
+dsh plugin --profile web remove dsh-plugin-wps-office-next
+```
 
-## 工具面
+然后重启 DSH。插件**不会往 WPS 里装任何东西**，所以卸载它不影响 WPS 本身。
 
-基线（上游 0.1.0）会往每次请求塞 250 个工具、141,872 schema 字节（约 40.5k tokens）。
-本插件把 `tools/list` 收敛为三档，由 `WPS_OFFICE_TOOLSET` 切换（默认 `standard`）：
+## 重要注意事项
+
+- **动手前先备份重要文件。** COM 改动不一定能进撤销栈，Ctrl+Z 不一定能恢复；批量改动前请先复制一份。
+- **结果里的 `warnings` 要看清。** 它表示「主要操作已经完成，但某个次要步骤失败了」，通常需要你人工确认一下。
+- **关闭「从未保存过」的文件时，插件会自动选择「不保存并关闭」**（并回报 warning），以免弹出保存对话框把流程卡死。
+  有重要内容时请自己手动保存。
+- **同一时间只让一个程序操作 WPS。** 多个 DSH 会话、或者你一边手动操作一边让 AI 操作，会互相干扰（它们共用同一个 WPS 实例）。
+- **结果以文件为准。** 插件会在改动后复验，但涉及重要数据时，建议自己再打开确认一遍。
+
+## 已知限制
+
+- **仅 Windows x64 + WPS 12.1+（64 位）**：macOS / Linux 支持已整体移除；不兼容 32 位 WPS，也不兼容「多组件模式」。
+- **不安装 / 卸载 WPS 加载项**：走纯 COM 路径，本来就不需要加载项。
+- **不做「撤销」承诺**：COM 改动不一定进撤销栈。
+- **以下能力受 WPS 自身限制，实测无法实现**（如实记录，不再尝试）：
+  - 水印：WPS 页眉的 Shapes 集合不接受任何图形；
+  - 文档属性（内置 / 自定义）：`BuiltInDocumentProperties` / `CustomDocumentProperties` 是坏壳；
+  - 切片器：能建出缓存，但 `Slicers.Count` 恒为 0，用户可见的切片器不会出现；
+  - 场景管理器：`Worksheet.Scenarios` 在 COM 里被暴露成方法，语义读不干净。
+  - 以上可尝试隐藏逃生舱 `wps_execute_method`，但不保证成功。
+
+---
+
+## 进阶：技术细节
+
+<details>
+<summary><b>工具面：注册 267 个，每次请求只广告 69 个</b></summary>
+
+一次请求塞几百个工具会浪费上下文。本插件把 `tools/list` 收敛为三档，由环境变量 `WPS_OFFICE_TOOLSET` 切换（默认 `standard`）：
 
 | 档位 | 工具数 | schema 字节 | 约 tokens | 内容 |
 |---|---|---|---|---|
 | minimal | 4 | 1,348 | 385 | 仅 4 个门面工具 |
-| **standard（默认）** | **69** | **37,573** | **10,735** | 门面 + 65 个精选工具，字节数较基线降 73.5% |
+| **standard（默认）** | **69** | **37,573** | **10,735** | 门面 + 65 个精选工具 |
 | full | 267 | 153,777 | 43,936 | 全量，保留完整描述 |
 
-注册目录 **267** 个工具：广告 69、隐藏 198；另有 18 个已合并的旧名字**不占注册位**，只在派发期解析成规范工具
-（旧名照样能调，`wps_help {tool:"旧名"}` 会告诉你该用哪个）。按应用分布为 Excel 118 / Word 59 / PPT 76 / 通用 14（含 builtin 与门面）。
+注册目录 **267** 个工具：Excel 118 / Word 59 / PPT 76 / 通用 14（含门面）。
 
 **未广告的工具完全可用**，两条路都能走：按全名直接调用，或先查后调。
 
 | 门面工具 | 作用 |
 |---|---|
 | wps_status | 连接状态 + 活动应用 + 当前档位 + 广告/注册/隐藏数量；编辑前先调用 |
-| wps_help | 无参看分组概览；传 `app` 列该应用目录；传 `query` 模糊搜索（支持中文与中英混排）；传 `tool` 取完整 inputSchema |
+| wps_help | 无参看分组概览；传 `app` 列该应用目录；传 `query` 模糊搜索；传 `tool` 取完整 inputSchema |
 | wps_call | 执行任意已注册但未广告的工具 |
 | wps_batch | 顺序批量执行，单次上限 50 项 |
 
-配套两道契约防线：工具层发给桥的多余参数会被拒绝并列出可接受的键
-（`unknown parameter(s) for 'xxx': a, b | accepted: b, c`）；`scripts/param-contract.mjs`
-零副作用地把 211 对工具/action 的参数契约对账一遍，结果写入
-[docs/param-contract.md](docs/param-contract.md)。
+配套两道契约防线：工具层发给桥的多余参数会被拒绝并列出可接受的键；
+`scripts/param-contract.mjs` 零副作用地把 255 对工具/action 的参数契约对账一遍，
+结果写入 [docs/param-contract.md](docs/param-contract.md)。
 
-## 技能
+</details>
 
-`plugin.js` 注册 4 个技能，DSH 会按任务自动加载（任务是跨应用时先加载路由技能）：
-
-| 技能 | 触发场景 |
-|---|---|
-| wps-office-next | 路由与通用约定：先 `wps_status`、参数名以 schema 为准、变更后复验、失败与 `warnings` 如何如实转达 |
-| wps-excel | 表格、区域、格式、公式、图表、透视表、数据清洗 |
-| wps-word | 文档、段落、标题、样式、批注、页眉页脚、目录、文档转换 |
-| wps-ppt | 演示与幻灯片，含「组合配方」一节（KPI 卡片/时间线/流程图等由工具组合而成） |
-
-每个技能目录下另有一份由注册表生成的 `reference.md`，列出全部工具、所属档位与派发方式。
-
-## 性能
+<details>
+<summary><b>性能：常驻 COM 宿主</b></summary>
 
 旧实现每次工具调用都要新起一个 PowerShell 进程并重新解析脚本。现在是一个常驻宿主
 （`powershell.exe` 5.1 + `-STA`）通过 stdin/stdout 收发 JSON 行，工具层只做转发：
@@ -159,86 +262,74 @@
 | wps_common_get_app_info | 1858ms | 2ms |
 | 读 8000 格区域 | 8000 次 COM 往返 | 15–37ms（一次 `Range.Value2` + 二维编组） |
 
-宿主首次调用约 1.0s（进程启动 + 259 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
+宿主首次调用约 1.0s（进程启动 + 267 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
 
-## 质量门禁
+</details>
+
+<details>
+<summary><b>技能（Skills）</b></summary>
+
+`plugin.js` 注册 4 个技能，DSH 会按任务自动加载（任务是跨应用时先加载路由技能）：
+
+| 技能 | 触发场景 |
+|---|---|
+| wps-office-next | 路由与通用约定：先 `wps_status`、参数名以 schema 为准、变更后复验、如何如实转达 `warnings` |
+| wps-excel | 表格、区域、格式、公式、图表、透视表、数据清洗 |
+| wps-word | 文档、段落、标题、样式、批注、页眉页脚、目录、文档转换 |
+| wps-ppt | 演示与幻灯片，含「组合配方」一节（KPI 卡片 / 时间线 / 流程图等由工具组合而成） |
+
+每个技能目录下另有一份由注册表生成的 `reference.md`，列出全部工具、所属档位与派发方式。
+
+</details>
+
+<details>
+<summary><b>质量门禁与 CI</b></summary>
 
 装好后先跑一次环境自检（只读，不改任何东西；发现 ERROR 会以非零码退出）：
 
-    node scripts/doctor.mjs                        # 平台 / Node / PowerShell STA / 包内容 / WPS COM / profile 接线
+```powershell
+node scripts\doctor.mjs
+```
 
-改完代码按这个顺序复跑（前三条不需要 WPS）：
+改完代码按这个顺序复跑（前几条不需要 WPS）：
 
-    cd mcp && ./node_modules/.bin/tsc              # 类型检查 + 构建（dist 已入库）
-    powershell -NoProfile -File scripts\build-host-actions.ps1
-                                                   # 由 mcp/scripts/wps-com.ps1 生成 host/wps-actions.ps1
-                                                   # 生成前会解析校验，写不出可加载的模块就直接失败
-    node scripts/extract-spec.mjs                  # 从当前工具面 bootstrap 操作规格（迁移期用一次）
-    node scripts/gen-tool-surface.mjs              # spec → spec/*.json（工具面、键表、广告集、签名索引）
-    node scripts/gen-skill-tools.mjs               # 由注册表重生成 4 份 reference.md
-    node scripts/verify.mjs                        # 23 项：门面、派发、预算、action 数量三方一致
-    node scripts/param-contract.mjs                # 211 对参数契约对账，写出 docs/param-contract.md
-    node test/xxx.test.mjs                         # 逐文件跑；需要本机装好 WPS
-    node scripts/e2e.mjs --profile <name>          # 一键端到端验收；需要该 profile 已装本包 + 本机 WPS
+```powershell
+# 1) 类型检查 + 构建（dist 已入库，构建产物要与源码一致）
+cd mcp; npx tsc; cd ..
 
-端到端验收是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（本场景两份）
-（裸 COM，刻意不走本插件，免得用具自己的 bug 伪造输入）→ 跑一个真实 headless 任务 → 逐帧解会话日志
-打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「操作结果里没有缺陷标记」
-「模型没有自己写 COM 脚本」。**28 项检查、约 95 秒**；第二场景（P2-5）要求把另一份订单工作簿变成真正的表、加条件格式并设成可打印，见 docs/FIXES.md 第 44 条。profile 不存在时加 `--setup` 一步建好并安装本包。
+# 2) 由桥源码重新生成 host/wps-actions.ps1（生成前会解析校验）
+powershell -NoProfile -File scripts\build-host-actions.ps1
+
+# 3) 由操作规格重新生成 spec/*.json，再由注册表重生成 4 份 reference.md
+node scripts\gen-tool-surface.mjs
+node scripts\gen-skill-tools.mjs
+
+# 4) 门禁：门面、派发、预算、action 数量三方一致 + 参数契约对账
+node scripts\verify.mjs
+node scripts\param-contract.mjs
+
+# 5) 需要本机 WPS 的部分
+node test\xxx.test.mjs                 # 逐文件跑
+node scripts\e2e.mjs --profile <name>  # 一键端到端验收
+```
+
+当前数字：**541 项测试（25 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 12 项**全绿；
+广告面 69 工具 / 37,573 字节（内部预算上限 70 / 40,000）；桥 action 267，与注册表三方一致；
+参数契约 255 对，四类静默失效均为 0。
+
+`.github/workflows/ci.yml`（GitHub Actions，`windows-latest`）**只跑不需要 WPS 的静态部分**：
+tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、
+`verify --static`、参数契约对账、以及两个纯静态测试文件。需要真实 WPS 的测试与一键 e2e 留在本机。
+
+一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）
+→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 →
+断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」。**28 项检查、约 95 秒。**
 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
-当前数字：**541 项测试**（25 个文件，含 spec 复现验收 12 项）+ **23 项门禁**全绿；广告面
-**69 工具 / 37,573 字节**（D1 上限 70 / 40,000，余量 1 个工具）；桥 action **267**（生成器断言源码、生成物、期望值三方一致）；
-注册工具 **267**，全部进操作规格（spec）。
+</details>
 
-### CI 覆盖到哪
-
-`.github/workflows/ci.yml`（GitHub Actions，`windows-latest`）**只跑静态那部分**：
-
-1. `npm ci` + `tsc` 构建，再断言 `mcp/dist` 与源码一致（dist 是入库的，不许过期）；
-2. 跑宿主生成器，再断言 `host/wps-actions.ps1` 与桥源码一致（生成器自带解析校验）；
-3. 由操作规格重生成工具面，再断言 `spec/*.json` 与 spec 一致；跑 `test/spec-reproduction.test.mjs`
-   —— 12 项，含「209 个 schema 与序列化字节数与活体完全一致」「每个参数都有明确去向」
-   以及「每个 pass-through 改名都在桥侧有声明」；
-4. 重生成技能参考表，再断言 `skills/**/reference.md` 与注册表一致；
-5. `node scripts/verify.mjs --static` —— 18 项：广告面、预算、桥 action 数量、`wps_help` 检索与派发守卫；
-6. 参数契约对账，再断言 `docs/param-contract.md` 一致；
-7. 两个不需要 WPS 的测试文件：`test/plugin.test.mjs`(32 项)、`test/com-host.test.mjs`(6 项)。
-
-首次运行（2026-09-13，[run 34760241577](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/runs/34760241577)）**13 步全绿、67 秒**。
-
-需要真实 WPS 的测试与一键 e2e **留在本机**——没有自托管 runner，也不打算为了 CI 去装 WPS。
-`verify.mjs` 的另外 5 项（`wps_status`、真实派发、`wps_batch`）只有完整模式（不带 `--static`）才会跑。
-
-| 测试文件 | 项数 | 覆盖 |
-|---|---|---|
-| plugin.test.mjs | 32 | DSH 入口、技能注册、工具面过滤、预算 |
-| word-lifecycle.test.mjs | 18 | e2e 暴露的 5 个缺陷（检索/列表/文档信息/公式/Word 建关） |
-| excel-contract-fixes.test.mjs | 35 | 25 处参数错配逐个真实验证、跨应用批注污染 |
-| ppt-contract-fixes.test.mjs | 56 | PPT 参数契约逐项修复 |
-| ppt-slimming.test.mjs | 32 | P4 合并后的形状效果/表格/页脚工具 + 被删工具确认消失（真实 WPS） |
-| merged-tools.test.mjs | 31 | 重复工具合并后的转发、改名与隐藏 |
-| new-actions.test.mjs | 28 | 补齐的 action、closePresentation |
-| sheet-ops.test.mjs | 21 | 工作表组目标、0 基 position、删表安全 |
-| cell-format.test.mjs | 16 | 10 个格式属性逐个回读、平铺写法、空格式报错 |
-| close-safety.test.mjs | 14 | 关闭不得弹模态框、不得泄漏工作簿/演示文稿 |
-| find-replace.test.mjs | 14 | 查找替换的参数名契约与替换模式 |
-| excel-range.test.mjs | 12 | sheet 回退、二维编组、单格、8000 格性能 |
-| file-ops.test.mjs | 11 | 另存/打开的路径、按应用转换、页眉页脚分节 |
-| deprecated.test.mjs | 8 | 弃用名合并、隐藏与转发 |
-| warnings.test.mjs | 7 | 「尽力而为」失败如实回传 |
-| com-host.test.mjs | 6 | 常驻宿主握手、串行队列、崩溃重启 |
-| spec-reproduction.test.mjs | 12 | spec 逐字节复现模型可见面（P1 验收） |
-| excel-missing-halves.test.mjs | 18 | P2 第一波 Excel 补全工具（真实 WPS） |
-| excel-missing-halves-2.test.mjs | 30 | P2 第一波余项：格式、校验、重算、合并计算、分类汇总（真实 WPS） |
-| excel-list-object.test.mjs | 25 | P2-2 表（ListObject）全族：建表/读结构/增删行/总计行/样式/范围/转回区域（真实 WPS） |
-| excel-page-setup.test.mjs | 24 | P2-3 页面设置/打印标题/页眉页脚/可见性与标签色/分级显示/公式审计（真实 WPS） |
-| excel-advanced.test.mjs | 24 | P2-4 透视表/全部刷新/单变量求解/迷你图/图表标题与删除（真实 WPS） |
-| word-deep.test.mjs | 27 | P3 书签/批注/统计/超链接 + 表格读写编辑与外观（真实 WPS） |
-| word-produce.test.mjs | 19 | P3-3 页码/分栏/修订接受拒绝/批注删除（真实 WPS） |
-| word-longtail.test.mjs | 20 | P3-4 内容控件/脚注尾注/索引/交叉引用/邮件合并（真实 WPS） |
-
-## 目录结构
+<details>
+<summary><b>目录结构</b></summary>
 
 | 路径 | 用途 |
 |---|---|
@@ -246,37 +337,35 @@
 | plugin.js | DSH 入口：发布包内绝对路径、注册 4 个技能 |
 | mcp/src | MCP server（TypeScript）与工具实现、参数闸门、弃用表 |
 | mcp/src/spec | **操作规格（唯一真源）**：工具名 ↔ 桥 action ↔ 参数/类型/必填/效果 |
-| spec/ | 由 spec 生成的产物（入库、CI 漂移检查）：工具面、action 键表、广告集、紧凑签名索引、别名/容器/辅助键/动态动作声明 |
+| spec/ | 由 spec 生成的产物（入库、CI 漂移检查） |
 | mcp/dist | 预构建产物（已入库，安装即用） |
-| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：259 个 COM action |
-| host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改，改桥源码后重跑生成器） |
+| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：267 个 COM action |
+| host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
-| scripts/ | doctor、verify、参数契约、一键 e2e、生成器、工具面分析、延迟基准 |
-| test/ | 25 个回归测试文件、541 项断言（多数需要本机 WPS） |
-| baseline/ | 上游基线快照与 28 行缺陷清单（逐条标注 已修/部分修/仍开/不修） |
+| scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具 |
+| test/ | 25 个回归测试文件（多数需要本机 WPS） |
+| baseline/ | 早期基线快照与缺陷清单 |
 | docs/ | FIXES（修复记录）、PROGRESS（进度）、param-contract（生成的契约报告） |
 
-## 文档地图
+</details>
+
+<details>
+<summary><b>文档地图</b></summary>
 
 | 文档 | 内容 |
 |---|---|
-| [docs/FIXES.md](docs/FIXES.md) | 29 条修复记录，每条都带可复跑的验证方法与实测数字 |
-| [docs/tool-roadmap.md](docs/tool-roadmap.md) | 工具面路线图：能力审计、缺口/冗余清单、分阶段任务表（P0–P5） |
+| [CHANGELOG.md](CHANGELOG.md) | 每个发布版本的用户可见变化 |
+| [docs/FIXES.md](docs/FIXES.md) | 修复记录，每条都带可复跑的验证方法与实测数字 |
+| [docs/tool-roadmap.md](docs/tool-roadmap.md) | 工具面路线图：能力审计、缺口 / 冗余清单、分阶段任务表 |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | 分阶段进度与当前状态 |
-| [baseline/known-defects.md](baseline/known-defects.md) | 上游 28 行缺陷清单 + 本仓库逐条状态 |
-| [docs/param-contract.md](docs/param-contract.md) | 211 对工具/action 参数契约对账（生成物） |
-| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 上游来源与许可处理 |
+| [docs/param-contract.md](docs/param-contract.md) | 工具 / action 参数契约对账（生成物） |
+| [baseline/known-defects.md](baseline/known-defects.md) | 早期基线缺陷清单与逐条状态 |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 来源与许可处理 |
 
-## 已知限制
+</details>
 
-- **仅 Windows x64 + WPS**：macOS / Linux 支持已整体移除；不兼容 x86，不兼容多组件模式；
-- **不做卸载/安装加载项**：走纯 COM 路径，不需要加载项；
-- **不做「撤销」承诺**：COM 改动不一定进撤销栈，重要文档请先保存副本；
-- **无人值守优先**：关闭文档时对「从未落盘」的文件会自动改为不保存关闭并回报 `warning`，避免弹出保存对话框卡死；
-- 同一台机器上多个进程同时驱动 WPS 会互相干扰（共用一个 WPS 实例），自动化测试不要与交互使用并行；
-- 结果里的 `warnings` 表示「操作已完成，但某个尽力而为的步骤失败了」，需要如实转述给用户。
-
-## 已锁定的项目决策
+<details>
+<summary><b>已锁定的项目决策</b></summary>
 
 | 决策 | 取值 |
 |---|---|
@@ -284,13 +373,27 @@
 | 目标环境 | WPS 12.1+ x64 |
 | 形态 | 单一 npm 包 = DSH bundle + 自带 MCP server + 自带 COM host + 全部 skills |
 | MCP serverName | wps-office-next |
-| 默认工具面 | standard 档 56 个工具；预算上限 70 工具 / 40,000 字节（D1） |
+| 默认工具面 | standard 档 69 个工具；预算上限 70 工具 / 40,000 字节 |
 | 传输层 | 常驻 PowerShell STA 宿主 + stdin/stdout JSON 行 |
 | 加载项 | 全部删除，零依赖 |
 | 构建产物 | 预构建产物入库，安装后开箱可用 |
 | 文档语言 | 中文 |
 | 提交身份 | sueccku |
 
-## 许可与来源
+</details>
 
-本仓库使用 MIT License。上游为 MIT，来源与处理方式见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+## 许可
+
+本仓库使用 **MIT License**，见 [LICENSE](LICENSE)。
+
+## 致谢
+
+本项目的底层实现起步于两个早期的开源项目，感谢它们的作者：
+
+- [lc2panda/wps-skills](https://github.com/lc2panda/wps-skills) —— WPS COM 操作实现与 MCP 工具层；
+- [CatNebulaaaa/wps-dsh-plugin](https://github.com/CatNebulaaaa/wps-dsh-plugin) —— DSH bundle 的接线形态。
+
+二者均为 MIT 许可，来源与处理方式见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+经过多轮重构与扩展，本项目的架构、工具面与代码已与上游有很大差异，是独立演进的结果。
+
+本项目为非官方项目，与金山办公、DeepSeek 及上述上游作者均无隶属关系。
