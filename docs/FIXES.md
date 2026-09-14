@@ -1141,6 +1141,47 @@ centerFooter: 第 &P 页 / 共 &N 页, printTitleRows: $1:$1}`——**先证明�
 
 **首次完整运行就通过**：`E2E OK (28 checks) in 94s`——96 次 `wps_*` 调用、2 次技能加载、
 4 条 pwsh 命令里没有一条自己写 COM，第二场景的产物与预期逐项一致。默认超时从 300 提到 420 秒。
+### 45. P3-1/P3-2：Word 深水区第一二波——挂出 4 个已有能力 + 表格族 9 个新 action
+
+P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已有、却没有出口的 4 个 Word 能力挂出来：
+`get_bookmarks`、`get_comments`、`get_document_stats`、`insert_hyperlink`。
+
+第二波是**表格族的新 COM 代码**（9 个 action + 9 个工具）：
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_word_get_tables` | getDocumentTables | 列出表格：序号、行列数、样式、文本预览 |
+| `wps_word_get_table_data` | getTableData | 按行列读出全部单元格文本（合并格留空） |
+| `wps_word_set_table_cell` | setTableCell | 写单元格（行列从 1 开始） |
+| `wps_word_add_table_lines` | addTableLines | 加行/加列（kind + count + position） |
+| `wps_word_delete_table_line` | deleteTableLine | 删行/删列 |
+| `wps_word_merge_table_cells` | mergeTableCells | 矩形区域合并 |
+| `wps_word_split_table_cell` | splitTableCell | 单元格拆分 |
+| `wps_word_set_table_format` | setTableFormat | 样式 / 边框 / 自适应 / 表头底纹 |
+| `wps_word_convert_table_to_text` | convertTableToText | 表格转文本 |
+
+**两处实测缺口（写清楚，不硬做）**：
+
+- **水印**：Word 的通行做法是在页眉里放一个 WordArt/TextEffect，但 WPS 的**页眉 Shapes 集合不接受任何图形**
+  ——`AddTextEffect` / `AddShape` / `AddTextbox` 都返回了对象，`Shapes.Count` 却始终是 0；
+  `Selection.HeaderFooter` 还是 null。没有可靠路径，本轮不做。
+- **文档属性**：`$doc.BuiltInDocumentProperties` / `CustomDocumentProperties` 在 WPS 里是**坏壳**——
+  属性本身非 null，但 `.Count` 读出来是空、`.Item('Title')` 与 `GetType()` 直接抛
+  「Object reference not set」。既写不进去也读不出来，本轮不做。
+
+两者的探针脚本都留在 `test/.artifacts/e2e/word-probe*.ps1`，要接的时候不用重新摸。
+
+**一处工程细节值得记**：`mergeTableCells` 最初被生成器判成「动态 action」并**拒绝构建**——原因不是代码，
+而是我在注释里写了 `$p` 加 `.` 加 `$key` 这样的字面量，正好命中生成器的动态模式。守卫按设计工作了：
+它读不出键集的动作必须显式声明，不许静默跳过。把注释改成文字描述即可。
+
+**验收**：`test/word-deep.test.mjs` **27 项**（真实 WPS Writer）：书签/批注/统计/超链接，以及表格的
+读结构 → 写单元格 → 加行加列 → 删行 → 合并 → 拆分 → 设置外观 → 转回文本，外加 5 项负向
+（缺参数、越界、非法颜色）。
+
+**数字**：桥 action 256 → **265**、注册工具 252 → **265**、广告面 59 → **62 工具 / 33,836 字节**
+（`get_document_stats` / `get_tables` / `get_table_data` 进精选档）；未工具化 action 台账 11 → **7**
+（剩下的都是刻意的重复实现或 P4 的项）。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1187,9 +1228,10 @@ centerFooter: 第 &P 页 / 共 &N 页, printTitleRows: $1:$1}`——**先证明�
 | test/excel-list-object.test.mjs | 25 | P2-2 表（ListObject）：建表/读结构/增删行/总计行/样式/改名/范围/转回区域 |
 | test/excel-page-setup.test.mjs | 24 | P2-3 页面设置/打印标题/页眉页脚/外观/分级显示/分页符/公式审计 |
 | test/excel-advanced.test.mjs | 24 | P2-4 透视表列表/刷新/清除、全部刷新、单变量求解、迷你图、图表标题与删除 |
+| test/word-deep.test.mjs | 27 | P3 书签/批注/统计/超链接 + 表格读写编辑与外观 |
 
-合计 **443 项**（21 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **470 项**（22 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 240 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 253 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

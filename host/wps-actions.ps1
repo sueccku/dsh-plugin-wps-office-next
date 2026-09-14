@@ -740,6 +740,7 @@ $script:ActionParamKeys = @{
     'addShape' = @('fillColor', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'type', 'width')
     'addSlide' = @('content', 'layout', 'position', 'presentationName', 'title')
     'addSparkline' = @('dataRange', 'location', 'markers', 'sheet', 'sparklineType')
+    'addTableLines' = @('count', 'kind', 'position', 'table')
     'addTextBox' = @('fontName', 'fontSize', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'width')
     'alignShapes' = @('alignment', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
     'applyStyle' = @('range', 'styleName')
@@ -761,6 +762,7 @@ $script:ActionParamKeys = @{
     'closeWorkbook' = @('name', 'save', 'saveChanges')
     'consolidate' = @('createLinks', 'destination', 'function', 'leftColumn', 'sheet', 'sources', 'topRow')
     'convertFormat' = @('appType', 'outputPath', 'presentationName', 'targetFormat')
+    'convertTableToText' = @('separator', 'table')
     'convertToPDF' = @('appType', 'openAfterExport', 'outputPath', 'presentationName')
     'copyFormat' = @('sheet', 'source', 'target')
     'copyRange' = @('destination', 'range', 'sheet', 'source')
@@ -783,6 +785,7 @@ $script:ActionParamKeys = @{
     'deleteShape' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
     'deleteSheet' = @('name', 'oldName', 'sheet')
     'deleteSlide' = @('index', 'presentationName', 'slideIndex')
+    'deleteTableLine' = @('kind', 'lineIndex', 'table')
     'deleteTextBox' = @('name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'textboxIndex')
     'diagnoseFormula' = @('cell', 'sheet')
     'distributeShapes' = @('direction', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
@@ -817,6 +820,7 @@ $script:ActionParamKeys = @{
     'getDataValidations' = @('range', 'sheet')
     'getDocumentParagraphs' = @('endParagraph', 'startParagraph')
     'getDocumentStats' = @()
+    'getDocumentTables' = @()
     'getDocumentText' = @()
     'getExcelContext' = @('sheet')
     'getFormula' = @('cell', 'sheet')
@@ -839,6 +843,7 @@ $script:ActionParamKeys = @{
     'getSlideMaster' = @('presentationName')
     'getSlideNotes' = @('index', 'presentationName', 'slideIndex')
     'getSlideTitle' = @('presentationName', 'slideIndex')
+    'getTableData' = @('table')
     'getTextBoxes' = @('presentationName', 'slideIndex')
     'getTrackChangesStatus' = @()
     'goalSeek' = @('cell', 'changingCell', 'goal', 'sheet')
@@ -865,6 +870,7 @@ $script:ActionParamKeys = @{
     'insertText' = @('position', 'style', 'text')
     'lockCells' = @('locked', 'range', 'sheet')
     'mergeCells' = @('across', 'range', 'sheet')
+    'mergeTableCells' = @('endColumn', 'endRow', 'startColumn', 'startRow', 'table')
     'moveSheet' = @('name', 'oldName', 'position', 'sheet')
     'moveSlide' = @('from', 'fromIndex', 'presentationName', 'to', 'toIndex')
     'openDocument' = @('path')
@@ -955,6 +961,8 @@ $script:ActionParamKeys = @{
     'setSlideTheme' = @('presentationName', 'theme')
     'setSlideTitle' = @('presentationName', 'slideIndex', 'title')
     'setSlideTransition' = @('duration', 'effect', 'presentationName', 'slideIndex', 'sound', 'transition')
+    'setTableCell' = @('column', 'row', 'table', 'text')
+    'setTableFormat' = @('autoFit', 'borders', 'headerShading', 'style', 'table')
     'setTextBoxStyle' = @('alignment', 'bold', 'color', 'fontName', 'fontSize', 'italic', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'textboxIndex')
     'setTextBoxText' = @('name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'text', 'textboxIndex')
     'setTextColor' = @('color', 'range')
@@ -963,6 +971,7 @@ $script:ActionParamKeys = @{
     'showRows' = @('count', 'endRow', 'row', 'rows', 'sheet', 'startRow')
     'smartFillField' = @('fillMode', 'keyword', 'value')
     'sortRange' = @('ascending', 'column', 'keyColumn', 'order', 'range', 'sheet')
+    'splitTableCell' = @('column', 'columns', 'row', 'rows', 'table')
     'startSlideShow' = @('fromSlide', 'presentationName')
     'subtotal' = @('columns', 'function', 'groupBy', 'range', 'replace', 'sheet', 'totalColumn', 'totalColumns')
     'switchDocument' = @('index', 'name')
@@ -3326,6 +3335,202 @@ return }
             sheet = $sheet.Name; chart = [string]$target.Name; applied = $applied
             title = $title; categoryAxisTitle = $cat; valueAxisTitle = $val
         } }
+    }
+
+# ==================== Word 表格读写编辑（P3-2，新 COM 代码）====================
+    # WPS 的 Word 表格对象模型可用（实测：Cell 读写/行列增删/合并拆分/边框底纹/整表文本）。
+
+    "getDocumentTables" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $tables = @()
+        for ($i = 1; $i -le $doc.Tables.Count; $i++) {
+            $t = $doc.Tables.Item($i)
+            $text = ""
+            try { $text = ([string]$t.Range.Text).Trim() } catch { $text = "" }
+            if ($text.Length -gt 200) { $text = $text.Substring(0, 200) + "..." }
+            $style = ""
+            try { $style = [string]$t.Style.NameLocal } catch { $style = "" }
+            $tables += @{ index = $i; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count; style = $style; text = $text }
+        }
+        Output-Json @{ success = $true; data = @{ tables = $tables; count = $tables.Count } }
+    }
+
+    "getTableData" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        $t = $doc.Tables.Item($index)
+        $rows = [int]$t.Rows.Count
+        $cols = [int]$t.Columns.Count
+        $data = @()
+        for ($r = 1; $r -le $rows; $r++) {
+            $line = @()
+            for ($c = 1; $c -le $cols; $c++) {
+                # 合并单元格的非起点格子会抛，如实留空而不是让整次读取失败。
+                $cellText = ""
+                try {
+                    $raw = [string]$t.Cell($r, $c).Range.Text
+                    $cellText = $raw.TrimEnd([char[]]@([char]13, [char]7, [char]10))
+                } catch { $cellText = "" }
+                $line += $cellText
+            }
+            $data += ,@($line)
+        }
+        Output-Json @{ success = $true; data = @{ table = $index; rows = $rows; columns = $cols; data = $data } }
+    }
+
+    "setTableCell" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        if ($null -eq $p.row -or $null -eq $p.column) { Output-Json @{ success = $false; error = "row and column required" }; return }
+        $t = $doc.Tables.Item($index)
+        $cell = $null
+        try { $cell = $t.Cell([int]$p.row, [int]$p.column) } catch { Output-Json @{ success = $false; error = "cell not found (merged or out of range?)" }; return }
+        $value = if ($null -eq $p.text) { "" } else { [string]$p.text }
+        try { $cell.Range.Text = $value } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $readBack = ""
+        try { $readBack = ([string]$cell.Range.Text).TrimEnd([char[]]@([char]13, [char]7, [char]10)) } catch { $readBack = "" }
+        Output-Json @{ success = $true; data = @{ table = $index; row = [int]$p.row; column = [int]$p.column; text = $readBack } }
+    }
+
+    "addTableLines" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        $kind = if ($p.kind) { "$($p.kind)".ToLower() } else { "row" }
+        if ($kind -ne "row" -and $kind -ne "column") { Output-Json @{ success = $false; error = "kind must be row or column" }; return }
+        $count = if ($null -ne $p.count) { [int]$p.count } else { 1 }
+        if ($count -lt 1) { Output-Json @{ success = $false; error = "count must be >= 1" }; return }
+        $t = $doc.Tables.Item($index)
+        try {
+            for ($i = 1; $i -le $count; $i++) {
+                if ($kind -eq "row") {
+                    # beforeRow 给了就插在它前面，否则追加到表尾。
+                    if ($null -ne $p.position) { $t.Rows.Add($t.Rows.Item([int]$p.position)) | Out-Null }
+                    else { $t.Rows.Add() | Out-Null }
+                } else {
+                    if ($null -ne $p.position) { $t.Columns.Add($t.Columns.Item([int]$p.position)) | Out-Null }
+                    else { $t.Columns.Add() | Out-Null }
+                }
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ table = $index; kind = $kind; added = $count; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count } }
+    }
+
+    "deleteTableLine" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        $kind = if ($p.kind) { "$($p.kind)".ToLower() } else { "row" }
+        $lineIndex = [int]$p.lineIndex
+        $t = $doc.Tables.Item($index)
+        $count = if ($kind -eq "column") { [int]$t.Columns.Count } else { [int]$t.Rows.Count }
+        if ($lineIndex -lt 1 -or $lineIndex -gt $count) { Output-Json @{ success = $false; error = ("lineIndex " + $lineIndex + " out of range 1.." + $count) }; return }
+        try {
+            if ($kind -eq "column") { $t.Columns.Item($lineIndex).Delete() } else { $t.Rows.Item($lineIndex).Delete() }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ table = $index; kind = $kind; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count } }
+    }
+
+    "mergeTableCells" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        # 逐个显式检查：ConvertFrom-Json 得到的是 PSObject，用变量拼属性名在这里不可靠（生成器也会把它判成动态键）。
+        if ($null -eq $p.startRow -or $null -eq $p.startColumn -or $null -eq $p.endRow -or $null -eq $p.endColumn) {
+            Output-Json @{ success = $false; error = "startRow/startColumn/endRow/endColumn required" }; return }
+        $t = $doc.Tables.Item($index)
+        # 合并区域必须是一块连续矩形，用起点与终点的 Cell 直接 Merge。
+        try {
+            $t.Cell([int]$p.startRow, [int]$p.startColumn).Merge($t.Cell([int]$p.endRow, [int]$p.endColumn))
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ table = $index; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count; message = "已合并单元格" } }
+    }
+
+    "splitTableCell" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        $t = $doc.Tables.Item($index)
+        $rows = if ($null -ne $p.rows) { [int]$p.rows } else { 1 }
+        $cols = if ($null -ne $p.columns) { [int]$p.columns } else { 2 }
+        try {
+            $t.Cell([int]$p.row, [int]$p.column).Split($rows, $cols)
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ table = $index; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count; message = "已拆分单元格" } }
+    }
+
+    "setTableFormat" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        $t = $doc.Tables.Item($index)
+        $applied = @()
+        try {
+            if ($p.style) { $t.Style = [string]$p.style; $applied += "style" }
+            if ($null -ne $p.borders) { $t.Borders.Enable = [bool]$p.borders; $applied += "borders" }
+            if ($p.autoFit) {
+                # wdAutoFitContent=1 / wdAutoFitWindow=2
+                if ("$($p.autoFit)".ToLower() -eq "window") { $t.AutoFitBehavior(2) } else { $t.AutoFitBehavior(1) }
+                $applied += "autoFit"
+            }
+            if ($null -ne $p.headerShading) {
+                $color = Convert-HexColorToRgbInt ([string]$p.headerShading)
+                if ($null -eq $color) { Output-Json @{ success = $false; error = ("unrecognized color: " + $p.headerShading) }; return }
+                # Word 的 Shading.BackgroundPatternColor 用 BGR long，和 Excel 一样。
+                for ($c = 1; $c -le [int]$t.Columns.Count; $c++) { $t.Cell(1, $c).Shading.BackgroundPatternColor = $color }
+                $applied += "headerShading"
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $style = ""
+        try { $style = [string]$t.Style.NameLocal } catch { $style = "" }
+        Output-Json @{ success = $true; data = @{ table = $index; applied = $applied; style = $style; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count } }
+    }
+
+    "convertTableToText" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
+        if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        # ConvertToText 的 Separator 要一个字符串（或分隔常量），不是字符数组。
+        $sep = $null
+        if ($p.separator) {
+            $name = "$($p.separator)".ToLower()
+            if ($name -eq "tab") { $sep = [string][char]9 }
+            elseif ($name -eq "comma") { $sep = "," }
+            elseif ($name -eq "paragraph") { $sep = [string][char]13 }
+            else { $sep = [string]$p.separator }
+        }
+        $t = $doc.Tables.Item($index)
+        try {
+            if ($null -eq $sep) { $t.ConvertToText() | Out-Null } else { $t.ConvertToText($sep, $true) | Out-Null }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        Output-Json @{ success = $true; data = @{ tablesRemaining = [int]$doc.Tables.Count } }
     }
 
     "findInSheet" {

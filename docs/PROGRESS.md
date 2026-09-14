@@ -280,7 +280,20 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 合计：桥 action 231 → 256、注册工具 217 → 252、广告面 48 → 59 / 32,924 字节（上限 70 / 40,000）、
 测试 340 → 443 项 / 21 文件。P2 期间一共修掉 **7 个从未生效的缺陷**（FIXES 38/39/40/43）。
 
-下一步：**P3 Word 做深**（用户已定为「全都要」：表格读写、修订、页码、水印、文档属性、批注读删、
-内容控件、脚注尾注、分栏、邮件合并、索引、交叉引用）。
+## P3-1 / P3-2 Word 深水区（已落地）
+
+- P3-1：挂出 4 个已有能力——`get_bookmarks`、`get_comments`、`get_document_stats`、`insert_hyperlink`
+- P3-2：**表格族新 COM 代码** 9 个 action + 9 个工具（列结构/读数据/写单元格/加行加列/删行删列/
+  合并/拆分/样式与边框底纹/转回文本）
+- **两处实测缺口，写清楚不硬做**：水印（WPS 页眉 Shapes 不接受任何图形：AddTextEffect/AddShape/
+  AddTextbox 都返回对象但 Count 恒为 0）与文档属性（BuiltIn/CustomDocumentProperties 在 WPS 里是坏壳，
+  Item/GetType 直接抛「Object reference not set」）；探针脚本留在 test/.artifacts/e2e/word-probe*.ps1
+- 桥 action 256 → **265**、注册 252 → **265**、广告面 59 → **62 工具 / 33,836 字节**；
+  未工具化 action 台账 **11 → 7**
+- 验收 `test/word-deep.test.mjs` **27 项**（真实 WPS Writer）；全套 **470 项 / 22 文件**、verify 23、
+  spec 复现 12、参数契约被校验的对 240 → **253**，A/B/C/D 仍全 0
+
+下一步：**P3-3 文档生产族**（页码、分栏、修订接受/拒绝与列表、批注读删），
+然后 P3-4 长尾（内容控件、脚注尾注、邮件合并、索引、交叉引用）。
 
 

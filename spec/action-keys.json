@@ -1011,6 +1011,12 @@
   "includeTitle",
   "slideIndex"
  ],
+ "addTableLines": [
+  "count",
+  "kind",
+  "position",
+  "table"
+ ],
  "applyStyle": [
   "range",
   "styleName"
@@ -1019,7 +1025,16 @@
   "name",
   "save"
  ],
+ "convertTableToText": [
+  "separator",
+  "table"
+ ],
  "createDocument": [],
+ "deleteTableLine": [
+  "kind",
+  "lineIndex",
+  "table"
+ ],
  "enableTrackChanges": [
   "enable"
  ],
@@ -1042,12 +1057,19 @@
   "position"
  ],
  "getActiveDocument": [],
+ "getBookmarks": [],
+ "getComments": [],
+ "getDocumentStats": [],
  "getDocumentText": [],
  "getOpenDocuments": [],
  "getDocumentParagraphs": [
   "endParagraph",
   "startParagraph"
  ],
+ "getTableData": [
+  "table"
+ ],
+ "getDocumentTables": [],
  "getTrackChangesStatus": [],
  "insertBookmark": [
   "name"
@@ -1062,6 +1084,10 @@
  "insertHeader": [
   "section",
   "text"
+ ],
+ "insertHyperlink": [
+  "text",
+  "url"
  ],
  "insertImage": [
   "height",
@@ -1080,6 +1106,13 @@
   "position",
   "style",
   "text"
+ ],
+ "mergeTableCells": [
+  "endColumn",
+  "endRow",
+  "startColumn",
+  "startRow",
+  "table"
  ],
  "openDocument": [
   "path"
@@ -1117,6 +1150,19 @@
   "alignment",
   "lineSpacing"
  ],
+ "setTableCell": [
+  "column",
+  "row",
+  "table",
+  "text"
+ ],
+ "setTableFormat": [
+  "autoFit",
+  "borders",
+  "headerShading",
+  "style",
+  "table"
+ ],
  "setTextColor": [
   "color"
  ],
@@ -1124,6 +1170,13 @@
   "fillMode",
   "keyword",
   "value"
+ ],
+ "splitTableCell": [
+  "column",
+  "columns",
+  "row",
+  "rows",
+  "table"
  ],
  "switchDocument": [
   "name"

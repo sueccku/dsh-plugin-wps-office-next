@@ -1100,6 +1100,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_add_table_lines",
+  "signature": "word_add_table_lines(table?, kind*, count?, position?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_apply_style",
   "signature": "word_apply_style(style_name*, range?)",
   "effect": "write"
@@ -1110,9 +1115,19 @@
   "effect": "lifecycle"
  },
  {
+  "tool": "wps_word_convert_table_to_text",
+  "signature": "word_convert_table_to_text(table?, separator?)",
+  "effect": "lifecycle"
+ },
+ {
   "tool": "wps_word_create_document",
   "signature": "word_create_document()",
   "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_word_delete_table_line",
+  "signature": "word_delete_table_line(table?, kind*, lineIndex*)",
+  "effect": "delete"
  },
  {
   "tool": "wps_word_enable_track_changes",
@@ -1140,6 +1155,21 @@
   "effect": "read"
  },
  {
+  "tool": "wps_word_get_bookmarks",
+  "signature": "word_get_bookmarks()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_comments",
+  "signature": "word_get_comments()",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_document_stats",
+  "signature": "word_get_document_stats()",
+  "effect": "read"
+ },
+ {
   "tool": "wps_word_get_document_text",
   "signature": "word_get_document_text(start?, end?)",
   "effect": "read"
@@ -1152,6 +1182,16 @@
  {
   "tool": "wps_word_get_paragraphs",
   "signature": "word_get_paragraphs(start_paragraph?, end_paragraph?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_table_data",
+  "signature": "word_get_table_data(table?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_tables",
+  "signature": "word_get_tables()",
   "effect": "read"
  },
  {
@@ -1180,6 +1220,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_insert_hyperlink",
+  "signature": "word_insert_hyperlink(url*, text?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_insert_image",
   "signature": "word_insert_image(imagePath*, width?, height?)",
   "effect": "write"
@@ -1202,6 +1247,11 @@
  {
   "tool": "wps_word_insert_text",
   "signature": "word_insert_text(text*, position?, style?, new_paragraph?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_merge_table_cells",
+  "signature": "word_merge_table_cells(table?, startRow*, startColumn*, endRow*, endColumn*)",
   "effect": "write"
  },
  {
@@ -1245,6 +1295,16 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_set_table_cell",
+  "signature": "word_set_table_cell(table?, row*, column*, text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_set_table_format",
+  "signature": "word_set_table_format(table?, style?, borders?, autoFit?, headerShading?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_set_text_color",
   "signature": "word_set_text_color(color*)",
   "effect": "write"
@@ -1252,6 +1312,11 @@
  {
   "tool": "wps_word_smart_fill_field",
   "signature": "word_smart_fill_field(keyword*, value*, fill_mode?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_split_table_cell",
+  "signature": "word_split_table_cell(table?, row*, column*, rows?, columns?)",
   "effect": "write"
  },
  {

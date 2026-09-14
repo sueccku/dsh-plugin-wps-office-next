@@ -4025,7 +4025,7 @@ exports.operations = [
         "tool": "wps_ppt_add_animation",
         "action": "addAnimation",
         "app": "ppt",
-        "summary": "为幻灯片中的形状添加动画效果。\n\n使用场景：\n- \"给第1页第2个形状加个淡入动画\"\n- \"为标题添加飞入效果\"\n- \"添加动画让元素依次出现\"",
+        "summary": "为幻灯片中的形状添加动画效果。\n\n使用场景：\n- \"给第1页第2个形状加个淡入动画\"\n- \"��标题添加飞入效果\"\n- \"添加动画让元素依次出现\"",
         "params": {
             "slideIndex": {
                 "type": "number",
@@ -6770,6 +6770,41 @@ exports.operations = [
         }
     }),
     (0, types_1.op)({
+        "tool": "wps_word_add_table_lines",
+        "action": "addTableLines",
+        "app": "word",
+        "summary": "给表格增加行或列。kind 选 row/column，count 默认 1；给 position 就插在那一行/列之前，否则追加到末尾。使用场景：表格要再加几行。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            },
+            "kind": {
+                "type": "string",
+                "description": "加行还是加列，默认 row",
+                "enum": [
+                    "row",
+                    "column"
+                ],
+                "required": true
+            },
+            "count": {
+                "type": "number",
+                "description": "加几行/几列，默认 1"
+            },
+            "position": {
+                "type": "number",
+                "description": "插在第几行/列之前；不填则追加到末尾"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "kind"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_apply_style",
         "action": "applyStyle",
         "app": "word",
@@ -6829,6 +6864,25 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_convert_table_to_text",
+        "action": "convertTableToText",
+        "app": "word",
+        "summary": "把表格转成普通文本，列之间用一个分隔符（tab/comma/paragraph，或直接给一个字符）。使用场景：要按段落正文交付，不想留表格对象。转换后表格对象消失，文字保留。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            },
+            "separator": {
+                "type": "string",
+                "description": "列分隔符：tab / comma / paragraph，或直接给一个字符；不填用 Word 默认"
+            }
+        },
+        "effect": "lifecycle",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_create_document",
         "action": "createDocument",
         "app": "word",
@@ -6836,6 +6890,39 @@ exports.operations = [
         "params": {},
         "effect": "lifecycle",
         "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_delete_table_line",
+        "action": "deleteTableLine",
+        "app": "word",
+        "summary": "删除表格的第几行或第几列（从 1 开始）。使用场景：删掉一行多余记录。删整行用 kind=row。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            },
+            "kind": {
+                "type": "string",
+                "description": "删行还是删列，默认 row",
+                "enum": [
+                    "row",
+                    "column"
+                ],
+                "required": true
+            },
+            "lineIndex": {
+                "type": "number",
+                "description": "第几行/列（从 1 开始）",
+                "required": true
+            }
+        },
+        "effect": "delete",
+        "advertised": false,
+        "required": [
+            "kind",
+            "lineIndex"
+        ],
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -6974,6 +7061,36 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_get_bookmarks",
+        "action": "getBookmarks",
+        "app": "word",
+        "summary": "列出文档里的全部书签（名字与位置）。使用场景：填模板之前先看清有哪些占位书签。配合 wps_word_replace_bookmark_content 使用。",
+        "params": {},
+        "effect": "read",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_get_comments",
+        "action": "getComments",
+        "app": "word",
+        "summary": "列出文档里的全部批注：序号、正文、作者、时间。使用场景：汇总一批审阅意见。加批注用 wps_word_insert_comment。",
+        "params": {},
+        "effect": "read",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_get_document_stats",
+        "action": "getDocumentStats",
+        "app": "word",
+        "summary": "文档统计：页数、字数、字符数、段落数、行数。使用场景：「这份文档多少字」「排出来几页」。页数按当前排版计算。",
+        "params": {},
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_get_document_text",
         "action": "getDocumentText",
         "app": "word",
@@ -7027,6 +7144,31 @@ exports.operations = [
             "start_paragraph": "startParagraph",
             "end_paragraph": "endParagraph"
         }
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_get_table_data",
+        "action": "getTableData",
+        "app": "word",
+        "summary": "按行列读出某张表的全部单元格文本（合并单元格的非起点格子会是空字符串）。使用场景：把 Word 表格里的数据取出来核对。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            }
+        },
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_get_tables",
+        "action": "getDocumentTables",
+        "app": "word",
+        "summary": "列出文档里的全部表格：序号、行列数、样式、文本预览。使用场景：先看清文档里有几张表、哪张是要改的，再用其他表格工具按序号操作。",
+        "params": {},
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_get_track_changes_status",
@@ -7131,6 +7273,29 @@ exports.operations = [
         "advertised": false,
         "required": [
             "text"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_insert_hyperlink",
+        "action": "insertHyperlink",
+        "app": "word",
+        "summary": "在光标处插入超链接。如果当前选中了文字，就把它变成链接（用选中的文字当显示文本）；否则先插入 text 再把它变成链接。使用场景：给「详见官网」加上链接。",
+        "params": {
+            "url": {
+                "type": "string",
+                "description": "链接地址，如 https://example.com",
+                "required": true
+            },
+            "text": {
+                "type": "string",
+                "description": "显示文本；不填则直接用地址。选中了文字时忽略"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "url"
         ],
         "engine": "bridge"
     }),
@@ -7255,6 +7420,47 @@ exports.operations = [
         "advertised": true,
         "required": [
             "text"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_merge_table_cells",
+        "action": "mergeTableCells",
+        "app": "word",
+        "summary": "把一块矩形区域合并成一个单元格：从（startRow, startColumn）到（endRow, endColumn）。使用场景：表头跨列、跨行。行列都从 1 开始。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            },
+            "startRow": {
+                "type": "number",
+                "description": "起始行（从 1 开始）",
+                "required": true
+            },
+            "startColumn": {
+                "type": "number",
+                "description": "起始列（从 1 开始）",
+                "required": true
+            },
+            "endRow": {
+                "type": "number",
+                "description": "结束行（从 1 开始）",
+                "required": true
+            },
+            "endColumn": {
+                "type": "number",
+                "description": "结束列（从 1 开始）",
+                "required": true
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "startRow",
+            "startColumn",
+            "endRow",
+            "endColumn"
         ],
         "engine": "bridge"
     }),
@@ -7498,6 +7704,76 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_set_table_cell",
+        "action": "setTableCell",
+        "app": "word",
+        "summary": "写入表格的某个单元格（行列都从 1 开始）。使用场景：填表格、改一处数据。合并单元格只有起点能写。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            },
+            "row": {
+                "type": "number",
+                "description": "第几行（从 1 开始）",
+                "required": true
+            },
+            "column": {
+                "type": "number",
+                "description": "第几列（从 1 开始）",
+                "required": true
+            },
+            "text": {
+                "type": "string",
+                "description": "要写入的文本",
+                "required": true
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "row",
+            "column",
+            "text"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_set_table_format",
+        "action": "setTableFormat",
+        "app": "word",
+        "summary": "设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色。使用场景：把裸表格弄成带框线、表头有底色、宽度合适的正式表格。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            },
+            "style": {
+                "type": "string",
+                "description": "表格样式名，如「网格型」「普通表格」"
+            },
+            "borders": {
+                "type": "boolean",
+                "description": "是否显示全部边框"
+            },
+            "autoFit": {
+                "type": "string",
+                "description": "按内容自适应或按页面宽度自适应",
+                "enum": [
+                    "content",
+                    "window"
+                ]
+            },
+            "headerShading": {
+                "type": "string",
+                "description": "表头行底纹色，十六进制如 #D9E2F3"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_set_text_color",
         "action": "setTextColor",
         "app": "word",
@@ -7554,6 +7830,43 @@ exports.operations = [
         "aliases": {
             "fill_mode": "fillMode"
         }
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_split_table_cell",
+        "action": "splitTableCell",
+        "app": "word",
+        "summary": "把一个单元格拆成 rows x columns 个小格（默认 1 x 2）。使用场景：合并错了要还原、或者一格里本来就该分两列。行列都从 1 开始。",
+        "params": {
+            "table": {
+                "type": "number",
+                "description": "第几张表（从 1 开始）；不填则用第 1 张"
+            },
+            "row": {
+                "type": "number",
+                "description": "第几行（从 1 开始）",
+                "required": true
+            },
+            "column": {
+                "type": "number",
+                "description": "第几列（从 1 开始）",
+                "required": true
+            },
+            "rows": {
+                "type": "number",
+                "description": "拆成几行，默认 1"
+            },
+            "columns": {
+                "type": "number",
+                "description": "拆成几列，默认 2"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "row",
+            "column"
+        ],
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_switch_document",

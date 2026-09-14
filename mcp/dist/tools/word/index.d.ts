@@ -13,12 +13,16 @@ import { RegisteredTool } from '../../types/tools';
  * - 内容Tools: insert_text, find_replace, insert_table, set_paragraph, get_active_document, insert_image, set_font_style
  * - 文档管理Tools: get_open_documents, switch_document, open_document, get_document_text, insert_header, insert_footer, generate_doc_toc
  * - 校对Tools: enable_track_changes, get_track_changes_status, replace_range, proofread_basic
+ * - 深水区Tools（P3）: get_bookmarks, get_comments, get_document_stats, insert_hyperlink,
+ *   get_tables, get_table_data, set_table_cell, add_table_lines, delete_table_line,
+ *   merge_table_cells, split_table_cell, set_table_format, convert_table_to_text
  */
 export declare const wordTools: RegisteredTool[];
 export { formatTools } from './format';
 export { contentTools } from './content';
 export { documentTools } from './document';
 export { proofreadTools } from './proofread';
+export { wordDeepTools } from './deep';
 export { applyStyleDefinition, applyStyleHandler, setFontDefinition, setFontHandler, generateTocDefinition, generateTocHandler, insertBookmarkDefinition, insertBookmarkHandler, setPageSetupDefinition, setPageSetupHandler, } from './format';
 export { insertTextDefinition, insertTextHandler, findReplaceDefinition, findReplaceHandler, insertTableDefinition, insertTableHandler, setParagraphDefinition, setParagraphHandler, getActiveDocumentDefinition, getActiveDocumentHandler, insertPageBreakDefinition, insertPageBreakHandler, insertCommentDefinition, insertCommentHandler, setTextColorDefinition, setTextColorHandler, getParagraphsDefinition, getParagraphsHandler, findInDocumentDefinition, findInDocumentHandler, smartFillFieldDefinition, smartFillFieldHandler, replaceBookmarkContentDefinition, replaceBookmarkContentHandler, } from './content';
 export { getOpenDocumentsDefinition, getOpenDocumentsHandler, switchDocumentDefinition, switchDocumentHandler, openDocumentDefinition, openDocumentHandler, createDocumentDefinition, createDocumentHandler, closeDocumentDefinition, closeDocumentHandler, getDocumentTextDefinition, getDocumentTextHandler, insertHeaderDefinition, insertHeaderHandler, insertFooterDefinition, insertFooterHandler, insertSectionBreakDefinition, insertSectionBreakHandler, setLineSpacingDefinition, setLineSpacingHandler, } from './document';
