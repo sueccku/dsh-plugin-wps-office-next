@@ -105,6 +105,75 @@ function Get-WpsWord { return Get-WpsApp 'word' }
 
 function Get-WpsPpt { return Get-WpsApp 'ppt' }
 
+# ==================== 模态弹窗围堵 (S1) ====================
+# WPS 打开加密文档时会弹「文档已加密」模态框；模态框在 STA 里是阻塞的，整个宿主线程就此停住，
+# 请求永不返回、客户端超时、后续每次调用一起挂。本机实测（WPS 12.1 x64，见 docs/FIXES.md 52）：
+#   Documents.Open(path)                                    -> 卡死（弹框）
+#   Documents.Open(path, ..., PasswordDocument:="")         -> 仍卡死（空串=「没给密码」）
+#   Documents.Open(path, ..., PasswordDocument:="<哨兵值>")  -> 4 秒内返回错误，不弹框
+#   Workbooks.Open(path)                                    -> 卡死（弹框）
+#   Workbooks.Open(path, 0, ..., Password:="<哨兵值>")       -> 1 秒内返回错误，不弹框
+# 所以真正把弹框挡在门外的是**非空哨兵密码**，`DisplayAlerts` 管不到它（实测 Word 的
+# DisplayAlerts 为 0 时密码框照样弹）。哨兵值不可能等于任何真实密码，这正是重点：加密文件
+# 改为**快速报错**，而不是无限等待一个没人知道的密码。
+$script:WpsNoPassword = 'dsh-wps-office-next/no-password-supplied'
+
+function Set-WpsAlertsSuppressed($app, [string]$kind) {
+    # 关掉弹窗并返回原值供调用方还原；读不到或写不了就返回 $null，调用方据此跳过还原，
+    # 绝不因为「还原失败」把动作本身搞错。
+    if ($null -eq $app) { return $null }
+    $off = if ($kind -eq 'ppt') { 1 } else { $false }
+    $prev = $null
+    try { $prev = $app.DisplayAlerts } catch { return $null }
+    try { $app.DisplayAlerts = $off } catch { return $null }
+    return $prev
+}
+
+function Restore-WpsAlerts($app, $prev) {
+    # try/finally 里调用；还原失败只降级为静默，因为此时动作结果已经拿到。
+    if ($null -eq $app -or $null -eq $prev) { return }
+    try { $app.DisplayAlerts = $prev } catch { }
+}
+
+function Open-WordDocument($word, [string]$path) {
+    # WPS 的 IDispatch 不支持命名参数（实测 E_INVALIDARG），只能按位置传，顺序不能改：
+    # FileName, ConfirmConversions, ReadOnly, AddToRecentFiles, PasswordDocument, PasswordTemplate,
+    # Revert, WritePasswordDocument, WritePasswordTemplate, Format, Encoding, Visible, OpenAndRepair,
+    # DocumentDirection, NoEncodingDialog
+    return $word.Documents.Open($path, $false, $false, $true, $script:WpsNoPassword, "", $false, "", "", 0, 0, $false, $false, 0, $true)
+}
+
+function Open-ExcelWorkbook($excel, [string]$path, $updateLinks, [bool]$readOnly) {
+    # UpdateLinks 默认 0（不更新外部链接）而不是留空：留空等同于「按设置来」，而设置里
+    # AskToUpdateLinks 为真时照样弹框。调用方显式给了值就尊重它。
+    # FileName, UpdateLinks, ReadOnly, Format, Password, WriteResPassword, IgnoreReadOnlyRecommended
+    $links = 0
+    if ($null -ne $updateLinks) { try { $links = [int]$updateLinks } catch { $links = 0 } }
+    return $excel.Workbooks.Open($path, $links, $readOnly, $null, $script:WpsNoPassword, "", $true)
+}
+
+function Open-PptPresentation($ppt, [string]$path) {
+    # Presentations.Open 没有密码参数，加密演示文稿仍会弹框（已知残余限制，见 README）；
+    # 其余弹窗由调用方的 DisplayAlerts 抑制。FileName, ReadOnly, Untitled, WithWindow
+    return $ppt.Presentations.Open($path, $false, $false, $true)
+}
+
+function Format-WpsOpenError([string]$path, [string]$kind, [string]$message) {
+    # 加密文件的原始错误在 WPS 里并不统一：Excel 给裸 HRESULT 0xFFF40006，Word 只给一句
+    # 「文档打开失败。」这样的 stub。前者能精确判定，后者只能把「加密」当成最可能的原因说明白。
+    $text = [string]$message
+    if ($text -match 'FFF40006' -or $text -match '密码' -or $text -match '加密' -or $text -match 'password') {
+        return ("无法打开「" + $path + "」：文件已加密，需要密码。插件不会弹出密码对话框（那会把整个会话卡死）；" +
+            "请先用 WPS 手工打开它，另存为一份不加密的副本，再对副本操作。")
+    }
+    if ($text -match 'not exist' -or $text -match '找不到' -or $text -match '不存在' -or $text -match '0x80070002') {
+        return ("无法打开「" + $path + "」：文件不存在或路径不可读。原始错误：" + $text)
+    }
+    return ("无法打开「" + $path + "」（" + $kind + "）：" + $text +
+        " 若该文件设置了打开密码，插件不会弹出密码框（弹框会把整个会话卡死）；" +
+        "请先用 WPS 手工打开它、另存为一份不加密的副本，再对副本操作。")
+}
+
 # 解析目标演示文稿：优先按 presentationName 精确定位（避免多文稿打开时 ActivePresentation 漂移），
 # 未提供则回退到当前活动文稿；提供了但找不到则返回 $null（让调用方报明确错误，而不是误改其它文稿）。
 function Get-TargetPres($ppt, $p) {
@@ -1219,20 +1288,35 @@ return }
         if ($appType -eq 'excel') {
             $excel = Get-WpsExcel
             if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-            $excel.Workbooks.Open($path)
-            Output-Json @{ success = $true; data = @{ path = $path; appType = "excel" } }
+            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+            $wb = $null
+            $openError = $null
+            try { $wb = Open-ExcelWorkbook $excel $path $null $false } catch { $openError = $_.Exception.Message }
+            Restore-WpsAlerts $excel $prevAlerts
+            if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path 'excel' $openError) }; return }
+            Output-Json @{ success = $true; data = @{ path = $path; appType = "excel"; name = $wb.Name } }
 return }
         if ($appType -eq 'word') {
             $word = Get-WpsWord
             if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-            $word.Documents.Open($path)
-            Output-Json @{ success = $true; data = @{ path = $path; appType = "word" } }
+            $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
+            $opened = $null
+            $openError = $null
+            try { $opened = Open-WordDocument $word $path } catch { $openError = $_.Exception.Message }
+            Restore-WpsAlerts $word $prevAlerts
+            if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path 'word' $openError) }; return }
+            Output-Json @{ success = $true; data = @{ path = $path; appType = "word"; name = $opened.Name } }
 return }
         if ($appType -eq 'ppt') {
             $ppt = Get-WpsPpt
             if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-            $ppt.Presentations.Open($path)
-            Output-Json @{ success = $true; data = @{ path = $path; appType = "ppt" } }
+            $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+            $opened = $null
+            $openError = $null
+            try { $opened = Open-PptPresentation $ppt $path } catch { $openError = $_.Exception.Message }
+            Restore-WpsAlerts $ppt $prevAlerts
+            if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path 'ppt' $openError) }; return }
+            Output-Json @{ success = $true; data = @{ path = $path; appType = "ppt"; name = $opened.Name } }
 return }
         Output-Json @{ success = $false; error = "Unknown app type" }
     }
@@ -4418,7 +4502,17 @@ return }
     "openWorkbook" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $wb = $excel.Workbooks.Open($p.path, $p.updateLinks, $p.readOnly)
+        if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; return }
+        $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+        # AskToUpdateLinks 也是弹框来源，和 UpdateLinks 参数一起双重保险。
+        $prevAskLinks = $null
+        try { $prevAskLinks = [bool]$excel.AskToUpdateLinks; $excel.AskToUpdateLinks = $false } catch { }
+        $wb = $null
+        $openError = $null
+        try { $wb = Open-ExcelWorkbook $excel $p.path $p.updateLinks ([bool]$p.readOnly) } catch { $openError = $_.Exception.Message }
+        try { if ($null -ne $prevAskLinks) { $excel.AskToUpdateLinks = $prevAskLinks } } catch { }
+        Restore-WpsAlerts $excel $prevAlerts
+        if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'excel' $openError) }; return }
         Output-Json @{ success = $true; data = @{ name = $wb.Name; path = $wb.FullName; sheets = $wb.Sheets.Count } }
     }
 
@@ -4546,7 +4640,12 @@ return }
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; return }
-        $docItem = $word.Documents.Open($p.path)
+        $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
+        $docItem = $null
+        $openError = $null
+        try { $docItem = Open-WordDocument $word $p.path } catch { $openError = $_.Exception.Message }
+        Restore-WpsAlerts $word $prevAlerts
+        if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'word' $openError) }; return }
         Output-Json @{ success = $true; data = @{ name = $docItem.Name; path = $docItem.FullName; paragraphs = $docItem.Paragraphs.Count } }
     }
 
@@ -5159,7 +5258,12 @@ return }
         $ppt = Get-WpsPpt
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; return }
-        $pres = $ppt.Presentations.Open($p.path)
+        $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+        $pres = $null
+        $openError = $null
+        try { $pres = Open-PptPresentation $ppt $p.path } catch { $openError = $_.Exception.Message }
+        Restore-WpsAlerts $ppt $prevAlerts
+        if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'ppt' $openError) }; return }
         Output-Json @{ success = $true; data = @{ name = $pres.Name; path = $pres.FullName; slideCount = $pres.Slides.Count } }
     }
 

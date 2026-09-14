@@ -1347,6 +1347,70 @@ add the exact key under allowBuilds」。**本包没有 `prepare` 脚本、也�
 
 顺带把 `docs/PROGRESS.md` 里「可用 README 中的一条命令重建测试 profile」改成具体命令
 （`node scripts/e2e.mjs --profile <name> --setup`）——原来那句指向已经不存在的章节写法。
+### 52. 加固第 1 波（S1 + S2）：模态弹窗围堵 + 宿主单实例与看门狗
+
+**S1 的实测结论与计划里的假设不一样，先测量再改代码救了这一条。**
+
+计划写的是「`ConfirmConversions:=0`、`PasswordDocument:=""`」，但实测：
+
+| 探针（WPS 12.1 x64） | 结果 |
+|---|---|
+| `Documents.Open(path)` 打开加密 .docx | **卡死**（弹出 `文档已加密` 模态框，pid 16460 / class `Qt5QWindow`） |
+| `Documents.Open(path, …, PasswordDocument:="")` | **照样卡死**——空串等于「没给密码」，框还是会弹 |
+| `Documents.Open(path, …, PasswordDocument:="<非空哨兵>")` | **4 秒内返回错误**，不弹框 |
+| `Workbooks.Open(path)` 打开加密 .xlsx | **卡死** |
+| `Workbooks.Open(path, 0, …, Password:="<哨兵>", …, $true)` | **1 秒内返回** `HRESULT 0xFFF40006`（密码错） |
+| 15 字符密码的 .xlsx（Excel SaveAs 生成） | 哨兵仍然 **218ms 拒绝**，说明与文件密码长度无关 |
+| 扩展名不符（文本文件叫 .doc），裸开 | 18 秒返回并成功——**这台 WPS 不弹转换框**，与计划假设不符 |
+| `DisplayAlerts` | Word 侧本来就是 0，密码框**照样弹**；它不是这道题的解 |
+| Word 命名参数（`InvokeMember` + namedParameters） | `E_INVALIDARG`，**WPS 的 IDispatch 不支持命名参数**，只能按位置传满 15 个 |
+| 打开加密到一半把宿主杀掉 | 弹框还在，新宿主连上去继续卡——这就是「杀宿主没用」 |
+
+所以真正把弹框挡在门外的是**非空哨兵密码**，落地为 `$script:WpsNoPassword`，四个打开路径
+（`openFile` / `openWorkbook` / `openDocument` / `openPresentation`）统一走
+`Set-WpsAlertsSuppressed` + `Open-*` 助手 + `try/finally` 还原 `DisplayAlerts`。
+
+**偏离计划的一处（有实测依据）**：计划要求超时后 `Stop-Process` **整个 WPS 进程树**。
+实测本机 WPS 家族有 **243 个进程叫 `wps`**（外加 `et` / `wpp` / `wpscloudsvr`），而 Word 与 PPT 的
+COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是被卡住的那个」**无法可靠归属**。
+照计划做等于把用户整套 WPS（含云同步与所有已打开文档）一起杀掉，违反第 2 条判据「不丢数据」。
+因此改为：**不自动关 WPS**，把状态讲清楚 + 让后续调用用短超时快速失败；同时把宿主的**陈旧接管**
+做成进程级可靠（见下），保证 DSH 重启后能自动恢复。
+
+**S1 客户端语义（`com-host.ts`）**：超时文案改为「操作超时：<action> 超过 <ms>ms 未返回 +
+**状态未知**（可能被对话框阻塞）+ 不许自动关 WPS + 下一步做什么」；置 `suspect` 标志，之后每次调用
+先用 `SUSPECT_TIMEOUT_MS`（默认 15s）短超时，**成功一次即恢复**。
+
+**S2 宿主单实例**：`host/wps-com-host.ps1` 启动时抢名为
+`Local\dsh-plugin-wps-office-next-com-host` 的命名互斥体；第二个宿主**不硬上**，回一句中文错误
+（「检测到另一个 DSH 会话或自动化程序正在控制 WPS…」）并以非零码退出。单靠互斥体不够，因为
+「被 COM 卡住杀不掉的宿主」会永久占位，所以再加一份租约文件
+（`%USERPROFILE%\.wps-office-mcp\com-host.json`，记 hostPid / clientPid / 心跳 / 当前动作），
+只有**能证明原主已死**（进程没了、或它的 DSH/MCP 客户端没了、或心跳停摆 > 120s）才接管，
+接管只杀**那个陈旧宿主**，从不杀 WPS。
+
+**新增测试（24 项断言，全部真机/真进程）**
+- `test/host-lease.test.mjs`（18）：首个宿主就位 → 第二个被可读中文拒绝且退出码非零 →
+  **拒绝者不影响在位者** → 释放后新宿主接管 → 客户端已死的陈旧宿主**被接管而不是报假冲突**。
+- `test/open-safety.test.mjs`（20）：普通 .docx/.xlsx 照常打开、不残留；扩展名不符返回；
+  **加密 .docx / .xlsx 在 1 秒内失败**并给出「文件已加密…请另存为一份不加密的副本」；
+  之后 `ping` 仍然通（证明没留下阻塞）；缺文件快速报错。fixture 用裸 COM 生成并**验证真的加密了**
+  （否则整份测试会为了错误的原因通过）。
+- `test/watchdog.test.mjs`（15，不需要 WPS，用一个「按文件里的延迟作答」的 stub 宿主）：
+  超时文案含「状态未知」且点名动作 → 下一次调用走短超时 → 成功一次恢复常规超时 →
+  **4 次调用只有 4 个请求到达宿主，证明没有偷偷重试**。
+
+**写测试时抓到两个真 bug（都不是本次新引入的，是原来的恢复路径缺陷）**
+1. **陈旧子进程反杀新宿主**：超时把宿主杀掉后，旧进程的 `exit` 事件在新宿主已经起来之后才到，
+   而 `exit` 处理函数没有「我还是不是当前子进程」的判断，于是把刚拉起来的新宿主也杀了——
+   恢复路径直接崩。修法：`exit`/`error`/stdout/stderr 全部加 `this.child === child` 守卫。
+2. **`ready` 帧把 suspect 标志清掉**：新宿主进程起来只证明「PowerShell 活了」，不证明 WPS 活了；
+   原来在 ready 分支清了标志，导致短超时形同虚设。修法：只有**真正拿到动作结果**才清。
+另外给新宿主加了一道确定性：`killChild` 记下待退出的进程，下一次 `ensureStarted` **等它真的退出**
+再拉起，避免「尸体还占着租约 → 新宿主被当成第二个会话」的时序性失败。
+
+**验收**：`open-safety` 20/20、`host-lease` 18/18、`watchdog` 15/15；`verify.mjs` 23 项全绿。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1362,6 +1426,11 @@ add the exact key under allowBuilds」。**本包没有 `prepare` 脚本、也�
   跨应用搬运数据时，这种「不报错的空操作」比报错更难查（第 39 条）。
 - **表对象在结构性变更后不刷新**：`ListRows.Delete()`/`Add()` 之后，手里那个 ListObject 仍返回旧的
   `ListRows.Count` 与旧的 `Range.Address()`，要重新取一次对象才是新结构。Excel 会当场更新（第 40 条）。
+- **`Document.Password` 按密码长度失效，而且是「静默不加密」**（第 52 条实测，只影响
+  `wps_execute_method` 这条逃生舱）：4～14 字符正常加密；**15 字符把调用直接卡死**（>30 秒无返回、
+  且查不到任何 WPS 模态框）；**17 字符静默写出一个完全不加密的文件**——文件是普通 ZIP，
+  打开不需要任何密码。想给文档加打开密码的业务，**不要**用这条路径；
+  本插件的正式工具里也没有「设置打开密码」的能力（只有工作表/工作簿保护，那个是另一回事）。
 
 ## 验证
 
@@ -1397,8 +1466,11 @@ add the exact key under allowBuilds」。**本包没有 `prepare` 脚本、也�
 | test/word-deep.test.mjs | 27 | P3 书签/批注/统计/超链接 + 表格读写编辑与外观 |
 | test/word-produce.test.mjs | 19 | P3-3 页码/分栏/修订接受拒绝/批注删除 |
 | test/word-longtail.test.mjs | 20 | P3-4 内容控件/脚注尾注/索引/交叉引用/CSV 邮件合并 |
+| test/host-lease.test.mjs | 18 | S2：单实例租约、第二个宿主被可读拒绝、陈旧宿主接管（不需要 WPS） |
+| test/open-safety.test.mjs | 20 | S1：加密文档快速失败不弹框、常规打开照常、失败后桥仍可用 |
+| test/watchdog.test.mjs | 15 | S1 客户端：超时文案「状态未知」、短超时、成功即恢复、不偷偷重试（不需要 WPS） |
 
-合计 **541 项**（25 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **594 项**（28 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

@@ -39,6 +39,8 @@ exports.comHost = exports.ComHost = exports.POWERSHELL_EXE = exports.HOST_SCRIPT
  * Output: WPS action result
  * Pos: Windows resident COM host client. Owns the long-lived PowerShell process,
  *      serializes calls, applies per-action timeouts and recovers from crashes.
+ *      A timeout reports "state unknown" and shortens the next call instead of retrying blindly,
+ *      because the host cannot tell a blocked dialog from a dead WPS.
  *      一旦我被修改，请更新我的头部注释。
  */
 const child_process_1 = require("child_process");
@@ -66,14 +68,23 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.WPS_OFFICE_TIMEOUT_MS || 60000);
 const LONG_TIMEOUT_MS = Number(process.env.WPS_OFFICE_LONG_TIMEOUT_MS || 300000);
 const STARTUP_TIMEOUT_MS = Number(process.env.WPS_OFFICE_STARTUP_TIMEOUT_MS || 60000);
 /**
+ * After a timeout the host is killed but WPS itself is deliberately left alone: it may still be
+ * showing a modal dialog, and force-closing it would throw away whatever the user had unsaved.
+ * So the next call runs under a short leash instead - it either proves WPS answers again (and the
+ * normal timeout comes back) or fails fast with the same explanation, instead of hanging the
+ * session for another full timeout.
+ */
+const SUSPECT_TIMEOUT_MS = Number(process.env.WPS_OFFICE_SUSPECT_TIMEOUT_MS || 15000);
+/**
  * Absolute path to Windows PowerShell 5.1. The action layer depends on 5.1 COM adapter
  * semantics, so the host is pinned to the in-box interpreter instead of whatever 'powershell'
  * resolves to on PATH.
  */
 exports.POWERSHELL_EXE = process.env.WPS_OFFICE_POWERSHELL ||
     path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-function timeoutFor(action) {
-    return LONG_ACTIONS.has(action) ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+function timeoutFor(action, suspect = false) {
+    const normal = LONG_ACTIONS.has(action) ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+    return suspect ? Math.min(normal, SUSPECT_TIMEOUT_MS) : normal;
 }
 /**
  * Resident COM host.
@@ -90,9 +101,24 @@ class ComHost {
     sequence = 0;
     chain = Promise.resolve();
     stderrTail = [];
+    /**
+     * Set by a timeout and cleared by the next successful frame: while it is set, calls use the
+     * short suspect timeout so a blocked WPS cannot pin the session for a full minute per call.
+     */
+    suspect = false;
+    /**
+     * The host killed most recently, kept until its process is really gone. The next spawn waits for
+     * that exit, because the host holds a single-instance lease over WPS and a successor that arrives
+     * while the corpse still owns it would be refused as a second session.
+     */
+    awaitingExit = null;
     /** True while a host process is attached. */
     get isRunning() {
         return this.child !== null && !this.child.killed;
+    }
+    /** True while WPS is presumed blocked after a timeout (short-timeout mode). */
+    get isSuspect() {
+        return this.suspect;
     }
     /** Invoke one WPS action through the resident host. */
     invoke(action, params = {}) {
@@ -105,11 +131,16 @@ class ComHost {
         const child = this.child;
         this.child = null;
         this.failInflight(new Error('COM host stopped'));
-        if (child) {
+        if (child && !child.killed) {
+            this.awaitingExit = child;
+            child.once('exit', () => { if (this.awaitingExit === child)
+                this.awaitingExit = null; });
             try {
                 child.kill();
             }
-            catch { /* already gone */ }
+            catch {
+                this.awaitingExit = null;
+            }
         }
     }
     async dispatch(action, params) {
@@ -121,13 +152,20 @@ class ComHost {
                 reject(new Error('COM host is not available'));
                 return;
             }
+            const timeoutMs = timeoutFor(action, this.suspect);
             const timer = setTimeout(() => {
                 // A timed-out action means the host is stuck inside COM; the process is not reusable.
-                logger_1.log.warn('COM host timeout, restarting host', { action, id });
+                // WPS itself is left running on purpose - see SUSPECT_TIMEOUT_MS.
+                this.suspect = true;
+                logger_1.log.warn('COM host timeout; WPS state unknown, host killed', { action, id, timeoutMs });
                 this.inflight = null;
                 this.killChild(new Error('COM host timeout calling ' + action));
-                reject(new Error('WPS 操作超时（' + timeoutFor(action) + 'ms）: ' + action));
-            }, timeoutFor(action));
+                reject(new Error('操作超时：' + action + ' 超过 ' + timeoutMs + 'ms 未返回。' +
+                    '状态未知：WPS 可能正被一个对话框阻塞（例如文档密码框），也可能已经无响应；' +
+                    '插件不会自动关闭 WPS，以免丢掉你未保存的内容。' +
+                    '下一步：切到 WPS 窗口处理弹出的对话框，然后重试' +
+                    '（后续调用会先用 ' + SUSPECT_TIMEOUT_MS + 'ms 的短超时快速失败，成功一次即恢复）。'));
+            }, timeoutMs);
             this.inflight = { id, resolve, reject, timer };
             const frame = JSON.stringify({ id, action, params });
             child.stdin.write(frame + '\n', (error) => {
@@ -139,9 +177,22 @@ class ComHost {
             });
         });
     }
-    ensureStarted() {
+    async ensureStarted() {
         if (this.isRunning)
-            return Promise.resolve();
+            return;
+        // A host killed a moment ago may still be tearing down; spawning into that window would look
+        // like a second DSH session to the lease and fail for a reason the user cannot act on.
+        const dying = this.awaitingExit;
+        if (dying && dying.exitCode === null && dying.signalCode === null) {
+            await new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(), 3000);
+                dying.once('exit', () => { clearTimeout(timer); resolve(); });
+            });
+        }
+        if (this.awaitingExit === dying)
+            this.awaitingExit = null;
+        if (this.isRunning)
+            return;
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 this.readyWaiters = this.readyWaiters.filter((w) => w.timer !== timer);
@@ -156,25 +207,41 @@ class ComHost {
             this.stdoutBuffer = '';
             let child;
             try {
-                child = (0, child_process_1.spawn)(exports.POWERSHELL_EXE, ['-NoProfile', '-NoLogo', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', exports.HOST_SCRIPT], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+                child = (0, child_process_1.spawn)(exports.POWERSHELL_EXE, ['-NoProfile', '-NoLogo', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', exports.HOST_SCRIPT], {
+                    windowsHide: true,
+                    stdio: ['pipe', 'pipe', 'pipe'],
+                    // The host records this pid in its single-instance lease, so a host left behind by a
+                    // dead MCP server can be recognised as stale and taken over instead of blocking WPS.
+                    env: { ...process.env, WPS_OFFICE_CLIENT_PID: String(process.pid) },
+                });
             }
             catch (error) {
                 this.failReady(new Error('COM host spawn failed: ' + error.message));
                 return;
             }
             this.child = child;
-            child.stdout?.on('data', (chunk) => this.onStdout(chunk.toString()));
-            child.stderr?.on('data', (chunk) => this.onStderr(chunk.toString()));
+            child.stdout?.on('data', (chunk) => this.onStdout(child, chunk.toString()));
+            child.stderr?.on('data', (chunk) => this.onStderr(child, chunk.toString()));
             child.on('error', (error) => {
+                if (this.child !== child)
+                    return;
                 this.killChild(new Error('COM host process error: ' + error.message));
             });
             child.on('exit', (code, signal) => {
+                // A host that was already replaced must not be able to kill its successor: the timeout
+                // path kills the old process and the caller's next call spawns a new one immediately, and
+                // the old process's exit event then arrives after that new host is already attached.
+                if (this.child !== child)
+                    return;
                 const detail = 'COM host exited (code=' + String(code) + ', signal=' + String(signal) + ')';
                 this.killChild(new Error(detail + (this.stderrTail.length ? ' :: ' + this.stderrTail.join(' | ') : '')));
             });
         });
     }
-    onStdout(chunk) {
+    onStdout(child, chunk) {
+        // Output from a host that was already replaced must not be mixed into the current buffer.
+        if (this.child !== child)
+            return;
         this.stdoutBuffer += chunk;
         let index = this.stdoutBuffer.indexOf('\n');
         while (index >= 0) {
@@ -201,7 +268,9 @@ class ComHost {
                 this.killChild(new Error('resident COM host reported PowerShell ' + frame.psVersion + '; this host requires Windows PowerShell 5.1 at ' + exports.POWERSHELL_EXE));
                 return;
             }
-            logger_1.log.info('Resident COM host ready', { pid: frame.pid, psVersion: frame.psVersion, exe: exports.POWERSHELL_EXE });
+            logger_1.log.info('Resident COM host ready', { pid: frame.pid, clientPid: frame.clientPid, psVersion: frame.psVersion, exe: exports.POWERSHELL_EXE });
+            // Deliberately NOT clearing `suspect` here: a freshly spawned host saying "ready" says
+            // nothing about WPS, and clearing it would hand a still-blocked WPS a full timeout again.
             this.failReady(null);
             return;
         }
@@ -216,9 +285,13 @@ class ComHost {
         }
         clearTimeout(inflight.timer);
         this.inflight = null;
+        // WPS answered, so whatever blocked it before is gone; the normal timeout comes back.
+        this.suspect = false;
         inflight.resolve(frame.result || { success: false, error: 'COM host returned no result' });
     }
-    onStderr(chunk) {
+    onStderr(child, chunk) {
+        if (this.child !== child)
+            return;
         const text = chunk.trim();
         if (!text)
             return;
@@ -251,10 +324,15 @@ class ComHost {
         this.child = null;
         this.stdoutBuffer = '';
         if (child && !child.killed) {
+            this.awaitingExit = child;
+            child.once('exit', () => { if (this.awaitingExit === child)
+                this.awaitingExit = null; });
             try {
                 child.kill();
             }
-            catch { /* already gone */ }
+            catch {
+                this.awaitingExit = null;
+            }
         }
         this.failReady(cause);
         this.failInflight(cause);

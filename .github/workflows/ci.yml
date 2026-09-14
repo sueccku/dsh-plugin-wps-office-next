@@ -1,6 +1,6 @@
 # Static gates only. These need nothing but the checkout, Node and Windows PowerShell 5.1, so they
-# run on GitHub's windows runner. The 310 unit tests and the one-command e2e drive a real WPS
-# installation and stay local on purpose - see the quality-gate section of README.md and
+# run on GitHub's windows runner. The unit tests that drive a real WPS installation and the
+# one-command e2e stay local on purpose - see the quality-gate section of README.md and
 # docs/FIXES.md entries 24-30.
 name: ci
 
@@ -71,7 +71,9 @@ jobs:
       - name: Committed contract report must match
         run: git diff --exit-code -- docs/param-contract.md
 
-      - name: Static unit tests (DSH entry and resident host protocol)
+      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog)
         run: |
           node test/plugin.test.mjs
           node test/com-host.test.mjs
+          node test/host-lease.test.mjs
+          node test/watchdog.test.mjs

@@ -28,8 +28,21 @@ export declare class ComHost {
     private sequence;
     private chain;
     private stderrTail;
+    /**
+     * Set by a timeout and cleared by the next successful frame: while it is set, calls use the
+     * short suspect timeout so a blocked WPS cannot pin the session for a full minute per call.
+     */
+    private suspect;
+    /**
+     * The host killed most recently, kept until its process is really gone. The next spawn waits for
+     * that exit, because the host holds a single-instance lease over WPS and a successor that arrives
+     * while the corpse still owns it would be refused as a second session.
+     */
+    private awaitingExit;
     /** True while a host process is attached. */
     get isRunning(): boolean;
+    /** True while WPS is presumed blocked after a timeout (short-timeout mode). */
+    get isSuspect(): boolean;
     /** Invoke one WPS action through the resident host. */
     invoke(action: string, params?: Record<string, unknown>): Promise<WpsActionOutcome>;
     /** Stop the host; the next invoke starts a fresh one. */
