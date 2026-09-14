@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-wps-office-next",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "description": "One-stop DeepSeek Harness bundle for WPS Office on Windows (COM-only). Merged from lc2panda/wps-skills and CatNebulaaaa/wps-dsh-plugin.",
   "type": "module",
