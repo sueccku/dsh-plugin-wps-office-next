@@ -64,7 +64,7 @@
 ### 已经实测过的
 
 - 两轮真实 e2e（上表）、产物用独立 COM 会话重开复核；
-- **一键 e2e 验收已跑通**：`node scripts/e2e.mjs --profile <name>` → 19 项检查、65 秒、exit 0；
+- **一键 e2e 验收已跑通**：`node scripts/e2e.mjs --profile <name>` → 28 项检查、两个真实场景、exit 0；
   另做过负向验证（超时压到 5 秒 → 10 项 FAIL、exit 1），确认它会真的失败而不只是打印 PASS；
 - 443 项测试 + 23 项门禁全绿，参数契约对账 240 对、四类静默失效均为 0；
 - **CI 在 GitHub 的 windows-latest 上跑通**（首次运行 13 步全绿、67 秒）：tsc 与三处产物漂移检查
@@ -181,10 +181,10 @@
     node test/xxx.test.mjs                         # 逐文件跑；需要本机装好 WPS
     node scripts/e2e.mjs --profile <name>          # 一键端到端验收；需要该 profile 已装本包 + 本机 WPS
 
-端到端验收是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造一份 fixture 工作簿
+端到端验收是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（本场景两份）
 （裸 COM，刻意不走本插件，免得用具自己的 bug 伪造输入）→ 跑一个真实 headless 任务 → 逐帧解会话日志
 打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「操作结果里没有缺陷标记」
-「模型没有自己写 COM 脚本」。**19 项检查、约 65 秒**。profile 不存在时加 `--setup` 一步建好并安装本包。
+「模型没有自己写 COM 脚本」。**28 项检查、约 95 秒**；第二场景（P2-5）要求把另一份订单工作簿变成真正的表、加条件格式并设成可打印，见 docs/FIXES.md 第 44 条。profile 不存在时加 `--setup` 一步建好并安装本包。
 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
 当前数字：**443 项测试**（21 个文件，含 spec 复现验收 12 项）+ **23 项门禁**全绿；广告面

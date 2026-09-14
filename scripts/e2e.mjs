@@ -36,6 +36,18 @@ const FIXTURE_ROWS = [
 const EXPECTED_ROWS = [['华北', 330], ['华南', 280], ['华东', 240], ['西南', 165]];
 const EXPECTED_TOTAL = 1015;
 
+// Scenario 2 (P2-5): a separate order workbook that the same run has to turn into a real table
+// (ListObject), conditional-format its amount column and make print-ready. Amounts above 500:
+// 680, 720, 900, 510, 830, 600 - six of them.
+const ORDER_ROWS = [
+  ['订单号', '区域', '产品', '金额'],
+  ['A001', '华东', 'A', 120], ['A002', '华东', 'B', 680], ['A003', '华南', 'A', 450],
+  ['A004', '华南', 'C', 720], ['A005', '华北', 'B', 300], ['A006', '华北', 'A', 900],
+  ['A007', '华东', 'C', 150], ['A008', '华南', 'B', 510], ['A009', '华北', 'C', 260],
+  ['A010', '西南', 'A', 830], ['A011', '西南', 'B', 90], ['A012', '西南', 'C', 600],
+];
+const ORDER_LAST_ROW = ORDER_ROWS.length;
+
 // Strings an earlier real run produced. Any of them in a tool result is a regression.
 const DEFECT_MARKERS = [
   'unknown parameter(',
@@ -65,19 +77,19 @@ function printHelp() {
     '  --profile <name>   DSH profile that has this bundle installed (required)',
     '  --setup            create that profile from the headless template and install this repo into it',
     '  --dsh-bin <path>   path to @deepseek-ai/dsh/lib/bin.js when it cannot be located automatically',
-    '  --timeout <sec>    per-run wall clock limit (default 300; the observed run takes about 70s)',
+    '  --timeout <sec>    per-run wall clock limit (default 420; the observed two-scenario run takes about 2-3 min)',
     '  --clean            delete the generated fixture and output document when every check passes',
   ].join('\n'));
 }
 
 function parseArgs(argv) {
-  const opts = { profile: '', setup: false, dshBin: '', timeoutSec: 300, clean: false };
+  const opts = { profile: '', setup: false, dshBin: '', timeoutSec: 420, clean: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--profile') opts.profile = argv[++i] || '';
     else if (arg === '--setup') opts.setup = true;
     else if (arg === '--dsh-bin') opts.dshBin = argv[++i] || '';
-    else if (arg === '--timeout') opts.timeoutSec = Number(argv[++i] || 300);
+    else if (arg === '--timeout') opts.timeoutSec = Number(argv[++i] || 420);
     else if (arg === '--clean') opts.clean = true;
     else if (arg === '--help' || arg === '-h') { printHelp(); process.exit(0); }
     else die('unknown argument: ' + arg);
@@ -127,13 +139,16 @@ function psArray(values) {
   }).join(', ');
 }
 
+// Both fixtures come out of one raw-COM session; the second workbook is the P2-5 scenario.
 function fixtureScript() {
   const rows = FIXTURE_ROWS.map((row) => '  @(' + psArray(row) + ')').join(',\r\n');
+  const orderRows = ORDER_ROWS.map((row) => '  @(' + psArray(row) + ')').join(',\r\n');
   return [
-    'param([string]$Path)',
+    'param([string]$Path, [string]$OrdersPath)',
     "$ErrorActionPreference = 'Stop'",
     '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
     'if (Test-Path $Path) { Remove-Item $Path -Force }',
+    'if (Test-Path $OrdersPath) { Remove-Item $OrdersPath -Force }',
     '$app = New-Object -ComObject Ket.Application',
     '$app.DisplayAlerts = $false',
     'try {',
@@ -153,16 +168,33 @@ function fixtureScript() {
     "    $ws.Range('A1:C' + $rows.Count).Value2 = $data",
     '    $wb.SaveAs($Path, 51)',
     '    $wb.Close($false)',
+    '',
+    '    $wb2 = $app.Workbooks.Add()',
+    '    $ws2 = $app.ActiveSheet',
+    "    $ws2.Name = '订单'",
+    '    $orderRows = @(',
+    orderRows,
+    '    )',
+    "    $data2 = New-Object 'object[,]' $orderRows.Count, 4",
+    '    for ($r = 0; $r -lt $orderRows.Count; $r++) {',
+    '        for ($c = 0; $c -lt 4; $c++) {',
+    '            $v = $orderRows[$r][$c]',
+    '            if ($v -is [int]) { $data2[$r, $c] = [double]$v } else { $data2[$r, $c] = $v }',
+    '        }',
+    '    }',
+    "    $ws2.Range('A1:D' + $orderRows.Count).Value2 = $data2",
+    '    $wb2.SaveAs($OrdersPath, 51)',
+    '    $wb2.Close($false)',
     '} finally {',
     '    $app.Quit() | Out-Null',
     '}',
-    "Write-Output ('fixture rows=' + $rows.Count + ' path=' + $Path)",
+    "Write-Output ('fixture rows=' + $rows.Count + ' orders=' + $orderRows.Count + ' path=' + $Path)",
   ];
 }
 
 function verifyScript() {
   return [
-    'param([string]$Workbook, [string]$Document)',
+    'param([string]$Workbook, [string]$Document, [string]$Orders, [int]$OrderLastRow)',
     "$ErrorActionPreference = 'Stop'",
     '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
     '$result = @{}',
@@ -238,6 +270,49 @@ function verifyScript() {
     '    $result.documentMissing = $true',
     '}',
     '',
+
+    "# Scenario 2 (P2-5): the order workbook must have become a real table with print-ready setup.",
+    "if (Test-Path $Orders) {",
+    "    $excel2 = Get-App 'Ket.Application'",
+    "    if ($null -ne $excel2) {",
+    "        try { $excel2.DisplayAlerts = $false } catch { }",
+    "        $owb = $null",
+    "        try {",
+    "            $owb = $excel2.Workbooks.Open($Orders, 0, $true)",
+    "            $osheet = $owb.Worksheets.Item('订单')",
+    "            $objects = @()",
+    "            for ($i = 1; $i -le $osheet.ListObjects.Count; $i++) {",
+    "                $lo = $osheet.ListObjects.Item($i)",
+    "                $addr = ''",
+    "                try { $addr = [string]$lo.Range.Address() } catch { }",
+    "                $objects += @{ name = [string]$lo.Name; range = $addr }",
+    "            }",
+    "            # Where the rule landed is the model's choice, so probe the likely ranges and keep the",
+    "            # largest count: FormatConditions belongs to a range object, not to the sheet.",
+    "            $formats = 0",
+    "            foreach ($probe in @(\"D2:D$OrderLastRow\", \"D1:D$OrderLastRow\", 'D:D', 'D2', \"A1:D$OrderLastRow\")) {",
+    "                try { $n = [int]$osheet.Range($probe).FormatConditions.Count; if ($n -gt $formats) { $formats = $n } } catch { }",
+    "            }",
+    "            $result.orders = @{",
+    "                listCount = [int]$osheet.ListObjects.Count",
+    "                objects = $objects",
+    "                formatCount = $formats",
+    "                orientation = [int]$osheet.PageSetup.Orientation",
+    "                paperSize = [int]$osheet.PageSetup.PaperSize",
+    "                centerFooter = [string]$osheet.PageSetup.CenterFooter",
+    "                printTitleRows = [string]$osheet.PageSetup.PrintTitleRows",
+    "            }",
+    "        } catch {",
+    "            $result.ordersError = $_.Exception.Message",
+    "        } finally {",
+    "            if ($null -ne $owb) { try { $owb.Close($false) } catch { } }",
+    "        }",
+    "    } else {",
+    "        $result.ordersError = 'no Excel/WPS instance available'",
+    "    }",
+    "} else {",
+    "    $result.ordersMissing = $true",
+    "}",
     '$result | ConvertTo-Json -Depth 8 -Compress',
   ];
 }
@@ -468,15 +543,17 @@ const runDir = join(E2E_ROOT, runId);
 const fixtureDir = join(runDir, 'fixture');
 mkdirSync(fixtureDir, { recursive: true });
 const workbookPath = join(fixtureDir, 'sales.xlsx');
+const ordersPath = join(fixtureDir, 'orders.xlsx');
 const documentPath = join(fixtureDir, '结论.docx');
 info('run directory: ' + runDir);
 
 // 1. fixture
 const fixturePs1 = join(runDir, 'fixture.ps1');
 writePowerShell(fixturePs1, fixtureScript());
-const fixtureRun = runPowerShell(fixturePs1, ['-Path', workbookPath]);
+const fixtureRun = runPowerShell(fixturePs1, ['-Path', workbookPath, '-OrdersPath', ordersPath]);
 if (fixtureRun.error || fixtureRun.status !== 0) die('fixture generation failed: ' + (fixtureRun.error ? fixtureRun.error.message : String(fixtureRun.stderr || '').slice(0, 400)));
 check('fixture workbook created', existsSync(workbookPath), workbookPath);
+check('fixture order workbook created', existsSync(ordersPath), ordersPath);
 if (existsSync(documentPath)) rmSync(documentPath, { force: true });
 
 // 2. the task
@@ -486,7 +563,13 @@ const task = [
   '2) 在「汇总」表里，用这份汇总数据画一张簇状柱形图；',
   '3) 再新建一个 Word 文档，把各地区合计写成一段简短结论，保存为 ' + documentPath + '；',
   '4) 保存工作簿并关闭这两个文件，不要留下未保存的改动。',
-  '请优先使用现成的 WPS 工具（可参考已注册的 WPS 技能），不要自己写 COM 脚本。完成后报告：两个文件的实际路径、各地区合计数值、以及过程中遇到的任何报错。',
+  '',
+  '还有一个文件 ' + ordersPath + '：',
+  '5) 打开它，把「订单」表上的 A1:D' + ORDER_LAST_ROW + ' 变成一张真正的表（ListObject），表名用 Orders；',
+  '6) 给「金额」列加一条条件格式：大于 500 的单元格标红；',
+  '7) 让它可以直接打印：横向、A4、页脚居中写「第 &P 页 / 共 &N 页」，并且第 1 行在每一页都重复；',
+  '8) 保存并关闭它，同样不要留下未保存的改动。',
+  '请优先使用现成的 WPS 工具（可参考已注册的 WPS 技能），不要自己写 COM 脚本。完成后报告：两个工作簿的实际路径、各地区合计数值、订单表的表名、以及过程中遇到的任何报错。',
 ].join('\n');
 // The run must exercise the advertised tool surface, so the optional PTC mode is cleared even if
 // the caller's environment opted in; otherwise the model would reach WPS through run_code instead.
@@ -530,7 +613,7 @@ if (session) {
 // 4. artifacts, re-read with raw COM
 const verifyPs1 = join(runDir, 'verify.ps1');
 writePowerShell(verifyPs1, verifyScript());
-const verifyRun = runPowerShell(verifyPs1, ['-Workbook', workbookPath, '-Document', documentPath]);
+const verifyRun = runPowerShell(verifyPs1, ['-Workbook', workbookPath, '-Document', documentPath, '-Orders', ordersPath, '-OrderLastRow', String(ORDER_LAST_ROW)]);
 let findings = {};
 try { findings = JSON.parse(String(verifyRun.stdout || '{}')); } catch { }
 writeUtf8Bom(join(runDir, 'verify.json'), JSON.stringify(findings, null, 2) + '\n');
@@ -554,6 +637,19 @@ if (verifyRun.error || !findings.sheets) {
   check('document states every regional total', EXPECTED_ROWS.every((row) => documentText.includes(String(row[1]))), documentText.slice(0, 90));
   check('document is not empty', nonEmpty.length >= 1, nonEmpty.length + ' non-empty paragraph(s)');
   info('document styles: ' + (nonEmpty.map((part) => part.style).join(', ') || '(none)') + '; grand total stated: ' + documentText.includes(String(EXPECTED_TOTAL)) + '; characters: ' + ((findings.document && findings.document.characters) || 0));
+
+  // Scenario 2 (P2-5): a second real Excel task in the same run - table + conditional format +
+  // print setup. The checks are emitted unconditionally so the total count stays stable.
+  const orders = findings.orders || null;
+  const objects = orders && Array.isArray(orders.objects) ? orders.objects : orders && orders.objects ? [orders.objects] : [];
+  check('independent COM verification read the order workbook', !!orders, orders ? 'ok' : (findings.ordersError || 'orders.xlsx missing'));
+  check('订单 became a real table (ListObject)', !!orders && Number(orders.listCount) >= 1, objects.map((o) => o.name + '@' + o.range).join(', ') || 'none');
+  check('the table is named Orders', objects.some((o) => o.name === 'Orders'), objects.map((o) => o.name).join(', ') || 'none');
+  check('the table covers A1:D' + ORDER_LAST_ROW, objects.some((o) => String(o.range).replace(/\$/g, '').indexOf('A1:D' + ORDER_LAST_ROW) >= 0), objects.map((o) => o.range).join(', ') || 'none');
+  check('a conditional format is on the amount column', !!orders && Number(orders.formatCount) >= 1, orders ? 'FormatConditions=' + orders.formatCount : 'n/a');
+  check('the order sheet prints landscape A4', !!orders && Number(orders.orientation) === 2 && Number(orders.paperSize) === 9, orders ? 'orientation=' + orders.orientation + ' paper=' + orders.paperSize : 'n/a');
+  check('the footer carries the page-number field', !!orders && String(orders.centerFooter || '').includes('&P'), orders ? String(orders.centerFooter || '') : 'n/a');
+  check('print titles repeat the header row', !!orders && String(orders.printTitleRows || '').length > 0, orders ? String(orders.printTitleRows || '') : 'n/a');
 }
 
 // 5. behaviour: nothing left open, no defect markers, no hand-written COM
@@ -594,7 +690,7 @@ check('created the Word document with a plugin tool', wpsTools.includes('wps_wor
 // 6. report
 const failed = checks.filter((entry) => !entry.ok);
 writeUtf8Bom(join(runDir, 'report.json'), JSON.stringify({
-  runId, profile: opts.profile, dshBin, task, exitCode: runResult.code, elapsedMs: runResult.ms,
+  runId, profile: opts.profile, dshBin, task, ordersPath, exitCode: runResult.code, elapsedMs: runResult.ms,
   sessionFile: session ? session.file : null,
   toolCalls: expandToolNames(trace.toolCalls),
   checks,

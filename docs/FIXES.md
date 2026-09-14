@@ -1119,6 +1119,28 @@ WPS 回 `0x800A03EC`。加前置逗号 `return ,$range` 才会把 Range 本身�
 
 **数字**：桥 action 247 → **256**、注册工具 243 → **252**、广告面 56 → **59 工具 / 32,924 字节**
 （`goal_seek`、`clear_pivot_table`、`set_chart_labels` 进精选档）。
+### 44. P2-5：一键 e2e 扩成两个真实场景（第二个覆盖 ListObject + 条件格式 + 打印）
+
+`scripts/e2e.mjs` 原来只跑一个「Excel 汇总 + Word 结论」场景（19 项检查）。P2-5 往**同一次** headless
+运行里加了第二个独立的 Excel 任务：新 fixture `orders.xlsx`（订单表 A1:D13，12 行订单，金额里 6 个大于 500），
+要求模型把 A1:D13 变成真正的表（ListObject，表名 `Orders`）、给「金额」列加「大于 500 标红」的条件格式、
+设成横向 A4 打印（页脚居中「第 &P 页 / 共 &N 页」、第 1 行每页重复），最后保存关闭。
+
+独立验证（裸 COM 重开文件读）新增 9 项：订单工作簿存在，以及表对象存在 / 表名 / 覆盖 A1:D13 /
+条件格式条数 / 横向 A4 / 页脚含 `&P` / 打印标题非空 / 读得到订单工作簿。检查数 **19 → 28**。
+
+**验证逻辑先单独验过，再去赌模型**：把 `verifyScript()` 从 e2e.mjs 里抽出来，对一份「手工驱动插件工具
+做好」的 orders.xlsx 跑一遍，读回
+`{name: Orders, range: $A$1:$D$13, listCount: 1, formatCount: 1, orientation: 2, paperSize: 9,
+centerFooter: 第 &P 页 / 共 &N 页, printTitleRows: $1:$1}`——**先证明「正确的产物能被认出来」**，
+否则一个写错的验证脚本会让整件事失去意义。
+
+**一处刻意的宽松**：条件格式落在哪个 Range 上是模型的选择（`D2:D13`、`D:D`、`D1:D13` 都合理），
+而 `FormatConditions` 是**按 range 对象**而不是按表统计的，所以验证脚本对几个候选区域各读一次取最大值。
+这不是放水，是避免把「模型的合理选择」判成插件缺陷。
+
+**首次完整运行就通过**：`E2E OK (28 checks) in 94s`——96 次 `wps_*` 调用、2 次技能加载、
+4 条 pwsh 命令里没有一条自己写 COM，第二场景的产物与预期逐项一致。默认超时从 300 提到 420 秒。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
