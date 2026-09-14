@@ -4025,7 +4025,7 @@ exports.operations = [
         "tool": "wps_ppt_add_animation",
         "action": "addAnimation",
         "app": "ppt",
-        "summary": "为幻灯片中的形状添加动画效果。\n\n使用场景：\n- \"给第1页第2个形状加个淡入动画\"\n- \"��标题添加飞入效果\"\n- \"添加动画让元素依次出现\"",
+        "summary": "为幻灯片中的形状添加动画效果。\n\n使用场景：\n- \"给第1页第2个形状加个淡入动画\"\n- \"为标题添加飞入效果\"\n- \"添加动画让元素依次出现\"",
         "params": {
             "slideIndex": {
                 "type": "number",
@@ -4673,7 +4673,7 @@ exports.operations = [
         "tool": "wps_ppt_export_slide_as_image",
         "action": "exportSlideAsImage",
         "app": "ppt",
-        "summary": "将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS PowerPoint 原生接口 Slide.Export(FileName, FilterName, ScaleWidth, ScaleHeight)，\n实现 1:1 像素级还原，避免通过 PDF 中转再转图片造成的版式/字体/形状失真问题。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把第3页 PPT 导出成 PNG 给我\"\n- \"导出整个演示文稿每一页为 1920x1080 的 JPG\"\n- \"把封面页保存为高清图片用于网页\"\n\n注意：\n- outputPath 必须是绝对路径\n- macOS 上建议输出到 ~/Downloads 或用户可写目录，避免沙箱权限拒绝\n- 不指定 width/height 时使用 1280x720（16:9 默认尺寸）",
+        "summary": "将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS PowerPoint 原生接口 Slide.Export(FileName, FilterName, ScaleWidth, ScaleHeight)，\n实现 1:1 像素级还原��避免通过 PDF 中转再转图片造成的版式/字体/形状失真问题。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把第3页 PPT 导出成 PNG 给我\"\n- \"导出整个演示文稿每一页为 1920x1080 的 JPG\"\n- \"把封面页保存为高清图片用于网页\"\n\n注意：\n- outputPath 必须是绝对路径\n- macOS 上建议输出到 ~/Downloads 或用户可写目录，避免沙箱权限拒绝\n- 不指定 width/height 时使用 1280x720（16:9 默认尺寸）",
         "params": {
             "slideIndex": {
                 "type": "number",
@@ -6770,6 +6770,21 @@ exports.operations = [
         }
     }),
     (0, types_1.op)({
+        "tool": "wps_word_accept_revisions",
+        "action": "acceptRevisions",
+        "app": "word",
+        "summary": "接受修订：给 index 只接受那一处，不填则接受全部。使用场景：审阅通过，把改动定稿。接受后文字变成正文，修订记录消失。",
+        "params": {
+            "index": {
+                "type": "number",
+                "description": "只接受第几处修订（从 1 开始）；不填则全部接受"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_add_table_lines",
         "action": "addTableLines",
         "app": "word",
@@ -6890,6 +6905,21 @@ exports.operations = [
         "params": {},
         "effect": "lifecycle",
         "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_delete_comment",
+        "action": "deleteComment",
+        "app": "word",
+        "summary": "删除批注：给 index 只删那一条（序号见 wps_word_get_comments），不填则全部删除。使用场景：意见处理完了，清掉批注再交付。",
+        "params": {
+            "index": {
+                "type": "number",
+                "description": "只删第几条批注（从 1 开始）；不填则全部删除"
+            }
+        },
+        "effect": "delete",
+        "advertised": false,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -7146,6 +7176,16 @@ exports.operations = [
         }
     }),
     (0, types_1.op)({
+        "tool": "wps_word_get_revisions",
+        "action": "getRevisions",
+        "app": "word",
+        "summary": "列出文档里的修订（插入/删除/替换等），并报告「修订跟踪」当前是否打开。使用场景：接手别人的稿子，先看改了什么。",
+        "params": {},
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_get_table_data",
         "action": "getTableData",
         "app": "word",
@@ -7341,6 +7381,42 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_insert_page_numbers",
+        "action": "insertPageNumbers",
+        "app": "word",
+        "summary": "给某一节的页眉或页脚插入页码。使用场景：文档要打印，页脚右下角要有页码。页码是域，页数变化会自动更新。",
+        "params": {
+            "section": {
+                "type": "number",
+                "description": "第几节（从 1 开始）；不填则用第 1 节"
+            },
+            "position": {
+                "type": "string",
+                "description": "放页脚还是页眉，默认 footer",
+                "enum": [
+                    "footer",
+                    "header"
+                ]
+            },
+            "alignment": {
+                "type": "string",
+                "description": "对齐方式，默认 right",
+                "enum": [
+                    "left",
+                    "center",
+                    "right"
+                ]
+            },
+            "showFirstPage": {
+                "type": "boolean",
+                "description": "是否在首页显示，默认 true"
+            }
+        },
+        "effect": "write",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_insert_section_break",
         "action": "insertSectionBreak",
         "app": "word",
@@ -7512,6 +7588,21 @@ exports.operations = [
         "engine": "local"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_reject_revisions",
+        "action": "rejectRevisions",
+        "app": "word",
+        "summary": "拒绝修订：给 index 只拒绝那一处，不填则拒绝全部（回到改之前的原文）。使用场景：这版改动不要，恢复原样。",
+        "params": {
+            "index": {
+                "type": "number",
+                "description": "只拒绝第几处修订（从 1 开始）；不填则全部拒绝"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_replace_bookmark_content",
         "action": "replaceBookmarkContent",
         "app": "word",
@@ -7570,6 +7661,33 @@ exports.operations = [
             "start_pos": "startPos",
             "end_pos": "endPos"
         }
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_set_columns",
+        "action": "setColumns",
+        "app": "word",
+        "summary": "设置分栏：栏数、栏间距、是否加分隔线。使用场景：把长文排成两栏。count 用 1 就是取消分栏。",
+        "params": {
+            "section": {
+                "type": "number",
+                "description": "第几节（从 1 开始）；不填则用第 1 节"
+            },
+            "count": {
+                "type": "number",
+                "description": "栏数（1-12），默认 1（取消分栏）"
+            },
+            "spacing": {
+                "type": "number",
+                "description": "栏间距（磅）"
+            },
+            "lineBetween": {
+                "type": "boolean",
+                "description": "是否在栏间加分隔线"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_set_font",

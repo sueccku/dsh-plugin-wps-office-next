@@ -1011,6 +1011,9 @@
   "includeTitle",
   "slideIndex"
  ],
+ "acceptRevisions": [
+  "index"
+ ],
  "addTableLines": [
   "count",
   "kind",
@@ -1030,6 +1033,9 @@
   "table"
  ],
  "createDocument": [],
+ "deleteComment": [
+  "index"
+ ],
  "deleteTableLine": [
   "kind",
   "lineIndex",
@@ -1066,6 +1072,7 @@
   "endParagraph",
   "startParagraph"
  ],
+ "getRevisions": [],
  "getTableData": [
   "table"
  ],
@@ -1095,6 +1102,12 @@
   "width"
  ],
  "insertPageBreak": [],
+ "insertPageNumbers": [
+  "alignment",
+  "position",
+  "section",
+  "showFirstPage"
+ ],
  "insertSectionBreak": [
   "breakType"
  ],
@@ -1117,6 +1130,9 @@
  "openDocument": [
   "path"
  ],
+ "rejectRevisions": [
+  "index"
+ ],
  "replaceBookmarkContent": [
   "name",
   "text"
@@ -1125,6 +1141,12 @@
   "endPos",
   "startPos",
   "text"
+ ],
+ "setColumns": [
+  "count",
+  "lineBetween",
+  "section",
+  "spacing"
  ],
  "setFont": [
   "bold",

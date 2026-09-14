@@ -64,6 +64,8 @@ exports.STANDARD_TOOLS = [
     'wps_word_get_document_stats',
     'wps_word_get_tables',
     'wps_word_get_table_data',
+    'wps_word_insert_page_numbers',
+    'wps_word_get_revisions',
     // Presentation
     'wps_ppt_get_slide_count',
     'wps_ppt_get_slide_info',

@@ -727,6 +727,7 @@ function Get-PptSaveFormat([string]$format) {
 
 # Accepted parameter names per action, derived from the switch below by the generator.
 $script:ActionParamKeys = @{
+    'acceptRevisions' = @('index')
     'addAnimation' = @('animationType', 'effect', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'trigger')
     'addAnimationPreset' = @('delayIncrement', 'presentationName', 'preset', 'shapeIndex', 'shapeName', 'slideIndex')
     'addCellComment' = @('cell', 'comment', 'sheet', 'text', 'visible')
@@ -778,6 +779,7 @@ $script:ActionParamKeys = @{
     'deleteCellComment' = @('cell', 'sheet')
     'deleteChart' = @('chart', 'sheet')
     'deleteColumns' = @('column', 'count', 'sheet', 'startColumn')
+    'deleteComment' = @('index')
     'deleteListRow' = @('rowIndex', 'sheet', 'table')
     'deleteNamedRange' = @('name')
     'deletePptImage' = @('imageIndex', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
@@ -833,6 +835,7 @@ $script:ActionParamKeys = @{
     'getPivotTables' = @('sheet')
     'getPptTableCell' = @('col', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName')
     'getRangeData' = @('range', 'sheet')
+    'getRevisions' = @()
     'getSelectedText' = @()
     'getSelection' = @()
     'getShapes' = @('presentationName', 'slideIndex')
@@ -860,6 +863,7 @@ $script:ActionParamKeys = @{
     'insertHyperlink' = @('address', 'displayText', 'text', 'url')
     'insertImage' = @('filePath', 'height', 'path', 'scale', 'width')
     'insertPageBreak' = @('type')
+    'insertPageNumbers' = @('alignment', 'position', 'section', 'showFirstPage')
     'insertPptChart' = @('chartType', 'height', 'left', 'presentationName', 'slideIndex', 'title', 'top', 'type', 'width')
     'insertPptImage' = @('filePath', 'height', 'imagePath', 'left', 'path', 'presentationName', 'slideIndex', 'top', 'width')
     'insertPptTable' = @('cols', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'top', 'width')
@@ -884,6 +888,7 @@ $script:ActionParamKeys = @{
     'refreshAllData' = @()
     'refreshLinks' = @()
     'refreshPivotTables' = @('pivotTable', 'sheet')
+    'rejectRevisions' = @('index')
     'removeAnimation' = @('animationIndex', 'index', 'presentationName', 'slideIndex')
     'removeConditionalFormat' = @('index', 'range', 'sheet')
     'removeDataValidation' = @('range', 'sheet')
@@ -912,6 +917,7 @@ $script:ActionParamKeys = @{
     'setCellStyle' = @('backgroundColor', 'bold', 'border', 'borderColor', 'fontColor', 'fontName', 'fontSize', 'horizontalAlignment', 'italic', 'range', 'sheet', 'style', 'verticalAlignment')
     'setCellValue' = @('col', 'row', 'sheet', 'value')
     'setChartLabels' = @('categoryAxisTitle', 'chart', 'sheet', 'title', 'valueAxisTitle')
+    'setColumns' = @('count', 'lineBetween', 'section', 'spacing')
     'setColumnWidth' = @('column', 'sheet', 'width')
     'setFont' = @('bold', 'color', 'fontName', 'fontSize', 'italic', 'range', 'underline')
     'setFontColor' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
@@ -3531,6 +3537,153 @@ return }
             if ($null -eq $sep) { $t.ConvertToText() | Out-Null } else { $t.ConvertToText($sep, $true) | Out-Null }
         } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
         Output-Json @{ success = $true; data = @{ tablesRemaining = [int]$doc.Tables.Count } }
+    }
+
+# ==================== Word 文档生产族（P3-3，新 COM 代码）====================
+    # 页码 / 分栏 / 修订（列表、接受、拒绝）/ 批注删除。全部先经裸 COM 量过。
+
+    "insertPageNumbers" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $sectionIndex = if ($null -ne $p.section) { [int]$p.section } else { 1 }
+        if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) { Output-Json @{ success = $false; error = "section out of range" }; return }
+        $section = $doc.Sections.Item($sectionIndex)
+        # wdAlignPageNumberLeft=0 / Center=1 / Right=2
+        $alignment = 2
+        $alignmentName = "right"
+        if ($p.alignment) {
+            $name = "$($p.alignment)".ToLower()
+            if ($name -eq "left") { $alignment = 0; $alignmentName = "left" }
+            elseif ($name -eq "center") { $alignment = 1; $alignmentName = "center" }
+        }
+        $firstPage = $true
+        if ($null -ne $p.showFirstPage) { $firstPage = [bool]$p.showFirstPage }
+        $position = "footer"
+        $container = $section.Footers.Item(1)
+        if ($p.position -and "$($p.position)".ToLower() -eq "header") { $position = "header"; $container = $section.Headers.Item(1) }
+        try { $container.PageNumbers.Add($alignment, $firstPage) | Out-Null } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $count = 0
+        try { $count = [int]$container.PageNumbers.Count } catch { $count = 0 }
+        Output-Json @{ success = $true; data = @{ section = $sectionIndex; position = $position; alignment = $alignmentName; showFirstPage = $firstPage; pageNumbers = $count } }
+    }
+
+    "setColumns" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $sectionIndex = if ($null -ne $p.section) { [int]$p.section } else { 1 }
+        if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) { Output-Json @{ success = $false; error = "section out of range" }; return }
+        $count = if ($null -ne $p.count) { [int]$p.count } else { 1 }
+        if ($count -lt 1 -or $count -gt 12) { Output-Json @{ success = $false; error = "count must be between 1 and 12" }; return }
+        $ps = $doc.Sections.Item($sectionIndex).PageSetup
+        $applied = @()
+        try {
+            $ps.TextColumns.SetCount($count)
+            $applied += "count"
+            if ($null -ne $p.spacing) { $ps.TextColumns.Spacing = [double]$p.spacing; $applied += "spacing" }
+            if ($null -ne $p.lineBetween) { $ps.TextColumns.LineBetween = [bool]$p.lineBetween; $applied += "lineBetween" }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $actual = 0
+        try { $actual = [int]$ps.TextColumns.Count } catch { $actual = 0 }
+        $spacing = 0
+        try { $spacing = [double]$ps.TextColumns.Spacing } catch { $spacing = 0 }
+        Output-Json @{ success = $true; data = @{ section = $sectionIndex; applied = $applied; count = $actual; spacing = $spacing } }
+    }
+
+    "getRevisions" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $tracking = $false
+        try { $tracking = [bool]$doc.TrackRevisions } catch { $tracking = $false }
+        $revisions = @()
+        $total = 0
+        try { $total = [int]$doc.Revisions.Count } catch { $total = 0 }
+        for ($i = 1; $i -le $total; $i++) {
+            $r = $doc.Revisions.Item($i)
+            $text = ""
+            try { $text = ([string]$r.Range.Text).Trim() } catch { $text = "" }
+            if ($text.Length -gt 120) { $text = $text.Substring(0, 120) + "..." }
+            $author = ""
+            try { $author = [string]$r.Author } catch { $author = "" }
+            $revisions += @{ index = $i; type = [int]$r.Type; text = $text; author = $author }
+        }
+        Output-Json @{ success = $true; data = @{ revisions = $revisions; count = $revisions.Count; trackChanges = $tracking } }
+    }
+
+    "acceptRevisions" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $applied = 0
+        try {
+            if ($null -ne $p.index) {
+                $doc.Revisions.Item([int]$p.index).Accept()
+                $applied = 1
+            } else {
+                $before = 0
+                try { $before = [int]$doc.Revisions.Count } catch { $before = 0 }
+                $doc.AcceptAllRevisions()
+                $applied = $before
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $remaining = 0
+        try { $remaining = [int]$doc.Revisions.Count } catch { $remaining = 0 }
+        Output-Json @{ success = $true; data = @{ accepted = $applied; remaining = $remaining } }
+    }
+
+    "rejectRevisions" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $applied = 0
+        try {
+            if ($null -ne $p.index) {
+                $doc.Revisions.Item([int]$p.index).Reject()
+                $applied = 1
+            } else {
+                $before = 0
+                try { $before = [int]$doc.Revisions.Count } catch { $before = 0 }
+                $doc.RejectAllRevisions()
+                $applied = $before
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $remaining = 0
+        try { $remaining = [int]$doc.Revisions.Count } catch { $remaining = 0 }
+        Output-Json @{ success = $true; data = @{ rejected = $applied; remaining = $remaining } }
+    }
+
+    "deleteComment" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $deleted = 0
+        try {
+            if ($null -ne $p.index) {
+                $doc.Comments.Item([int]$p.index).Delete()
+                $deleted = 1
+            } else {
+                # 从后往前删，避免删掉一个之后后面的序号整体前移。
+                $count = 0
+                try { $count = [int]$doc.Comments.Count } catch { $count = 0 }
+                for ($i = $count; $i -ge 1; $i--) { $doc.Comments.Item($i).Delete() }
+                $deleted = $count
+            }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        $remaining = 0
+        try { $remaining = [int]$doc.Comments.Count } catch { $remaining = 0 }
+        Output-Json @{ success = $true; data = @{ deleted = $deleted; remaining = $remaining } }
     }
 
     "findInSheet" {

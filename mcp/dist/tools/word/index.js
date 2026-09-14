@@ -7,13 +7,14 @@
  * 整合格式化、内容操作、文档管理和校对的所有Tools
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.closeDocumentHandler = exports.closeDocumentDefinition = exports.createDocumentHandler = exports.createDocumentDefinition = exports.openDocumentHandler = exports.openDocumentDefinition = exports.switchDocumentHandler = exports.switchDocumentDefinition = exports.getOpenDocumentsHandler = exports.getOpenDocumentsDefinition = exports.replaceBookmarkContentHandler = exports.replaceBookmarkContentDefinition = exports.smartFillFieldHandler = exports.smartFillFieldDefinition = exports.findInDocumentHandler = exports.findInDocumentDefinition = exports.getParagraphsHandler = exports.getParagraphsDefinition = exports.setTextColorHandler = exports.setTextColorDefinition = exports.insertCommentHandler = exports.insertCommentDefinition = exports.insertPageBreakHandler = exports.insertPageBreakDefinition = exports.getActiveDocumentHandler = exports.getActiveDocumentDefinition = exports.setParagraphHandler = exports.setParagraphDefinition = exports.insertTableHandler = exports.insertTableDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.insertTextHandler = exports.insertTextDefinition = exports.setPageSetupHandler = exports.setPageSetupDefinition = exports.insertBookmarkHandler = exports.insertBookmarkDefinition = exports.generateTocHandler = exports.generateTocDefinition = exports.setFontHandler = exports.setFontDefinition = exports.applyStyleHandler = exports.applyStyleDefinition = exports.wordDeepTools = exports.proofreadTools = exports.documentTools = exports.contentTools = exports.formatTools = exports.wordTools = void 0;
-exports.proofreadBasicHandler = exports.proofreadBasicDefinition = exports.replaceRangeHandler = exports.replaceRangeDefinition = exports.getTrackChangesStatusHandler = exports.getTrackChangesStatusDefinition = exports.enableTrackChangesHandler = exports.enableTrackChangesDefinition = exports.setLineSpacingHandler = exports.setLineSpacingDefinition = exports.insertSectionBreakHandler = exports.insertSectionBreakDefinition = exports.insertFooterHandler = exports.insertFooterDefinition = exports.insertHeaderHandler = exports.insertHeaderDefinition = exports.getDocumentTextHandler = exports.getDocumentTextDefinition = void 0;
+exports.closeDocumentDefinition = exports.createDocumentHandler = exports.createDocumentDefinition = exports.openDocumentHandler = exports.openDocumentDefinition = exports.switchDocumentHandler = exports.switchDocumentDefinition = exports.getOpenDocumentsHandler = exports.getOpenDocumentsDefinition = exports.replaceBookmarkContentHandler = exports.replaceBookmarkContentDefinition = exports.smartFillFieldHandler = exports.smartFillFieldDefinition = exports.findInDocumentHandler = exports.findInDocumentDefinition = exports.getParagraphsHandler = exports.getParagraphsDefinition = exports.setTextColorHandler = exports.setTextColorDefinition = exports.insertCommentHandler = exports.insertCommentDefinition = exports.insertPageBreakHandler = exports.insertPageBreakDefinition = exports.getActiveDocumentHandler = exports.getActiveDocumentDefinition = exports.setParagraphHandler = exports.setParagraphDefinition = exports.insertTableHandler = exports.insertTableDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.insertTextHandler = exports.insertTextDefinition = exports.setPageSetupHandler = exports.setPageSetupDefinition = exports.insertBookmarkHandler = exports.insertBookmarkDefinition = exports.generateTocHandler = exports.generateTocDefinition = exports.setFontHandler = exports.setFontDefinition = exports.applyStyleHandler = exports.applyStyleDefinition = exports.wordProduceTools = exports.wordDeepTools = exports.proofreadTools = exports.documentTools = exports.contentTools = exports.formatTools = exports.wordTools = void 0;
+exports.proofreadBasicHandler = exports.proofreadBasicDefinition = exports.replaceRangeHandler = exports.replaceRangeDefinition = exports.getTrackChangesStatusHandler = exports.getTrackChangesStatusDefinition = exports.enableTrackChangesHandler = exports.enableTrackChangesDefinition = exports.setLineSpacingHandler = exports.setLineSpacingDefinition = exports.insertSectionBreakHandler = exports.insertSectionBreakDefinition = exports.insertFooterHandler = exports.insertFooterDefinition = exports.insertHeaderHandler = exports.insertHeaderDefinition = exports.getDocumentTextHandler = exports.getDocumentTextDefinition = exports.closeDocumentHandler = void 0;
 const format_1 = require("./format");
 const content_1 = require("./content");
 const document_1 = require("./document");
 const proofread_1 = require("./proofread");
 const deep_1 = require("./deep");
+const produce_1 = require("./produce");
 /**
  * 所有Word相关的Tools
  * 包含：
@@ -24,6 +25,8 @@ const deep_1 = require("./deep");
  * - 深水区Tools（P3）: get_bookmarks, get_comments, get_document_stats, insert_hyperlink,
  *   get_tables, get_table_data, set_table_cell, add_table_lines, delete_table_line,
  *   merge_table_cells, split_table_cell, set_table_format, convert_table_to_text
+ * - 文档生产Tools（P3-3）: insert_page_numbers, set_columns, get_revisions, accept_revisions,
+ *   reject_revisions, delete_comment
  */
 exports.wordTools = [
     ...format_1.formatTools,
@@ -31,6 +34,7 @@ exports.wordTools = [
     ...document_1.documentTools,
     ...proofread_1.proofreadTools,
     ...deep_1.wordDeepTools,
+    ...produce_1.wordProduceTools,
 ];
 // 分别导出，方便按需使用
 var format_2 = require("./format");
@@ -43,6 +47,8 @@ var proofread_2 = require("./proofread");
 Object.defineProperty(exports, "proofreadTools", { enumerable: true, get: function () { return proofread_2.proofreadTools; } });
 var deep_2 = require("./deep");
 Object.defineProperty(exports, "wordDeepTools", { enumerable: true, get: function () { return deep_2.wordDeepTools; } });
+var produce_2 = require("./produce");
+Object.defineProperty(exports, "wordProduceTools", { enumerable: true, get: function () { return produce_2.wordProduceTools; } });
 // 导出单独的定义和处理器，方便测试
 var format_3 = require("./format");
 Object.defineProperty(exports, "applyStyleDefinition", { enumerable: true, get: function () { return format_3.applyStyleDefinition; } });

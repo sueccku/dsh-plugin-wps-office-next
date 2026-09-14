@@ -12,6 +12,7 @@ import { contentTools } from './content';
 import { documentTools } from './document';
 import { proofreadTools } from './proofread';
 import { wordDeepTools } from './deep';
+import { wordProduceTools } from './produce';
 
 /**
  * 所有Word相关的Tools
@@ -23,6 +24,8 @@ import { wordDeepTools } from './deep';
  * - 深水区Tools（P3）: get_bookmarks, get_comments, get_document_stats, insert_hyperlink,
  *   get_tables, get_table_data, set_table_cell, add_table_lines, delete_table_line,
  *   merge_table_cells, split_table_cell, set_table_format, convert_table_to_text
+ * - 文档生产Tools（P3-3）: insert_page_numbers, set_columns, get_revisions, accept_revisions,
+ *   reject_revisions, delete_comment
  */
 export const wordTools: RegisteredTool[] = [
   ...formatTools,
@@ -30,6 +33,7 @@ export const wordTools: RegisteredTool[] = [
   ...documentTools,
   ...proofreadTools,
   ...wordDeepTools,
+  ...wordProduceTools,
 ];
 
 // 分别导出，方便按需使用
@@ -38,6 +42,7 @@ export { contentTools } from './content';
 export { documentTools } from './document';
 export { proofreadTools } from './proofread';
 export { wordDeepTools } from './deep';
+export { wordProduceTools } from './produce';
 
 // 导出单独的定义和处理器，方便测试
 export {

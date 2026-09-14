@@ -16,6 +16,8 @@ import { RegisteredTool } from '../../types/tools';
  * - 深水区Tools（P3）: get_bookmarks, get_comments, get_document_stats, insert_hyperlink,
  *   get_tables, get_table_data, set_table_cell, add_table_lines, delete_table_line,
  *   merge_table_cells, split_table_cell, set_table_format, convert_table_to_text
+ * - 文档生产Tools（P3-3）: insert_page_numbers, set_columns, get_revisions, accept_revisions,
+ *   reject_revisions, delete_comment
  */
 export declare const wordTools: RegisteredTool[];
 export { formatTools } from './format';
@@ -23,6 +25,7 @@ export { contentTools } from './content';
 export { documentTools } from './document';
 export { proofreadTools } from './proofread';
 export { wordDeepTools } from './deep';
+export { wordProduceTools } from './produce';
 export { applyStyleDefinition, applyStyleHandler, setFontDefinition, setFontHandler, generateTocDefinition, generateTocHandler, insertBookmarkDefinition, insertBookmarkHandler, setPageSetupDefinition, setPageSetupHandler, } from './format';
 export { insertTextDefinition, insertTextHandler, findReplaceDefinition, findReplaceHandler, insertTableDefinition, insertTableHandler, setParagraphDefinition, setParagraphHandler, getActiveDocumentDefinition, getActiveDocumentHandler, insertPageBreakDefinition, insertPageBreakHandler, insertCommentDefinition, insertCommentHandler, setTextColorDefinition, setTextColorHandler, getParagraphsDefinition, getParagraphsHandler, findInDocumentDefinition, findInDocumentHandler, smartFillFieldDefinition, smartFillFieldHandler, replaceBookmarkContentDefinition, replaceBookmarkContentHandler, } from './content';
 export { getOpenDocumentsDefinition, getOpenDocumentsHandler, switchDocumentDefinition, switchDocumentHandler, openDocumentDefinition, openDocumentHandler, createDocumentDefinition, createDocumentHandler, closeDocumentDefinition, closeDocumentHandler, getDocumentTextDefinition, getDocumentTextHandler, insertHeaderDefinition, insertHeaderHandler, insertFooterDefinition, insertFooterHandler, insertSectionBreakDefinition, insertSectionBreakHandler, setLineSpacingDefinition, setLineSpacingHandler, } from './document';

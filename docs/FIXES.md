@@ -1182,6 +1182,27 @@ P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已�
 **数字**：桥 action 256 → **265**、注册工具 252 → **265**、广告面 59 → **62 工具 / 33,836 字节**
 （`get_document_stats` / `get_tables` / `get_table_data` 进精选档）；未工具化 action 台账 11 → **7**
 （剩下的都是刻意的重复实现或 P4 的项）。
+### 46. P3-3：Word 文档生产族，6 个 action + 6 个工具（新 COM 代码）
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_word_insert_page_numbers` | insertPageNumbers | 给某节的页眉/页脚插页码（左/中/右、是否首页显示） |
+| `wps_word_set_columns` | setColumns | 分栏：栏数、栏间距、分隔线；count=1 即取消分栏 |
+| `wps_word_get_revisions` | getRevisions | 列出修订（插入/删除/替换…）并报告修订跟踪开关 |
+| `wps_word_accept_revisions` | acceptRevisions | 接受一处或全部修订 |
+| `wps_word_reject_revisions` | rejectRevisions | 拒绝一处或全部修订 |
+| `wps_word_delete_comment` | deleteComment | 删除一条或全部批注 |
+
+**一处「成功但说错」被自己的验收抓到**：单栏时 WPS 的 `TextColumns.Spacing` 返回哨兵值 **9999999**，
+工具原样印成「栏间距 9999999 磅」——用户会以为出了 bug。改成只在 count > 1 时才报告间距。
+这类问题不会让任何断言失败（断言只看「现在是 1 栏」），是**读输出文本**时才发现的。
+
+**验收**：`test/word-produce.test.mjs` **19 项**（真实 WPS Writer）：页码落页脚/页眉并对齐、非法节号被拒、
+两栏↔一栏、非法栏数被拒、修订跟踪开启→改文档→列出修订（类型「插入」、作者）→拒绝一处→再改→全部接受
+→确认没有残留、两条批注→按序号删一条→无序号删全部→确认清空。
+
+**数字**：桥 action 265 → **271**、注册工具 265 → **271**、广告面 62 → **64 工具 / 34,754 字节**
+（`insert_page_numbers` / `get_revisions` 进精选档）。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1229,9 +1250,10 @@ P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已�
 | test/excel-page-setup.test.mjs | 24 | P2-3 页面设置/打印标题/页眉页脚/外观/分级显示/分页符/公式审计 |
 | test/excel-advanced.test.mjs | 24 | P2-4 透视表列表/刷新/清除、全部刷新、单变量求解、迷你图、图表标题与删除 |
 | test/word-deep.test.mjs | 27 | P3 书签/批注/统计/超链接 + 表格读写编辑与外观 |
+| test/word-produce.test.mjs | 19 | P3-3 页码/分栏/修订接受拒绝/批注删除 |
 
-合计 **470 项**（22 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **489 项**（23 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 253 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 259 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

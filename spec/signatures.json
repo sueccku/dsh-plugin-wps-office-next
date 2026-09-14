@@ -1100,6 +1100,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_accept_revisions",
+  "signature": "word_accept_revisions(index?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_add_table_lines",
   "signature": "word_add_table_lines(table?, kind*, count?, position?)",
   "effect": "write"
@@ -1123,6 +1128,11 @@
   "tool": "wps_word_create_document",
   "signature": "word_create_document()",
   "effect": "lifecycle"
+ },
+ {
+  "tool": "wps_word_delete_comment",
+  "signature": "word_delete_comment(index?)",
+  "effect": "delete"
  },
  {
   "tool": "wps_word_delete_table_line",
@@ -1185,6 +1195,11 @@
   "effect": "read"
  },
  {
+  "tool": "wps_word_get_revisions",
+  "signature": "word_get_revisions()",
+  "effect": "read"
+ },
+ {
   "tool": "wps_word_get_table_data",
   "signature": "word_get_table_data(table?)",
   "effect": "read"
@@ -1235,6 +1250,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_insert_page_numbers",
+  "signature": "word_insert_page_numbers(section?, position?, alignment?, showFirstPage?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_insert_section_break",
   "signature": "word_insert_section_break(breakType?)",
   "effect": "write"
@@ -1265,6 +1285,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_reject_revisions",
+  "signature": "word_reject_revisions(index?)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_replace_bookmark_content",
   "signature": "word_replace_bookmark_content(name*, text*)",
   "effect": "write"
@@ -1272,6 +1297,11 @@
  {
   "tool": "wps_word_replace_range",
   "signature": "word_replace_range(start_pos*, end_pos*, text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_set_columns",
+  "signature": "word_set_columns(section?, count?, spacing?, lineBetween?)",
   "effect": "write"
  },
  {

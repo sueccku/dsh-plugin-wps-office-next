@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 文字工具（45）
+## WPS 文字工具（51）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -52,3 +52,9 @@
 | wps_word_split_table_cell | wps_call | 把一个单元格拆成 rows x columns 个小格（默认 1 x 2）。 |
 | wps_word_set_table_format | wps_call | 设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色。 |
 | wps_word_convert_table_to_text | wps_call | 把表格转成普通文本，列之间用一个分隔符（tab/comma/paragraph，或直接给一个字符）。 |
+| wps_word_insert_page_numbers | 直达 | 给某一节的页眉或页脚插入页码。 |
+| wps_word_set_columns | wps_call | 设置分栏：栏数、栏间距、是否加分隔线。 |
+| wps_word_get_revisions | 直达 | 列出文档里的修订（插入/删除/替换等），并报告「修订跟踪」当前是否打开。 |
+| wps_word_accept_revisions | wps_call | 接受修订：给 index 只接受那一处，不填则接受全部。 |
+| wps_word_reject_revisions | wps_call | 拒绝修订：给 index 只拒绝那一处，不填则拒绝全部（回到改之前的原文）。 |
+| wps_word_delete_comment | wps_call | 删除批注：给 index 只删那一条（序号见 wps_word_get_comments），不填则全部删除。 |
