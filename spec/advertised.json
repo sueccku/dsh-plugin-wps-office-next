@@ -45,12 +45,14 @@
  "wps_ppt_set_shape_text",
  "wps_ppt_set_slide_content",
  "wps_ppt_set_slide_title",
+ "wps_ppt_set_table_format",
  "wps_status",
  "wps_word_apply_style",
  "wps_word_create_document",
  "wps_word_find_replace",
  "wps_word_generate_toc",
  "wps_word_get_active_document",
+ "wps_word_get_comments",
  "wps_word_get_document_stats",
  "wps_word_get_document_text",
  "wps_word_get_notes",
@@ -64,5 +66,6 @@
  "wps_word_open_document",
  "wps_word_set_font",
  "wps_word_set_paragraph",
+ "wps_word_set_table_cell",
  "wps_word_smart_fill_field"
 ]

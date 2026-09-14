@@ -126,7 +126,10 @@ class WpsMcpServer {
         logger.info('Registering the escape-hatch built-in tool');
         this.registry.register({
             name: 'wps_execute_method',
-            description: '执行自定义WPS API方法',
+            // P5-1 决策：保留为**隐藏**逃生舱（不进广告面）。理由：未工具化 action 台账只剩 7 个刻意的
+            // 重复实现，日常不需要它；但水印与文档属性是实测的 WPS 缺口，没有它就没有任何出路。
+            // 描述里把契约说死，免得模型把它当常规手段。
+            description: '最后手段：直接调用原始 WPS COM 方法。优先用现成工具（先用 wps_help 或技能参考表找）；只有在确认没有对应工具时才用它，参数与返回值都不会被校验。',
             inputSchema: {
                 type: 'object',
                 properties: {

@@ -30,4 +30,4 @@
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
-| wps_execute_method | wps_call | 执行自定义WPS API方法 |
+| wps_execute_method | wps_call | 最后手段：直接调用原始 WPS COM 方法。 |

@@ -78,7 +78,7 @@
 | wps_ppt_find_ppt_text | wps_call | 在演示文稿中搜索指定文本。 |
 | wps_ppt_replace_ppt_text | wps_call | 在演示文稿中查找并替换文本。 |
 | wps_ppt_start_slide_show | wps_call | 开始幻灯片放映。 |
-| wps_ppt_set_table_format | wps_call | 设置表格的外观与样式。 |
+| wps_ppt_set_table_format | 直达 | 设置表格的外观与样式。 |
 | wps_ppt_insert_table | 直达 | 在幻灯片中插入表格。 |
 | wps_ppt_set_table_cell | wps_call | 设置PPT表格中指定单元格的文本内容。 |
 | wps_ppt_get_table_cell | wps_call | 获取PPT表格中指定单元格的文本内容。 |

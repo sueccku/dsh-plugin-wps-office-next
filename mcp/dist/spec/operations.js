@@ -247,7 +247,7 @@ exports.operations = [
         "tool": "wps_execute_method",
         "action": null,
         "app": "common",
-        "summary": "执行自定义WPS API方法",
+        "summary": "最后手段：直接调用原始 WPS COM 方法。优先用现成工具（先用 wps_help 或技能参考表找）；只有在确认没有对应工具时才用它，参数与返回值都不会被校验。",
         "params": {
             "method": {
                 "type": "string",
@@ -6243,7 +6243,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -6814,7 +6814,7 @@ exports.operations = [
         "summary": "列出文档里的全部批注：序号、正文、作者、时间。使用场景：汇总一批审阅意见。加批注用 wps_word_insert_comment。",
         "params": {},
         "effect": "read",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -7635,7 +7635,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "row",
             "column",

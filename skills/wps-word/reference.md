@@ -40,12 +40,12 @@
 | wps_word_replace_range | wps_call | 按字符范围精确替换Word文档中的文本。 |
 | wps_word_proofread_basic | wps_call | 对中文文本进行基础校对，检测常见问题。 |
 | wps_word_get_bookmarks | wps_call | 列出文档里的全部书签（名字与位置）。 |
-| wps_word_get_comments | wps_call | 列出文档里的全部批注：序号、正文、作者、时间。 |
+| wps_word_get_comments | 直达 | 列出文档里的全部批注：序号、正文、作者、时间。 |
 | wps_word_get_document_stats | 直达 | 文档统计：页数、字数、字符数、段落数、行数。 |
 | wps_word_insert_hyperlink | wps_call | 在光标处插入超链接。 |
 | wps_word_get_tables | 直达 | 列出文档里的全部表格：序号、行列数、样式、文本预览。 |
 | wps_word_get_table_data | 直达 | 按行列读出某张表的全部单元格文本（合并单元格的非起点格子会是空字符串）。 |
-| wps_word_set_table_cell | wps_call | 写入表格的某个单元格（行列都从 1 开始）。 |
+| wps_word_set_table_cell | 直达 | 写入表格的某个单元格（行列都从 1 开始）。 |
 | wps_word_add_table_lines | wps_call | 给表格增加行或列。 |
 | wps_word_delete_table_line | wps_call | 删除表格的第几行或第几列（从 1 开始）。 |
 | wps_word_merge_table_cells | wps_call | 把一块矩形区域合并成一个单元格：从（startRow, startColumn）到（endRow, endColumn）。 |

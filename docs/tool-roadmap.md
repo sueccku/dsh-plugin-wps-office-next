@@ -148,10 +148,10 @@
 
 | ID | 内容 |
 |---|---|
-| P5-1 | `execute_method` 去留决策（覆盖达标后收窄或删除） |
-| P5-2 | 重定广告面与预算（**D1 已两次提前生效：70 / 40,000**，此处只做最终复测），重生成 `wps_help` 紧凑索引 |
-| P5-3 | 文档同步：README 工具面、FIXES、PROGRESS、技能 `reference.md` 全部重生成 |
-| P5-4 | 发布准备：CHANGELOG、tag、Release、npm（真正要发时再做） |
+| P5-1（**已完成**，FIXES 50） | `execute_method` 去留决策：保留为隐藏逃生舱，契约写死 |
+| P5-2（**已完成**，FIXES 50） | 广告面定为 **69 / 37,573**（上限不再调整：D1 的 70 / 40,000 正好贴合）；`wps_help` 索引已重生成 |
+| P5-3（**已完成**，FIXES 50） | 文档同步：README 工具面、FIXES、PROGRESS、技能 `reference.md` 全部重生成 |
+| P5-4（**待用户决定**） | 发布准备：CHANGELOG、tag、Release、npm（约定「真正要发时再做」） |
 
 ## 6. 「还要加什么」的可重复发掘方法
 

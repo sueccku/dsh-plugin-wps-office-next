@@ -64,6 +64,8 @@ exports.STANDARD_TOOLS = [
     'wps_word_get_document_stats',
     'wps_word_get_tables',
     'wps_word_get_table_data',
+    'wps_word_get_comments',
+    'wps_word_set_table_cell',
     'wps_word_insert_page_numbers',
     'wps_word_get_revisions',
     'wps_word_mail_merge',
@@ -80,6 +82,7 @@ exports.STANDARD_TOOLS = [
     'wps_ppt_add_textbox',
     'wps_ppt_insert_table',
     'wps_ppt_insert_ppt_image',
+    'wps_ppt_set_table_format',
     'wps_ppt_export_slide_as_image',
     'wps_ppt_open_presentation',
     // Common and conversion
