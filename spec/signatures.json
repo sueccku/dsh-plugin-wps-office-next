@@ -1105,6 +1105,21 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_add_content_control",
+  "signature": "word_add_content_control(type?, title?, tag?, text?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_add_endnote",
+  "signature": "word_add_endnote(text*)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_add_footnote",
+  "signature": "word_add_footnote(text*)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_add_table_lines",
   "signature": "word_add_table_lines(table?, kind*, count?, position?)",
   "effect": "write"
@@ -1175,6 +1190,11 @@
   "effect": "read"
  },
  {
+  "tool": "wps_word_get_content_controls",
+  "signature": "word_get_content_controls()",
+  "effect": "read"
+ },
+ {
   "tool": "wps_word_get_document_stats",
   "signature": "word_get_document_stats()",
   "effect": "read"
@@ -1182,6 +1202,11 @@
  {
   "tool": "wps_word_get_document_text",
   "signature": "word_get_document_text(start?, end?)",
+  "effect": "read"
+ },
+ {
+  "tool": "wps_word_get_notes",
+  "signature": "word_get_notes()",
   "effect": "read"
  },
  {
@@ -1225,6 +1250,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_insert_cross_reference",
+  "signature": "word_insert_cross_reference(referenceType?, referenceKind?, referenceItem*)",
+  "effect": "write"
+ },
+ {
   "tool": "wps_word_insert_footer",
   "signature": "word_insert_footer(text*, section?)",
   "effect": "write"
@@ -1242,6 +1272,11 @@
  {
   "tool": "wps_word_insert_image",
   "signature": "word_insert_image(imagePath*, width?, height?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_insert_index",
+  "signature": "word_insert_index()",
   "effect": "write"
  },
  {
@@ -1267,6 +1302,11 @@
  {
   "tool": "wps_word_insert_text",
   "signature": "word_insert_text(text*, position?, style?, new_paragraph?)",
+  "effect": "write"
+ },
+ {
+  "tool": "wps_word_mail_merge",
+  "signature": "word_mail_merge(dataFile*, fields?)",
   "effect": "write"
  },
  {

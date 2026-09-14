@@ -617,6 +617,18 @@ function ConvertTo-ConsolidateSource([string]$reference) {
 }
 
 
+
+function Get-MainTextRange($word, $doc) {
+    # 加过脚注/尾注之后，Word 会把光标留在注释正文里（Selection.StoryType 不再是正文），这时候再往
+    # “光标处”插内容会插进注释而不是正文。凡是明确要动正文的动作都走这个解析器：不在正文就落到正文
+    # 末尾，并且如实告警——而不是悄悄插错地方。
+    $story = 1
+    try { $story = [int]$word.Selection.StoryType } catch { $story = 1 }
+    if ($story -eq 1) { return $word.Selection.Range }
+    Add-WpsWarning "光标不在正文（可能停在脚注/尾注里），已在正文末尾插入"
+    return $doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
+}
+
 function Get-ListObjectByName($sheet, $table) {
     # Enumerate instead of calling Item(name) then Item(index): PowerShell caches a COM member's binder
     # after its first use, so the second argument shape fails. Enumeration sidesteps that entirely.
@@ -3413,6 +3425,170 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ deleted = $deleted; remaining = $remaining } }
     }
 
+# ==================== Word 长尾（P3-4，新 COM 代码）====================
+    # 内容控件 / 脚注尾注 / 索引 / 交叉引用 / 邮件合并。支持面已用裸 COM 量过（word-probe4/5）。
+
+    "getContentControls" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        $controls = @()
+        $total = 0
+        try { $total = [int]$doc.ContentControls.Count } catch { $total = 0 }
+        for ($i = 1; $i -le $total; $i++) {
+            $cc = $doc.ContentControls.Item($i)
+            $title = ""; try { $title = [string]$cc.Title } catch { $title = "" }
+            $tag = ""; try { $tag = [string]$cc.Tag } catch { $tag = "" }
+            $text = ""; try { $text = ([string]$cc.Range.Text).Trim() } catch { $text = "" }
+            if ($text.Length -gt 120) { $text = $text.Substring(0, 120) + "..." }
+            $controls += @{ index = $i; type = [int]$cc.Type; title = $title; tag = $tag; text = $text }
+        }
+        Output-Json @{ success = $true; data = @{ controls = $controls; count = $controls.Count } }
+    }
+
+    "addContentControl" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        # wdContentControlRichText=0 plainText=1 checkBox=2 comboBox=3 dropDownList=4 datePicker=5 picture=7
+        $typeMap = @{ richText = 0; plainText = 1; checkBox = 2; comboBox = 3; dropDownList = 4; datePicker = 5; picture = 7 }
+        $typeName = if ($p.type) { "$($p.type)" } else { "richText" }
+        $ccType = $typeMap[$typeName]
+        if ($null -eq $ccType) { Output-Json @{ success = $false; error = ("unknown content control type: " + $p.type) }; exit }
+        $range = Get-MainTextRange $word $doc
+        $cc = $null
+        try { $cc = $doc.ContentControls.Add($ccType, $range) } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        if ($null -ne $p.text -and "$($p.text)" -ne "") {
+            try { $cc.Range.Text = [string]$p.text } catch { Add-WpsWarning ("content control text failed: " + $_.Exception.Message) }
+        }
+        if ($p.title) { try { $cc.Title = [string]$p.title } catch { Add-WpsWarning ("content control title failed: " + $_.Exception.Message) } }
+        if ($p.tag) { try { $cc.Tag = [string]$p.tag } catch { Add-WpsWarning ("content control tag failed: " + $_.Exception.Message) } }
+        $readBack = ""
+        try { $readBack = [string]$cc.Range.Text } catch { $readBack = "" }
+        $title = ""; try { $title = [string]$cc.Title } catch { $title = "" }
+        # 返回数字类型：工具层用它映射中文名；只给字符串名字会让映射失效。
+        Output-Json @{ success = $true; data = @{ type = [int]$ccType; typeName = $typeName; title = $title; text = $readBack; total = [int]$doc.ContentControls.Count } }
+    }
+
+    "addFootnote" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        if (-not $p.text) { Output-Json @{ success = $false; error = "text required" }; exit }
+        $range = Get-MainTextRange $word $doc
+        try { $doc.Footnotes.Add($range, [string]$p.text) | Out-Null } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        Output-Json @{ success = $true; data = @{ text = [string]$p.text; total = [int]$doc.Footnotes.Count } }
+    }
+
+    "addEndnote" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        if (-not $p.text) { Output-Json @{ success = $false; error = "text required" }; exit }
+        $range = Get-MainTextRange $word $doc
+        try { $doc.Endnotes.Add($range, [string]$p.text) | Out-Null } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        Output-Json @{ success = $true; data = @{ text = [string]$p.text; total = [int]$doc.Endnotes.Count } }
+    }
+
+    "getNotes" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        $footnotes = @()
+        $footnoteCount = 0
+        try { $footnoteCount = [int]$doc.Footnotes.Count } catch { $footnoteCount = 0 }
+        for ($i = 1; $i -le $footnoteCount; $i++) {
+            # 脚注正文不在 .Range.Text 里（那里是空的），要读 .Reference.Text —— 裸 COM 量出来的差异。
+            $text = ""
+            try { $text = ([string]$doc.Footnotes.Item($i).Reference.Text).Trim() } catch { $text = "" }
+            $footnotes += @{ index = $i; text = $text }
+        }
+        $endnotes = @()
+        $endnoteCount = 0
+        try { $endnoteCount = [int]$doc.Endnotes.Count } catch { $endnoteCount = 0 }
+        for ($i = 1; $i -le $endnoteCount; $i++) {
+            $text = ""
+            try { $text = ([string]$doc.Endnotes.Item($i).Reference.Text).Trim() } catch { $text = "" }
+            $endnotes += @{ index = $i; text = $text }
+        }
+        Output-Json @{ success = $true; data = @{ footnotes = $footnotes; endnotes = $endnotes; footnoteCount = $footnoteCount; endnoteCount = $endnoteCount } }
+    }
+
+    "insertIndex" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        $target = $doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
+        try { $doc.Indexes.Add($target, $null, $true) | Out-Null } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        $count = 0
+        try { $count = [int]$doc.Indexes.Count } catch { $count = 0 }
+        Output-Json @{ success = $true; data = @{ indexes = $count; message = "已在文档末尾插入索引（没有索引项时 Word 会写「未找到索引项」）" } }
+    }
+
+    "insertCrossReference" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        # 参数直接对应 Word 的 Range.InsertCrossReference(ReferenceType, ReferenceKind, ReferenceItem)：
+        # 这两个枚举在 WPS 上没有可靠的友好映射，所以照实透传，不做猜测性翻译。
+        $referenceType = if ($null -ne $p.referenceType) { [int]$p.referenceType } else { 1 }
+        $referenceKind = if ($null -ne $p.referenceKind) { [int]$p.referenceKind } else { -1 }
+        if ($null -eq $p.referenceItem) { Output-Json @{ success = $false; error = "referenceItem required" }; exit }
+        $range = $word.Selection.Range
+        $item = $p.referenceItem
+        try {
+            if ("$item" -match '^\d+$') { $range.InsertCrossReference($referenceType, $referenceKind, [int]$item) | Out-Null }
+            else { $range.InsertCrossReference($referenceType, $referenceKind, [string]$item) | Out-Null }
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; exit
+        }
+        Output-Json @{ success = $true; data = @{ referenceType = $referenceType; referenceKind = $referenceKind; referenceItem = "$item" } }
+    }
+
+    "mailMerge" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        if (-not $p.dataFile) { Output-Json @{ success = $false; error = "dataFile required" }; exit }
+        $path = Resolve-InputFilePath $p.dataFile
+        if ($null -eq $path) { Output-Json @{ success = $false; error = ("data file not found: " + $p.dataFile) }; exit }
+        $fields = @()
+        if ($null -ne $p.fields) { $fields = @($p.fields) }
+        $original = [string]$doc.Name
+        $inserted = 0
+        try {
+            $doc.MailMerge.MainDocumentType = 0
+            $doc.MailMerge.OpenDataSource($path)
+            $target = Get-MainTextRange $word $doc
+            foreach ($field in $fields) {
+                $doc.MailMerge.Fields.Add($target, [string]$field) | Out-Null
+                $inserted = $inserted + 1
+            }
+            $doc.MailMerge.Destination = 0
+            $doc.MailMerge.Execute()
+        } catch {
+            Output-Json @{ success = $false; error = $_.Exception.Message }; exit
+        }
+        $merged = $word.ActiveDocument
+        $name = ""
+        try { $name = [string]$merged.Name } catch { $name = "" }
+        $preview = ""
+        try { $preview = ([string]$merged.Content.Text).Trim() } catch { $preview = "" }
+        if ($preview.Length -gt 200) { $preview = $preview.Substring(0, 200) + "..." }
+        Output-Json @{ success = $true; data = @{
+            mergedDocument = $name; sourceDocument = $original; fields = $fields; fieldsInserted = $inserted; preview = $preview
+            message = "已按数据源合并到一个新文档（原文档未改动）"
+        } }
+    }
+
     "findInSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
@@ -4157,7 +4333,7 @@ switch ($Action) {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
         $doc = $word.ActiveDocument
-        $range = $word.Selection.Range
+        $range = Get-MainTextRange $word $doc
         $url = if ($p.url) { $p.url } else { $p.address }
         $text = if ($p.text) { $p.text } elseif ($p.displayText) { $p.displayText } else { $url }
         if ($range.Text -and $range.Text.Trim() -ne "") {

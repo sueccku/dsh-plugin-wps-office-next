@@ -7,14 +7,15 @@
  * 整合格式化、内容操作、文档管理和校对的所有Tools
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.closeDocumentDefinition = exports.createDocumentHandler = exports.createDocumentDefinition = exports.openDocumentHandler = exports.openDocumentDefinition = exports.switchDocumentHandler = exports.switchDocumentDefinition = exports.getOpenDocumentsHandler = exports.getOpenDocumentsDefinition = exports.replaceBookmarkContentHandler = exports.replaceBookmarkContentDefinition = exports.smartFillFieldHandler = exports.smartFillFieldDefinition = exports.findInDocumentHandler = exports.findInDocumentDefinition = exports.getParagraphsHandler = exports.getParagraphsDefinition = exports.setTextColorHandler = exports.setTextColorDefinition = exports.insertCommentHandler = exports.insertCommentDefinition = exports.insertPageBreakHandler = exports.insertPageBreakDefinition = exports.getActiveDocumentHandler = exports.getActiveDocumentDefinition = exports.setParagraphHandler = exports.setParagraphDefinition = exports.insertTableHandler = exports.insertTableDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.insertTextHandler = exports.insertTextDefinition = exports.setPageSetupHandler = exports.setPageSetupDefinition = exports.insertBookmarkHandler = exports.insertBookmarkDefinition = exports.generateTocHandler = exports.generateTocDefinition = exports.setFontHandler = exports.setFontDefinition = exports.applyStyleHandler = exports.applyStyleDefinition = exports.wordProduceTools = exports.wordDeepTools = exports.proofreadTools = exports.documentTools = exports.contentTools = exports.formatTools = exports.wordTools = void 0;
-exports.proofreadBasicHandler = exports.proofreadBasicDefinition = exports.replaceRangeHandler = exports.replaceRangeDefinition = exports.getTrackChangesStatusHandler = exports.getTrackChangesStatusDefinition = exports.enableTrackChangesHandler = exports.enableTrackChangesDefinition = exports.setLineSpacingHandler = exports.setLineSpacingDefinition = exports.insertSectionBreakHandler = exports.insertSectionBreakDefinition = exports.insertFooterHandler = exports.insertFooterDefinition = exports.insertHeaderHandler = exports.insertHeaderDefinition = exports.getDocumentTextHandler = exports.getDocumentTextDefinition = exports.closeDocumentHandler = void 0;
+exports.createDocumentHandler = exports.createDocumentDefinition = exports.openDocumentHandler = exports.openDocumentDefinition = exports.switchDocumentHandler = exports.switchDocumentDefinition = exports.getOpenDocumentsHandler = exports.getOpenDocumentsDefinition = exports.replaceBookmarkContentHandler = exports.replaceBookmarkContentDefinition = exports.smartFillFieldHandler = exports.smartFillFieldDefinition = exports.findInDocumentHandler = exports.findInDocumentDefinition = exports.getParagraphsHandler = exports.getParagraphsDefinition = exports.setTextColorHandler = exports.setTextColorDefinition = exports.insertCommentHandler = exports.insertCommentDefinition = exports.insertPageBreakHandler = exports.insertPageBreakDefinition = exports.getActiveDocumentHandler = exports.getActiveDocumentDefinition = exports.setParagraphHandler = exports.setParagraphDefinition = exports.insertTableHandler = exports.insertTableDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.insertTextHandler = exports.insertTextDefinition = exports.setPageSetupHandler = exports.setPageSetupDefinition = exports.insertBookmarkHandler = exports.insertBookmarkDefinition = exports.generateTocHandler = exports.generateTocDefinition = exports.setFontHandler = exports.setFontDefinition = exports.applyStyleHandler = exports.applyStyleDefinition = exports.wordLongTailTools = exports.wordProduceTools = exports.wordDeepTools = exports.proofreadTools = exports.documentTools = exports.contentTools = exports.formatTools = exports.wordTools = void 0;
+exports.proofreadBasicHandler = exports.proofreadBasicDefinition = exports.replaceRangeHandler = exports.replaceRangeDefinition = exports.getTrackChangesStatusHandler = exports.getTrackChangesStatusDefinition = exports.enableTrackChangesHandler = exports.enableTrackChangesDefinition = exports.setLineSpacingHandler = exports.setLineSpacingDefinition = exports.insertSectionBreakHandler = exports.insertSectionBreakDefinition = exports.insertFooterHandler = exports.insertFooterDefinition = exports.insertHeaderHandler = exports.insertHeaderDefinition = exports.getDocumentTextHandler = exports.getDocumentTextDefinition = exports.closeDocumentHandler = exports.closeDocumentDefinition = void 0;
 const format_1 = require("./format");
 const content_1 = require("./content");
 const document_1 = require("./document");
 const proofread_1 = require("./proofread");
 const deep_1 = require("./deep");
 const produce_1 = require("./produce");
+const longtail_1 = require("./longtail");
 /**
  * 所有Word相关的Tools
  * 包含：
@@ -27,6 +28,8 @@ const produce_1 = require("./produce");
  *   merge_table_cells, split_table_cell, set_table_format, convert_table_to_text
  * - 文档生产Tools（P3-3）: insert_page_numbers, set_columns, get_revisions, accept_revisions,
  *   reject_revisions, delete_comment
+ * - 长尾Tools（P3-4）: get_content_controls, add_content_control, add_footnote, add_endnote,
+ *   get_notes, insert_index, insert_cross_reference, mail_merge
  */
 exports.wordTools = [
     ...format_1.formatTools,
@@ -35,6 +38,7 @@ exports.wordTools = [
     ...proofread_1.proofreadTools,
     ...deep_1.wordDeepTools,
     ...produce_1.wordProduceTools,
+    ...longtail_1.wordLongTailTools,
 ];
 // 分别导出，方便按需使用
 var format_2 = require("./format");
@@ -49,6 +53,8 @@ var deep_2 = require("./deep");
 Object.defineProperty(exports, "wordDeepTools", { enumerable: true, get: function () { return deep_2.wordDeepTools; } });
 var produce_2 = require("./produce");
 Object.defineProperty(exports, "wordProduceTools", { enumerable: true, get: function () { return produce_2.wordProduceTools; } });
+var longtail_2 = require("./longtail");
+Object.defineProperty(exports, "wordLongTailTools", { enumerable: true, get: function () { return longtail_2.wordLongTailTools; } });
 // 导出单独的定义和处理器，方便测试
 var format_3 = require("./format");
 Object.defineProperty(exports, "applyStyleDefinition", { enumerable: true, get: function () { return format_3.applyStyleDefinition; } });

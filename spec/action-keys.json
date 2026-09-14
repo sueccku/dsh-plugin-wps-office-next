@@ -1014,6 +1014,18 @@
  "acceptRevisions": [
   "index"
  ],
+ "addContentControl": [
+  "tag",
+  "text",
+  "title",
+  "type"
+ ],
+ "addEndnote": [
+  "text"
+ ],
+ "addFootnote": [
+  "text"
+ ],
  "addTableLines": [
   "count",
   "kind",
@@ -1065,8 +1077,10 @@
  "getActiveDocument": [],
  "getBookmarks": [],
  "getComments": [],
+ "getContentControls": [],
  "getDocumentStats": [],
  "getDocumentText": [],
+ "getNotes": [],
  "getOpenDocuments": [],
  "getDocumentParagraphs": [
   "endParagraph",
@@ -1083,6 +1097,11 @@
  ],
  "addComment": [
   "text"
+ ],
+ "insertCrossReference": [
+  "referenceItem",
+  "referenceKind",
+  "referenceType"
  ],
  "insertFooter": [
   "section",
@@ -1101,6 +1120,7 @@
   "path",
   "width"
  ],
+ "insertIndex": [],
  "insertPageBreak": [],
  "insertPageNumbers": [
   "alignment",
@@ -1119,6 +1139,10 @@
   "position",
   "style",
   "text"
+ ],
+ "mailMerge": [
+  "dataFile",
+  "fields"
  ],
  "mergeTableCells": [
   "endColumn",

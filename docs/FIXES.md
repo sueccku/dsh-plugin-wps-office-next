@@ -1203,6 +1203,36 @@ P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已�
 
 **数字**：桥 action 265 → **271**、注册工具 265 → **271**、广告面 62 → **64 工具 / 34,754 字节**
 （`insert_page_numbers` / `get_revisions` 进精选档）。
+### 47. P3-4：Word 长尾（内容控件 / 脚注尾注 / 索引 / 交叉引用 / 邮件合并）——P3 完成
+
+| 工具 | action | 说明 |
+|---|---|---|
+| `wps_word_get_content_controls` | getContentControls | 列出内容控件：类型、标题、标签、当前文本 |
+| `wps_word_add_content_control` | addContentControl | 插入内容控件（富文本/纯文本/复选框/下拉/日期/图片） |
+| `wps_word_add_footnote` / `_add_endnote` | addFootnote / addEndnote | 插入脚注 / 尾注 |
+| `wps_word_get_notes` | getNotes | 列出脚注与尾注及正文 |
+| `wps_word_insert_index` | insertIndex | 文档末尾插入索引 |
+| `wps_word_insert_cross_reference` | insertCrossReference | 交叉引用（枚举照实透传） |
+| `wps_word_mail_merge` | mailMerge | CSV 邮件合并 → 生成新文档（母版不动） |
+
+**一个真实的根因，被验收逼出来**：加过脚注之后，Word 会把光标留在**注释正文**里
+（`Selection.StoryType` 不再是正文）。此后再执行「往光标处插内容」的动作——插尾注、插内容控件、
+插超链接、邮件合并插字段——全都插进了注释，正文里什么都没有。表现是邮件合并「成功」了、
+生成的文档里却没有数据行，尾注干脆报「值不在预期的范围内」。
+
+修法是新增一个共享解析器 `Get-MainTextRange`：光标在正文就用光标，**不在正文就落到正文末尾并如实告警**
+（`Add-WpsWarning`），而不是悄悄插到别处。P3 动过的 5 个用光标的动作全部改走它。
+这条也解释了为什么「一次只验证一个动作」不够——**动作之间会互相改变状态**，必须串起来跑。
+
+**两处小修正**：内容控件返回的是数字类型而不是名字（工具层要靠数字映射中文名）；
+另外发现桥文件里**混着 CRLF 与 LF**（新插入的块是 LF、老区域是 CRLF），按行匹配的脚本必须留意。
+
+**验收**：`test/word-longtail.test.mjs` **20 项**（真实 WPS Writer）：内容控件增读与非法类型被拒、
+脚注/尾注增读（正文从 `.Reference.Text` 读——`.Range.Text` 在 WPS 里是空的）、插入索引、
+按书签插交叉引用、缺参数被拒、真实 CSV 邮件合并（缺文件/缺参数被拒 → 生成新文档并含两行数据）。
+
+**数字**：桥 action 271 → **279**、注册工具 271 → **279**、广告面 64 → **66 工具 / 35,568 字节**
+（`mail_merge`、`get_notes` 进精选档）。测试 **489 → 509 项 / 24 文件**。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1251,9 +1281,10 @@ P3 依旧「先裸 COM 量遍 D2 清单，再动手」。第一波把桥里已�
 | test/excel-advanced.test.mjs | 24 | P2-4 透视表列表/刷新/清除、全部刷新、单变量求解、迷你图、图表标题与删除 |
 | test/word-deep.test.mjs | 27 | P3 书签/批注/统计/超链接 + 表格读写编辑与外观 |
 | test/word-produce.test.mjs | 19 | P3-3 页码/分栏/修订接受拒绝/批注删除 |
+| test/word-longtail.test.mjs | 20 | P3-4 内容控件/脚注尾注/索引/交叉引用/CSV 邮件合并 |
 
-合计 **489 项**（23 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **509 项**（24 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 259 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 267 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

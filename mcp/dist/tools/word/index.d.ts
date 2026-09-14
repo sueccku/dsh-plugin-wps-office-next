@@ -18,6 +18,8 @@ import { RegisteredTool } from '../../types/tools';
  *   merge_table_cells, split_table_cell, set_table_format, convert_table_to_text
  * - 文档生产Tools（P3-3）: insert_page_numbers, set_columns, get_revisions, accept_revisions,
  *   reject_revisions, delete_comment
+ * - 长尾Tools（P3-4）: get_content_controls, add_content_control, add_footnote, add_endnote,
+ *   get_notes, insert_index, insert_cross_reference, mail_merge
  */
 export declare const wordTools: RegisteredTool[];
 export { formatTools } from './format';
@@ -26,6 +28,7 @@ export { documentTools } from './document';
 export { proofreadTools } from './proofread';
 export { wordDeepTools } from './deep';
 export { wordProduceTools } from './produce';
+export { wordLongTailTools } from './longtail';
 export { applyStyleDefinition, applyStyleHandler, setFontDefinition, setFontHandler, generateTocDefinition, generateTocHandler, insertBookmarkDefinition, insertBookmarkHandler, setPageSetupDefinition, setPageSetupHandler, } from './format';
 export { insertTextDefinition, insertTextHandler, findReplaceDefinition, findReplaceHandler, insertTableDefinition, insertTableHandler, setParagraphDefinition, setParagraphHandler, getActiveDocumentDefinition, getActiveDocumentHandler, insertPageBreakDefinition, insertPageBreakHandler, insertCommentDefinition, insertCommentHandler, setTextColorDefinition, setTextColorHandler, getParagraphsDefinition, getParagraphsHandler, findInDocumentDefinition, findInDocumentHandler, smartFillFieldDefinition, smartFillFieldHandler, replaceBookmarkContentDefinition, replaceBookmarkContentHandler, } from './content';
 export { getOpenDocumentsDefinition, getOpenDocumentsHandler, switchDocumentDefinition, switchDocumentHandler, openDocumentDefinition, openDocumentHandler, createDocumentDefinition, createDocumentHandler, closeDocumentDefinition, closeDocumentHandler, getDocumentTextDefinition, getDocumentTextHandler, insertHeaderDefinition, insertHeaderHandler, insertFooterDefinition, insertFooterHandler, insertSectionBreakDefinition, insertSectionBreakHandler, setLineSpacingDefinition, setLineSpacingHandler, } from './document';

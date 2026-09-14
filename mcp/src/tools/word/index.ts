@@ -13,6 +13,7 @@ import { documentTools } from './document';
 import { proofreadTools } from './proofread';
 import { wordDeepTools } from './deep';
 import { wordProduceTools } from './produce';
+import { wordLongTailTools } from './longtail';
 
 /**
  * 所有Word相关的Tools
@@ -26,6 +27,8 @@ import { wordProduceTools } from './produce';
  *   merge_table_cells, split_table_cell, set_table_format, convert_table_to_text
  * - 文档生产Tools（P3-3）: insert_page_numbers, set_columns, get_revisions, accept_revisions,
  *   reject_revisions, delete_comment
+ * - 长尾Tools（P3-4）: get_content_controls, add_content_control, add_footnote, add_endnote,
+ *   get_notes, insert_index, insert_cross_reference, mail_merge
  */
 export const wordTools: RegisteredTool[] = [
   ...formatTools,
@@ -34,6 +37,7 @@ export const wordTools: RegisteredTool[] = [
   ...proofreadTools,
   ...wordDeepTools,
   ...wordProduceTools,
+  ...wordLongTailTools,
 ];
 
 // 分别导出，方便按需使用
@@ -43,6 +47,7 @@ export { documentTools } from './document';
 export { proofreadTools } from './proofread';
 export { wordDeepTools } from './deep';
 export { wordProduceTools } from './produce';
+export { wordLongTailTools } from './longtail';
 
 // 导出单独的定义和处理器，方便测试
 export {

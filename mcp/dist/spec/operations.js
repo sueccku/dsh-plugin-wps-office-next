@@ -4673,7 +4673,7 @@ exports.operations = [
         "tool": "wps_ppt_export_slide_as_image",
         "action": "exportSlideAsImage",
         "app": "ppt",
-        "summary": "将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS PowerPoint 原生接口 Slide.Export(FileName, FilterName, ScaleWidth, ScaleHeight)，\n实现 1:1 像素级还原��避免通过 PDF 中转再转图片造成的版式/字体/形状失真问题。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把第3页 PPT 导出成 PNG 给我\"\n- \"导出整个演示文稿每一页为 1920x1080 的 JPG\"\n- \"把封面页保存为高清图片用于网页\"\n\n注意：\n- outputPath 必须是绝对路径\n- macOS 上建议输出到 ~/Downloads 或用户可写目录，避免沙箱权限拒绝\n- 不指定 width/height 时使用 1280x720（16:9 默认尺寸）",
+        "summary": "将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS PowerPoint 原生接口 Slide.Export(FileName, FilterName, ScaleWidth, ScaleHeight)，\n实现 1:1 像素级还原，避免通过 PDF 中转再转图片造成的版式/字体/形状失真问题。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把第3页 PPT 导出成 PNG 给我\"\n- \"导出整个演示文稿每一页为 1920x1080 的 JPG\"\n- \"把封面页保存为高清图片用于网页\"\n\n注意：\n- outputPath 必须是绝对路径\n- macOS 上建议输出到 ~/Downloads 或用户可写目录，避免沙箱权限拒绝\n- 不指定 width/height 时使用 1280x720（16:9 默认尺寸）",
         "params": {
             "slideIndex": {
                 "type": "number",
@@ -6785,6 +6785,80 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_add_content_control",
+        "action": "addContentControl",
+        "app": "word",
+        "summary": "在光标处插入一个内容控件（可填写的结构化区域），可指定类型、标题、标签与初始文本。使用场景：做一份可复用的表单模板。",
+        "params": {
+            "type": {
+                "type": "string",
+                "description": "控件类型，默认 richText（富文本）",
+                "enum": [
+                    "richText",
+                    "plainText",
+                    "checkBox",
+                    "comboBox",
+                    "dropDownList",
+                    "datePicker",
+                    "picture"
+                ]
+            },
+            "title": {
+                "type": "string",
+                "description": "标题（界面上显示的说明）"
+            },
+            "tag": {
+                "type": "string",
+                "description": "标签（给程序看的键名）"
+            },
+            "text": {
+                "type": "string",
+                "description": "初始文本"
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_add_endnote",
+        "action": "addEndnote",
+        "app": "word",
+        "summary": "在光标处插入尾注（文档末尾的注释）。使用场景：给引用加出处，统一列在文末。",
+        "params": {
+            "text": {
+                "type": "string",
+                "description": "尾注内容",
+                "required": true
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "text"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_add_footnote",
+        "action": "addFootnote",
+        "app": "word",
+        "summary": "在光标处插入脚注（页面底部的注释）。使用场景：给一个术语加解释。",
+        "params": {
+            "text": {
+                "type": "string",
+                "description": "脚注内容",
+                "required": true
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "text"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_add_table_lines",
         "action": "addTableLines",
         "app": "word",
@@ -7111,6 +7185,16 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_get_content_controls",
+        "action": "getContentControls",
+        "app": "word",
+        "summary": "列出文档里的内容控件（可填写的结构化区域）：序号、类型、标题、标签、当前文本。使用场景：看清模板里有哪些可填字段，配合 wps_word_add_content_control 使用。",
+        "params": {},
+        "effect": "read",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_get_document_stats",
         "action": "getDocumentStats",
         "app": "word",
@@ -7137,6 +7221,16 @@ exports.operations = [
                 "kind": "local"
             }
         },
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_get_notes",
+        "action": "getNotes",
+        "app": "word",
+        "summary": "列出文档里的脚注与尾注及其内容。使用场景：核对注释有没有漏、内容对不对。",
+        "params": {},
         "effect": "read",
         "advertised": true,
         "engine": "bridge"
@@ -7259,6 +7353,33 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_insert_cross_reference",
+        "action": "insertCrossReference",
+        "app": "word",
+        "summary": "在光标处插入交叉引用（引用标题/书签/脚注等）。参数直接对应 Word 的 InsertCrossReference(ReferenceType, ReferenceKind, ReferenceItem)：referenceType 1=标题 2=书签 3=脚注 4=尾注，referenceKind -1=正文文本，referenceItem 是要引用的编号或名字。这两个枚举在 WPS 上没有被验证过的友好映射，所以照实透传，不做猜测性翻译。",
+        "params": {
+            "referenceType": {
+                "type": "number",
+                "description": "引用类型（Word 的 WdReferenceType）：1=标题 2=书签 3=脚注 4=尾注；默认 1"
+            },
+            "referenceKind": {
+                "type": "number",
+                "description": "引用内容（Word 的 WdReferenceKind）：-1=正文文本；默认 -1"
+            },
+            "referenceItem": {
+                "type": "string",
+                "description": "要引用的项目：编号（例如 1）或名字（例如书签名）",
+                "required": true
+            }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": [
+            "referenceItem"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_insert_footer",
         "action": "insertFooter",
         "app": "word",
@@ -7368,6 +7489,16 @@ exports.operations = [
         "aliases": {
             "imagePath": "path"
         }
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_insert_index",
+        "action": "insertIndex",
+        "app": "word",
+        "summary": "在文档末尾插入索引（按索引项自动生成）。使用场景：长文档要一张术语/条目索引。注意：只有先用 Word 的「标记索引项」标记过内容，索引里才会有条目；没标记过会显示「未找到索引项」。",
+        "params": {},
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_insert_page_break",
@@ -7496,6 +7627,29 @@ exports.operations = [
         "advertised": true,
         "required": [
             "text"
+        ],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_mail_merge",
+        "action": "mailMerge",
+        "app": "word",
+        "summary": "邮件合并：以当前文档为母版，接一个数据文件（CSV），把指定字段插到光标处，再按每一行数据生成一个新文档（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。",
+        "params": {
+            "dataFile": {
+                "type": "string",
+                "description": "数据文件路径（CSV，第一行是字段名）",
+                "required": true
+            },
+            "fields": {
+                "type": "array",
+                "description": "要插入的字段名列表，按顺序插到光标处，例如 Name、City；不填则只打开数据源不插字段"
+            }
+        },
+        "effect": "write",
+        "advertised": true,
+        "required": [
+            "dataFile"
         ],
         "engine": "bridge"
     }),

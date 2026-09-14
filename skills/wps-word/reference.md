@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 文字工具（51）
+## WPS 文字工具（59）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -58,3 +58,11 @@
 | wps_word_accept_revisions | wps_call | 接受修订：给 index 只接受那一处，不填则接受全部。 |
 | wps_word_reject_revisions | wps_call | 拒绝修订：给 index 只拒绝那一处，不填则拒绝全部（回到改之前的原文）。 |
 | wps_word_delete_comment | wps_call | 删除批注：给 index 只删那一条（序号见 wps_word_get_comments），不填则全部删除。 |
+| wps_word_get_content_controls | wps_call | 列出文档里的内容控件（可填写的结构化区域）：序号、类型、标题、标签、当前文本。 |
+| wps_word_add_content_control | wps_call | 在光标处插入一个内容控件（可填写的结构化区域），可指定类型、标题、标签与初始文本。 |
+| wps_word_add_footnote | wps_call | 在光标处插入脚注（页面底部的注释）。 |
+| wps_word_add_endnote | wps_call | 在光标处插入尾注（文档末尾的注释）。 |
+| wps_word_get_notes | 直达 | 列出文档里的脚注与尾注及其内容。 |
+| wps_word_insert_index | wps_call | 在文档末尾插入索引（按索引项自动生成）。 |
+| wps_word_insert_cross_reference | wps_call | 在光标处插入交叉引用（引用标题/书签/脚注等）。 |
+| wps_word_mail_merge | 直达 | 邮件合并：以当前文档为母版，接一个数据文件（CSV），把指定字段插到光标处，再按每一行数据生成一个新文档（母版不动）。 |

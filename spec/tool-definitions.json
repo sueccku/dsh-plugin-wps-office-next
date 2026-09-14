@@ -3957,7 +3957,7 @@
  },
  {
   "name": "wps_ppt_export_slide_as_image",
-  "description": "将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS PowerPoint 原生接口 Slide.Export(FileName, FilterName, ScaleWidth, ScaleHeight)，\n实现 1:1 像素级还原��避免通过 PDF 中转再转图片造成的版式/字体/形状失真问题。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把第3页 PPT 导出成 PNG 给我\"\n- \"导出整个演示文稿每一页为 1920x1080 的 JPG\"\n- \"把封面页保存为高清图片用于网页\"\n\n注意：\n- outputPath 必须是绝对路径\n- macOS 上建议输出到 ~/Downloads 或用户可写目录，避免沙箱权限拒绝\n- 不指定 width/height 时使用 1280x720（16:9 默认尺寸）",
+  "description": "将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS PowerPoint 原生接口 Slide.Export(FileName, FilterName, ScaleWidth, ScaleHeight)，\n实现 1:1 像素级还原，避免通过 PDF 中转再转图片造成的版式/字体/形状失真问题。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把第3页 PPT 导出成 PNG 给我\"\n- \"导出整个演示文稿每一页为 1920x1080 的 JPG\"\n- \"把封面页保存为高清图片用于网页\"\n\n注意：\n- outputPath 必须是绝对路径\n- macOS 上建议输出到 ~/Downloads 或用户可写目录，避免沙箱权限拒绝\n- 不指定 width/height 时使用 1280x720（16:9 默认尺寸）",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -5703,6 +5703,72 @@
   }
  },
  {
+  "name": "wps_word_add_content_control",
+  "description": "在光标处插入一个内容控件（可填写的结构化区域），可指定类型、标题、标签与初始文本。使用场景：做一份可复用的表单模板。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "type": {
+     "type": "string",
+     "description": "控件类型，默认 richText（富文本）",
+     "enum": [
+      "richText",
+      "plainText",
+      "checkBox",
+      "comboBox",
+      "dropDownList",
+      "datePicker",
+      "picture"
+     ]
+    },
+    "title": {
+     "type": "string",
+     "description": "标题（界面上显示的说明）"
+    },
+    "tag": {
+     "type": "string",
+     "description": "标签（给程序看的键名）"
+    },
+    "text": {
+     "type": "string",
+     "description": "初始文本"
+    }
+   }
+  }
+ },
+ {
+  "name": "wps_word_add_endnote",
+  "description": "在光标处插入尾注（文档末尾的注释）。使用场景：给引用加出处，统一列在文末。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "text": {
+     "type": "string",
+     "description": "尾注内容"
+    }
+   },
+   "required": [
+    "text"
+   ]
+  }
+ },
+ {
+  "name": "wps_word_add_footnote",
+  "description": "在光标处插入脚注（页面底部的注释）。使用场景：给一个术语加解释。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "text": {
+     "type": "string",
+     "description": "脚注内容"
+    }
+   },
+   "required": [
+    "text"
+   ]
+  }
+ },
+ {
   "name": "wps_word_add_table_lines",
   "description": "给表格增加行或列。kind 选 row/column，count 默认 1；给 position 就插在那一行/列之前，否则追加到末尾。使用场景：表格要再加几行。",
   "inputSchema": {
@@ -5972,6 +6038,14 @@
   }
  },
  {
+  "name": "wps_word_get_content_controls",
+  "description": "列出文档里的内容控件（可填写的结构化区域）：序号、类型、标题、标签、当前文本。使用场景：看清模板里有哪些可填字段，配合 wps_word_add_content_control 使用。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
   "name": "wps_word_get_document_stats",
   "description": "文档统计：页数、字数、字符数、段落数、行数。使用场景：「这份文档多少字」「排出来几页」。页数按当前排版计算。",
   "inputSchema": {
@@ -5994,6 +6068,14 @@
      "description": "结束位置（字符索引），默认到文档末尾"
     }
    }
+  }
+ },
+ {
+  "name": "wps_word_get_notes",
+  "description": "列出文档里的脚注与尾注及其内容。使用场景：核对注释有没有漏、内容对不对。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
   }
  },
  {
@@ -6092,6 +6174,30 @@
   }
  },
  {
+  "name": "wps_word_insert_cross_reference",
+  "description": "在光标处插入交叉引用（引用标题/书签/脚注等）。参数直接对应 Word 的 InsertCrossReference(ReferenceType, ReferenceKind, ReferenceItem)：referenceType 1=标题 2=书签 3=脚注 4=尾注，referenceKind -1=正文文本，referenceItem 是要引用的编号或名字。这两个枚举在 WPS 上没有被验证过的友好映射，所以照实透传，不做猜测性翻译。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "referenceType": {
+     "type": "number",
+     "description": "引用类型（Word 的 WdReferenceType）：1=标题 2=书签 3=脚注 4=尾注；默认 1"
+    },
+    "referenceKind": {
+     "type": "number",
+     "description": "引用内容（Word 的 WdReferenceKind）：-1=正文文本；默认 -1"
+    },
+    "referenceItem": {
+     "type": "string",
+     "description": "要引用的项目：编号（例如 1）或名字（例如书签名）"
+    }
+   },
+   "required": [
+    "referenceItem"
+   ]
+  }
+ },
+ {
   "name": "wps_word_insert_footer",
   "description": "设置页脚内容。\n\n使用场景：\n- \"给文档加个页脚\"\n- \"设置页脚为页码\"\n- \"修改第1节的页脚\"",
   "inputSchema": {
@@ -6175,6 +6281,14 @@
    "required": [
     "imagePath"
    ]
+  }
+ },
+ {
+  "name": "wps_word_insert_index",
+  "description": "在文档末尾插入索引（按索引项自动生成）。使用场景：长文档要一张术语/条目索引。注意：只有先用 Word 的「标记索引项」标记过内容，索引里才会有条目；没标记过会显示「未找到索引项」。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
   }
  },
  {
@@ -6285,6 +6399,26 @@
    },
    "required": [
     "text"
+   ]
+  }
+ },
+ {
+  "name": "wps_word_mail_merge",
+  "description": "邮件合并：以当前文档为母版，接一个数据文件（CSV），把指定字段插到光标处，再按每一行数据生成一个新文档（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "dataFile": {
+     "type": "string",
+     "description": "数据文件路径（CSV，第一行是字段名）"
+    },
+    "fields": {
+     "type": "array",
+     "description": "要插入的字段名列表，按顺序插到光标处，例如 Name、City；不填则只打开数据源不插字段"
+    }
+   },
+   "required": [
+    "dataFile"
    ]
   }
  },
