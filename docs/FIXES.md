@@ -1389,10 +1389,11 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 只有**能证明原主已死**（进程没了、或它的 DSH/MCP 客户端没了、或心跳停摆 > 120s）才接管，
 接管只杀**那个陈旧宿主**，从不杀 WPS。
 
-**新增测试（24 项断言，全部真机/真进程）**
+**新增测试（54 项断言，全部真机/真进程）**
 - `test/host-lease.test.mjs`（18）：首个宿主就位 → 第二个被可读中文拒绝且退出码非零 →
   **拒绝者不影响在位者** → 释放后新宿主接管 → 客户端已死的陈旧宿主**被接管而不是报假冲突**。
-- `test/open-safety.test.mjs`（20）：普通 .docx/.xlsx 照常打开、不残留；扩展名不符返回；
+- `test/open-safety.test.mjs`（21）：先做**环境体检**（instance 可用、无残留对话框），
+  再验证普通 .docx/.xlsx 照常打开、不残留；扩展名不符返回；
   **加密 .docx / .xlsx 在 1 秒内失败**并给出「文件已加密…请另存为一份不加密的副本」；
   之后 `ping` 仍然通（证明没留下阻塞）；缺文件快速报错。fixture 用裸 COM 生成并**验证真的加密了**
   （否则整份测试会为了错误的原因通过）。
@@ -1409,7 +1410,20 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 另外给新宿主加了一道确定性：`killChild` 记下待退出的进程，下一次 `ensureStarted` **等它真的退出**
 再拉起，避免「尸体还占着租约 → 新宿主被当成第二个会话」的时序性失败。
 
-**验收**：`open-safety` 20/20、`host-lease` 18/18、`watchdog` 15/15；`verify.mjs` 23 项全绿。
+**写测试时还踩到一个环境坑，值得单独记一笔（新测试的第一个版本就是这么翻车的）**：
+裸 COM 的 fixture 一开始用 `GetActiveObject` 直接取实例、并直接 `Close()`，于是
+① WPS 可能回一个**空壳实例**（`Workbooks` 看着正常、`Add()` 出来的工作簿 `Sheets` 是 null）——
+这正是桥里 `Test-WpsAppUsable` 防的那件事；② 对「脏」文档直接 `Close()` 会弹**模态保存框**，
+而模态框会把**共享的** WPS 实例一起钉住，导致**后面完全不相干的测试**（`sheet-ops` / `word-lifecycle`）
+成片失败。修法：fixture 改成和桥一样的取用方式（`GetActiveObject` → 校验 → `New-Object` → 校验），
+每次 open/close 都用 `DisplayAlerts` 包住并还原，并且在测试最前面加一道**环境体检**
+（`preflight`：清残留 → `Add()` 必须真的产出带表的工作簿）——环境不健康就**明确报环境问题**并给出修法，
+不再伪装成插件缺陷。清残留只清**从未保存过**（`Path` 为空）的文档/工作簿：
+那才是测试僵尸的样子，用户真正打开着的文件（存过盘或有改动）一律不碰，避免体检自己变成丢数据的凶手。
+这条也写进了 HANDOFF §10。
+
+**验收**：`open-safety` 21/21、`host-lease` 18/18、`watchdog` 15/15；全套 **595 项 / 28 文件**、
+`verify.mjs` 23 项全绿。
 
 ## 新发现的 WPS / Office 差异
 
@@ -1467,10 +1481,10 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 | test/word-produce.test.mjs | 19 | P3-3 页码/分栏/修订接受拒绝/批注删除 |
 | test/word-longtail.test.mjs | 20 | P3-4 内容控件/脚注尾注/索引/交叉引用/CSV 邮件合并 |
 | test/host-lease.test.mjs | 18 | S2：单实例租约、第二个宿主被可读拒绝、陈旧宿主接管（不需要 WPS） |
-| test/open-safety.test.mjs | 20 | S1：加密文档快速失败不弹框、常规打开照常、失败后桥仍可用 |
+| test/open-safety.test.mjs | 21 | S1：先体检环境，再验加密文档快速失败不弹框、常规打开照常、失败后桥仍可用 |
 | test/watchdog.test.mjs | 15 | S1 客户端：超时文案「状态未知」、短超时、成功即恢复、不偷偷重试（不需要 WPS） |
 
-合计 **594 项**（28 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **595 项**（28 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

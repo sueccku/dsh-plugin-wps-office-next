@@ -388,8 +388,13 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
   ②`ready` 帧误清 `suspect` 标志，使短超时形同虚设。两者都已修
 - **附带发现（WPS 静默失效）**：`Document.Password` 按长度失效——15 字符把调用卡死，
   **17 字符静默写出完全不加密的文件**（普通 ZIP）。只影响 `wps_execute_method` 逃生舱，已记入 FIXES 52
-- **验收**：`test/open-safety.test.mjs` 20 项、`test/host-lease.test.mjs` 18 项、
+- **验收**：`test/open-safety.test.mjs` 21 项、`test/host-lease.test.mjs` 18 项、
   `test/watchdog.test.mjs` 15 项全绿；后两个不需要 WPS，已并入 CI 静态门禁
+- **新测试的第一个版本自己踩了环境坑，值得记住**：裸 COM 的 fixture 直接 `GetActiveObject` + 直接
+  `Close()`，于是既可能拿到**空壳实例**（`Add()` 出来的工作簿没有工作表），又可能弹出**模态保存框**
+  把**共享的** WPS 实例钉住，连累后面完全不相干的 `sheet-ops` / `word-lifecycle` 成片失败。
+  改成与桥一致的取用方式、`DisplayAlerts` 包住每次 open/close，并在测试最前面加**环境体检**；
+  环境不健康就明确报环境问题，不伪装成插件缺陷（详见 FIXES 52 与 HANDOFF §10）
 
 ## 全项目最终数字（P5 收尾 + 加固第 1 波）
 
@@ -398,7 +403,7 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 | 广告面 | 250 工具 / 141,872 字节 | **69 工具 / 37,573 字节**（降 73.5%） |
 | 注册工具 | 250 | **267**（Excel 118 / Word 59 / PPT 76 / 通用 14） |
 | 桥 action | — | **267** |
-| 测试 | 0 | **594 项 / 28 文件**（其中 3 个文件不需要 WPS，已进 CI） |
+| 测试 | 0 | **595 项 / 28 文件**（其中 3 个文件不需要 WPS，已进 CI） |
 | 门禁 | 无 | verify 23、spec 复现 12、参数契约 255 对（A/B/C/D 全 0）、一键 e2e 28 项 |
 | 台账 | — | 别名债务 **59**、未工具化 action **7**（全部刻意保留） |
 

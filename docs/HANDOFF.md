@@ -109,7 +109,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **37,573** / 上限 40,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 70, maxSchemaBytes: 40000 }` | `scripts/verify.mjs` |
-| 测试 | **594 断言 / 28 个测试文件** | `test/*.test.mjs`（本轮 541 → 594） |
+| 测试 | **595 断言 / 28 个测试文件** | `test/*.test.mjs`（本轮 541 → 595） |
 | e2e | 28 项检查，约 94 秒 | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 255 对（A/B/C/D 四类均为 0） | `scripts/param-contract.mjs` |
@@ -215,6 +215,22 @@ S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表�
 - **WPS 的 IDispatch 不支持命名参数**（`InvokeMember` + namedParameters → `E_INVALIDARG`），只能按位置传。
 - **一次性临时文件（如测试 fixture）必须自己验证**：本轮「加密」fixture 一开始根本没加密，
   若不加验证，整份测试会为了错误的原因通过。
+- **裸 COM 探针要按桥的规矩来，否则会把「共享的」WPS 实例搞坏，连累后面不相干的测试**（本轮真实翻车）：
+  ① `GetActiveObject` 可能回一个**空壳实例**——`Workbooks` 看着正常，`Add()` 出来的工作簿 `Sheets` 是 null
+  （桥里 `Test-WpsAppUsable` 防的就是这个）；② 对「脏」文档直接 `Close()` 会弹**模态保存框**，
+  模态框会把整个实例钉住，之后所有调用回 `RPC_E_CALL_REJECTED`。
+  规矩：取实例要「`GetActiveObject` → 校验 → `New-Object` → 校验」，open/close 一律用 `DisplayAlerts` 包住并还原。
+- **WPS 卡住了怎么救（本轮实测有效，按顺序试）**：
+  1) 列出可见窗口，只关 **`class` 以 `Qt*` 开头**的那些（那是对话框：密码框 / 保存框 / 恢复提示）——
+     `XLMAIN` / `OpusApp` / `PP12FrameClass` 才是真正的文档窗口，**不要关**；
+  2) 关了对话框后 COM 通常立刻恢复，这时再把残留文档/工作簿关掉（`Workbooks.Count=0`）；
+  3) 仍不行才 `Stop-Process` **那一个**应用进程（`et` / `wps` / `wpp`），桥下次会自己重建实例。
+  **不要**按进程名批量杀：实测本机有 **243 个**进程叫 `wps`、34 个叫 `et`，那是 WPS 的多进程架构，
+  按名字杀会连带关掉用户所有文档。
+- 跑全套前建议先看 `test/.artifacts/s1/visible.ps1`（一次性探针，未入库，丢了就照上面重写）——
+  环境脏会让 `open-safety` 之外的测试也成片失败，别把它误判成代码缺陷。
+- **清残留只清「从未保存过」的文档/工作簿**（`Path` 为空）：那是测试僵尸的特征；
+  用户真正打开着的文件一律别碰——体检/清理自己变成丢数据的凶手，比不清理更糟。
 
 **实测不可实现（是 COM 层面的限制，禁止重试，推广材料应写「不支持」）**
 - Word 水印（页眉 `Shapes` 拒绝一切添加，`Count` 恒为 0）
@@ -241,9 +257,9 @@ S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表�
 | `scripts/{extract-spec,gen-tool-surface,gen-skill-tools}.mjs` | 契约管线（顺序见 §4） |
 | `scripts/{verify,doctor,param-contract,e2e}.mjs` | 验证入口 |
 | `scripts/build-host-actions.ps1` | 生成宿主动作表，打印 `switch_cases` / `functions` / `guard_installed` |
-| `test/*.test.mjs` | 28 个文件、594 断言；账本在 `spec-reproduction.test.mjs` |
+| `test/*.test.mjs` | 28 个文件、595 断言；账本在 `spec-reproduction.test.mjs` |
 | `test/host-lease.test.mjs` | S2 单实例租约（**不需要 WPS**，已进 CI） |
-| `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死（需要真实 WPS） |
+| `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死；**开头有环境体检**（需要真实 WPS） |
 | `test/watchdog.test.mjs` | S1 超时契约（**不需要 WPS**，已进 CI） |
 | `docs/FIXES.md` | 1～52 号修复记录（**新 bug 继续追加编号**） |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
