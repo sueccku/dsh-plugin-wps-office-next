@@ -396,22 +396,25 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
   改成与桥一致的取用方式、`DisplayAlerts` 包住每次 open/close，并在测试最前面加**环境体检**；
   环境不健康就明确报环境问题，不伪装成插件缺陷（详见 FIXES 52 与 HANDOFF §10）
 
-## 加固第 2 波：S3 破坏性前置守卫（两批已落地）
+## 加固第 2 波：S3 破坏性前置守卫（三批全部落地，25/25）
 
 - **先把破坏面测清楚**：实测枚举 **29 个破坏性动作 / 35 个调用点**（`Delete()` 27、`Clear()` 3、
   `ClearFormats()` 2、`ClearContents()` 2、`Unlist()` 1、`ResetAllPageBreaks()` 1），
-  产出 `docs/destructive-operations.md` 清单（动作 / 影响 / 是否回传统计 / 是否抑制弹窗 / 测试）
+  产出 `docs/destructive-operations.md` 清单（动作 / 影响 / 是否回传统计 / 对应测试）
 - **范围类 5 个动作**（clearRange / clearFormats / deleteRows / deleteColumns / deleteSheet）回传
   `data.impact`：`{ address, cells, nonEmpty, preview }`；桥头两个只读助手三级回退取 `nonEmpty`，
   `preview` 只在 ≤ 4096 格时读 `Value2`
 - **对象类 8 个动作**（deleteListRow / unlistListObject / resetPageBreaks / clearPivotTable /
   clearSparkline / deleteChart / removeConditionalFormat / deleteNamedRange）回传 `{ name, kind, count, rows, detail, address }`；
   `deleteListRow` 会先把被删那一行的内容读下来再删
-- TS 侧 `impact.ts` 把两种形状统一压成一句中文给模型复述；记录见 `docs/FIXES.md` 53 / 54
-- **实测**：`test/destructive-guard.test.mjs` **29 项全绿**；整列 1048576 格 / 整行 16384 格只回 `cells`+`nonEmpty`（性能取舍）；
-  `spec` / `skills` 重新生成后无漂移
-- **进度 13 / 25 个用户数据动作**；剩余 Word 批注与表格行、PPT 形状/幻灯片/图片/动画、数据验证，以及确认框逐项实测
-- 全套 **624 项 / 29 文件**；verify 23、spec 复现 12、参数契约 255 对（A/B/C/D 全 0）
+- **批注/验证/Word/PPT 12 个动作**（add/removeDataValidation、add/deleteCellComment、deleteTableLine、
+  deleteComment、deleteSlide、deleteShape、deleteTextBox、deletePptImage、replacePptImage、removeAnimation）补齐；
+  `impact.ts` 上移到 `mcp/src/tools/` 供三个应用共用
+- 两个实测坑：WPS 的 `Comment.Text` 是方法（要 `.Text()`）；PPT `AddPicture` 要绝对路径
+- **实测**：`test/destructive-guard.test.mjs` **45 项全绿**（真实 Excel/Word/PPT）；整列 1048576 格 / 整行 16384 格
+  只回 `cells`+`nonEmpty`（性能取舍）；`spec` / `skills` 重新生成后无漂移
+- **进度 25 / 25 个用户数据动作**；S3 只剩「确认框是否弹出」的逐项实测
+- 全套 **640 项 / 29 文件**；verify 23、spec 复现 12、参数契约 255 对（A/B/C/D 全 0）
 
 ## 全项目最终数字（P5 收尾 + 加固第 1 波）
 
@@ -420,7 +423,7 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 | 广告面 | 250 工具 / 141,872 字节 | **69 工具 / 37,573 字节**（降 73.5%） |
 | 注册工具 | 250 | **267**（Excel 118 / Word 59 / PPT 76 / 通用 14） |
 | 桥 action | — | **267** |
-| 测试 | 0 | **624 项 / 29 文件**（其中 4 个文件不需要 WPS，已进 CI） |
+| 测试 | 0 | **640 项 / 29 文件**（其中 4 个文件不需要 WPS，已进 CI） |
 | 门禁 | 无 | verify 23、spec 复现 12、参数契约 255 对（A/B/C/D 全 0）、一键 e2e 28 项 |
 | 台账 | — | 别名债务 **59**、未工具化 action **7**（全部刻意保留） |
 
@@ -428,7 +431,7 @@ P0–P4 五个阶段共修掉 **7 个「从未生效」的缺陷**（FIXES 38/39
 （水印、文档属性——WPS 自身不支持）。
 
 **发布状态**：v0.2.0、v0.2.1、**v0.3.0（2026-09-16，加固第 1 波 S1 + S2）**均已发布；本机完整回归
-**624/0**、一键 e2e **28/28** 全绿，可以开始小范围推广；第 2～4 波（S3 数据安全 / S4 冒烟矩阵 /
+**640/0**、一键 e2e **28/28** 全绿，可以开始小范围推广；第 2～4 波（S3 数据安全 / S4 冒烟矩阵 /
 S5 空 catch / S6 失败契约 / S7 文案 / S8 版本检查 / S9 安装兜底）待开工。
 
 

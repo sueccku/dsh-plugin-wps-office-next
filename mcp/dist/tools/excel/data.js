@@ -23,6 +23,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataTools = exports.setZoomHandler = exports.setZoomDefinition = exports.protectWorkbookHandler = exports.protectWorkbookDefinition = exports.setConditionalFormatHandler = exports.setConditionalFormatDefinition = exports.protectSheetHandler = exports.protectSheetDefinition = exports.addCommentHandler = exports.addCommentDefinition = exports.findReplaceHandler = exports.findReplaceDefinition = exports.sortRangeHandler = exports.sortRangeDefinition = exports.removeDuplicatesHandler = exports.removeDuplicatesDefinition = exports.cleanDataHandler = exports.cleanDataDefinition = exports.writeRangeHandler = exports.writeRangeDefinition = exports.readRangeHandler = exports.readRangeDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -437,7 +438,7 @@ const addCommentHandler = async (args) => {
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `添加批注失败: ${response.error}` }], error: response.error };
         }
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `批注添加成功！单元格: ${cell}` }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `批注添加成功！单元格: ${cell}${(0, impact_1.impactText)(response.data?.impact)}` }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

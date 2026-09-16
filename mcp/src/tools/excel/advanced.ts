@@ -5,7 +5,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
-import { impactText, type RangeImpact } from './impact';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,

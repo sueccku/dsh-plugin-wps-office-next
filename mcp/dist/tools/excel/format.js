@@ -20,6 +20,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.excelFormatTools = exports.setDataValidationHandler = exports.setDataValidationDefinition = exports.setRowHeightHandler = exports.setRowHeightDefinition = exports.setColumnWidthHandler = exports.setColumnWidthDefinition = exports.unmergeCellsHandler = exports.unmergeCellsDefinition = exports.mergeCellsHandler = exports.mergeCellsDefinition = exports.setNumberFormatHandler = exports.setNumberFormatDefinition = exports.setBorderHandler = exports.setBorderDefinition = exports.setCellStyleHandler = exports.setCellStyleDefinition = exports.setCellFormatHandler = exports.setCellFormatDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -622,7 +623,7 @@ const setDataValidationHandler = async (args) => {
             content: [
                 {
                     type: 'text',
-                    text: `数据验证设置成功！\n范围: ${range}\n类型: ${type}\n规则: ${formula}`,
+                    text: `数据验证设置成功！\n范围: ${range}\n类型: ${type}\n规则: ${formula}${(0, impact_1.impactText)(response.data?.impact)}`,
                 },
             ],
         };

@@ -19,7 +19,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.rowColumnTools = exports.groupRowsHandler = exports.groupRowsDefinition = exports.showColumnsHandler = exports.showColumnsDefinition = exports.showRowsHandler = exports.showRowsDefinition = exports.hideRowsHandler = exports.hideRowsDefinition = exports.deleteColumnsHandler = exports.deleteColumnsDefinition = exports.deleteRowsHandler = exports.deleteRowsDefinition = exports.insertColumnsHandler = exports.insertColumnsDefinition = exports.insertRowsHandler = exports.insertRowsDefinition = void 0;
 const uuid_1 = require("uuid");
-const impact_1 = require("./impact");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");

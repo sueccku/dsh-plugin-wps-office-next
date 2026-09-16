@@ -9,6 +9,7 @@ exports.wordDeepTools = exports.convertTableToTextHandler = exports.convertTable
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P3 状态。
  */
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -251,7 +252,7 @@ const deleteTableLineHandler = async (args) => {
             return deepFail('删除行列失败', response.error);
         const d = response.data || {};
         const what = d.kind === 'column' ? '列' : '行';
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '表 ' + String(d.table) + ' 已删除 1 ' + what + '，现在 ' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '表 ' + String(d.table) + ' 已删除 1 ' + what + '，现在 ' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' + (0, impact_1.impactText)(d.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

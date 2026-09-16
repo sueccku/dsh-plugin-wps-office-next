@@ -7,7 +7,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.workbookTools = exports.clearRangeHandler = exports.clearRangeDefinition = exports.getCellInfoHandler = exports.getCellInfoDefinition = exports.getFormulaHandler = exports.getFormulaDefinition = exports.setCellValueHandler = exports.setCellValueDefinition = exports.getCellValueHandler = exports.getCellValueDefinition = exports.createWorkbookHandler = exports.createWorkbookDefinition = exports.closeWorkbookHandler = exports.closeWorkbookDefinition = exports.switchWorkbookHandler = exports.switchWorkbookDefinition = exports.getOpenWorkbooksHandler = exports.getOpenWorkbooksDefinition = exports.openWorkbookHandler = exports.openWorkbookDefinition = void 0;
 const uuid_1 = require("uuid");
-const impact_1 = require("./impact");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");

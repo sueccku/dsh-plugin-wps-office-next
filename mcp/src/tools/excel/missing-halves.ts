@@ -6,7 +6,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
-import { impactText, type RangeImpact } from './impact';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -517,7 +517,7 @@ export const removeDataValidationDefinition: ToolDefinition = {
 
 export const removeDataValidationHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ range?: string }>(
+    const response = await wpsClient.executeMethod<{ range?: string; impact?: RangeImpact }>(
       'removeDataValidation',
       { sheet: args.sheet, range: args.range },
       WpsAppType.SPREADSHEET
@@ -525,7 +525,7 @@ export const removeDataValidationHandler: ToolHandler = async (args: Record<stri
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: '删除数据验证失败: ' + response.error }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的数据验证已删除' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的数据验证已删除' + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: '删除数据验证出错: ' + errMsg }], error: errMsg };

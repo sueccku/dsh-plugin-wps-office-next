@@ -18,6 +18,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.commentProtectTools = exports.setHyperlinkHandler = exports.setHyperlinkDefinition = exports.insertExcelImageHandler = exports.insertExcelImageDefinition = exports.setArrayFormulaHandler = exports.setArrayFormulaDefinition = exports.lockCellsHandler = exports.lockCellsDefinition = exports.unprotectSheetHandler = exports.unprotectSheetDefinition = exports.getCellCommentsHandler = exports.getCellCommentsDefinition = exports.deleteCellCommentHandler = exports.deleteCellCommentDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -44,7 +45,7 @@ const deleteCellCommentHandler = async (args) => {
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `删除批注失败: ${response.error}` }], error: response.error };
         }
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `批注删除成功！单元格: ${cell}` }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `批注删除成功！单元格: ${cell}${(0, impact_1.impactText)(response.data?.impact)}` }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

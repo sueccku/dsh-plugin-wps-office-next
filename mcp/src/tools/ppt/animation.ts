@@ -18,6 +18,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -72,6 +73,7 @@ export const removeAnimationHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
+      impact?: RangeImpact;
     }>(
       'removeAnimation',
       { slideIndex, animationIndex },
@@ -85,7 +87,7 @@ export const removeAnimationHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `动画移除成功！\n幻灯片: 第 ${slideIndex} 页\n已移除第 ${animationIndex} 个动画`,
+            text: `动画移除成功！\n幻灯片: 第 ${slideIndex} 页\n已移除第 ${animationIndex} 个动画${impactText(response.data?.impact)}`,
           },
         ],
       };

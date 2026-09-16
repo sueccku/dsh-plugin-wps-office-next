@@ -5,6 +5,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P3 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -182,14 +183,14 @@ export const deleteCommentDefinition: ToolDefinition = {
 
 export const deleteCommentHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ deleted?: number; remaining?: number }>(
+    const response = await wpsClient.executeMethod<{ deleted?: number; remaining?: number; impact?: RangeImpact }>(
       'deleteComment',
       { index: args.index },
       WpsAppType.WRITER
     );
     if (!response.success) return produceFail('删除批注失败', response.error);
     const d = response.data || {};
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '已删除 ' + String(d.deleted ?? 0) + ' 条批注；还剩 ' + String(d.remaining ?? 0) + ' 条' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '已删除 ' + String(d.deleted ?? 0) + ' 条批注；还剩 ' + String(d.remaining ?? 0) + ' 条' + impactText(d.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return produceFail('删除批注出错', errMsg);

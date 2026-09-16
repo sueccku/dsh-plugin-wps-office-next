@@ -6,6 +6,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P3 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -271,7 +272,7 @@ export const deleteTableLineDefinition: ToolDefinition = {
 
 export const deleteTableLineHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ table?: number; kind?: string; rows?: number; columns?: number }>(
+    const response = await wpsClient.executeMethod<{ table?: number; kind?: string; rows?: number; columns?: number; impact?: RangeImpact }>(
       'deleteTableLine',
       { table: args.table, kind: args.kind, lineIndex: args.lineIndex },
       WpsAppType.WRITER
@@ -279,7 +280,7 @@ export const deleteTableLineHandler: ToolHandler = async (args: Record<string, u
     if (!response.success) return deepFail('删除行列失败', response.error);
     const d = response.data || {};
     const what = d.kind === 'column' ? '列' : '行';
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '表 ' + String(d.table) + ' 已删除 1 ' + what + '，现在 ' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '表 ' + String(d.table) + ' 已删除 1 ' + what + '，现在 ' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' + impactText(d.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return deepFail('删除行列出错', errMsg);

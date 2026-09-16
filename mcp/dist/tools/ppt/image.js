@@ -15,6 +15,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.imageTools = exports.replacePptImageHandler = exports.replacePptImageDefinition = exports.exportSlideAsImageHandler = exports.exportSlideAsImageDefinition = exports.setImageStyleHandler = exports.setImageStyleDefinition = exports.deletePptImageHandler = exports.deletePptImageDefinition = exports.insertPptImageHandler = exports.insertPptImageDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -138,7 +139,7 @@ const deletePptImageHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `图片删除成功！\n幻灯片: 第 ${slideIndex} 页\n图片: 第 ${imageIndex} 张`,
+                        text: `图片删除成功！\n幻灯片: 第 ${slideIndex} 页\n图片: 第 ${imageIndex} 张${(0, impact_1.impactText)(response.data?.impact)}`,
                     },
                 ],
             };
@@ -413,7 +414,7 @@ const replacePptImageHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${filePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}`,
+                        text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${filePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}${(0, impact_1.impactText)(response.data.impact)}`,
                     },
                 ],
             };

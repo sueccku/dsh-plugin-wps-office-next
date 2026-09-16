@@ -19,6 +19,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -67,6 +68,7 @@ export const deleteShapeHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
+      impact?: RangeImpact;
     }>(
       'deleteShape',
       { slideIndex, shapeIndex },
@@ -80,7 +82,7 @@ export const deleteShapeHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `形状删除成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个`,
+            text: `形状删除成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个${impactText(response.data?.impact)}`,
           },
         ],
       };

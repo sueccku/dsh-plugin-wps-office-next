@@ -8,6 +8,7 @@ exports.wordProduceTools = exports.deleteCommentHandler = exports.deleteCommentD
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P3 状态。
  */
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -164,7 +165,7 @@ const deleteCommentHandler = async (args) => {
         if (!response.success)
             return produceFail('删除批注失败', response.error);
         const d = response.data || {};
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已删除 ' + String(d.deleted ?? 0) + ' 条批注；还剩 ' + String(d.remaining ?? 0) + ' 条' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已删除 ' + String(d.deleted ?? 0) + ' 条批注；还剩 ' + String(d.remaining ?? 0) + ' 条' + (0, impact_1.impactText)(d.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

@@ -33,6 +33,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.slideOpsTools = exports.setShapeFillHandler = exports.setShapeFillDefinition = exports.setSlideSizeHandler = exports.setSlideSizeDefinition = exports.setShapeTextHandler = exports.setShapeTextDefinition = exports.setSlideTitleHandler = exports.setSlideTitleDefinition = exports.addTextboxHandler = exports.addTextboxDefinition = exports.setShapeStyleHandler = exports.setShapeStyleDefinition = exports.addShapeHandler = exports.addShapeDefinition = exports.setSlideNotesHandler = exports.setSlideNotesDefinition = exports.getSlideNotesHandler = exports.getSlideNotesDefinition = exports.setSlideLayoutHandler = exports.setSlideLayoutDefinition = exports.switchSlideHandler = exports.switchSlideDefinition = exports.getSlideInfoHandler = exports.getSlideInfoDefinition = exports.getSlideCountHandler = exports.getSlideCountDefinition = exports.moveSlideHandler = exports.moveSlideDefinition = exports.deleteSlideHandler = exports.deleteSlideDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -70,7 +71,7 @@ const deleteSlideHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `幻灯片删除成功！\n已删除: 第 ${slideIndex} 页`,
+                        text: `幻灯片删除成功！\n已删除: 第 ${slideIndex} 页${(0, impact_1.impactText)(response.data?.impact)}`,
                     },
                 ],
             };

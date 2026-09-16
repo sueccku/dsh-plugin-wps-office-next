@@ -13,6 +13,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -162,6 +163,7 @@ export const deletePptImageHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
+      impact?: RangeImpact;
     }>(
       'deletePptImage',
       { slideIndex, imageIndex },
@@ -175,7 +177,7 @@ export const deletePptImageHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `图片删除成功！\n幻灯片: 第 ${slideIndex} 页\n图片: 第 ${imageIndex} 张`,
+            text: `图片删除成功！\n幻灯片: 第 ${slideIndex} 页\n图片: 第 ${imageIndex} 张${impactText(response.data?.impact)}`,
           },
         ],
       };
@@ -496,6 +498,7 @@ export const replacePptImageHandler: ToolHandler = async (
       top: number;
       width: number;
       height: number;
+      impact?: RangeImpact;
     }>(
       'replacePptImage',
       { slideIndex, shapeIndex, name, filePath, path: filePath, imagePath: filePath },
@@ -509,7 +512,7 @@ export const replacePptImageHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${filePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}`,
+            text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${filePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}${impactText(response.data.impact)}`,
           },
         ],
       };

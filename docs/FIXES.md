@@ -1477,8 +1477,32 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 **实测**：`test/destructive-guard.test.mjs` 从 16 项扩到 **29 项**，真实 WPS 全绿；
 进度 **13 / 25 个用户数据动作**已回传统计（清单见 [`docs/destructive-operations.md`](destructive-operations.md)）。
 
-**剩余**：Word（表格行、批注）×4、PPT（幻灯片、形状、文本框、图片、替换图片、动画）×6、数据验证 ×2，
-以及各动作确认框的逐项实测。
+### 55. S3 破坏性操作前置守卫（第三批：12 个批注 / 验证 / Word / PPT 动作）——S3 完成
+
+第三批把剩下 12 个用户数据动作补齐，S3 到此 **25 / 25**：
+
+| 动作 | 应用 | 回传的 impact |
+| --- | --- | --- |
+| `addDataValidation` / `removeDataValidation` | Excel | 是否覆盖、被删验证的类型（实测 list = 3） |
+| `addCellComment` | Excel | 是否覆盖了原有批注 + 原文 |
+| `deleteCellComment` | Excel | 被删批注原文 |
+| `deleteTableLine` | Word | 被删行/列的文字 |
+| `deleteComment` | Word | 删除条数 + 前几条原文 |
+| `deleteSlide` | PPT | 页号 + 删除前形状数 |
+| `deleteShape` | PPT | 形状名 |
+| `deleteTextBox` | PPT | 名称 + 文字长度 |
+| `deletePptImage` | PPT | 图片名 |
+| `replacePptImage` | PPT | 旧图名 |
+| `removeAnimation` | PPT | 删除条数 |
+
+两个实测坑：WPS 的 `Comment.Text` 是**方法**（要 `.Text()`，直接读拿到的是方法签名）；
+PPT 的 `AddPicture` 要**绝对路径**（相对路径报 `The specified protocol is unknown`）。
+`mcp/src/tools/impact.ts` 从 `excel/` 上移到 `tools/`，供 Excel / Word / PPT 共用。
+
+**验收**：`test/destructive-guard.test.mjs` 扩到 **45 项**，真实 WPS 全绿（覆盖 Excel / Word / PPT 三种文档）；
+逐动作状态见 [`docs/destructive-operations.md`](destructive-operations.md)。
+
+**S3 剩余**：各破坏性动作的确认框是否弹出，仍需逐项实测。
 
 ## 新发现的 WPS / Office 差异
 
@@ -1538,9 +1562,9 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 | test/host-lease.test.mjs | 18 | S2：单实例租约、第二个宿主被可读拒绝、陈旧宿主接管（不需要 WPS） |
 | test/open-safety.test.mjs | 21 | S1：先体检环境，再验加密文档快速失败不弹框、常规打开照常、失败后桥仍可用 |
 | test/watchdog.test.mjs | 15 | S1 客户端：超时文案「状态未知」、短超时、成功即恢复、不偷偷重试（不需要 WPS） |
-| test/destructive-guard.test.mjs | 29 | S3：破坏性动作前置影响统计（范围类 5 + 对象类 8：表行/转回区域/迷你图/图表/命名范围/条件格式/分页符/透视表） |
+| test/destructive-guard.test.mjs | 45 | S3：破坏性动作前置影响统计（范围类 5 + 对象类 8 + 批注/验证/Word/PPT 12；真实 Excel/Word/PPT） |
 
-合计 **624 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **640 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

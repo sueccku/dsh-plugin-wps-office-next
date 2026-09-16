@@ -21,6 +21,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.shapeBasicTools = exports.setShapeEffectHandler = exports.setShapeEffectDefinition = exports.groupShapesHandler = exports.groupShapesDefinition = exports.distributeShapesHandler = exports.distributeShapesDefinition = exports.alignShapesHandler = exports.alignShapesDefinition = exports.setShapePositionHandler = exports.setShapePositionDefinition = exports.getShapesHandler = exports.getShapesDefinition = exports.deleteShapeHandler = exports.deleteShapeDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -59,7 +60,7 @@ const deleteShapeHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `形状删除成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个`,
+                        text: `形状删除成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个${(0, impact_1.impactText)(response.data?.impact)}`,
                     },
                 ],
             };

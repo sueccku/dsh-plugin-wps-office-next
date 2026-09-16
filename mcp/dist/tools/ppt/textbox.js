@@ -7,6 +7,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.textboxTools = exports.setSlideContentHandler = exports.setSlideContentDefinition = exports.setSlideSubtitleHandler = exports.setSlideSubtitleDefinition = exports.getSlideTitleHandler = exports.getSlideTitleDefinition = exports.setTextboxStyleHandler = exports.setTextboxStyleDefinition = exports.setTextboxTextHandler = exports.setTextboxTextDefinition = exports.getTextboxesHandler = exports.getTextboxesDefinition = exports.deleteTextboxHandler = exports.deleteTextboxDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -33,7 +34,7 @@ const deleteTextboxHandler = async (args) => {
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `删除文本框失败: ${response.error}` }], error: response.error };
         }
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `第${slideIndex}页的文本框${textboxIndex}已删除` }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `第${slideIndex}页的文本框${textboxIndex}已删除${(0, impact_1.impactText)(response.data?.impact)}` }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

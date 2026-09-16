@@ -16,6 +16,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -48,7 +49,7 @@ export const deleteCellCommentHandler: ToolHandler = async (
 ): Promise<ToolCallResult> => {
   const { cell, sheet } = args as { cell: string; sheet?: string };
   try {
-    const response = await wpsClient.executeMethod<{ message: string }>(
+    const response = await wpsClient.executeMethod<{ message: string; impact?: RangeImpact }>(
       'deleteCellComment',
       { cell, sheet },
       WpsAppType.SPREADSHEET
@@ -56,7 +57,7 @@ export const deleteCellCommentHandler: ToolHandler = async (
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除批注失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `批注删除成功！单元格: ${cell}` }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `批注删除成功！单元格: ${cell}${impactText(response.data?.impact)}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除批注出错: ${errMsg}` }], error: errMsg };

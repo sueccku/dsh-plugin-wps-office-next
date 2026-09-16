@@ -20,6 +20,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.animationTools = exports.setAnimationHandler = exports.setAnimationDefinition = exports.applyTransitionToAllHandler = exports.applyTransitionToAllDefinition = exports.removeSlideTransitionHandler = exports.removeSlideTransitionDefinition = exports.setSlideTransitionHandler = exports.setSlideTransitionDefinition = exports.setAnimationOrderHandler = exports.setAnimationOrderDefinition = exports.getAnimationsHandler = exports.getAnimationsDefinition = exports.removeAnimationHandler = exports.removeAnimationDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -63,7 +64,7 @@ const removeAnimationHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `动画移除成功！\n幻灯片: 第 ${slideIndex} 页\n已移除第 ${animationIndex} 个动画`,
+                        text: `动画移除成功！\n幻灯片: 第 ${slideIndex} 页\n已移除第 ${animationIndex} 个动画${(0, impact_1.impactText)(response.data?.impact)}`,
                     },
                 ],
             };

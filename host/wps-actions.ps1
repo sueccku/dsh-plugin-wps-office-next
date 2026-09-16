@@ -2131,6 +2131,9 @@ return }
         $typeName = if ($null -ne $p.validationType) { $p.validationType } else { $p.type }
         $validationType = $typeMap[$typeName]
         if ($null -eq $validationType) { $validationType = 3 }
+        $prevType = 0
+        try { $prevType = [int]$range.Validation.Type } catch { $prevType = 0 }
+        $impact = @{ kind = "dataValidation"; detail = if ($prevType -ne 0) { ("覆盖了原有验证（类型 " + $prevType + "）") } else { "新建验证（原区域没有验证）" } }
         $range.Validation.Delete()
         if ($typeName -eq "list") {
             $listFormula = if ($p.formula1) { $p.formula1 } elseif ($p.list) { ($p.list -join ",") } elseif ($p.formula) { $p.formula } else { "" }
@@ -2156,7 +2159,7 @@ return }
             $range.Validation.ErrorTitle = if ($p.errorTitle) { $p.errorTitle } else { "" }
             $range.Validation.ErrorMessage = if ($p.errorMessage) { $p.errorMessage } else { "" }
         }
-        Output-Json @{ success = $true; data = @{ range = $p.range; type = $typeName } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; type = $typeName; impact = $impact } }
     }
 
     "removeDataValidation" {
@@ -2164,8 +2167,11 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
+        $prevType = 0
+        try { $prevType = [int]$range.Validation.Type } catch { $prevType = 0 }
+        $impact = @{ kind = "dataValidation"; detail = ("删除原有验证（类型 " + $prevType + "）") }
         $range.Validation.Delete()
-        Output-Json @{ success = $true; data = @{ range = $p.range } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; impact = $impact } }
     }
 
     "getDataValidations" {
@@ -3618,11 +3624,19 @@ return }
         $t = $doc.Tables.Item($index)
         $count = if ($kind -eq "column") { [int]$t.Columns.Count } else { [int]$t.Rows.Count }
         if ($lineIndex -lt 1 -or $lineIndex -gt $count) { Output-Json @{ success = $false; error = ("lineIndex " + $lineIndex + " out of range 1.." + $count) }; return }
+        # 先把要删的那一行/列的文字读下来——删掉之后 Word 的 Row/Column 对象就没了。
+        $preview = ""
+        try {
+            $lineRange = if ($kind -eq "column") { $t.Columns.Item($lineIndex).Range } else { $t.Rows.Item($lineIndex).Range }
+            $preview = (([string]$lineRange.Text) -replace "[`r`n`a]", " ").Trim()
+            if ($preview.Length -gt 80) { $preview = $preview.Substring(0, 80) + "…" }
+        } catch { $preview = "" }
+        $impact = @{ kind = "tableLine"; detail = ("删除前内容：" + $preview) }
         try {
             if ($kind -eq "column") { $t.Columns.Item($lineIndex).Delete() } else { $t.Rows.Item($lineIndex).Delete() }
         } catch {
             Output-Json @{ success = $false; error = $_.Exception.Message }; return }
-        Output-Json @{ success = $true; data = @{ table = $index; kind = $kind; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count } }
+        Output-Json @{ success = $true; data = @{ table = $index; kind = $kind; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count; impact = $impact } }
     }
 
     "mergeTableCells" {
@@ -3840,14 +3854,19 @@ return }
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $deleted = 0
+        $preview = @()
         try {
             if ($null -ne $p.index) {
+                try { $preview += [string]$doc.Comments.Item([int]$p.index).Range.Text } catch { }
                 $doc.Comments.Item([int]$p.index).Delete()
                 $deleted = 1
             } else {
-                # 从后往前删，避免删掉一个之后后面的序号整体前移。
+                # 从后往前删，避免删掉一个之后后面的序号整体前移。先抓前几条内容作证。
                 $count = 0
                 try { $count = [int]$doc.Comments.Count } catch { $count = 0 }
+                for ($i = 1; $i -le $count -and $preview.Count -lt 3; $i++) {
+                    try { $preview += [string]$doc.Comments.Item($i).Range.Text } catch { }
+                }
                 for ($i = $count; $i -ge 1; $i--) { $doc.Comments.Item($i).Delete() }
                 $deleted = $count
             }
@@ -3855,7 +3874,8 @@ return }
             Output-Json @{ success = $false; error = $_.Exception.Message }; return }
         $remaining = 0
         try { $remaining = [int]$doc.Comments.Count } catch { $remaining = 0 }
-        Output-Json @{ success = $true; data = @{ deleted = $deleted; remaining = $remaining } }
+        $impact = @{ kind = "comment"; count = $deleted; preview = @($preview) }
+        Output-Json @{ success = $true; data = @{ deleted = $deleted; remaining = $remaining; impact = $impact } }
     }
 
 # ==================== Word 长尾（P3-4，新 COM 代码）====================
@@ -4456,10 +4476,16 @@ return }
         $commentText = if ($null -ne $p.comment) { [string]$p.comment } elseif ($null -ne $p.text) { [string]$p.text } else { "" }
         if ($commentText -eq "") { Output-Json @{ success = $false; error = "comment text is required" }; return }
         $cell = $sheet.Range([string]$p.cell)
+        $hadComment = $false
+        $oldText = ""
+        try { if ($cell.Comment) { $hadComment = $true; $oldText = [string]$cell.Comment.Text() } } catch { }
+        $preview = @()
+        if ($oldText) { $preview = @($oldText) }
+        $impact = @{ kind = "comment"; detail = if ($hadComment) { "覆盖了原有批注" } else { "新建批注" }; preview = $preview }
         if ($cell.Comment) { $cell.Comment.Delete() }
         $cell.AddComment($commentText)
         if ($p.visible) { $cell.Comment.Visible = $true }
-        Output-Json @{ success = $true; data = @{ cell = $p.cell; sheet = $sheet.Name; text = $commentText } }
+        Output-Json @{ success = $true; data = @{ cell = $p.cell; sheet = $sheet.Name; text = $commentText; impact = $impact } }
     }
 
     "deleteCellComment" {
@@ -4467,8 +4493,14 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Range($p.cell)
+        $hadComment = $false
+        $oldText = ""
+        try { if ($cell.Comment) { $hadComment = $true; $oldText = [string]$cell.Comment.Text() } } catch { }
+        $preview = @()
+        if ($oldText) { $preview = @($oldText) }
+        $impact = @{ kind = "comment"; count = if ($hadComment) { 1 } else { 0 }; preview = $preview }
         if ($cell.Comment) { $cell.Comment.Delete() }
-        Output-Json @{ success = $true; data = @{ cell = $p.cell } }
+        Output-Json @{ success = $true; data = @{ cell = $p.cell; impact = $impact } }
     }
 
     "getCellComments" {
@@ -5406,8 +5438,12 @@ return }
         $pres = Get-TargetPres $ppt $p
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No active presentation" }; return }
         $index = if ($p.index) { $p.index } else { $p.slideIndex }
-        $pres.Slides.Item($index).Delete()
-        Output-Json @{ success = $true; data = @{ deleted = $index } }
+        $slideObj = $pres.Slides.Item($index)
+        $shapeCount = 0
+        try { $shapeCount = [int]$slideObj.Shapes.Count } catch { $shapeCount = 0 }
+        $impact = @{ kind = "slide"; count = 1; detail = ("第 " + $index + " 页，删除前有 " + $shapeCount + " 个形状") }
+        $slideObj.Delete()
+        Output-Json @{ success = $true; data = @{ deleted = $index; impact = $impact } }
     }
 
     "duplicateSlide" {
@@ -5614,8 +5650,13 @@ return }
         $textboxIndex = Resolve-TextBoxIndex $slide $p
         if ($null -eq $textboxIndex) { Output-Json @{ success = $false; error = "no text box matched textboxIndex/shapeIndex/name" }; return }
         $shape = $slide.Shapes.Item($textboxIndex)
+        $shapeName = ""
+        try { $shapeName = [string]$shape.Name } catch { $shapeName = "" }
+        $textLen = 0
+        try { $textLen = ([string]$shape.TextFrame.TextRange.Text).Length } catch { $textLen = 0 }
+        $impact = @{ kind = "textbox"; name = $shapeName; detail = ("文字长度 " + $textLen) }
         $shape.Delete()
-        Output-Json @{ success = $true; data = @{ deleted = $textboxIndex; deletedShape = $shape.Name } }
+        Output-Json @{ success = $true; data = @{ deleted = $textboxIndex; deletedShape = $shapeName; impact = $impact } }
     }
 
     "getTextBoxes" {
@@ -5770,9 +5811,13 @@ return }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $sel = $(if ($p.name) { $p.name } else { $p.shapeIndex })
+        $shape = $slide.Shapes.Item($sel)
+        $shapeName = ""
+        try { $shapeName = [string]$shape.Name } catch { $shapeName = "" }
+        $impact = @{ kind = "shape"; name = $shapeName }
         $shape.Delete()
-        Output-Json @{ success = $true; data = @{ deleted = $(if ($p.name) { $p.name } else { $p.shapeIndex }) } }
+        Output-Json @{ success = $true; data = @{ deleted = $sel; deletedShape = $shapeName; impact = $impact } }
     }
 
     "getShapes" {
@@ -5862,8 +5907,11 @@ return }
         $pictureIndex = Resolve-PictureIndex $slide $p
         if ($null -eq $pictureIndex) { Output-Json @{ success = $false; error = "no picture matched imageIndex/shapeIndex/name" }; return }
         $shape = $slide.Shapes.Item($pictureIndex)
+        $shapeName = ""
+        try { $shapeName = [string]$shape.Name } catch { $shapeName = "" }
+        $impact = @{ kind = "image"; name = $shapeName }
         $shape.Delete()
-        Output-Json @{ success = $true; data = @{ deleted = $pictureIndex; deletedShape = $shape.Name } }
+        Output-Json @{ success = $true; data = @{ deleted = $pictureIndex; deletedShape = $shapeName; impact = $impact } }
     }
 
     "replacePptImage" {
@@ -5880,13 +5928,16 @@ return }
         if (-not $newPath) { Output-Json @{ success = $false; error = "path required" }; return }
         if (-not (Test-Path $newPath)) { Output-Json @{ success = $false; error = "image not found: $newPath" }; return }
         $old = $slide.Shapes.Item($sel)
+        $oldName = ""
+        try { $oldName = [string]$old.Name } catch { $oldName = [string]$sel }
         $l = $old.Left; $t = $old.Top; $w = $old.Width; $h = $old.Height
         $rot = 0
         try { $rot = $old.Rotation } catch { Add-WpsWarning $_.Exception.Message }
+        $impact = @{ kind = "image"; name = $oldName; detail = "旧图已被替换" }
         $old.Delete()
         $pic = $slide.Shapes.AddPicture($newPath, $false, $true, $l, $t, $w, $h)
         try { $pic.Rotation = $rot } catch { Add-WpsWarning $_.Exception.Message }
-        Output-Json @{ success = $true; data = @{ name = $pic.Name; left = $l; top = $t; width = $w; height = $h; path = $newPath } }
+        Output-Json @{ success = $true; data = @{ name = $pic.Name; left = $l; top = $t; width = $w; height = $h; path = $newPath; impact = $impact } }
     }
 
     "setImageStyle" {
@@ -6401,12 +6452,16 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
         $seq = $slide.TimeLine.MainSequence
+        $removed = 0
         if ($p.index) {
             $seq.Item($p.index).Delete()
+            $removed = 1
         } else {
+            try { $removed = [int]$seq.Count } catch { $removed = 0 }
             while ($seq.Count -gt 0) { $seq.Item(1).Delete() }
         }
-        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex } }
+        $impact = @{ kind = "animation"; count = $removed }
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; impact = $impact } }
     }
 
     "getAnimations" {

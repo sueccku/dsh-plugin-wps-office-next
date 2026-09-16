@@ -8,7 +8,7 @@ exports.advancedTools = exports.setChartLabelsHandler = exports.setChartLabelsDe
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 const uuid_1 = require("uuid");
-const impact_1 = require("./impact");
+const impact_1 = require("../impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");

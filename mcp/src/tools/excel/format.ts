@@ -18,6 +18,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from '../impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -741,7 +742,7 @@ export const setDataValidationHandler: ToolHandler = async (
   };
 
   try {
-    const response = await wpsClient.executeMethod(
+    const response = await wpsClient.executeMethod<{ impact?: RangeImpact }>(
       'addDataValidation',
       { range, type, formula, sheet },
       WpsAppType.SPREADSHEET
@@ -762,7 +763,7 @@ export const setDataValidationHandler: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `数据验证设置成功！\n范围: ${range}\n类型: ${type}\n规则: ${formula}`,
+          text: `数据验证设置成功！\n范围: ${range}\n类型: ${type}\n规则: ${formula}${impactText(response.data?.impact)}`,
         },
       ],
     };

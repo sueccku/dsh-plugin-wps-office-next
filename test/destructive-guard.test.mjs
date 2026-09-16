@@ -4,6 +4,8 @@
 // 并验证模型看到的那句中文摘要确实带上了非空计数。
 // Run: node test/destructive-guard.test.mjs
 import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -120,9 +122,63 @@ check("created a named range", ok(await call("wps_excel_set_named_range", { name
 const dnr = await action("deleteNamedRange", { name: "S3Range" });
 check("deleteNamedRange reports the reference it removed", !!(dnr.data && dnr.data.impact && String(dnr.data.impact.address || "").length > 0), JSON.stringify(dnr.data && dnr.data.impact));
 
-// Close everything this test opened so a scratch run leaves no workbook behind.
-for (const [method, appType] of [["closeWorkbook", "et"]]) {
-  for (let i = 0; i < 6; i++) {
+
+// --- batch 3: comments / validation / Word / PPT objects (S3 第三批) --------
+// Excel cell comments: the second write overwrites the first, and delete reports what it removed.
+await call("wps_excel_add_comment", { cell: "A1", comment: "第一条批注" });
+const ac = await action("addCellComment", { cell: "A1", comment: "第二条批注" });
+check("addCellComment reports it overwrote an existing note", !!(ac.data && ac.data.impact && /覆盖/.test(String(ac.data.impact.detail || ""))), JSON.stringify(ac.data && ac.data.impact));
+const dcc = await action("deleteCellComment", { cell: "A1" });
+check("deleteCellComment reports the note text it removed", !!(dcc.data && dcc.data.impact && Array.isArray(dcc.data.impact.preview) && String(dcc.data.impact.preview[0] || "").includes("第二条")), JSON.stringify(dcc.data && dcc.data.impact));
+
+// Excel data validation: add-over-existing, then remove with the previous rule type.
+await call("wps_excel_set_data_validation", { range: "B1:B3", type: "list", formula: "a,b,c" });
+const adv = await action("addDataValidation", { range: "B1:B3", type: "list", formula: "x,y,z" });
+check("addDataValidation reports the rule state", !!(adv.data && adv.data.impact && String(adv.data.impact.detail || "").length > 0), JSON.stringify(adv.data && adv.data.impact));
+const rdv = await action("removeDataValidation", { range: "B1:B3" });
+check("removeDataValidation reports the rule type it removed", !!(rdv.data && rdv.data.impact && /类型 3/.test(String(rdv.data.impact.detail || ""))), JSON.stringify(rdv.data && rdv.data.impact));
+
+// Word: a table line carries the text it is about to lose; a comment carries its own text.
+await call("wps_word_create_document", {});
+await call("wps_word_insert_table", { rows: 3, cols: 2 });
+const dtl = await call("wps_word_delete_table_line", { kind: "row", lineIndex: 1, table: 1 });
+check("delete_table_line summary carries the removed content", ok(dtl) && /删除前内容/.test(text(dtl)), text(dtl).replace(/\s+/g, " ").slice(0, 95));
+const wac = await viaAction("addComment", { text: "S3 批注内容" });
+check("seeded a Word comment", ok(wac), text(wac).replace(/\s+/g, " ").slice(0, 60));
+const wdc = await action("deleteComment", { index: 1 });
+check("deleteComment reports the comment text it removed", !!(wdc.data && wdc.data.impact && Array.isArray(wdc.data.impact.preview) && String(wdc.data.impact.preview[0] || "").includes("S3 批注内容")), JSON.stringify(wdc.data && wdc.data.impact));
+
+// PPT: slide / shape / text box / animation / image.
+await call("wps_ppt_create_presentation", {});
+await call("wps_ppt_add_slide", { layout: "blank" });
+await call("wps_ppt_add_slide", { layout: "blank" });
+const dsl = await action("deleteSlide", { slideIndex: 2 });
+check("deleteSlide reports the slide it removed", !!(dsl.data && dsl.data.impact && dsl.data.impact.kind === "slide"), JSON.stringify(dsl.data && dsl.data.impact));
+check("added a PPT shape", ok(await call("wps_ppt_add_shape", { slideIndex: 1, type: "rectangle" })), "");
+const dsh = await action("deleteShape", { slideIndex: 1, shapeIndex: 1 });
+check("deleteShape reports the shape name", !!(dsh.data && dsh.data.impact && String(dsh.data.impact.name || "").length > 0), JSON.stringify(dsh.data && dsh.data.impact));
+await call("wps_ppt_add_textbox", { slideIndex: 1, text: "S3 文本框" });
+const dtb = await action("deleteTextBox", { slideIndex: 1, textboxIndex: 1 });
+check("deleteTextBox reports the text length it removed", !!(dtb.data && dtb.data.impact && /文字长度/.test(String(dtb.data.impact.detail || ""))), JSON.stringify(dtb.data && dtb.data.impact));
+await call("wps_ppt_add_shape", { slideIndex: 1, type: "oval" });
+const aan = await call("wps_ppt_add_animation", { slideIndex: 1, effect: "fadeIn", shapeIndex: 1 });
+check("added a PPT animation", ok(aan), text(aan).replace(/\s+/g, " ").slice(0, 90));
+const ran = await action("removeAnimation", { slideIndex: 1 });
+check("removeAnimation reports a numeric removed count", !!(ran.data && ran.data.impact && ran.data.impact.kind === "animation" && typeof ran.data.impact.count === "number"), JSON.stringify(ran.data && ran.data.impact));
+const imgPath = resolve("test/.artifacts/batch3.png");
+writeFileSync(imgPath, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
+const ins = await call("wps_ppt_insert_ppt_image", { slideIndex: 1, filePath: imgPath });
+check("inserted a PPT image", ok(ins), text(ins).replace(/\s+/g, " ").slice(0, 60));
+const dil = await action("deletePptImage", { slideIndex: 1, imageIndex: 1 });
+check("deletePptImage reports the image name", !!(dil.data && dil.data.impact && String(dil.data.impact.name || "").length > 0), JSON.stringify(dil.data && dil.data.impact));
+const ins2 = await action("insertPptImage", { slideIndex: 1, path: imgPath });
+const picName = (ins2.data || {}).name;
+const rip = await action("replacePptImage", { slideIndex: 1, name: picName, path: imgPath });
+check("replacePptImage reports the old image it replaced", !!(rip.data && rip.data.impact && /替换/.test(String(rip.data.impact.detail || ""))), JSON.stringify(rip.data && rip.data.impact));
+
+// Close everything this test opened.
+for (const [method, appType] of [["closeWorkbook", "et"], ["closeDocument", "wps"], ["closePresentation", "wpp"]]) {
+  for (let i = 0; i < 8; i++) {
     const res = await call("wps_call", { tool: "wps_execute_method", args: { method, params: { save: false }, appType } });
     if (!ok(res)) break;
   }
