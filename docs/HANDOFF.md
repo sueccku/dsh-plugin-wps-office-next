@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）
 
 > 用途：把当前工作、进展、现状与下一步整理成**自包含**的一页，让一个**全新对话**无需回看历史即可接手。
-> 核实时间：2026-09-14 23:22（本文所有数字均从仓库/命令实测，非记忆）。
+> 核实时间：2026-09-16（v0.3.0 发布后重核；本文所有数字均从仓库/命令实测，非记忆）。
 > 本文是工作文档，不随包发布（`docs/` 不在 `package.json` 的 `files` 白名单内）。
 
 ---
@@ -31,8 +31,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 
 ## 1. 一句话现状
 
-**功能面已收敛并发布 v0.2.1；加固第 1 波（S1 模态弹窗围堵 + S2 宿主单实例）已完成并提交
-（`79ad108` 实现 + `50aca36` 测试加固）——现在「不卡死、不撞车」这条线已经守住，可以开始小范围推广。
+**功能面仍与 v0.2.1 完全一致；加固第 1 波（S1 模态弹窗围堵 + S2 宿主单实例）已作为 `v0.3.0`
+于 2026-09-16 推送并发布（提交 `d7736e1`，GitHub CI 全绿）；本机完整回归 **595/0**、一键 e2e
+**28/28** 均通过——现在「不卡死、不撞车」这条线已经守住，可以开始小范围推广。
 第 2～4 波（S3～S9）尚未开工，见 §8。**
 
 ---
@@ -42,16 +43,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 | 项 | 值 |
 | --- | --- |
 | 仓库根 | `D:\dsh\a` |
-| 分支 / HEAD | `main` / `50aca36` test(open-safety): 环境体检 + 与桥一致的 COM 取用/关闭规矩（前一条 `79ad108` 是第 1 波实现） |
+| 分支 / HEAD | `main` / `d7736e1` release: v0.3.0（稳定性加固第 1 波）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`、`v0.2.1` |
-| Releases | v0.2.1（Latest）、v0.2.0（首个发布） |
-| 包 | `dsh-plugin-wps-office-next@0.2.1`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0` |
+| Releases | v0.3.0（Latest，2026-09-16）、v0.2.1、v0.2.0——三份正文均已修正为正常 UTF-8 |
+| 包 | `dsh-plugin-wps-office-next@0.3.0`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | 只有 `snapshot` / `verify` / `gen:skills`——**没有 `prepare`**（安装时不需要构建） |
 
-**未提交（工作区）**：本文件（`docs/HANDOFF.md`）——它此前一直未被跟踪，本轮补进仓库。
-除此之外工作区干净。
+**工作区**：干净（`docs/HANDOFF.md` 本身已随仓库跟踪）。临时 profile `wpsdoc2` / `wpse2e` 已删除。
 
 ---
 
@@ -152,7 +152,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 ## 8. 待办（下一步）
 
-`docs/stabilization-plan.md` 共 9 项；**第 1 波（S1 + S2）已完成**，剩下：
+`docs/stabilization-plan.md` 共 9 项；**第 1 波（S1 + S2）已完成并随 v0.3.0 发布**，剩下：
 
 | 波次 | 条目 | 目的 | 估工 |
 | --- | --- | --- | --- |
@@ -166,16 +166,15 @@ S4 的大头是**真机跑数**（PPT 50 个未覆盖 → Excel 33 → Word 18�
 **上一轮遗留的两个待拍板问题已经落地**：`wps_execute_method` 维持隐藏（README 已写清定位）；
 S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表继续。
 
-**顺手可清**：`docs/PROGRESS.md` 里若还残留旧数字（本轮已同步到 594 / 28 文件）。
+**顺手可清**：无（`docs/PROGRESS.md` 已同步到 595 项 / 28 文件）。
 
 ---
 
 ## 9. 环境与验证命令
 
 - 本机 DSH：`0.1.5-rc.1`，位于 `C:\Users\qwer\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\`；`DSH_HOME = C:\Users\qwer\.dsh`。
-- profile：`web`（GUI :3080，**活跃中，勿扰**）、`headless`（模板）、
-  **`wpsdoc2`（上一轮 e2e 用的临时 profile，实测仍在，未被删除——本文上一版说「均已删除」是错的）**。
-  它只装了 v0.2.0 的包，不用就删掉：`dsh plugin --profile wpsdoc2 remove dsh-plugin-wps-office-next` 后删目录。
+- profile：`web`（GUI :3080，**活跃中，勿扰**）、`headless`（模板）。临时 profile `wpsdoc2` / `wpse2e`
+  已在 2026-09-16 清理；下次真机 e2e 用 `--setup` 新建，跑完记得 `dsh plugin --profile <name> remove …` 再删目录。
 - 真机 e2e（需要 WPS）：
   ```powershell
   node scripts/e2e.mjs --setup --timeout 420 --profile <name>
