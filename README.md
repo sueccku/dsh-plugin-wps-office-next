@@ -103,9 +103,9 @@ DSH 会自己打开 WPS、一步步做完、保存文件，再把结果告诉你
    还需要 Node.js ≥ 22.19 和 pnpm。不满足的项目直接告诉我，不要硬装。
 2. 判断我当前正在使用的 DSH profile（我从浏览器/桌面界面使用 DSH，通常是 web）。
 3. 执行安装（把 <profile> 换成上一步判断出的名字）：
-   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.2.1
+   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.3.0
    如果报 ERR_PNPM_GIT_RESOLVE_FAILED 或连不上 github.com，改用这个地址重试：
-   dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.2.1
+   dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.3.0
 4. 用下面这条命令确认接线成功（输出里应出现 wps-office-next-plugin 与 mcp-wps-office-next）：
    dsh --profile <profile> --dump-config | Select-String wps
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
@@ -163,7 +163,7 @@ $profile
 ### 3. 执行安装
 
 ```powershell
-dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.2.1
+dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.3.0
 ```
 
 - 包内已带预构建产物，**没有任何构建步骤**，正常不需要额外处理，也不会出现"构建脚本被拦截"的问题。
@@ -171,7 +171,7 @@ dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.
   github.com 不稳定，改用 GitHub 打包地址重试（已实测可行）：
 
   ```powershell
-  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.2.1
+  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.3.0
   ```
 
 - **注意 dsh 事后那句「构建脚本被拦截 / allowBuilds」提示**：本包没有任何 `prepare` 脚本，也没装
