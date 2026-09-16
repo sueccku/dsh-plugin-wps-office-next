@@ -8,8 +8,8 @@
 // Run: node test/spec-reproduction.test.mjs   (needs mcp/dist built)
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const { analyseToolSource } = await import(pathToFileURL(resolve('scripts/lib/tool-action-map.mjs')).href);
@@ -179,6 +179,18 @@ for (const [action, map] of Object.entries(paramAliases)) {
   for (const name of Object.keys(map)) if (!sentToAction.has(action + '.' + name)) legacyOnly++;
 }
 check('every pass-through rename is declared on the bridge side', missingDeclared.length === 0, missingDeclared.length ? missingDeclared.slice(0, 5).join(', ') : passedThrough + ' pass-through renames checked, ' + legacyOnly + ' legacy spelling(s) declared');
+
+// S4 coverage ratchet: how many registered tools are actually named by a test or the e2e run.
+// The plan's S4 goal is to drive this up (PPT first, then Excel, then Word). Like the other debts it
+// may only grow and must be updated deliberately when it improves; the per-app matrix lives in
+// scripts/smoke-tools.mjs.
+const testCorpus = readdirSync('test').filter((f) => f.endsWith('.test.mjs'))
+  .map((f) => readFileSync(join('test', f), 'utf8')).join('\n') + '\n' + readFileSync('scripts/e2e.mjs', 'utf8');
+const namedTools = new Set([...testCorpus.matchAll(/\bwps_[a-z0-9_]+/g)].map((m) => m[0]));
+const registeredNames = generated.map((t) => t.name);
+const coveredTools = registeredNames.filter((n) => namedTools.has(n));
+const TOOL_COVERAGE = 161;
+check('tool coverage did not shrink (S4 ratchet)', coveredTools.length >= TOOL_COVERAGE, coveredTools.length + ' of ' + registeredNames.length + ' registered tools are named by a test or the e2e run (ratchet ' + TOOL_COVERAGE + ')');
 
 console.log('');
 console.log('--- informational: keys the bridge reads that no tool sends: ' + readButNotSent.length);

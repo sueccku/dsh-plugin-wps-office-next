@@ -1504,6 +1504,27 @@ PPT 的 `AddPicture` 要**绝对路径**（相对路径报 `The specified protoc
 
 **S3 剩余**：各破坏性动作的确认框是否弹出，仍需逐项实测。
 
+### 56. S4 第一片：逐工具覆盖率账本与只读冒烟
+
+**证据**：267 个注册工具里只有 **161 个**被测试或 e2e 点名（PPT 最弱 **25 / 76**，Excel 87 / 118，
+Word 41 / 59）。历史上 **7 个「从来没工作过」的缺陷全部落在无测试覆盖的路径上**。
+
+**本片做法**：
+
+- `scripts/smoke-tools.mjs`：静态覆盖率矩阵（按应用分组 + 未覆盖清单），`--check` 断言不低于 ratchet；
+  `--live` 对**只读工具**（get/read/list/find/search/query）用最小占位参数各调一次，断言都在超时内返回。
+- `test/spec-reproduction.test.mjs` 新增 ratchet 断言：覆盖率**只许涨**（当前 **161 / 267**）。
+
+**偏离计划一处（有理由）**：计划写「对每个注册工具用最小合法参数调一次」。逐字照做意味着用占位参数
+去调 `deleteSheet` / `deleteRows` / `deleteShape` 这类破坏性动作，会把真实数据置于风险中
+（S3 刚给它们加了守卫，正是为了防这种事）。因此 live 冒烟**只覆盖只读工具**；破坏性工具的运行时验证
+由各自的场景测试（`destructive-guard` / `excel-list-object` 等）承担。
+
+**验收**：`node scripts/smoke-tools.mjs --check` → `S4 COVERAGE OK`；`spec-reproduction` 13 项全绿。
+
+**剩余**：把覆盖率（尤其 PPT 的 50 个）按真实使用场景补上测试；`--live` 的占位参数对需要已打开文档的工具
+只能验证「不超时」，真正的读路径仍要场景测试。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1550,7 +1571,7 @@ PPT 的 `AddPicture` 要**绝对路径**（相对路径报 `The specified protoc
 | test/ppt-contract-fixes.test.mjs | 56 | PPT 参数契约逐项修复（P4 后 3D 那项改为测合并工具） |
 | test/ppt-slimming.test.mjs | 32 | P4 合并后的形状效果/表格/页脚工具 + 15 个被删工具确认消失 |
 | test/word-lifecycle.test.mjs | 17 | e2e 暴露的 5 个缺陷（第 24～29 条） |
-| test/spec-reproduction.test.mjs | 12 | P1 验收：spec 逐字节复现模型可见面 |
+| test/spec-reproduction.test.mjs | 13 | P1 验收：spec 逐字节复现模型可见面 + S4 工具覆盖率 ratchet |
 | test/excel-missing-halves.test.mjs | 18 | P2 第一波：工作表信息、自动尺寸 ×3、自动换行、查找定位、命名范围读删 |
 | test/excel-missing-halves-2.test.mjs | 30 | P2 第一波余项：格式刷/清格式、条件格式与数据验证读删、重算、外部链接、合并计算、列分组、分类汇总 |
 | test/excel-list-object.test.mjs | 25 | P2-2 表（ListObject）：建表/读结构/增删行/总计行/样式/改名/范围/转回区域 |
@@ -1564,7 +1585,7 @@ PPT 的 `AddPicture` 要**绝对路径**（相对路径报 `The specified protoc
 | test/watchdog.test.mjs | 15 | S1 客户端：超时文案「状态未知」、短超时、成功即恢复、不偷偷重试（不需要 WPS） |
 | test/destructive-guard.test.mjs | 45 | S3：破坏性动作前置影响统计（范围类 5 + 对象类 8 + 批注/验证/Word/PPT 12；真实 Excel/Word/PPT） |
 
-合计 **640 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **641 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
