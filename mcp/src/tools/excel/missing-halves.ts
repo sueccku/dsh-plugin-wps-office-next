@@ -6,6 +6,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from './impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -367,7 +368,7 @@ export const clearFormatsDefinition: ToolDefinition = {
 
 export const clearFormatsHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ range?: string }>(
+    const response = await wpsClient.executeMethod<{ range?: string; impact?: RangeImpact }>(
       'clearFormats',
       { sheet: args.sheet, range: args.range },
       WpsAppType.SPREADSHEET
@@ -375,7 +376,7 @@ export const clearFormatsHandler: ToolHandler = async (args: Record<string, unkn
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: '清除格式失败: ' + response.error }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的格式已清除（内容保留）' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的格式已清除，内容保留' + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: '清除格式出错: ' + errMsg }], error: errMsg };

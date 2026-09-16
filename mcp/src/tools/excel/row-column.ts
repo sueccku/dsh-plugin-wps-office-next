@@ -17,6 +17,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from './impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -130,7 +131,7 @@ export const deleteRowsHandler: ToolHandler = async (
   const { startRow, row, count, sheet } = args as { startRow?: number; row?: number; count?: number; sheet?: string };
   const deleteCount = count || 1;
   try {
-    const response = await wpsClient.executeMethod<{ message: string }>(
+    const response = await wpsClient.executeMethod<{ message: string; impact?: RangeImpact }>(
       'deleteRows',
       { startRow, row, count: deleteCount, sheet },
       WpsAppType.SPREADSHEET
@@ -138,7 +139,8 @@ export const deleteRowsHandler: ToolHandler = async (
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除行失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `删除行完成！从第${startRow}行开始删除了${deleteCount}行` }] };
+    const fromRow = startRow ?? row;
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `删除行完成！从第${fromRow}行开始删除了${deleteCount}行${impactText(response.data?.impact)}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除行出错: ${errMsg}` }], error: errMsg };
@@ -169,7 +171,7 @@ export const deleteColumnsHandler: ToolHandler = async (
   const { column, count, sheet } = args as { column: string; count?: number; sheet?: string };
   const deleteCount = count || 1;
   try {
-    const response = await wpsClient.executeMethod<{ message: string }>(
+    const response = await wpsClient.executeMethod<{ message: string; impact?: RangeImpact }>(
       'deleteColumns',
       { column, count: deleteCount, sheet },
       WpsAppType.SPREADSHEET
@@ -177,7 +179,7 @@ export const deleteColumnsHandler: ToolHandler = async (
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除列失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `删除列完成！从${column}列开始删除了${deleteCount}列` }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `删除列完成！从${column}列开始删除了${deleteCount}列${impactText(response.data?.impact)}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除列出错: ${errMsg}` }], error: errMsg };

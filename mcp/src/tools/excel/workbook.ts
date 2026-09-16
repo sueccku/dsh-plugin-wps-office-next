@@ -5,6 +5,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from './impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -417,7 +418,7 @@ export const clearRangeHandler: ToolHandler = async (
 ): Promise<ToolCallResult> => {
   const { range, sheet, type } = args as { range: string; sheet?: string; type?: string };
   try {
-    const response = await wpsClient.executeMethod<{ message: string }>(
+    const response = await wpsClient.executeMethod<{ message: string; impact?: RangeImpact }>(
       'clearRange',
       { range, sheet, type: type || 'all' },
       WpsAppType.SPREADSHEET
@@ -426,7 +427,7 @@ export const clearRangeHandler: ToolHandler = async (
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `清除范围失败: ${response.error}` }], error: response.error };
     }
     const typeLabel = type === 'contents' ? '内容' : type === 'formats' ? '格式' : '全部';
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `范围 ${range} 的${typeLabel}已清除` }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `范围 ${range} 的${typeLabel}已清除${impactText(response.data?.impact)}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `清除范围出错: ${errMsg}` }], error: errMsg };

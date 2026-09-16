@@ -1425,6 +1425,37 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 **验收**：`open-safety` 21/21、`host-lease` 18/18、`watchdog` 15/15；全套 **595 项 / 28 文件**、
 `verify.mjs` 23 项全绿。
 
+### 53. S3 破坏性操作前置守卫（第一批：5 个 Excel 动作）
+
+**问题**：删表、删行、清区域动的是客户真金白银的数据，但此前**没有统一的前置统计**——删掉一个非空工作表时
+既不提示、也不回传「删掉了多少」。实测枚举出 29 个破坏性动作（35 个调用点），其中只有 `deleteSheet` 抑制了确认框。
+
+**本批做法**（不新增工具、不改参数契约，只让动作说清后果）：
+
+- 桥头新增两个只读助手 `Get-WpsRangeNonEmpty` / `Get-WpsRangeImpact`，回 `{ address, cells, nonEmpty, preview }`。
+  `nonEmpty` 走三级路径（`WorksheetFunction.CountA` → `Application.CountA` → 小范围手工扫描），
+  任一步失败降级为 `$null`；`preview` 只在 ≤ 4096 格时读 `Value2`，避免整列范围把宿主拖住。
+- 五个动作在动手前算好影响并放进结果的 `data.impact`：
+  `clearRange` / `clearFormats` / `deleteRows` / `deleteColumns` / `deleteSheet`。
+- TS 侧新增 `mcp/src/tools/excel/impact.ts`，把 impact 压成一句中文附在工具结果后，
+  模型能直接对用户复述：「范围 A1:C3 的内容已清除（原有 9 个非空单元格；示例内容：…）」。
+
+**实测（WPS 12.1 x64，`test/destructive-guard.test.mjs` 16 项全绿）**：
+
+| 调用 | impact |
+| --- | --- |
+| `clearRange A1:C3`（9 格有值） | `cells=9, nonEmpty=9, preview=8 项` |
+| `deleteRows 1:1`（同行 3 个值） | `cells=16384, nonEmpty=3` |
+| `deleteColumns A:A`（同列 2 个值） | `cells=1048576, nonEmpty=2` |
+| `clearFormats A1:B2` | `cells=4, nonEmpty=4` |
+| `deleteSheet`（4 格有值） | `cells=4, nonEmpty=4, remaining=1` |
+
+**剩余**：其它 24 个破坏性动作（ListObject 行、Word 表格行/批注、命名范围、图表/透视表/迷你图、
+分页符、条件格式、数据验证、PPT 幻灯片/形状/图片/动画）仍待补统计；各动作是否会弹确认框也尚未逐项实测。
+清单与状态见 [`docs/destructive-operations.md`](destructive-operations.md)。
+
+**验收**：`destructive-guard` 16/16 全绿；`spec` / `skills` 重新生成后无漂移；`verify.mjs` 23 项全绿。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1483,8 +1514,9 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 | test/host-lease.test.mjs | 18 | S2：单实例租约、第二个宿主被可读拒绝、陈旧宿主接管（不需要 WPS） |
 | test/open-safety.test.mjs | 21 | S1：先体检环境，再验加密文档快速失败不弹框、常规打开照常、失败后桥仍可用 |
 | test/watchdog.test.mjs | 15 | S1 客户端：超时文案「状态未知」、短超时、成功即恢复、不偷偷重试（不需要 WPS） |
+| test/destructive-guard.test.mjs | 16 | S3：破坏性动作前置影响统计（clearRange/clearFormats/deleteRows/deleteColumns/deleteSheet） |
 
-合计 **595 项**（28 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **611 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

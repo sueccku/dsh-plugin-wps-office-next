@@ -7,6 +7,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.workbookTools = exports.clearRangeHandler = exports.clearRangeDefinition = exports.getCellInfoHandler = exports.getCellInfoDefinition = exports.getFormulaHandler = exports.getFormulaDefinition = exports.setCellValueHandler = exports.setCellValueDefinition = exports.getCellValueHandler = exports.getCellValueDefinition = exports.createWorkbookHandler = exports.createWorkbookDefinition = exports.closeWorkbookHandler = exports.closeWorkbookDefinition = exports.switchWorkbookHandler = exports.switchWorkbookDefinition = exports.getOpenWorkbooksHandler = exports.getOpenWorkbooksDefinition = exports.openWorkbookHandler = exports.openWorkbookDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("./impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -357,7 +358,7 @@ const clearRangeHandler = async (args) => {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `清除范围失败: ${response.error}` }], error: response.error };
         }
         const typeLabel = type === 'contents' ? '内容' : type === 'formats' ? '格式' : '全部';
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `范围 ${range} 的${typeLabel}已清除` }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `范围 ${range} 的${typeLabel}已清除${(0, impact_1.impactText)(response.data?.impact)}` }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

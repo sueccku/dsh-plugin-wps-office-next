@@ -32,7 +32,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 ## 1. 一句话现状
 
 **功能面仍与 v0.2.1 完全一致；加固第 1 波（S1 模态弹窗围堵 + S2 宿主单实例）已作为 `v0.3.0`
-于 2026-09-16 推送并发布（提交 `d7736e1`，GitHub CI 全绿）；本机完整回归 **595/0**、一键 e2e
+于 2026-09-16 推送并发布（提交 `d7736e1`，GitHub CI 全绿）；本机完整回归 **611/0**、一键 e2e
 **28/28** 均通过——现在「不卡死、不撞车」这条线已经守住，可以开始小范围推广。
 第 2～4 波（S3～S9）尚未开工，见 §8。**
 
@@ -109,11 +109,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **37,573** / 上限 40,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 70, maxSchemaBytes: 40000 }` | `scripts/verify.mjs` |
-| 测试 | **595 断言 / 28 个测试文件** | `test/*.test.mjs`（本轮 541 → 595） |
+| 测试 | **611 断言 / 29 个测试文件** | `test/*.test.mjs`（S1+S2 后 595 → 611） |
 | e2e | 28 项检查，约 94 秒 | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 255 对（A/B/C/D 四类均为 0） | `scripts/param-contract.mjs` |
-| FIXES | 1～52 号 | `docs/FIXES.md` |
+| FIXES | 1～53 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -139,7 +139,9 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
    - **已修**；残余口子是加密 **.pptx**（`Presentations.Open` 无密码参数，无法阻止弹框），已写入 README。
 2. **宿主并发**：已加命名互斥体 + 租约文件 + 陈旧接管，第二个会话得到可读中文错误（**已修**）。
 3. **破坏性调用面**：`Delete()` **27 处**、`Clear()` 3、`ClearFormats()` 2、`ClearContents()` 2、
-   `Unlist()` 1、`ResetAllPageBreaks()` 1；仍**没有统一前置守卫**（S3 待做）。
+   `Unlist()` 1、`ResetAllPageBreaks()` 1（合计 35 站点 / 29 动作）。**S3 第一批已落地**：5 个 Excel 动作
+   （clearRange / clearFormats / deleteRows / deleteColumns / deleteSheet）回传前置影响统计；
+   清单与剩余项见 `docs/destructive-operations.md`（FIXES 53）。
 4. **测试覆盖缺口**：267 个工具里**只有 159 个被测试点名**（PPT 最弱，76 中仅 26）。
    历史上 **7 个「从来没工作过」的缺陷（FIXES 38/39/40/43/47/49）全部落在无测试覆盖的路径上**（S4 待做）。
 5. **静默失败**：桥里 242 个 `catch`，其中 **13 个是空的**（S5 待做）。
@@ -156,7 +158,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 | 波次 | 条目 | 目的 | 估工 |
 | --- | --- | --- | --- |
-| **2** | S3 27 处破坏性操作加守卫/回传统计 · S4 逐工具冒烟矩阵 + 覆盖率账本 | 不丢数据、有兜底 | 3.5 日 |
+| **2** | S3 破坏性操作加守卫/回传统计（**第一批 5/29 已落地**，见 `docs/destructive-operations.md`）· S4 逐工具冒烟矩阵 + 覆盖率账本 | 不丢数据、有兜底 | 3.5 日 |
 | 3 | S5 13 处空 catch 建 allowlist · S6 失败/超时契约 · S7 中文错误文案 | 可解释、可归因 | 2 日 |
 | 4（可选） | S8 `wps_execute_method` 定位 + WPS 版本前置检查 · S9 安装摩擦兜底 | 体验与售前 | 1 日 |
 
@@ -166,7 +168,7 @@ S4 的大头是**真机跑数**（PPT 50 个未覆盖 → Excel 33 → Word 18�
 **上一轮遗留的两个待拍板问题已经落地**：`wps_execute_method` 维持隐藏（README 已写清定位）；
 S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表继续。
 
-**顺手可清**：无（`docs/PROGRESS.md` 已同步到 595 项 / 28 文件）。
+**顺手可清**：无（`docs/PROGRESS.md` 已同步到 611 项 / 29 文件）。
 
 ---
 
@@ -260,9 +262,10 @@ S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表�
 | `test/host-lease.test.mjs` | S2 单实例租约（**不需要 WPS**，已进 CI） |
 | `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死；**开头有环境体检**（需要真实 WPS） |
 | `test/watchdog.test.mjs` | S1 超时契约（**不需要 WPS**，已进 CI） |
-| `docs/FIXES.md` | 1～52 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～53 号修复记录（**新 bug 继续追加编号**） |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |
 | `docs/stabilization-plan.md` | **加固计划**：第 1 波已完成并标注实测修正，第 2～4 波待做 |
+| `docs/destructive-operations.md` | **S3 破坏性操作清单**：动作 / 影响 / 回传统计 / 弹窗抑制 / 测试 + 剩余项 |
 | `README.md` | **面向客户的唯一契约**：安装由 AI 照做（7 步），AI 需逐条实测 |
 | `CHANGELOG.md` | 在 `files` 白名单内，随包发布 |

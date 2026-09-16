@@ -667,6 +667,59 @@ function Get-RangeAddressSafe($range, [string]$fallback) {
     return $fallback
 }
 
+# ==================== 破坏性操作前置守卫 (S3) ====================
+function Get-WpsRangeNonEmpty($range) {
+    # 非空单元格计数。WorksheetFunction.CountA 是首选，Application.CountA 是回退，手工扫描是最后手段
+    # （只在 <= 10000 格时跑，避免一个失效的内建函数把宿主拖住）。任何一步失败都返回 $null。
+    if ($null -eq $range) { return $null }
+    try { return [int]$range.Application.WorksheetFunction.CountA($range) } catch { }
+    try { return [int]$range.Application.CountA($range) } catch { }
+    try {
+        if ([int]$range.Count -gt 10000) { return $null }
+        $vals = $range.Value2
+        if ($vals -is [object[,]]) {
+            $n = 0
+            foreach ($v in $vals) { if ($null -ne $v -and "$v" -ne "") { $n++ } }
+            return $n
+        }
+        if ($null -ne $vals -and "$vals" -ne "") { return 1 }
+        return 0
+    } catch { return $null }
+}
+
+function Get-WpsRangeImpact($range, [int]$maxPreview = 8) {
+    # 破坏性动作执行前的“将要失去什么”：范围地址、格子数、非空格子数、内容前几项。只读、尽力而为——
+    # 统计失败降级为 $null，绝不因为守卫本身把动作弄失败。大范围不读 Value2（一次可能上百万格），
+    # 因此摘要在 <= 4096 格时才给出。
+    $impact = @{ address = $null; cells = $null; nonEmpty = $null; preview = @() }
+    if ($null -eq $range) { return $impact }
+    try { $impact.address = Get-RangeAddressSafe $range $null } catch { }
+    try { $impact.cells = [int]$range.Count } catch { }
+    $impact.nonEmpty = Get-WpsRangeNonEmpty $range
+    if ($null -ne $impact.cells -and $impact.cells -le 4096) {
+        try {
+            $vals = $range.Value2
+            $preview = New-Object System.Collections.ArrayList
+            if ($vals -is [object[,]]) {
+                $r0 = $vals.GetLowerBound(0); $r1 = $vals.GetUpperBound(0)
+                $c0 = $vals.GetLowerBound(1); $c1 = $vals.GetUpperBound(1)
+                for ($i = $r0; $i -le $r1; $i++) {
+                    for ($j = $c0; $j -le $c1; $j++) {
+                        if ($preview.Count -ge $maxPreview) { break }
+                        $v = $vals[$i, $j]
+                        if ($null -ne $v -and "$v" -ne "") { $null = $preview.Add([string]$v) }
+                    }
+                    if ($preview.Count -ge $maxPreview) { break }
+                }
+            } elseif ($null -ne $vals -and "$vals" -ne "") {
+                $null = $preview.Add([string]$vals)
+            }
+            $impact.preview = @($preview)
+        } catch { }
+    }
+    return $impact
+}
+
 function ConvertTo-ConsolidateSource([string]$reference) {
     if (-not $reference) { return $null }
     $rangePart = $reference.Trim()
@@ -1663,8 +1716,9 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
+        $impact = Get-WpsRangeImpact $range
         $range.ClearFormats()
-        Output-Json @{ success = $true; data = @{ range = $p.range } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; impact = $impact } }
     }
 
     "addConditionalFormat" {
@@ -2184,10 +2238,12 @@ switch ($Action) {
         if ($wb.Sheets.Count -le 1) { Output-Json @{ success = $false; error = "cannot delete the only sheet in a workbook" }; exit }
         try {
             $name = $sheet.Name
+            # 删表是最不可逆的一类动作：先把它用了多少格、有多少非空格子记下来再删。
+            $impact = Get-WpsRangeImpact $sheet.UsedRange
             $excel.DisplayAlerts = $false
             $sheet.Delete()
             $excel.DisplayAlerts = $true
-            Output-Json @{ success = $true; data = @{ deletedSheet = $name; remaining = $wb.Sheets.Count } }
+            Output-Json @{ success = $true; data = @{ deletedSheet = $name; remaining = $wb.Sheets.Count; impact = $impact } }
         } catch {
             $excel.DisplayAlerts = $true
             Output-Json @{ success = $false; error = $_.Exception.Message }
@@ -2410,11 +2466,13 @@ switch ($Action) {
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $clearType = if ($p.type) { $p.type } else { "all" }
+        # 先统计将失去什么，再动手：删非空区域时把非空格子数与内容示例一并回传。
+        $impact = Get-WpsRangeImpact $range
         if ($clearType -eq "contents") { $range.ClearContents() }
         elseif ($clearType -eq "formats") { $range.ClearFormats() }
         elseif ($clearType -eq "comments") { $range.ClearComments() }
         else { $range.Clear() }
-        Output-Json @{ success = $true; data = @{ range = $p.range; clearType = $clearType } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; clearType = $clearType; impact = $impact } }
     }
 
     "insertRows" {
@@ -2451,8 +2509,9 @@ switch ($Action) {
         if ($null -eq $startRow) { Output-Json @{ success = $false; error = "row/startRow required" }; exit }
         $count = if ($p.count) { [int]$p.count } else { 1 }
         $endRow = $startRow + $count - 1
+        $impact = Get-WpsRangeImpact $sheet.Range("${startRow}:${endRow}")
         $sheet.Range("${startRow}:${endRow}").Delete()
-        Output-Json @{ success = $true; data = @{ deletedFrom = $startRow; count = $count } }
+        Output-Json @{ success = $true; data = @{ deletedFrom = $startRow; count = $count; impact = $impact } }
     }
 
     "deleteColumns" {
@@ -2463,10 +2522,11 @@ switch ($Action) {
         if ($null -eq $col) { Output-Json @{ success = $false; error = "column/startColumn required" }; exit }
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
         $count = if ($p.count) { [int]$p.count } else { 1 }
+        $impact = Get-WpsRangeImpact $sheet.Range("${col}:${col}")
         for ($i = 0; $i -lt $count; $i++) {
             $sheet.Range("${col}:${col}").Delete()
         }
-        Output-Json @{ success = $true; data = @{ deletedFrom = $col; count = $count } }
+        Output-Json @{ success = $true; data = @{ deletedFrom = $col; count = $count; impact = $impact } }
     }
 
     "hideRows" {

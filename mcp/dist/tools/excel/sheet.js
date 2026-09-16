@@ -27,6 +27,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sheetTools = exports.autoSumHandler = exports.autoSumDefinition = exports.hideColumnHandler = exports.hideColumnDefinition = exports.setNamedRangeHandler = exports.setNamedRangeDefinition = exports.freezePanesHandler = exports.freezePanesDefinition = exports.getSelectionHandler = exports.getSelectionDefinition = exports.moveSheetHandler = exports.moveSheetDefinition = exports.switchSheetHandler = exports.switchSheetDefinition = exports.getSheetListHandler = exports.getSheetListDefinition = exports.copySheetHandler = exports.copySheetDefinition = exports.renameSheetHandler = exports.renameSheetDefinition = exports.deleteSheetHandler = exports.deleteSheetDefinition = exports.createSheetHandler = exports.createSheetDefinition = void 0;
 const uuid_1 = require("uuid");
+const impact_1 = require("./impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -135,7 +136,7 @@ const deleteSheetHandler = async (args) => {
             content: [
                 {
                     type: 'text',
-                    text: `工作表 "${name}" 已成功删除`,
+                    text: `工作表 "${name}" 已成功删除${(0, impact_1.impactText)(response.data?.impact)}`,
                 },
             ],
         };

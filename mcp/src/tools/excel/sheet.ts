@@ -25,6 +25,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from './impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -150,6 +151,7 @@ export const deleteSheetHandler: ToolHandler = async (
   try {
     const response = await wpsClient.executeMethod<{
       deleted: string;
+      impact?: RangeImpact;
     }>(
       'deleteSheet',
       { name },
@@ -171,7 +173,7 @@ export const deleteSheetHandler: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `工作表 "${name}" 已成功删除`,
+          text: `工作表 "${name}" 已成功删除${impactText(response.data?.impact)}`,
         },
       ],
     };
