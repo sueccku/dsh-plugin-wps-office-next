@@ -5,6 +5,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from './impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -225,13 +226,13 @@ export const clearSparklineDefinition: ToolDefinition = {
 
 export const clearSparklineHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ location?: string; groups?: number }>(
+    const response = await wpsClient.executeMethod<{ location?: string; groups?: number; impact?: RangeImpact }>(
       'clearSparkline',
       { sheet: args.sheet, location: args.location },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) return advancedFail('清除迷你图失败', response.error);
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.location || String(args.location)) + ' 上的迷你图已清除（剩余 ' + String(response.data?.groups ?? 0) + ' 组）' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.location || String(args.location)) + ' 上的迷你图已清除（剩余 ' + String(response.data?.groups ?? 0) + ' 组）' + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return advancedFail('清除迷你图出错', errMsg);
@@ -251,13 +252,13 @@ export const deleteChartDefinition: ToolDefinition = {
 
 export const deleteChartHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ deleted?: string; remaining?: number }>(
+    const response = await wpsClient.executeMethod<{ deleted?: string; remaining?: number; impact?: RangeImpact }>(
       'deleteChart',
       { sheet: args.sheet, chart: args.chart },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) return advancedFail('删除图表失败', response.error);
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '已删除图表 ' + (response.data?.deleted || '') + '（该表还剩 ' + String(response.data?.remaining ?? 0) + ' 张）' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '已删除图表 ' + (response.data?.deleted || '') + '（该表还剩 ' + String(response.data?.remaining ?? 0) + ' 张）' + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return advancedFail('删除图表出错', errMsg);

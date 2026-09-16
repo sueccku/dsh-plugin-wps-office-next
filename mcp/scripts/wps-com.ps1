@@ -1807,12 +1807,15 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
+        $cfCount = 0
+        try { $cfCount = [int]$range.FormatConditions.Count } catch { $cfCount = 0 }
+        $impact = @{ kind = "conditionalFormat"; range = $p.range; count = if ($p.index) { 1 } else { $cfCount } }
         if ($p.index) {
             $range.FormatConditions.Item([int]$p.index).Delete()
         } else {
             $range.FormatConditions.Delete()
         }
-        Output-Json @{ success = $true; data = @{ range = $p.range } }
+        Output-Json @{ success = $true; data = @{ range = $p.range; impact = $impact } }
     }
 
     "getConditionalFormats" {
@@ -2734,12 +2737,19 @@ switch ($Action) {
         $idx = [int]$p.rowIndex
         if ($idx -lt 1 -or $idx -gt $total) { Output-Json @{ success = $false; error = ("rowIndex " + $idx + " out of range 1.." + $total) }; exit }
         $name = [string]$lo.Name
+        # 先把这一行的内容读下来：删掉之后就再也拿不到了。
+        $impact = @{}
+        try { $impact = Get-WpsRangeImpact $lo.ListRows.Item($idx).Range } catch { $impact = @{ address = $null; cells = $null; nonEmpty = $null; preview = @() } }
+        $impact.name = $name
+        $impact.kind = "listRow"
         try { $lo.ListRows.Item($idx).Delete() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
         # WPS keeps the pre-delete geometry on the object we already hold (ListRows.Count still reports
         # the old number, Range still the old address) until the ListObject is looked up again, so the
         # result would describe the table as it was. Re-resolve before reporting.
         $lo = Get-ListObjectByName $sheet $name
-        Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name "") }
+        $info = Get-ListObjectInfo $lo $sheet.Name ""
+        $info.impact = $impact
+        Output-Json @{ success = $true; data = $info }
     }
 
     "updateListObject" {
@@ -2808,10 +2818,11 @@ switch ($Action) {
         $lo = Get-ListObjectByName $sheet $p.table
         if ($null -eq $lo) { Output-Json @{ success = $false; error = "table not found on this sheet" }; exit }
         $info = Get-ListObjectInfo $lo $sheet.Name ""
+        $impact = @{ name = $info.name; kind = "listObject"; range = $info.range; rows = $info.rows; detail = ([string]$info.columnCount + " 列") }
         try { $lo.Unlist() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
         Output-Json @{ success = $true; data = @{
             sheet = $info.sheet; name = $info.name; range = $info.range; columns = $info.columns
-            columnCount = $info.columnCount; message = "表已转回普通区域（数据与格式保留）"
+            columnCount = $info.columnCount; impact = $impact; message = "表已转回普通区域（数据与格式保留）"
         } }
     }
 
@@ -2979,10 +2990,14 @@ switch ($Action) {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
+        $hBefore = 0; $vBefore = 0
+        try { $hBefore = [int]$sheet.HPageBreaks.Count } catch { $hBefore = 0 }
+        try { $vBefore = [int]$sheet.VPageBreaks.Count } catch { $vBefore = 0 }
+        $impact = @{ kind = "pageBreaks"; count = ($hBefore + $vBefore); detail = ("清除前：横向 " + $hBefore + " 个、纵向 " + $vBefore + " 个") }
         try { $sheet.ResetAllPageBreaks() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
         $count = 0
         try { $count = [int]$sheet.HPageBreaks.Count } catch { $count = 0 }
-        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; hPageBreaks = $count; message = "手动分页符已清除" } }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; hPageBreaks = $count; impact = $impact; message = "手动分页符已清除" } }
     }
 
     "getFormulaAudit" {
@@ -3088,12 +3103,13 @@ switch ($Action) {
         if ($null -eq $pt) { Output-Json @{ success = $false; error = "pivot table not found on this sheet" }; exit }
         $name = ""; try { $name = [string]$pt.Name } catch { $name = "" }
         $rangeBefore = ""; try { $rangeBefore = Get-RangeAddressSafe $pt.TableRange2 "" } catch { $rangeBefore = "" }
+        $impact = @{ name = $name; kind = "pivotTable"; address = $rangeBefore }
         try { $pt.TableRange2.Clear() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
         # WPS 清掉报表后 PivotTable 对象仍留在集合里（再读 TableRange2 会 E_FAIL），所以不谎报“已删除”。
         $remaining = 0
         try { $remaining = [int]$sheet.PivotTables.Count } catch { $remaining = 0 }
         Output-Json @{ success = $true; data = @{
-            sheet = $sheet.Name; name = $name; rangeBefore = $rangeBefore; remaining = $remaining
+            sheet = $sheet.Name; name = $name; rangeBefore = $rangeBefore; remaining = $remaining; impact = $impact
             message = "透视表报表已清除；WPS 的 PivotTable 对象会留到保存/重开，期间集合里仍能看到它"
         } }
     }
@@ -3154,10 +3170,13 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         if (-not $p.location) { Output-Json @{ success = $false; error = "location required" }; exit }
+        $groupsBefore = 0
+        try { $groupsBefore = [int]$sheet.Range([string]$p.location).SparklineGroups.Count } catch { $groupsBefore = 0 }
+        $impact = @{ kind = "sparkline"; location = [string]$p.location; count = $groupsBefore }
         try { $sheet.Range([string]$p.location).SparklineGroups.Clear() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
         $count = 0
         try { $count = [int]$sheet.Range([string]$p.location).SparklineGroups.Count } catch { $count = 0 }
-        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; location = [string]$p.location; groups = $count } }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; location = [string]$p.location; groups = $count; impact = $impact } }
     }
 
     "deleteChart" {
@@ -3177,10 +3196,11 @@ switch ($Action) {
         }
         if ($null -eq $target) { Output-Json @{ success = $false; error = "chart not found on this sheet（给 chart 名称，或在只有一张图时省略）" }; exit }
         $name = ""; try { $name = [string]$target.Name } catch { $name = $label }
+        $impact = @{ name = $name; kind = "chart" }
         try { $target.Delete() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
         $remaining = 0
         try { $remaining = [int]$sheet.ChartObjects().Count } catch { $remaining = 0 }
-        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; deleted = $name; remaining = $remaining } }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; deleted = $name; remaining = $remaining; impact = $impact } }
     }
 
     "setChartLabels" {
@@ -4145,8 +4165,11 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $refersTo = ""
+        try { $refersTo = [string]$wb.Names.Item($p.name).RefersTo } catch { $refersTo = "" }
+        $impact = @{ name = $p.name; kind = "namedRange"; address = $refersTo }
         $wb.Names.Item($p.name).Delete()
-        Output-Json @{ success = $true; data = @{ deletedName = $p.name } }
+        Output-Json @{ success = $true; data = @{ deletedName = $p.name; impact = $impact } }
     }
 
     "getNamedRanges" {

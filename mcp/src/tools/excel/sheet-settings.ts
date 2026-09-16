@@ -6,6 +6,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from './impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -314,13 +315,13 @@ export const resetPageBreaksDefinition: ToolDefinition = {
 
 export const resetPageBreaksHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ sheet?: string; hPageBreaks?: number; message?: string }>(
+    const response = await wpsClient.executeMethod<{ sheet?: string; hPageBreaks?: number; message?: string; impact?: RangeImpact }>(
       'resetPageBreaks',
       { sheet: args.sheet },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) return settingsFail('清除分页符失败', response.error);
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.message || '手动分页符已清除') + '；剩余手动分页符 ' + String(response.data?.hPageBreaks ?? 0) + ' 条' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.message || '手动分页符已清除') + '；剩余手动分页符 ' + String(response.data?.hPageBreaks ?? 0) + ' 条' + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return settingsFail('清除分页符出错', errMsg);

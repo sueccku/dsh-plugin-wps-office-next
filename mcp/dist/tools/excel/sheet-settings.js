@@ -9,6 +9,7 @@ exports.sheetSettingsTools = exports.getFormulaAuditHandler = exports.getFormula
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 const uuid_1 = require("uuid");
+const impact_1 = require("./impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -256,7 +257,7 @@ const resetPageBreaksHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('resetPageBreaks', { sheet: args.sheet }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success)
             return settingsFail('清除分页符失败', response.error);
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.message || '手动分页符已清除') + '；剩余手动分页符 ' + String(response.data?.hPageBreaks ?? 0) + ' 条' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.message || '手动分页符已清除') + '；剩余手动分页符 ' + String(response.data?.hPageBreaks ?? 0) + ' 条' + (0, impact_1.impactText)(response.data?.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

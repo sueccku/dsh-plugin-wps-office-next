@@ -8,6 +8,7 @@ exports.advancedTools = exports.setChartLabelsHandler = exports.setChartLabelsDe
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 const uuid_1 = require("uuid");
+const impact_1 = require("./impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -207,7 +208,7 @@ const clearSparklineHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('clearSparkline', { sheet: args.sheet, location: args.location }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success)
             return advancedFail('清除迷你图失败', response.error);
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.location || String(args.location)) + ' 上的迷你图已清除（剩余 ' + String(response.data?.groups ?? 0) + ' 组）' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.location || String(args.location)) + ' 上的迷你图已清除（剩余 ' + String(response.data?.groups ?? 0) + ' 组）' + (0, impact_1.impactText)(response.data?.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
@@ -230,7 +231,7 @@ const deleteChartHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('deleteChart', { sheet: args.sheet, chart: args.chart }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success)
             return advancedFail('删除图表失败', response.error);
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已删除图表 ' + (response.data?.deleted || '') + '（该表还剩 ' + String(response.data?.remaining ?? 0) + ' 张）' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已删除图表 ' + (response.data?.deleted || '') + '（该表还剩 ' + String(response.data?.remaining ?? 0) + ' 张）' + (0, impact_1.impactText)(response.data?.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

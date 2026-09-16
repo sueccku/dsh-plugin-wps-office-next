@@ -256,7 +256,7 @@ const deleteNamedRangeHandler = async (args) => {
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `删除命名范围失败: ${response.error}` }], error: response.error };
         }
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `命名范围已删除: ${response.data?.deletedName || name}` }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `命名范围已删除: ${response.data?.deletedName || name}` + (0, impact_1.impactText)(response.data?.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
@@ -383,7 +383,7 @@ const removeConditionalFormatHandler = async (args) => {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '删除条件格式失败: ' + response.error }], error: response.error };
         }
         const scope = args.index === undefined || args.index === null ? '全部规则' : '第 ' + String(args.index) + ' 条规则';
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的条件格式已删除（' + scope + '）' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的条件格式已删除（' + scope + '）' + (0, impact_1.impactText)(response.data?.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

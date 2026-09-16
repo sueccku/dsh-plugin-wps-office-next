@@ -6,6 +6,7 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 import { v4 as uuidv4 } from 'uuid';
+import { impactText, type RangeImpact } from './impact';
 import {
   ToolDefinition,
   ToolHandler,
@@ -162,13 +163,13 @@ export const deleteListRowDefinition: ToolDefinition = {
 
 export const deleteListRowHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<ListObjectInfo>(
+    const response = await wpsClient.executeMethod<ListObjectInfo & { impact?: RangeImpact }>(
       'deleteListRow',
       { sheet: args.sheet, table: args.table, rowIndex: args.rowIndex },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) return listObjectFail('删除行失败', response.error);
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '已删除该行\n' + describeListObject(response.data || {}) }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '已删除该行' + impactText(response.data?.impact) + '\n' + describeListObject(response.data || {}) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return listObjectFail('删除行出错', errMsg);
@@ -289,14 +290,14 @@ export const unlistListObjectDefinition: ToolDefinition = {
 
 export const unlistListObjectHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<ListObjectInfo>(
+    const response = await wpsClient.executeMethod<ListObjectInfo & { impact?: RangeImpact }>(
       'unlistListObject',
       { sheet: args.sheet, table: args.table },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) return listObjectFail('转回区域失败', response.error);
     const info = response.data || {};
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '表「' + (info.name || '') + '」已转回普通区域（' + (info.range || '') + '），数据与格式保留' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '表「' + (info.name || '') + '」已转回普通区域（' + (info.range || '') + '），数据与格式保留' + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return listObjectFail('转回区域出错', errMsg);

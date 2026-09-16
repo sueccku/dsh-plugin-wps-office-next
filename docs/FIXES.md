@@ -1456,6 +1456,30 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 
 **验收**：`destructive-guard` 16/16 全绿；`spec` / `skills` 重新生成后无漂移；`verify.mjs` 23 项全绿。
 
+### 54. S3 破坏性操作前置守卫（第二批：8 个 Excel 对象级动作）
+
+延续第 53 条，把 Excel 侧剩下的对象级破坏性动作也补上前置统计，做法一致（只加 `data.impact`，不改参数契约）：
+
+| 动作 | 回传的 impact |
+| --- | --- |
+| `deleteListRow` | 该行被删前的单元格内容（`preview`，实测拿到 `华南 / B / 80`） |
+| `unlistListObject` | 表名 / 范围 / 行数 / 列数 |
+| `resetPageBreaks` | 清除前的横向、纵向分页符数量 |
+| `clearPivotTable` | 透视表名与原报表区域（沿用原有报告，仅补 impact 字段） |
+| `clearSparkline` | 清除前的迷你图组数 |
+| `deleteChart` | 被删图表的名称 |
+| `removeConditionalFormat` | 被删规则条数 |
+| `deleteNamedRange` | 被删名称的原引用（`RefersTo`，实测 `=Sheet1!$A$1:$B$2`） |
+
+`mcp/src/tools/excel/impact.ts` 扩成同时渲染范围类与对象类字段（`kind` → 中文量词），
+`list-object.ts` / `advanced.ts` / `sheet-settings.ts` / `missing-halves.ts` 四个文件的结果文案接上它。
+
+**实测**：`test/destructive-guard.test.mjs` 从 16 项扩到 **29 项**，真实 WPS 全绿；
+进度 **13 / 25 个用户数据动作**已回传统计（清单见 [`docs/destructive-operations.md`](destructive-operations.md)）。
+
+**剩余**：Word（表格行、批注）×4、PPT（幻灯片、形状、文本框、图片、替换图片、动画）×6、数据验证 ×2，
+以及各动作确认框的逐项实测。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1514,9 +1538,9 @@ COM 对象**不提供 `Hwnd`**（Excel 有），也就是说「哪个进程是�
 | test/host-lease.test.mjs | 18 | S2：单实例租约、第二个宿主被可读拒绝、陈旧宿主接管（不需要 WPS） |
 | test/open-safety.test.mjs | 21 | S1：先体检环境，再验加密文档快速失败不弹框、常规打开照常、失败后桥仍可用 |
 | test/watchdog.test.mjs | 15 | S1 客户端：超时文案「状态未知」、短超时、成功即恢复、不偷偷重试（不需要 WPS） |
-| test/destructive-guard.test.mjs | 16 | S3：破坏性动作前置影响统计（clearRange/clearFormats/deleteRows/deleteColumns/deleteSheet） |
+| test/destructive-guard.test.mjs | 29 | S3：破坏性动作前置影响统计（范围类 5 + 对象类 8：表行/转回区域/迷你图/图表/命名范围/条件格式/分页符/透视表） |
 
-合计 **611 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **624 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

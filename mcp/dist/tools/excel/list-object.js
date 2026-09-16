@@ -9,6 +9,7 @@ exports.listObjectTools = exports.unlistListObjectHandler = exports.unlistListOb
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
  */
 const uuid_1 = require("uuid");
+const impact_1 = require("./impact");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
@@ -139,7 +140,7 @@ const deleteListRowHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('deleteListRow', { sheet: args.sheet, table: args.table, rowIndex: args.rowIndex }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success)
             return listObjectFail('删除行失败', response.error);
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已删除该行\n' + describeListObject(response.data || {}) }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已删除该行' + (0, impact_1.impactText)(response.data?.impact) + '\n' + describeListObject(response.data || {}) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
@@ -256,7 +257,7 @@ const unlistListObjectHandler = async (args) => {
         if (!response.success)
             return listObjectFail('转回区域失败', response.error);
         const info = response.data || {};
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '表「' + (info.name || '') + '」已转回普通区域（' + (info.range || '') + '），数据与格式保留' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '表「' + (info.name || '') + '」已转回普通区域（' + (info.range || '') + '），数据与格式保留' + (0, impact_1.impactText)(response.data?.impact) }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

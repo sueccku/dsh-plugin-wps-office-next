@@ -77,6 +77,49 @@ await call("wps_excel_write_range", { range: "A1", data: [[1, 2], [3, 4]] });
 const dsTool = await call("wps_excel_delete_sheet", { name: "VictimS3b" });
 check("delete_sheet summary names the non-empty count", ok(dsTool) && /非空单元格/.test(text(dsTool)), text(dsTool).replace(/\s+/g, " ").slice(0, 90));
 
+// --- batch 2: object-level destructives (S3 第二批) -------------------------
+await call("wps_excel_write_range", { range: "A1", data: NINE });
+
+// removeConditionalFormat
+await call("wps_excel_set_conditional_format", { range: "A1:A3", condition: ">100", format: "red_fill" });
+const rcf = await action("removeConditionalFormat", { range: "A1:A3" });
+check("removeConditionalFormat reports the rule count", !!(rcf.data && rcf.data.impact && rcf.data.impact.count >= 1), JSON.stringify(rcf.data && rcf.data.impact));
+await call("wps_excel_set_conditional_format", { range: "A1:A3", condition: ">100", format: "red_fill" });
+const rcfTool = await call("wps_excel_remove_conditional_format", { range: "A1:A3" });
+check("remove_conditional_format summary names the rule count", ok(rcfTool) && /条件格式规则/.test(text(rcfTool)), text(rcfTool).replace(/\s+/g, " ").slice(0, 95));
+
+// deleteListRow + unlistListObject
+await call("wps_excel_write_range", { range: "A1", data: NINE });
+const mkTable = await call("wps_excel_create_list_object", { range: "A1:C3", name: "S3Table" });
+check("created a table for deleteListRow", ok(mkTable), text(mkTable).replace(/\s+/g, " ").slice(0, 70));
+const dlr = await action("deleteListRow", { table: "S3Table", rowIndex: 2 });
+check("deleteListRow captures the deleted row values", !!(dlr.data && dlr.data.impact && Array.isArray(dlr.data.impact.preview) && dlr.data.impact.preview.includes("华南")), JSON.stringify(dlr.data && dlr.data.impact));
+const dlrTool = await call("wps_excel_delete_list_row", { table: "S3Table", rowIndex: 1 });
+check("delete_list_row summary carries the impact", ok(dlrTool) && /表行|非空单元格/.test(text(dlrTool)), text(dlrTool).replace(/\s+/g, " ").slice(0, 95));
+const ul = await action("unlistListObject", { table: "S3Table" });
+check("unlistListObject reports the table it dissolved", !!(ul.data && ul.data.impact && ul.data.impact.name === "S3Table" && ul.data.impact.kind === "listObject"), JSON.stringify(ul.data && ul.data.impact));
+
+// clearSparkline
+await call("wps_excel_write_range", { range: "E1", data: [[1], [2], [3], [4]] });
+check("added a sparkline group", ok(await call("wps_excel_add_sparkline", { dataRange: "E1:E4", location: "F1:F4" })), "");
+const cs = await action("clearSparkline", { location: "F1:F4" });
+check("clearSparkline reports the group count it removed", !!(cs.data && cs.data.impact && cs.data.impact.count >= 1), JSON.stringify(cs.data && cs.data.impact));
+await call("wps_excel_add_sparkline", { dataRange: "E1:E4", location: "F1:F4" });
+const csTool = await call("wps_excel_clear_sparkline", { location: "F1:F4" });
+check("clear_sparkline summary names the group count", ok(csTool) && /迷你图/.test(text(csTool)), text(csTool).replace(/\s+/g, " ").slice(0, 95));
+
+// deleteChart
+await call("wps_excel_write_range", { range: "A1", data: NINE });
+const mkChart = await call("wps_excel_create_chart", { data_range: "A1:C3", chart_type: "column_clustered", title: "S3图" });
+check("created a chart", ok(mkChart), text(mkChart).replace(/\s+/g, " ").slice(0, 70));
+const dch = await call("wps_excel_delete_chart", {});
+check("delete_chart summary names the chart", ok(dch) && /图表/.test(text(dch)), text(dch).replace(/\s+/g, " ").slice(0, 95));
+
+// deleteNamedRange
+check("created a named range", ok(await call("wps_excel_set_named_range", { name: "S3Range", range: "A1:B2" })), "");
+const dnr = await action("deleteNamedRange", { name: "S3Range" });
+check("deleteNamedRange reports the reference it removed", !!(dnr.data && dnr.data.impact && String(dnr.data.impact.address || "").length > 0), JSON.stringify(dnr.data && dnr.data.impact));
+
 // Close everything this test opened so a scratch run leaves no workbook behind.
 for (const [method, appType] of [["closeWorkbook", "et"]]) {
   for (let i = 0; i < 6; i++) {

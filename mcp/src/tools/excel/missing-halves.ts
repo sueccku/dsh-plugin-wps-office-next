@@ -299,7 +299,7 @@ export const deleteNamedRangeHandler: ToolHandler = async (
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: 'name 不能为空' }], error: 'name 为空' };
   }
   try {
-    const response = await wpsClient.executeMethod<{ deletedName?: string }>(
+    const response = await wpsClient.executeMethod<{ deletedName?: string; impact?: RangeImpact }>(
       'deleteNamedRange',
       { name },
       WpsAppType.SPREADSHEET
@@ -307,7 +307,7 @@ export const deleteNamedRangeHandler: ToolHandler = async (
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除命名范围失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `命名范围已删除: ${response.data?.deletedName || name}` }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `命名范围已删除: ${response.data?.deletedName || name}` + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除命名范围出错: ${errMsg}` }], error: errMsg };
@@ -443,7 +443,7 @@ export const removeConditionalFormatDefinition: ToolDefinition = {
 
 export const removeConditionalFormatHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ range?: string }>(
+    const response = await wpsClient.executeMethod<{ range?: string; impact?: RangeImpact }>(
       'removeConditionalFormat',
       { sheet: args.sheet, range: args.range, index: args.index },
       WpsAppType.SPREADSHEET
@@ -452,7 +452,7 @@ export const removeConditionalFormatHandler: ToolHandler = async (args: Record<s
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: '删除条件格式失败: ' + response.error }], error: response.error };
     }
     const scope = args.index === undefined || args.index === null ? '全部规则' : '第 ' + String(args.index) + ' 条规则';
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的条件格式已删除（' + scope + '）' }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: (response.data?.range || String(args.range)) + ' 的条件格式已删除（' + scope + '）' + impactText(response.data?.impact) }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: '删除条件格式出错: ' + errMsg }], error: errMsg };
