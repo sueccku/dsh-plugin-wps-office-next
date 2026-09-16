@@ -32,7 +32,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 ## 1. 一句话现状
 
 **功能面已收敛并发布 v0.2.1；加固第 1 波（S1 模态弹窗围堵 + S2 宿主单实例）已完成并提交
-（`79ad108`）——现在「不卡死、不撞车」这条线已经守住，可以开始小范围推广。
+（`79ad108` 实现 + `50aca36` 测试加固）——现在「不卡死、不撞车」这条线已经守住，可以开始小范围推广。
 第 2～4 波（S3～S9）尚未开工，见 §8。**
 
 ---
@@ -42,7 +42,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 | 项 | 值 |
 | --- | --- |
 | 仓库根 | `D:\dsh\a` |
-| 分支 / HEAD | `main` / `79ad108` feat(stability): 加固第 1 波——S1 模态弹窗围堵 + S2 宿主单实例与看门狗 |
+| 分支 / HEAD | `main` / `50aca36` test(open-safety): 环境体检 + 与桥一致的 COM 取用/关闭规矩（前一条 `79ad108` 是第 1 波实现） |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`、`v0.2.1` |
