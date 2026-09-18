@@ -143,6 +143,30 @@ function Clear-WpsWarnings() {
     $script:WpsWarnings = New-Object System.Collections.ArrayList
 }
 
+# S7: 面向客户端的三段式错误文案——「中文一句话 + 动作名 + 下一步」。英文/HRESULT 原文降级为附加信息，
+# 既让人看懂，也让模型拿得到重试所需的动作名与原始细节。未命中的文案原样保留，只补动作名与下一步。
+$script:WpsCurrentAction = ''
+
+function Format-WpsErrorText([string]$text, [string]$action) {
+    if ([string]::IsNullOrWhiteSpace($text)) { return $text }
+    $t = $text.Trim()
+    if ($t.Contains('（动作：')) { return $t }
+    $zh = $null
+    $hint = '确认操作对象存在、名称或序号正确，并且 WPS 处于可操作状态后重试'
+    if ($t -eq 'WPS Excel not running') { $zh = 'WPS 表格没有在运行'; $hint = '先启动 WPS 表格并打开一个工作簿，或用 wps_status 查看连接状态' }
+    elseif ($t -eq 'WPS Word not running') { $zh = 'WPS 文字没有在运行'; $hint = '先启动 WPS 文字并打开一个文档，或用 wps_status 查看连接状态' }
+    elseif ($t -eq 'WPS PPT not running') { $zh = 'WPS 演示没有在运行'; $hint = '先启动 WPS 演示并打开一个演示文稿，或用 wps_status 查看连接状态' }
+    elseif ($t -eq 'No active workbook') { $zh = '当前没有打开的工作簿'; $hint = '先用 wps_excel_open_workbook 或 wps_excel_create_workbook 打开或新建一个' }
+    elseif ($t -eq 'No active document') { $zh = '当前没有打开的文档'; $hint = '先用 wps_word_open_document 或 wps_word_create_document 打开或新建一个' }
+    elseif ($t -eq 'No active presentation' -or $t -eq 'no presentation is open') { $zh = '当前没有打开的演示文稿'; $hint = '先用 wps_ppt_open_presentation 或 wps_ppt_create_presentation 打开或新建一个' }
+    elseif ($t -eq 'table not found on this sheet') { $zh = '这张工作表上没有找到该表格'; $hint = '先用 wps_excel_get_list_objects 确认表名或序号' }
+    elseif ($t -match '(required|Required|Missing)') { $hint = '补上缺少的必填参数后重试' }
+    $core = if ($null -ne $zh) { $zh } else { $t }
+    $raw = if ($null -ne $zh -and $t -ne $zh) { '（原始信息：' + $t + '）' } else { '' }
+    $name = if ($action) { $action } else { '未知动作' }
+    return ($core + '（动作：' + $name + '）下一步：' + $hint + '。' + $raw)
+}
+
 function Get-WpsExcel { return Get-WpsApp 'excel' }
 
 function Get-WpsWord { return Get-WpsApp 'word' }
@@ -609,6 +633,9 @@ function Output-Json($obj) {
     if ($null -ne $script:WpsWarnings -and $script:WpsWarnings.Count -gt 0 -and $obj -is [hashtable]) {
         $obj['warnings'] = @($script:WpsWarnings)
         if ($obj.ContainsKey('data') -and $obj['data'] -is [hashtable]) { $obj['data']['warnings'] = @($script:WpsWarnings) }
+    }
+    if ($obj -is [hashtable] -and $obj['success'] -eq $false -and $obj['error'] -is [string]) {
+        $obj['error'] = Format-WpsErrorText $obj['error'] $script:WpsCurrentAction
     }
     $script:WpsResult = $obj
 }
@@ -1216,6 +1243,7 @@ function Invoke-WpsAction {
 try { $p = $Params | ConvertFrom-Json } catch { $p = @{} }
 
     Clear-WpsWarnings
+    $script:WpsCurrentAction = $Action
     $p = Add-WpsParamAliases $Action $p
     $p = Expand-WpsNestedParams $Action $p
     $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]

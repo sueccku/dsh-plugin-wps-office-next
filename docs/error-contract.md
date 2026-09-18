@@ -13,6 +13,23 @@
 
 `warnings` 的语义是「主要操作完成，但某个次要步骤失败了」——不是失败，但需要看。
 
+## 1b. 面向客户的错误文案（S7）
+
+桥里所有 `success:false` 的错误（含宿主捕获的异常）都会经过 `Format-WpsErrorText` 统一成三段式：
+
+```
+<中文一句话 或 原文>（动作：<bridge action>）下一步：<可执行的建议>。（原始信息：<英文/HRESULT>）
+```
+
+- 命中的英文短语（`WPS Excel not running`、`No active document`、`table not found on this sheet`…）换成中文，
+  原始英文放进「原始信息」；
+- **没命中的文案原样保留**，只补动作名与下一步（例如 `shapeIndex/shapeName is required（动作：setAnimation）下一步：…`），
+  这样历史断言与模型重试都不受影响；
+- 动作名是桥的 action（如 `openWorkbook`），模型可以直接拿它重试；
+- 文案是**幂等**的：已经带「（动作：」的不会再包一层。
+
+断言：`test/error-wording.test.mjs`（28 项：抽样 26 条必失败路径 + 动作名 + 幂等）。
+
 ## 2. 批量契约（`wps_batch`）
 
 | 情况 | 行为 |
@@ -61,4 +78,5 @@
 | 超时文案含「状态未知」、短超时、成功即恢复、不偷偷重试 | `test/watchdog.test.mjs` |
 | 批量上限 50、空批量、部分失败继续、结果截断 2000、门面/未知工具拒绝 | `test/error-contract.test.mjs` |
 | 空 catch 的静默必须登记 | `test/silent-catch.test.mjs` |
+| 错误文案三段式、动作名、幂等 | `test/error-wording.test.mjs` |
 | 广告面、桥动作数、门面行为 | `scripts/verify.mjs` |

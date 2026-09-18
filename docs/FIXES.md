@@ -1619,6 +1619,24 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 
 **验收**：`error-contract` 14 项全绿；全套 **776 项 / 34 文件**；`param-contract` 重新生成后无漂移。
 
+### 61. S7 面向客户的中文错误文案：三段式 + 28 项断言
+
+**改动面**：
+
+- 桥头新增 `Format-WpsErrorText`，把错误统一成三段式：
+  `<中文一句话 或 原文>（动作：<action>）下一步：<建议>。（原始信息：<英文/HRESULT>）`；
+- 命中的重复英文短语（`WPS Excel/Word/PPT not running`、`No active workbook/document/presentation`、
+  `no presentation is open`、`table not found on this sheet`）换成中文并把原文降级为「原始信息」；
+  **没命中的文案原样保留**，只补动作名与下一步——历史断言与模型重试都不受影响；
+- 宿主生成器在 `Output-Json` 里调用它，并在动作入口记下 `$script:WpsCurrentAction`；
+  宿主捕获到的**未处理异常**也一并格式化（这条以前绕过 `Output-Json`，是本次补上的缺口）；
+- 文案幂等：已带「（动作：」的不会再包一层。
+
+**实测**：新增 `test/error-wording.test.mjs`（28 项）——抽样 26 条必失败的早退路径
+（缺必填参数 / 无活动文档 / 无活动演示文稿 / 未知动作），逐条断言「失败 + 三段式 + 点名动作」。
+
+**验收**：`error-wording` 28 项全绿；全套 **804 项 / 35 文件**；契约写进 `docs/error-contract.md` §1b。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1683,8 +1701,9 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 | test/word-common-coverage.test.mjs | 26 | S4：18 个 Word + 5 个 common + convert_format（真实 WPS 文字） |
 | test/silent-catch.test.mjs | 8 | S5：空 catch 账本（桥 25 + 宿主 4；不需要 WPS） |
 | test/error-contract.test.mjs | 14 | S6：批量契约、门面错误、超时文案（真实 WPS） |
+| test/error-wording.test.mjs | 28 | S7：错误文案三段式、动作名、幂等（真实 WPS） |
 
-合计 **776 项**（34 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **804 项**（35 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

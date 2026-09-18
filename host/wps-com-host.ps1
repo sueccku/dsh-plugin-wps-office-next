@@ -224,7 +224,7 @@ while ($true) {
     try {
         $null = Invoke-WpsAction -Action $action -Params $paramsJson
     } catch {
-        $script:WpsResult = @{ success = $false; error = $_.Exception.Message; errorType = $_.Exception.GetType().Name }
+        $script:WpsResult = @{ success = $false; error = (Format-WpsErrorText $_.Exception.Message $action); errorType = $_.Exception.GetType().Name }
     }
 
     $sw.Stop()

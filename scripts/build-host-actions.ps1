@@ -34,6 +34,9 @@ function Output-Json($obj) {
         $obj['warnings'] = @($script:WpsWarnings)
         if ($obj.ContainsKey('data') -and $obj['data'] -is [hashtable]) { $obj['data']['warnings'] = @($script:WpsWarnings) }
     }
+    if ($obj -is [hashtable] -and $obj['success'] -eq $false -and $obj['error'] -is [string]) {
+        $obj['error'] = Format-WpsErrorText $obj['error'] $script:WpsCurrentAction
+    }
     $script:WpsResult = $obj
 }
 '@
@@ -158,6 +161,7 @@ $keyTable = '# Accepted parameter names per action, derived from the switch belo
 
 # Reject parameters the action does not read, right after $p is materialised.
 $guard = '    Clear-WpsWarnings' + $crlf +
+         '    $script:WpsCurrentAction = $Action' + $crlf +
          '    $p = Add-WpsParamAliases $Action $p' + $crlf +
          '    $p = Expand-WpsNestedParams $Action $p' + $crlf +
          '    $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]' + $crlf +
