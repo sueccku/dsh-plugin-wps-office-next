@@ -1566,6 +1566,26 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 **说明**：这是**生产缺陷**，不是测试专属——生产里宿主每次重启（会话开始、超时重启）都会泄漏一个实例，
 只是频率低得多；测试把它放大到肉眼可见。
 
+### 58. S4 覆盖率补全：161 / 267 → 267 / 267
+
+第一片只建了 ratchet 与只读冒烟；本片把未覆盖的工具按应用补上真实场景测试：
+
+| 新测试 | 项数 | 新覆盖的工具 |
+| --- | --- | --- |
+| `test/ppt-coverage.test.mjs` | 53 | 51 个此前未被点名的 PPT 工具（读 / 背景 / 形状 / 文本 / 表格 / 图片 / 图表 / 动画 / 母版 / 导出） |
+| `test/excel-coverage.test.mjs` | 34 | 31 个此前未被点名的 Excel 工具（读写 / 公式 / 布局 / 数据 / 行列 / 批注 / 图表 / 透视表 / 导出） |
+| `test/word-common-coverage.test.mjs` | 26 | 18 个 Word 工具 + 5 个 common 工具 + `wps_convert_format` |
+
+验收口径沿用计划：每个工具**必须返回**（禁止超时）；能成功的断言成功；需要前置条件的允许「明确的业务错误」；
+并断言矩阵整体没有系统性失败（至少 N 个成功）。实测：PPT 39/50 成功、Excel 26/31 成功、Word/common 20/23 成功，
+其余都是清晰的业务错误，**零超时**。
+
+**S4 ratchet 抬到 267 / 267**（`scripts/smoke-tools.mjs` 与 `test/spec-reproduction.test.mjs`）。
+分布：Excel 118 / 118、PPT 76 / 76、Word 59 / 59、common 7 / 7。
+
+**说明**：`smoke-tools.mjs --live` 的占位参数对需要已打开文档的工具只能验证「不超时」；
+真正的读路径与边界仍以场景测试为准——本片补的就是场景测试。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1625,8 +1645,11 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 | test/open-safety.test.mjs | 21 | S1：先体检环境，再验加密文档快速失败不弹框、常规打开照常、失败后桥仍可用 |
 | test/watchdog.test.mjs | 15 | S1 客户端：超时文案「状态未知」、短超时、成功即恢复、不偷偷重试（不需要 WPS） |
 | test/destructive-guard.test.mjs | 45 | S3：破坏性动作前置影响统计（范围类 5 + 对象类 8 + 批注/验证/Word/PPT 12；真实 Excel/Word/PPT） |
+| test/ppt-coverage.test.mjs | 53 | S4：51 个未点名 PPT 工具（真实 WPS 演示） |
+| test/excel-coverage.test.mjs | 34 | S4：31 个未点名 Excel 工具（真实 WPS 表格） |
+| test/word-common-coverage.test.mjs | 26 | S4：18 个 Word + 5 个 common + convert_format（真实 WPS 文字） |
 
-合计 **641 项**（29 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **754 项**（32 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

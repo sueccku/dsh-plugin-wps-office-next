@@ -15,7 +15,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 
-const RATCHET = 161;
+const RATCHET = 267;
 const READ_ONLY = /^wps_(excel|word|ppt|common)_(get|read|list|find|search|query)/;
 const LIVE_TIMEOUT_MS = 20000;
 

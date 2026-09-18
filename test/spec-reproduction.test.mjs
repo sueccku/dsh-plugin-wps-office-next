@@ -189,7 +189,7 @@ const testCorpus = readdirSync('test').filter((f) => f.endsWith('.test.mjs'))
 const namedTools = new Set([...testCorpus.matchAll(/\bwps_[a-z0-9_]+/g)].map((m) => m[0]));
 const registeredNames = generated.map((t) => t.name);
 const coveredTools = registeredNames.filter((n) => namedTools.has(n));
-const TOOL_COVERAGE = 161;
+const TOOL_COVERAGE = 267;
 check('tool coverage did not shrink (S4 ratchet)', coveredTools.length >= TOOL_COVERAGE, coveredTools.length + ' of ' + registeredNames.length + ' registered tools are named by a test or the e2e run (ratchet ' + TOOL_COVERAGE + ')');
 
 console.log('');
