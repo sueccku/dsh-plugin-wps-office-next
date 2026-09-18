@@ -1,0 +1,64 @@
+# 错误与超时契约
+
+> 目的：让「失败长什么样、超时后该怎么办」有唯一可查的说法，并且**每条语义都有断言**。
+> 真源：`mcp/src/client/com-host.ts`（超时）、`mcp/src/server/mcp-server.ts`（批量与门面）、
+> `mcp/scripts/wps-com.ps1`（动作错误与 warnings）。断言位置见文末。
+
+## 1. 结果信封
+
+每个工具返回 `{ success, content, error? }`，MCP 层把它映射成 `isError: !success`：
+
+- `success: true`：`content` 里有结果；桥收集到的 `warnings` 会附在结果 JSON 的 `data.warnings`。
+- `success: false`：`content[0].text` 与 `error` 是同一句中文原因。
+
+`warnings` 的语义是「主要操作完成，但某个次要步骤失败了」——不是失败，但需要看。
+
+## 2. 批量契约（`wps_batch`）
+
+| 情况 | 行为 |
+| --- | --- |
+| `calls` 为空 | 整体失败：`calls 不能为空` |
+| `calls` > 50 | 整体失败：`单次批量最多 50 项`；**一项都不执行** |
+| 某一项工具名无效 / 是门面 / 未知 | 该项记 `{tool, success:false, error:"无效或不可调用的工具名"}`，**继续执行后面的项** |
+| 某一项执行失败 | 该项记 `{tool, success:false, result:"<错误文案>"}`，**继续执行后面的项** |
+| 某一项成功 | 该项记 `{tool, success:true, result:"<结果文本，最多 2000 字符>"}` |
+
+- 整批的返回值**恒为 `success: true`**，结构 `{count, results[]}`；局部失败不会把整批标成失败，
+  所以调用方**必须逐项看 `results[i].success`**。
+- `result` 会被截断到 2000 字符；需要完整结果就单项调用。
+
+## 3. 超时契约
+
+| 项 | 值 | 环境变量 |
+| --- | --- | --- |
+| 默认超时 | 60000 ms | `WPS_OFFICE_TIMEOUT_MS` |
+| 长动作超时 | 300000 ms | `WPS_OFFICE_LONG_TIMEOUT_MS` |
+| 可疑（suspect）短超时 | 15000 ms | `WPS_OFFICE_SUSPECT_TIMEOUT_MS` |
+
+长动作集合（`LONG_ACTIONS`）：`convertToPDF`、`convertFormat`、`exportChartAsImage`、
+`exportRangeAsImage`、`exportSlideAsImage`、`createPivotTable`、`updatePivotTable`、
+`beautify`、`beautifySlide`、`insertSlidesFromFile`、`recalculate`、`proofreadBasic`、`saveAs`。
+
+超时后**不是**「已失败」，而是：
+
+1. 宿主进程被杀（它卡在 COM 里，不可复用）；
+2. **WPS 不关**（可能还有未保存内容，也可能只是被对话框阻塞）；
+3. 置 `suspect`：后续调用先用 15s 短超时快速失败，**成功一次即恢复**常规超时；
+4. 文案固定为三段式：动作 + 超时毫秒 + 「状态未知」+ 下一步。
+
+## 4. 调用方该做什么
+
+| 症状 | 该做什么 |
+| --- | --- |
+| 超时，文案含「状态未知」 | 切到 WPS 处理弹框（密码 / 保存 / 恢复），然后重试；**不要**以为操作已经失败 |
+| 批量里某项 `success:false` | 只看那一项；它前面的项**已经执行**，后面的项**也会继续执行** |
+| 结果里带 `warnings` | 主操作已生效，按 warning 内容人工确认次要步骤 |
+
+## 5. 断言位置
+
+| 语义 | 断言 |
+| --- | --- |
+| 超时文案含「状态未知」、短超时、成功即恢复、不偷偷重试 | `test/watchdog.test.mjs` |
+| 批量上限 50、空批量、部分失败继续、结果截断 2000、门面/未知工具拒绝 | `test/error-contract.test.mjs` |
+| 空 catch 的静默必须登记 | `test/silent-catch.test.mjs` |
+| 广告面、桥动作数、门面行为 | `scripts/verify.mjs` |

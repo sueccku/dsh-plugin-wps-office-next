@@ -1603,6 +1603,22 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 
 **验收**：`node test/silent-catch.test.mjs` 8 项全绿（桥 25 / 宿主 4）；全套 **762 项 / 33 文件**。
 
+### 60. S6 失败语义与超时契约：文档 + 14 项断言
+
+**改动面**：
+
+- 新增 [`docs/error-contract.md`](error-contract.md)：结果信封、批量契约、超时契约（三档 + 长动作清单）、
+  调用方该做什么、每条语义对应的断言位置。
+- 新增 `test/error-contract.test.mjs`（14 项）：
+  批量空 / 超 50 整体拒绝且一项都不执行；部分失败**不抬高整批**、失败项单独记账、**后续继续执行**；
+  每项结果截断 2000 字符；`wps_call` 拒绝未知工具与门面递归；并静态断言契约文案仍在真源里
+  （「状态未知」、三档环境变量、「不会自动关闭 WPS」、批量上限与继续规则）。
+
+**超时那半**由 `test/watchdog.test.mjs`（15 项，stub 宿主）覆盖：文案含「状态未知」、短超时、成功即恢复、不偷偷重试。
+两者合起来，`docs/error-contract.md` 里每条语义都有对应断言。
+
+**验收**：`error-contract` 14 项全绿；全套 **776 项 / 34 文件**；`param-contract` 重新生成后无漂移。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1666,8 +1682,9 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 | test/excel-coverage.test.mjs | 34 | S4：31 个未点名 Excel 工具（真实 WPS 表格） |
 | test/word-common-coverage.test.mjs | 26 | S4：18 个 Word + 5 个 common + convert_format（真实 WPS 文字） |
 | test/silent-catch.test.mjs | 8 | S5：空 catch 账本（桥 25 + 宿主 4；不需要 WPS） |
+| test/error-contract.test.mjs | 14 | S6：批量契约、门面错误、超时文案（真实 WPS） |
 
-合计 **762 项**（33 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **776 项**（34 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
