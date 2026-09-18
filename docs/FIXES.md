@@ -1586,6 +1586,23 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 **说明**：`smoke-tools.mjs --live` 的占位参数对需要已打开文档的工具只能验证「不超时」；
 真正的读路径与边界仍以场景测试为准——本片补的就是场景测试。
 
+### 59. S5 空 catch 账本：29 处全部登记（桥 25 + 宿主 4）
+
+**证据**：桥里（`mcp/scripts/wps-com.ps1`）实测 **25 处空 catch**，手写的 `host/wps-com-host.ps1` **4 处**。
+比计划里的 13 处多，是因为 S1/S3 又新增了若干「探测 / 还原」类静默兜底（句柄可见性、DisplayAlerts、统计回退）。
+
+**做法**：不做「一刀切补日志」。新增 `test/silent-catch.test.mjs`：
+
+- 扫描两个**手写**文件（生成物 `host/wps-actions.ps1` 由 CI 逐字节对账，不重复扫）；
+- `ALLOWLIST` 以「规范化后的源码行」为键，带**原因**与**出现次数**；
+- 断言：没有未登记的空 catch、没有过期的账本项、每项都有原因、总数一致；
+- 已并入 GitHub Actions 静态门禁（不需要 WPS）。
+
+**为什么键是源码行而不是行号**：行号会随编辑漂移；源码行在代码重排后仍稳定，而新增或改动的空 catch
+会立刻让账本失配。
+
+**验收**：`node test/silent-catch.test.mjs` 8 项全绿（桥 25 / 宿主 4）；全套 **762 项 / 33 文件**。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1648,8 +1665,9 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 | test/ppt-coverage.test.mjs | 53 | S4：51 个未点名 PPT 工具（真实 WPS 演示） |
 | test/excel-coverage.test.mjs | 34 | S4：31 个未点名 Excel 工具（真实 WPS 表格） |
 | test/word-common-coverage.test.mjs | 26 | S4：18 个 Word + 5 个 common + convert_format（真实 WPS 文字） |
+| test/silent-catch.test.mjs | 8 | S5：空 catch 账本（桥 25 + 宿主 4；不需要 WPS） |
 
-合计 **754 项**（32 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **762 项**（33 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
