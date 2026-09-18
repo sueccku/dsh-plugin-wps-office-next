@@ -18,6 +18,7 @@ import {
 
 import { toolRegistry, ToolRegistry } from './tool-registry';
 import { wpsClient } from '../client/wps-client';
+import { comHost } from '../client/com-host';
 import { ToolCallResult, ToolCategory } from '../types/tools';
 import {
   ToolsetMode,
@@ -552,6 +553,9 @@ export class WpsMcpServer {
     logger.info('Stopping MCP Server...');
 
     await this.server.close();
+
+    // Release the COM host; it quits the WPS instances it started (never the user's) before exiting.
+    try { await comHost.stop(); } catch { /* shutting down anyway */ }
 
     this.isRunning = false;
     logger.info('MCP Server stopped');

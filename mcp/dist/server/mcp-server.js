@@ -14,6 +14,7 @@ const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const tool_registry_1 = require("./tool-registry");
 const wps_client_1 = require("../client/wps-client");
+const com_host_1 = require("../client/com-host");
 const tools_1 = require("../types/tools");
 const toolset_1 = require("./toolset");
 const deprecated_1 = require("../tools/deprecated");
@@ -453,6 +454,11 @@ class WpsMcpServer {
         }
         logger.info('Stopping MCP Server...');
         await this.server.close();
+        // Release the COM host; it quits the WPS instances it started (never the user's) before exiting.
+        try {
+            await com_host_1.comHost.stop();
+        }
+        catch { /* shutting down anyway */ }
         this.isRunning = false;
         logger.info('MCP Server stopped');
     }

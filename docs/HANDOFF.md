@@ -113,7 +113,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | e2e | 28 项检查，约 94 秒 | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 255 对（A/B/C/D 四类均为 0） | `scripts/param-contract.mjs` |
-| FIXES | 1～53 号 | `docs/FIXES.md` |
+| FIXES | 1～57 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -150,6 +150,10 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
    `ready` 帧误清 `suspect` 标志。二者都在 `mcp/src/client/com-host.ts`。
 7. **新的 WPS 静默失效（FIXES 52）**：`Document.Password` 按长度失效——15 字符卡死调用、
    **17 字符静默写出完全不加密的文件**。只影响 `wps_execute_method` 逃生舱。
+8. **WPS 进程泄漏（FIXES 57，已修）**：`Get-WpsApp` 曾无条件执行 `New-Object -ComObject`，
+   每次宿主获取实例都会启动并**丢弃**一个 WPS 实例；测试把它放大到 21 个 `et.exe` / 296 个
+   `wps.exe` / 约 35 GB。已改为「先 `GetActiveObject`，拿不到才启动」，并记录自启实例、
+   优雅关闭时按「无未保存内容」退出。这是**生产缺陷**，只是测试放大了它。
 
 ---
 
@@ -263,7 +267,7 @@ S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表�
 | `test/host-lease.test.mjs` | S2 单实例租约（**不需要 WPS**，已进 CI） |
 | `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死；**开头有环境体检**（需要真实 WPS） |
 | `test/watchdog.test.mjs` | S1 超时契约（**不需要 WPS**，已进 CI） |
-| `docs/FIXES.md` | 1～53 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～57 号修复记录（**新 bug 继续追加编号**） |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |
 | `docs/stabilization-plan.md` | **加固计划**：第 1 波已完成并标注实测修正，第 2～4 波待做 |

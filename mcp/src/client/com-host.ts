@@ -128,6 +128,16 @@ export class ComHost {
     this.child = null;
     this.failInflight(new Error('COM host stopped'));
     if (child && !child.killed) {
+      // Ask the host to release the WPS instances it started (only ones it owns and that hold no
+      // unsaved work) before the hard kill. A host wedged inside COM will not answer, so this waits
+      // only briefly and then kills anyway - WPS is never force-closed here (FIXES 57).
+      try { child.stdin?.write(JSON.stringify({ id: 0, action: '__shutdown', params: {} }) + '\n'); } catch { }
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, 4000);
+        child.once('exit', () => { clearTimeout(timer); resolve(); });
+      });
+    }
+    if (child && !child.killed) {
       this.awaitingExit = child;
       child.once('exit', () => { if (this.awaitingExit === child) this.awaitingExit = null; });
       try { child.kill(); } catch { this.awaitingExit = null; }

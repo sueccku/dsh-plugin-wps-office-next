@@ -201,8 +201,12 @@ while ($true) {
 
     if ($action -eq '__shutdown') {
         $script:BusySinceUtc = ''
+        # Release the WPS instances this host started; instances that were already running, or that
+        # hold unsaved work, are deliberately left alone (FIXES 57).
+        $closed = @()
+        try { $closed = @(Close-WpsAppsStartedByUs) } catch { $closed = @() }
         Update-HostState 'stopped'
-        Send-Response $id $true @{ success = $true; data = @{ message = 'shutdown' } } 0
+        Send-Response $id $true @{ success = $true; data = @{ message = 'shutdown'; closed = $closed } } 0
         break
     }
 

@@ -63,6 +63,10 @@ function Reset-WpsApp([string]$kind) {
     Remove-Variable -Name $cacheName -Scope Script -ErrorAction SilentlyContinue
 }
 
+# Instances THIS host started (as opposed to ones that were already running). Only these may ever
+# be quit, and only on a graceful shutdown. See FIXES 57.
+$script:WpsAppOwned = @{}
+
 function Get-WpsApp([string]$kind) {
     # One validated instance per process: re-acquiring can return a broken object even after a good
     # acquisition, and a resident host would pay for that on every action.
@@ -71,20 +75,60 @@ function Get-WpsApp([string]$kind) {
     if ($null -ne $cached -and (Test-WpsAppUsable $cached.Value $kind)) { return $cached.Value }
     $progId = @{ excel = 'Ket.Application'; ppt = 'Kwpp.Application'; word = 'Kwps.Application' }[$kind]
     if ($null -eq $progId) { return $null }
-    $candidates = @()
-    try { $candidates += [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId) } catch { }
-    try { $candidates += (New-Object -ComObject $progId) } catch { }
+    # A registered instance is ALWAYS preferred, and looking for it must not start anything:
+    # GetActiveObject is a pure Running Object Table lookup.
+    try {
+        $active = [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId)
+        if ($null -ne $active -and (Test-WpsAppUsable $active $kind)) {
+            if ($kind -ne 'excel') { try { $active.Visible = $true } catch { } }
+            Set-Variable -Name $cacheName -Scope Script -Value $active
+            return $active
+        }
+    } catch { }
+    # Nothing usable is registered, so start one. New-Object -ComObject launches a REAL WPS process
+    # (its prometheus launcher plus a tree of helper processes) and WPS never exits on its own, so it
+    # must never run while a reusable instance already exists. Running it unconditionally leaked an
+    # abandoned instance on every host start: ~20 Excel/Word/PPT instances and ~300 helper processes
+    # after a day of tests (FIXES 57).
     # NOTE: [Activator]::CreateInstance on the Coclass is deliberately not used. It returns an
     # instance whose Presentations/Workbooks collection looks fine but whose Add() dereferences an
     # uninitialised document manager, so it fails with 'cannot call a method on a null-valued
     # expression' only later, far from the cause.
-    foreach ($candidate in $candidates) {
-        if (-not (Test-WpsAppUsable $candidate $kind)) { continue }
-        if ($kind -ne 'excel') { try { $candidate.Visible = $true } catch { } }
-        Set-Variable -Name $cacheName -Scope Script -Value $candidate
-        return $candidate
-    }
+    try {
+        $created = New-Object -ComObject $progId
+        if ($null -ne $created -and (Test-WpsAppUsable $created $kind)) {
+            if ($kind -ne 'excel') { try { $created.Visible = $true } catch { } }
+            Set-Variable -Name $cacheName -Scope Script -Value $created
+            if ($null -eq $script:WpsAppOwned) { $script:WpsAppOwned = @{} }
+            $script:WpsAppOwned[$kind] = $true
+            return $created
+        }
+    } catch { }
     return $null
+}
+
+function Close-WpsAppsStartedByUs {
+    # Graceful shutdown only (__shutdown). Quits the instances THIS host started, and only when they
+    # hold no unsaved work. An instance that was already running (the user's WPS) is never touched,
+    # and one with unsaved documents is left alone. Best effort by design.
+    $closed = @()
+    if ($null -eq $script:WpsAppOwned) { return $closed }
+    foreach ($kind in @($script:WpsAppOwned.Keys)) {
+        if (-not $script:WpsAppOwned[$kind]) { continue }
+        $cacheName = 'WpsAppCache_' + $kind
+        $cached = Get-Variable -Name $cacheName -Scope Script -ErrorAction SilentlyContinue
+        if ($null -eq $cached -or $null -eq $cached.Value) { continue }
+        $app = $cached.Value
+        $dirty = $false
+        try {
+            if ($kind -eq 'excel') { foreach ($wb in $app.Workbooks) { if (-not [bool]$wb.Saved) { $dirty = $true } } }
+            elseif ($kind -eq 'word') { foreach ($d in $app.Documents) { if (-not [bool]$d.Saved) { $dirty = $true } } }
+            else { foreach ($pr in $app.Presentations) { if (-not [bool]$pr.Saved) { $dirty = $true } } }
+        } catch { $dirty = $true }
+        if ($dirty) { continue }
+        try { $app.Quit(); $closed += $kind } catch { }
+    }
+    return $closed
 }
 $script:WpsWarnings = New-Object System.Collections.ArrayList
 

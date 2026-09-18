@@ -45,8 +45,14 @@ if (existsSync(mcpEntry)) report("OK", "mcp entry", mcpEntry);
 else report("ERROR", "mcp entry missing", mcpEntry + " (run npm run build in mcp/)");
 
 const hostScript = join(root, "host", "wps-com-host.ps1");
-if (existsSync(hostScript)) report("OK", "com host", hostScript);
-else report("ERROR", "com host missing", hostScript);
+if (existsSync(hostScript)) {
+  const bytes = readFileSync(hostScript).subarray(0, 3);
+  const bom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+  if (bom) report("OK", "com host", hostScript);
+  else report("ERROR", "com host", "missing UTF-8 BOM; PowerShell 5.1 would misread its Chinese text and the host would not parse");
+} else {
+  report("ERROR", "com host missing", hostScript);
+}
 
 const actions = join(root, "host", "wps-actions.ps1");
 if (existsSync(actions)) {

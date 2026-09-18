@@ -1525,6 +1525,47 @@ Word 41 / 59）。历史上 **7 个「从来没工作过」的缺陷全部落在
 **剩余**：把覆盖率（尤其 PPT 的 50 个）按真实使用场景补上测试；`--live` 的占位参数对需要已打开文档的工具
 只能验证「不超时」，真正的读路径仍要场景测试。
 
+### 57. WPS 进程泄漏：Get-WpsApp 无条件 New-Object（生产缺陷，测试放大了它）
+
+**现象**：一轮测试后机器上残留数百个 `wps.exe` / 几十个 `et.exe`，工作集合计数十 GB，机器变卡。
+
+**根因（实测证明）**：`Get-WpsApp` 在获取实例时**同时**执行两条路径，其中第二条会真的启动 WPS：
+
+```powershell
+$candidates += [Marshal]::GetActiveObject($progId)   # 纯 ROT 查询，不启动任何东西
+$candidates += (New-Object -ComObject $progId)        # 无条件执行——这会真的启动一个 WPS 进程
+```
+
+探针（本机 WPS 12.1）：
+
+| 操作 | et.exe | wps.exe |
+| --- | --- | --- |
+| 起始 | 21 | 299 |
+| `GetActiveObject('Ket.Application')` 之后 | 21 | 299（不启动） |
+| 再 `New-Object -ComObject 'Ket.Application'` | **22** | **300**（真的启动了一个） |
+
+代码随后 `foreach` 取第一个可用候选（即 `GetActiveObject` 那个），**把刚启动的实例丢在一边**；
+WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，再乘以 WPS 的 prometheus 多进程结构，
+就是几百个进程 / 几十 GB。
+
+**为什么测试里特别严重**：每个测试文件都会拉起一个全新宿主，也就每次泄漏一份；一天几十个测试文件
+加多轮回归 → 21 个 `et.exe`、296 个 `wps.exe`。
+
+**修复**：
+
+1. `Get-WpsApp` 改为**先 `GetActiveObject`，只有它拿不到可用实例时才 `New-Object`**；并记录「这个实例是本宿主启动的」（`$script:WpsAppOwned`）。
+2. 新增 `Close-WpsAppsStartedByUs`：优雅关闭（`__shutdown`）时**只退出本宿主启动的实例**，且**只在没有未保存内容时**退出；
+   用户的 WPS 或带未保存内容的实例一律不碰。
+3. `com-host.ts` 的 `stop()` 先发 `__shutdown` 等宿主释放，再硬杀；`mcp-server.ts` 的 `stop()` 调用 `comHost.stop()`。
+4. `scripts/doctor.mjs` 增加 `host/wps-com-host.ps1` 的 BOM 检查（本轮就踩过一次：编辑掉 BOM 后
+   PowerShell 5.1 按 ANSI 读中文，宿主直接解析失败）。
+
+**实测**：修复前跑一次 `destructive-guard`（Excel + Word + PPT）新增 **4** 个 `wps.exe`；
+修复后新增 **0**。全量回归 **641 项 / 29 文件全绿**（`test/.artifacts/full-after-fix.txt` 可复核）。
+
+**说明**：这是**生产缺陷**，不是测试专属——生产里宿主每次重启（会话开始、超时重启）都会泄漏一个实例，
+只是频率低得多；测试把它放大到肉眼可见。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
