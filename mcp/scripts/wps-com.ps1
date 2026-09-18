@@ -941,21 +941,27 @@ switch ($Action) {
         if ($null -ne $excel) {
             $hasSelection = $false
             try { $hasSelection = ($null -ne $excel.Selection) } catch { Add-WpsWarning $_.Exception.Message }
-            Output-Json @{ success = $true; data = @{ appType = "excel"; appName = $excel.Name; hasSelection = $hasSelection } }
+            $ver = ""; try { $ver = [string]$excel.Version } catch { }
+            $bld = ""; try { $bld = [string]$excel.Build } catch { }
+            Output-Json @{ success = $true; data = @{ appType = "excel"; appName = $excel.Name; hasSelection = $hasSelection; version = $ver; build = $bld } }
             exit
         }
         $word = Get-WpsWord
         if ($null -ne $word) {
             $hasSelection = $false
             try { $hasSelection = ($null -ne $word.Selection) } catch { Add-WpsWarning $_.Exception.Message }
-            Output-Json @{ success = $true; data = @{ appType = "word"; appName = $word.Name; hasSelection = $hasSelection } }
+            $ver = ""; try { $ver = [string]$word.Version } catch { }
+            $bld = ""; try { $bld = [string]$word.Build } catch { }
+            Output-Json @{ success = $true; data = @{ appType = "word"; appName = $word.Name; hasSelection = $hasSelection; version = $ver; build = $bld } }
             exit
         }
         $ppt = Get-WpsPpt
         if ($null -ne $ppt) {
             $hasSelection = $false
             try { $hasSelection = ($null -ne $ppt.ActiveWindow.Selection) } catch { Add-WpsWarning $_.Exception.Message }
-            Output-Json @{ success = $true; data = @{ appType = "ppt"; appName = $ppt.Name; hasSelection = $hasSelection } }
+            $ver = ""; try { $ver = [string]$ppt.Version } catch { }
+            $bld = ""; try { $bld = [string]$ppt.Build } catch { }
+            Output-Json @{ success = $true; data = @{ appType = "ppt"; appName = $ppt.Name; hasSelection = $hasSelection; version = $ver; build = $bld } }
             exit
         }
         Output-Json @{ success = $false; error = "No WPS application running" }

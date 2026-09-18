@@ -78,3 +78,4 @@ jobs:
           node test/host-lease.test.mjs
           node test/watchdog.test.mjs
           node test/silent-catch.test.mjs
+          node test/install-selfcheck.test.mjs

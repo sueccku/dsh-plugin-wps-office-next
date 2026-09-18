@@ -1,7 +1,7 @@
 // Read-only environment check for dsh-plugin-wps-office-next.
 // Run: node scripts/doctor.mjs
 // Prints OK / WARN / ERROR lines and exits non-zero when any ERROR is found.
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, openSync, readSync, closeSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +14,32 @@ function report(level, name, detail) {
   if (level === "ERROR") errors++;
   if (level === "WARN") warnings++;
   console.log(level.padEnd(5) + " " + name + (detail ? "  " + detail : ""));
+}
+
+/** Numeric dotted-version compare; missing components count as 0. */
+function cmpVersion(a, b) {
+  const pa = String(a).split(".").map(Number);
+  const pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
+
+/** PE COFF Machine: 0x8664 = x64, 0x014c = x86. Reads 4 KB, never executes anything. */
+function peMachine(file) {
+  try {
+    const fd = openSync(file, "r");
+    const buf = Buffer.alloc(4096);
+    const n = readSync(fd, buf, 0, 4096, 0);
+    closeSync(fd);
+    if (n < 0x40) return 0;
+    const peOff = buf.readUInt32LE(0x3c);
+    if (peOff + 6 > n || buf.toString("ascii", peOff, peOff + 2) !== "PE") return 0;
+    return buf.readUInt16LE(peOff + 4);
+  } catch { return 0; }
 }
 
 // Platform and runtime
@@ -82,6 +108,41 @@ const probe = spawnSync("powershell", ["-NoProfile", "-NonInteractive", "-STA", 
 const running = String(probe.stdout || "").trim();
 if (running === "NONE" || running === "") report("WARN", "WPS COM", "no running WPS instance found; start WPS 12.1+ and open a document");
 else report("OK", "WPS COM", "active: " + running);
+
+// WPS Office version and architecture precheck (S8): read-only, never launches WPS.
+{
+  const wpsBase = join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "Kingsoft", "WPS Office");
+  const installed = existsSync(wpsBase) ? readdirSync(wpsBase).filter((d) => /^\d+\.\d+/.test(d)).sort(cmpVersion) : [];
+  if (installed.length === 0) {
+    report("WARN", "WPS version", "no WPS Office install found under " + wpsBase + "; install WPS 12.1+ 64-bit");
+  } else {
+    const latest = installed[installed.length - 1];
+    const machine = peMachine(join(wpsBase, latest, "office6", "wps.exe"));
+    const arch = machine === 0x8664 ? "x64" : machine === 0x14c ? "x86" : "unknown";
+    if (cmpVersion(latest, "12.1") < 0) report("ERROR", "WPS version", latest + " is older than 12.1; upgrade WPS Office");
+    else if (arch === "x86") report("ERROR", "WPS version", latest + " is 32-bit; this bundle needs the 64-bit WPS");
+    else if (arch !== "x64") report("WARN", "WPS version", latest + " (architecture could not be confirmed)");
+    else report("OK", "WPS version", latest + " " + arch);
+  }
+}
+
+// Bundle wiring (S9): the published patch must declare both entries a profile expects.
+{
+  let patchRel = "cordis.patch.yml";
+  try {
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    if (pkg.dsh && pkg.dsh.bundle && pkg.dsh.bundle.patch) patchRel = pkg.dsh.bundle.patch;
+  } catch { /* fall back to the default name */ }
+  const patchFile = join(root, patchRel);
+  if (!existsSync(patchFile)) {
+    report("ERROR", "plugin wiring", "missing " + patchFile);
+  } else {
+    const text = readFileSync(patchFile, "utf8");
+    const missing = ["wps-office-next-plugin", "mcp-wps-office-next"].filter((id) => !text.includes(id));
+    if (missing.length) report("ERROR", "plugin wiring", patchRel + " is missing " + missing.join(", "));
+    else report("OK", "plugin wiring", patchRel + " declares wps-office-next-plugin + mcp-wps-office-next");
+  }
+}
 
 // Profile wiring, informational
 const profilesDir = join(homedir(), ".dsh", "profiles");

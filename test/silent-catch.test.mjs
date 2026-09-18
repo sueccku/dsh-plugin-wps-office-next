@@ -34,6 +34,12 @@ const ALLOWLIST = {
     "try { $prevAlerts = [bool]$word.DisplayAlerts } catch { }": { count: 1, reason: "closeDocument: read/restore DisplayAlerts around the close; failure must not block the close" },
     "try { $word.DisplayAlerts = 0 } catch { }": { count: 1, reason: "closeDocument: read/restore DisplayAlerts around the close; failure must not block the close" },
     "try { $word.DisplayAlerts = $prevAlerts } catch { }": { count: 1, reason: "closeDocument: read/restore DisplayAlerts around the close; failure must not block the close" },
+    "$ver = \"\"; try { $ver = [string]$excel.Version } catch { }": { count: 1, reason: "getAppInfo: read the running WPS version; report empty if unavailable" },
+    "$bld = \"\"; try { $bld = [string]$excel.Build } catch { }": { count: 1, reason: "getAppInfo: read the running WPS build; report empty if unavailable" },
+    "$ver = \"\"; try { $ver = [string]$word.Version } catch { }": { count: 1, reason: "getAppInfo: read the running WPS version; report empty if unavailable" },
+    "$bld = \"\"; try { $bld = [string]$word.Build } catch { }": { count: 1, reason: "getAppInfo: read the running WPS build; report empty if unavailable" },
+    "$ver = \"\"; try { $ver = [string]$ppt.Version } catch { }": { count: 1, reason: "getAppInfo: read the running WPS version; report empty if unavailable" },
+    "$bld = \"\"; try { $bld = [string]$ppt.Build } catch { }": { count: 1, reason: "getAppInfo: read the running WPS build; report empty if unavailable" },
   },
   "host/wps-com-host.ps1": {
     "} catch { }": { count: 1, reason: "Update-HostState: bookkeeping must never take an action down" },

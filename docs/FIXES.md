@@ -1637,6 +1637,25 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 
 **验收**：`error-wording` 28 项全绿；全套 **804 项 / 35 文件**；契约写进 `docs/error-contract.md` §1b。
 
+### 62. S8 + S9：版本/架构前置检查与安装自检（第 4 波完成）
+
+**S8（版本前置检查）**：
+
+- `doctor.mjs` 新增只读检查：找到 `%LOCALAPPDATA%\Kingsoft\WPS Office\<version>\office6\wps.exe`，用 **PE COFF Machine**
+  （0x8664 / 0x014c）判断 x64/x86，版本目录名做数值比较。低于 12.1 或 32 位报 ERROR；找不到 WPS 报 WARN
+  （这样没有 WPS 的 CI 也能过）。实测：`OK WPS version 12.1.0.28488 x64`。
+- `getAppInfo` 增加 `version` / `build`，于是 `wps_status` 能直接看到运行中的 WPS 版本。
+- `wps_execute_method` 维持隐藏；README「已知限制」写清它是**最后手段**（不在广告面、技能里不推荐）。
+
+**S9（安装摩擦兜底）**：
+
+- `doctor.mjs` 新增**插件接线自检**：`package.json` 的 `dsh.bundle.patch` 指向的文件必须同时声明
+  `wps-office-next-plugin` 与 `mcp-wps-office-next`；缺失报 ERROR。实测 `OK plugin wiring ...`。
+- README 排错表：网络失败一行补「**先重试一次**（多数情况一次就好）」。
+
+**验收**：`node scripts/doctor.mjs` → `DOCTOR OK`；新增 `test/install-selfcheck.test.mjs` 6 项
+（doctor 退出 0 + 版本/接线两行 + 静态接线事实），已进 CI 静态门禁。全套 **810 项 / 36 文件**。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1702,8 +1721,9 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 | test/silent-catch.test.mjs | 8 | S5：空 catch 账本（桥 25 + 宿主 4；不需要 WPS） |
 | test/error-contract.test.mjs | 14 | S6：批量契约、门面错误、超时文案（真实 WPS） |
 | test/error-wording.test.mjs | 28 | S7：错误文案三段式、动作名、幂等（真实 WPS） |
+| test/install-selfcheck.test.mjs | 6 | S8/S9：doctor 版本/架构/接线自检（不需要 WPS） |
 
-合计 **804 项**（35 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **810 项**（36 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

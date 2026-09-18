@@ -217,7 +217,7 @@ dsh --profile <profile> --dump-config | Select-String wps
 | 现象 | 原因 | 怎么办 |
 |---|---|---|
 | `pnpm not found on PATH` | 没装 pnpm | `npm install -g pnpm` 后重试 |
-| `ERR_PNPM_GIT_RESOLVE_FAILED` / 连不上 github.com | 网络 | 改用上面的 codeload 打包地址 |
+| `ERR_PNPM_GIT_RESOLVE_FAILED` / 连不上 github.com | 网络抖动 | **先重试一次**（多数情况一次就好）；仍然失败再改用上面的 codeload 打包地址 |
 | dsh 提示 `allowBuilds` / 「构建脚本被拦截」 | 那是 dsh 在 pnpm 失败后补的通用提示，不是真因 | 看真错误；本包没有构建步骤，别去改 `allowBuilds` |
 | `dsh` 不是内部或外部命令 | DSH 未安装或不在 PATH | 确认 DSH 已安装，重开终端 |
 | 装完毫无反应 | 装错 profile，或没重启 | 用第 2 步重新确认 profile；确认已重启 |
@@ -236,7 +236,9 @@ cd "$env:DSH_HOME\profiles\<profile>\node_modules\dsh-plugin-wps-office-next"
 node scripts\doctor.mjs
 ```
 
-逐项检查系统位数、Node 版本、PowerShell STA、包内容是否完整、WPS 能否连上，最后打印 `DOCTOR OK` 或具体错误。
+逐项检查系统位数、Node 版本、PowerShell STA、包内容是否完整、WPS 能否连上、**已安装 WPS 的版本与架构**（≥ 12.1 且 64 位）
+以及**插件接线**（`cordis.patch.yml` 里是否有 `wps-office-next-plugin` 与 `mcp-wps-office-next` 两个 id），
+最后打印 `DOCTOR OK` 或具体错误。
 
 ## 卸载
 
@@ -284,7 +286,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
   - 文档属性（内置 / 自定义）：`BuiltInDocumentProperties` / `CustomDocumentProperties` 是坏壳；
   - 切片器：能建出缓存，但 `Slicers.Count` 恒为 0，用户可见的切片器不会出现；
   - 场景管理器：`Worksheet.Scenarios` 在 COM 里被暴露成方法，语义读不干净。
-  - 以上可尝试隐藏逃生舱 `wps_execute_method`，但不保证成功。
+  - 以上可尝试**隐藏逃生舱** `wps_execute_method`（不在广告面里，技能里也不推荐）：它只是最后手段，不保证成功。
 
 ---
 
@@ -382,7 +384,7 @@ node test\xxx.test.mjs                 # 逐文件跑
 node scripts\e2e.mjs --profile <name>  # 一键端到端验收
 ```
 
-当前数字：**804 项测试（35 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；
+当前数字：**810 项测试（36 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；
 广告面 69 工具 / 37,573 字节（内部预算上限 70 / 40,000）；桥 action 267，与注册表三方一致；
 参数契约 255 对，四类静默失效均为 0。
 
