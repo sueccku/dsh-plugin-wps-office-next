@@ -153,6 +153,11 @@ if ($psMajor -ne 5) {
 Write-Frame ('{"ready":true,"pid":' + $PID + ',"clientPid":' + $script:ClientPid + ',"protocol":1,"psVersion":"' + $psVersion + '","actions":"wps-actions.ps1"}')
 Update-HostState 'idle'
 
+# FIXES 66: a predecessor that was force-killed (FIXES 65) left WPS instances behind. Now that this
+# host holds the lease, reclaim them - unless the recorded owner is still alive, or a document holds
+# unsaved work. One file probe when there is nothing to reclaim.
+try { $null = Invoke-WpsOrphanReclaim } catch { }
+
 while ($true) {
     $line = [Console]::In.ReadLine()
     if ($null -eq $line) { break }

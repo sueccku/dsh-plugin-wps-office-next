@@ -24,7 +24,7 @@
 | 工具 | 应用 | 桥 action | 广告 | 被测试点名（证据） |
 | --- | --- | --- | :---: | --- |
 | `wps_batch` | 其他 | — | ✅ | arg-shape-guard.test.mjs, error-contract.test.mjs, e2e |
-| `wps_call` | 其他 | — | ✅ | cell-format.test.mjs, close-safety.test.mjs, deprecated.test.mjs, +23 |
+| `wps_call` | 其他 | — | ✅ | cell-format.test.mjs, close-safety.test.mjs, deprecated.test.mjs, +24 |
 | `wps_common_get_app_info` | 通用 | `getAppInfo` |  | word-common-coverage.test.mjs |
 | `wps_common_get_selected_text` | 通用 | `getSelectedText` |  | word-common-coverage.test.mjs |
 | `wps_common_ping` | 通用 | `ping` |  | error-contract.test.mjs, open-safety.test.mjs |
@@ -152,7 +152,7 @@
 | `wps_excel_update_list_object` | Excel | `updateListObject` |  | excel-list-object.test.mjs |
 | `wps_excel_update_pivot_table` | Excel | `updatePivotTable` |  | excel-coverage.test.mjs |
 | `wps_excel_write_range` | Excel | `setRangeData` | ✅ | arg-shape-guard.test.mjs, cell-format.test.mjs, destructive-guard.test.mjs, +11 |
-| `wps_execute_method` | execute | — |  | cell-format.test.mjs, close-safety.test.mjs, destructive-guard.test.mjs, +13 |
+| `wps_execute_method` | execute | — |  | cell-format.test.mjs, close-safety.test.mjs, destructive-guard.test.mjs, +14 |
 | `wps_help` | 其他 | — | ✅ | deprecated.test.mjs, merged-tools.test.mjs, word-lifecycle.test.mjs, +1 |
 | `wps_ppt_add_animation` | PPT | `setAnimation` |  | destructive-guard.test.mjs, ppt-contract-fixes.test.mjs, ppt-coverage.test.mjs, +1 |
 | `wps_ppt_add_master_element` | PPT | `addMasterElement` |  | ppt-coverage.test.mjs |
@@ -239,7 +239,7 @@
 | `wps_word_apply_style` | Word | `applyStyle` | ✅ | word-common-coverage.test.mjs |
 | `wps_word_close_document` | Word | `closeDocument` |  | word-deep.test.mjs, word-lifecycle.test.mjs, word-longtail.test.mjs, +1 |
 | `wps_word_convert_table_to_text` | Word | `convertTableToText` |  | word-deep.test.mjs |
-| `wps_word_create_document` | Word | `createDocument` | ✅ | destructive-guard.test.mjs, word-common-coverage.test.mjs, word-deep.test.mjs, +4 |
+| `wps_word_create_document` | Word | `createDocument` | ✅ | destructive-guard.test.mjs, orphan-reclaim.test.mjs, word-common-coverage.test.mjs, +5 |
 | `wps_word_delete_comment` | Word | `deleteComment` |  | word-produce.test.mjs |
 | `wps_word_delete_table_line` | Word | `deleteTableLine` |  | destructive-guard.test.mjs, word-deep.test.mjs |
 | `wps_word_enable_track_changes` | Word | `enableTrackChanges` |  | word-produce.test.mjs |

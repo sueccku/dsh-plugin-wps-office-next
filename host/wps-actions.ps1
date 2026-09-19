@@ -101,6 +101,7 @@ function Get-WpsApp([string]$kind) {
             Set-Variable -Name $cacheName -Scope Script -Value $created
             if ($null -eq $script:WpsAppOwned) { $script:WpsAppOwned = @{} }
             $script:WpsAppOwned[$kind] = $true
+            Save-WpsOwnedApps
             return $created
         }
     } catch { }
@@ -128,8 +129,89 @@ function Close-WpsAppsStartedByUs {
         if ($dirty) { continue }
         try { $app.Quit(); $closed += $kind } catch { }
     }
+    Clear-WpsOwnedApps
     return $closed
 }
+
+# ==================== 孤儿实例回收 (FIXES 66) ====================
+# A force-killed client takes this whole process tree down on Windows (libuv job object, FIXES 65), so
+# the host never gets to quit the WPS instances it started and they stay behind as headless processes.
+# To let a later session reclaim them, every instance WE start is recorded together with its owner pids;
+# a new host reclaims that record only when the owner is provably gone.
+function Get-WpsOwnedAppsPath {
+    return (Join-Path (Join-Path $env:USERPROFILE '.wps-office-mcp') 'owned-apps.json')
+}
+
+function Save-WpsOwnedApps {
+    # Best effort, like the host's own state file: bookkeeping must never fail an action.
+    try {
+        $kinds = @()
+        if ($null -ne $script:WpsAppOwned) {
+            foreach ($k in @($script:WpsAppOwned.Keys)) { if ($script:WpsAppOwned[$k]) { $kinds += $k } }
+        }
+        if ($kinds.Count -eq 0) { return }
+        $clientPid = 0
+        try { if ($env:WPS_OFFICE_CLIENT_PID) { $clientPid = [int]$env:WPS_OFFICE_CLIENT_PID } } catch { $clientPid = 0 }
+        $path = Get-WpsOwnedAppsPath
+        $dir = Split-Path -Parent $path
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+        $rec = [ordered]@{ hostPid = $PID; clientPid = $clientPid; apps = $kinds; updatedUtc = (Get-Date).ToUniversalTime().ToString('o') }
+        [System.IO.File]::WriteAllText($path, ($rec | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    } catch { }
+}
+
+function Clear-WpsOwnedApps {
+    try {
+        $path = Get-WpsOwnedAppsPath
+        if (Test-Path $path) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+    } catch { }
+}
+
+function Test-WpsPidAlive($processId) {
+    if ($null -eq $processId) { return $false }
+    try { return ($null -ne (Get-Process -Id ([int]$processId) -ErrorAction SilentlyContinue)) } catch { return $false }
+}
+
+function Test-WpsAppHasUnsavedWork($app, [string]$kind) {
+    # Same rule as Close-WpsAppsStartedByUs: automation never throws away unsaved work.
+    try {
+        if ($kind -eq 'excel') { foreach ($wb in $app.Workbooks) { if (-not [bool]$wb.Saved) { return $true } } }
+        elseif ($kind -eq 'word') { foreach ($d in $app.Documents) { if (-not [bool]$d.Saved) { return $true } } }
+        else { foreach ($pr in $app.Presentations) { if (-not [bool]$pr.Saved) { return $true } } }
+    } catch { return $true }
+    return $false
+}
+
+function Invoke-WpsOrphanReclaim {
+    # Called once by the host right after it takes the single-instance lease, so no live host competes.
+    # Returns the kinds it closed. Costs one file read when there is nothing to do.
+    $closed = @()
+    $path = Get-WpsOwnedAppsPath
+    if (-not (Test-Path $path)) { return $closed }
+    $rec = $null
+    try { $rec = (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json) } catch { $rec = $null }
+    if ($null -eq $rec) { Clear-WpsOwnedApps; return $closed }
+    # Only a provably dead owner is reclaimed: a live host still owns its instances, and a live client
+    # may be about to use them. A reused pid only makes us skip, which is the safe direction.
+    if (Test-WpsPidAlive $rec.hostPid) { return $closed }
+    if (Test-WpsPidAlive $rec.clientPid) { return $closed }
+    $progIds = @{ excel = 'Ket.Application'; ppt = 'Kwpp.Application'; word = 'Kwps.Application' }
+    foreach ($kind in @($rec.apps)) {
+        $k = [string]$kind
+        $progId = $progIds[$k]
+        if ($null -eq $progId) { continue }
+        try {
+            $app = [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId)
+            if ($null -eq $app -or -not (Test-WpsAppUsable $app $k)) { continue }
+            if (Test-WpsAppHasUnsavedWork $app $k) { continue }
+            $app.Quit()
+            $closed += $k
+        } catch { }
+    }
+    Clear-WpsOwnedApps
+    return $closed
+}
+
 $script:WpsWarnings = New-Object System.Collections.ArrayList
 
 function Add-WpsWarning([string]$message) {
