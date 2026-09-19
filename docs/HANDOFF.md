@@ -32,7 +32,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 ## 1. 一句话现状
 
 **功能面仍与 v0.2.1 完全一致；加固第 1 波（S1 模态弹窗围堵 + S2 宿主单实例）已作为 `v0.3.0`
-于 2026-09-16 推送并发布（提交 `d7736e1`，GitHub CI 全绿）；本机完整回归 **810/0**、一键 e2e
+于 2026-09-16 推送并发布（提交 `d7736e1`，GitHub CI 全绿）；本机完整回归 **816/0**、一键 e2e
 **28/28** 均通过——现在「不卡死、不撞车」这条线已经守住，可以开始小范围推广。
 第 2～4 波（S3～S9）尚未开工，见 §8。**
 
@@ -109,11 +109,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **37,573** / 上限 40,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 70, maxSchemaBytes: 40000 }` | `scripts/verify.mjs` |
-| 测试 | **810 断言 / 36 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 810） |
+| 测试 | **816 断言 / 37 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816） |
 | e2e | 28 项检查，约 94 秒 | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 255 对（A/B/C/D 四类均为 0） | `scripts/param-contract.mjs` |
-| FIXES | 1～62 号 | `docs/FIXES.md` |
+| FIXES | 1～63 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -173,7 +173,7 @@ S4 的大头是**真机跑数**（PPT 50 个未覆盖 → Excel 33 → Word 18�
 **上一轮遗留的两个待拍板问题已经落地**：`wps_execute_method` 维持隐藏（README 已写清定位）；
 S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表继续。
 
-**顺手可清**：无（`docs/PROGRESS.md` 已同步到 810 项 / 36 文件）。
+**顺手可清**：无（`docs/PROGRESS.md` 已同步到 816 项 / 37 文件）。
 
 ---
 
@@ -267,7 +267,7 @@ S1 + S2 已开工并完成。所以现在**没有阻塞项**，可以按上表�
 | `test/host-lease.test.mjs` | S2 单实例租约（**不需要 WPS**，已进 CI） |
 | `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死；**开头有环境体检**（需要真实 WPS） |
 | `test/watchdog.test.mjs` | S1 超时契约（**不需要 WPS**，已进 CI） |
-| `docs/FIXES.md` | 1～62 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～63 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

@@ -82,8 +82,20 @@ TS 侧 `mcp/src/tools/impact.ts`（跨 Excel/Word/PPT 共用）把 `impact` 压�
 - PPT `AddPicture` 需要**绝对路径**（相对路径报 `The specified protocol is unknown`）。
 - `clearPivotTable` 的模型可见文案沿用原有报告（名称 + 原区域），未再叠加 impact，避免重复。
 - `removeAnimation` 的计数以 WPS 自己报告的 `MainSequence.Count` 为准（实测给一个形状加入场效果后为 2）。
-- **弹窗抑制尚未逐项实测**：目前只在已知会弹确认框的路径上做了抑制（`deleteSheet`，以及 S1 的打开文档助手）。
-  其它破坏性动作是否会弹确认框，是 S3 的剩余工作之一。
+- **确认框已逐项实测**：见下节「确认框实测」——这 25 个动作**没有一个会弹确认框**。
+
+## 确认框实测（S3 余量）
+
+**方法**：`test/confirm-dialog.test.mjs` 在跑 `destructive-guard` / `excel-advanced` / `excel-page-setup` 的同时
+（这三个场景覆盖上表全部 25 个动作），后台每 200 ms 用 `EnumWindows` 枚举一次可见窗口，
+记录任何 class 以 `Qt*` 开头的窗口——WPS 的模态对话框（密码框 / 保存框 / 恢复提示）都是 Qt 窗口，
+而文档窗口是 `XLMAIN` / `OpusApp` / `PP12FrameClass`，不会被误报。
+
+**结果（2026-09-19 实测）**：三个场景全绿，全程 **0 个 Qt 窗口**——这 25 个动作**没有一个会弹确认框**。
+`deleteSheet` 仍保留 `DisplayAlerts` 抑制，作为数据量很大时系统可能弹确认的兜底（抑制不改变删除结果）。
+
+> 推论：不需要为其它破坏性动作补 `DisplayAlerts` 抑制。唯一已知会弹模态框的场景是
+> **打开加密文件**（S1 用非空哨兵密码堵住，加密 .pptx 例外）与 **关闭有未保存改动的文件**（close-safety 已覆盖）。
 
 ## 运行
 

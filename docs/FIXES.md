@@ -1656,6 +1656,22 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 **验收**：`node scripts/doctor.mjs` → `DOCTOR OK`；新增 `test/install-selfcheck.test.mjs` 6 项
 （doctor 退出 0 + 版本/接线两行 + 静态接线事实），已进 CI 静态门禁。全套 **810 项 / 36 文件**。
 
+### 63. S3 余量：破坏性动作的确认框逐项实测（结论：无确认框）
+
+**方法**：`test/confirm-dialog.test.mjs` 在一个后台**窗口监视器**下跑三个场景
+（`destructive-guard` / `excel-advanced` / `excel-page-setup`，覆盖全部 25 个破坏性动作）：
+监视器每 200 ms 用 `EnumWindows` 枚举可见窗口，记录 class 以 `Qt*` 开头的那些——
+WPS 的模态对话框是 Qt 窗口，文档窗口是 `XLMAIN` / `OpusApp` / `PP12FrameClass`，不会误报。
+
+**结果（2026-09-19）**：三个场景全绿，**全程 0 个 Qt 窗口**。这 25 个动作**没有一个会弹确认框**，
+所以不需要为它们补 `DisplayAlerts` 抑制；`deleteSheet` 保留现有一处抑制只作为大表删除的兜底。
+
+**已知仍会弹模态框的两处**（都不在本清单里，且已有对策）：打开加密文件（S1 非空哨兵密码；加密 .pptx 例外）
+与关闭有未保存改动的文件（close-safety 覆盖）。
+
+**验收**：`confirm-dialog` 6 项全绿（watcher 起得来 + 三个场景通过 + 0 弹框）；结论写进
+[`docs/destructive-operations.md`](destructive-operations.md) 的「确认框实测」。全套 **816 项 / 37 文件**。
+
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。
@@ -1722,8 +1738,9 @@ WPS 不会自己退出，于是每次宿主获取实例都泄漏一个实例，�
 | test/error-contract.test.mjs | 14 | S6：批量契约、门面错误、超时文案（真实 WPS） |
 | test/error-wording.test.mjs | 28 | S7：错误文案三段式、动作名、幂等（真实 WPS） |
 | test/install-selfcheck.test.mjs | 6 | S8/S9：doctor 版本/架构/接线自检（不需要 WPS） |
+| test/confirm-dialog.test.mjs | 6 | S3 余量：破坏性动作的确认框实测（窗口监视器；真实 WPS） |
 
-合计 **810 项**（36 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **816 项**（37 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
