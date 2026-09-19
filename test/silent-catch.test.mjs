@@ -48,6 +48,7 @@ const ALLOWLIST = {
     "try { Stop-Process -Id ([int]$state.hostPid) -Force -ErrorAction SilentlyContinue } catch { }": { count: 1, reason: "Acquire-HostMutex: stopping the stale host is best effort" },
     "try { if ($mutex.WaitOne(5000)) { return $mutex } } catch [System.Threading.AbandonedMutexException] { return $mutex } catch { }": { count: 1, reason: "Acquire-HostMutex: takeover failure ends in refusing to start, which the caller reports" },
     "try { $null = Invoke-WpsAction -Action '__warmup' -Params '{}' } catch { }": { count: 1, reason: "warmup is an optimisation; the first real call pays the JIT cost if it fails" },
+    "try { $null = Close-WpsAppsStartedByUs } catch { }": { count: 1, reason: "FIXES 65 exit net: releasing our own WPS instances must never turn a clean EOF exit into a crash" },
   },
 };
 

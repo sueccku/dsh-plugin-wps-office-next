@@ -205,6 +205,8 @@ while ($true) {
         # hold unsaved work, are deliberately left alone (FIXES 57).
         $closed = @()
         try { $closed = @(Close-WpsAppsStartedByUs) } catch { $closed = @() }
+        # Ownership is settled; the exit net at the end of the file must not quit them again.
+        $script:WpsAppOwned = @{}
         Update-HostState 'stopped'
         Send-Response $id $true @{ success = $true; data = @{ message = 'shutdown'; closed = $closed } } 0
         break
@@ -236,3 +238,13 @@ while ($true) {
     if ($result.success -eq $false) { $ok = $false }
     Send-Response $id $ok $result $sw.ElapsedMilliseconds
 }
+
+# Exit net (FIXES 65): the loop above can also end on stdin EOF - a client that closes the pipe or
+# exits without sending __shutdown. Cleanup used to live only inside the __shutdown branch, so those
+# exits abandoned every WPS instance this host had started. Safe on any path: Close-WpsAppsStartedByUs
+# skips instances it did not start and instances that hold unsaved work.
+# Note: a force-killed client takes this whole process tree down on Windows before any of this runs,
+# so that path is handled by scripts/run-tests.ps1 reaping the headless orphans instead.
+$script:BusySinceUtc = ''
+try { $null = Close-WpsAppsStartedByUs } catch { }
+Update-HostState 'stopped'
