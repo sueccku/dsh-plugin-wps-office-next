@@ -1742,6 +1742,6 @@ WPS 的模态对话框是 Qt 窗口，文档窗口是 `XLMAIN` / `OpusApp` / `PP
 
 合计 **816 项**（37 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
 
-另有 node scripts/param-contract.mjs：零副作用地把 255 对工具/action 的参数契约对账一遍，
+另有 node scripts/param-contract.mjs：零副作用地把 256 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
-动态键闸门跳过）与 6 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。
+动态键闸门跳过）与 5 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。

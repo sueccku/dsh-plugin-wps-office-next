@@ -315,7 +315,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | wps_batch | 顺序批量执行，单次上限 50 项 |
 
 配套两道契约防线：工具层发给桥的多余参数会被拒绝并列出可接受的键；
-`scripts/param-contract.mjs` 零副作用地把 255 对工具/action 的参数契约对账一遍，
+`scripts/param-contract.mjs` 零副作用地把 256 对工具/action 的参数契约对账一遍，
 结果写入 [docs/param-contract.md](docs/param-contract.md)。
 
 </details>
@@ -386,7 +386,7 @@ node scripts\e2e.mjs --profile <name>  # 一键端到端验收
 
 当前数字：**816 项测试（37 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；
 广告面 69 工具 / 37,573 字节（内部预算上限 70 / 40,000）；桥 action 267，与注册表三方一致；
-参数契约 255 对，四类静默失效均为 0。
+参数契约 256 对，四类静默失效均为 0。
 
 `.github/workflows/ci.yml`（GitHub Actions，`windows-latest`）**只跑不需要 WPS 的静态部分**：
 tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、

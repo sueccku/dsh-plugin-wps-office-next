@@ -113,7 +113,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 测试 | **816 断言 / 37 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816） |
 | e2e | 28 项检查，约 94 秒 | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
-| 参数契约 | 255 对（A/B/C/D 四类均为 0） | `scripts/param-contract.mjs` |
+| 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
 | FIXES | 1～63 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
