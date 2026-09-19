@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-wps-office-next-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "WPS Office COM bridge MCP server for DeepSeek Harness (Windows only)",
   "main": "dist/index.js",

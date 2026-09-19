@@ -47,9 +47,9 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 分支 / HEAD | `main` / `d7736e1` release: v0.3.0（稳定性加固第 1 波）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0` |
-| Releases | v0.3.0（Latest，2026-09-16）、v0.2.1、v0.2.0——三份正文均已修正为正常 UTF-8 |
-| 包 | `dsh-plugin-wps-office-next@0.3.0`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0` |
+| Releases | v0.4.0（Latest，2026-09-19）、v0.3.0、v0.2.1、v0.2.0——正文均为正常 UTF-8 |
+| 包 | `dsh-plugin-wps-office-next@0.4.0`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | 只有 `snapshot` / `verify` / `gen:skills`——**没有 `prepare`**（安装时不需要构建） |
 
 **工作区**：干净（`docs/HANDOFF.md` 本身已随仓库跟踪）。临时 profile `wpsdoc2` / `wpse2e` 已删除。
@@ -174,8 +174,8 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | P3（可选） | 运行时 WPS 版本前置检查、fresh-profile 安装验收、e2e 扩充、lint 门禁 | 体验与工程化 |
 | ~~P3~~ | 跨会话回收 WPS 孤儿实例 | **已做**（FIXES 66）：归属写盘 + 下一个宿主在租约下回收；有未保存内容不动 |
 
-**发版**：S3–S9 + 确认框实测尚未打包成版本；按用户决定**先不发**，需要时发 **v0.4.0**
-（升 `package.json`、写 CHANGELOG、更新 README 安装 pin、tag + Release）。
+**发版**：S3–S9、审计 P2、进程残留治理（FIXES 65/66）与 P3 已作为 **v0.4.0（2026-09-19）** 打包发布：
+升 `package.json` / lockfile、写 CHANGELOG、更新 README 安装 pin、tag + Release。
 
 **顺手可清**：无（`docs/PROGRESS.md` 已同步到 835 项 / 39 文件）。
 
