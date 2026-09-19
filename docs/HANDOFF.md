@@ -169,7 +169,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | 优先级 | 内容 | 说明 |
 | --- | --- | --- |
 | ~~P0~~ | 同步陈旧文档 + 清 9 处 macOS 注释 | **本轮已做**：HANDOFF / stabilization-plan / known-defects / 工具层注释 |
-| P1 | 补 `docs/tool-coverage.md`；对齐版本号与 lockfile | 路线图承诺的覆盖矩阵从未产出；`mcp/package.json`、`index.ts` serverInfo、根 lockfile 版本不一致 |
+| ~~P1~~ | 补 `docs/tool-coverage.md`；对齐版本号与 lockfile | **本轮已做**（生成器 `scripts/gen-tool-coverage.mjs` + CI 对账；`index.ts` serverInfo 改为读根 `package.json`，根/mcp lockfile 对齐 0.3.0） |
 | P2 | C7 目标漂移的统一前置；TS 层类型与枚举校验 | `known-defects.md` 里仍 open/partial |
 | P3（可选） | 运行时 WPS 版本前置检查、fresh-profile 安装验收、e2e 扩充、lint 门禁 | 体验与工程化 |
 
@@ -274,7 +274,9 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |
-| `docs/stabilization-plan.md` | **加固计划**：第 1 波已完成并标注实测修正，第 2～4 波待做 |
+| `docs/stabilization-plan.md` | **加固计划**：S1–S9 全部完成（FIXES 52–63），含实测修正与排期状态 |
 | `docs/destructive-operations.md` | **S3 破坏性操作清单**：动作 / 影响 / 回传统计 / 弹窗抑制 / 测试 + 剩余项 |
+| `docs/tool-coverage.md` | **工具覆盖矩阵**（生成物）：工具 × 应用 × action × 广告 × 测试证据 |
+| `scripts/gen-tool-coverage.mjs` | 生成 `docs/tool-coverage.md`；CI 重新生成并对账 |
 | `README.md` | **面向客户的唯一契约**：安装由 AI 照做（7 步），AI 需逐条实测 |
 | `CHANGELOG.md` | 在 `files` 白名单内，随包发布 |

@@ -59,6 +59,12 @@ jobs:
       - name: Committed tool surface must match the spec
         run: git diff --exit-code -- spec
 
+      - name: Regenerate the tool coverage matrix
+        run: node scripts/gen-tool-coverage.mjs
+
+      - name: Committed coverage matrix must match
+        run: git diff --exit-code -- docs/tool-coverage.md
+
       - name: Spec reproduces the model-facing surface (P1 acceptance)
         run: node test/spec-reproduction.test.mjs
 

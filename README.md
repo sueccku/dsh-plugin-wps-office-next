@@ -390,8 +390,9 @@ node scripts\e2e.mjs --profile <name>  # 一键端到端验收
 
 `.github/workflows/ci.yml`（GitHub Actions，`windows-latest`）**只跑不需要 WPS 的静态部分**：
 tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、
-`verify --static`、参数契约对账、以及五个不碰真实 WPS 的测试文件
-（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch`）。需要真实 WPS 的测试与一键 e2e 留在本机。
+重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及六个不碰真实 WPS 的测试文件
+（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck`）。
+需要真实 WPS 的测试与一键 e2e 留在本机。
 
 一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）
 → 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 →

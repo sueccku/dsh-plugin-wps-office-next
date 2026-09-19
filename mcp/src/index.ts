@@ -10,6 +10,8 @@
  * - 生产模式：npm run build && npm start
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createMcpServer } from './server/mcp-server';
 import { log, createChildLogger } from './utils/logger';
 
@@ -33,10 +35,17 @@ async function main(): Promise<void> {
   mainLogger.info('老王出品，必属精品');
   mainLogger.info('='.repeat(50));
 
+  // The reported server version follows the published bundle version, so there is exactly one
+  // place to bump on release (the root package.json). Falls back if the file cannot be read.
+  let bundleVersion = '0.0.0';
+  try {
+    bundleVersion = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')).version || bundleVersion;
+  } catch { /* the version is informational; never fail startup over it */ }
+
   // 创建服务器实例
   const server = createMcpServer({
     name: 'wps-office-mcp',
-    version: '1.0.0',
+    version: bundleVersion,
     debug: process.env.DEBUG === 'true',
   });
 

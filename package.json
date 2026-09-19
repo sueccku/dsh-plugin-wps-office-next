@@ -25,7 +25,8 @@
   "scripts": {
     "snapshot": "node scripts/snapshot-tools.mjs",
     "verify": "node scripts/verify.mjs",
-    "gen:skills": "node scripts/gen-skill-tools.mjs"
+    "gen:skills": "node scripts/gen-skill-tools.mjs",
+    "gen:coverage": "node scripts/gen-tool-coverage.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

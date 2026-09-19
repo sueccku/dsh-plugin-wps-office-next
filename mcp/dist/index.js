@@ -26,6 +26,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createChildLogger = exports.logger = exports.log = exports.wpsClient = exports.WpsClient = exports.registerTool = exports.toolRegistry = exports.ToolRegistry = exports.createMcpServer = exports.WpsMcpServer = void 0;
+const node_fs_1 = require("node:fs");
+const node_path_1 = require("node:path");
 const mcp_server_1 = require("./server/mcp-server");
 const logger_1 = require("./utils/logger");
 // 导出所有模块，方便外部使用
@@ -55,10 +57,17 @@ async function main() {
     mainLogger.info('WPS Office MCP Server');
     mainLogger.info('老王出品，必属精品');
     mainLogger.info('='.repeat(50));
+    // The reported server version follows the published bundle version, so there is exactly one
+    // place to bump on release (the root package.json). Falls back if the file cannot be read.
+    let bundleVersion = '0.0.0';
+    try {
+        bundleVersion = JSON.parse((0, node_fs_1.readFileSync)((0, node_path_1.join)(__dirname, '..', '..', 'package.json'), 'utf8')).version || bundleVersion;
+    }
+    catch { /* the version is informational; never fail startup over it */ }
     // 创建服务器实例
     const server = (0, mcp_server_1.createMcpServer)({
         name: 'wps-office-mcp',
-        version: '1.0.0',
+        version: bundleVersion,
         debug: process.env.DEBUG === 'true',
     });
     // 优雅关闭处理
