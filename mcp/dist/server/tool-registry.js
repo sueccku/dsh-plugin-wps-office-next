@@ -173,7 +173,29 @@ class ToolRegistry {
                 });
             }
         }
-        // TODO: 可以加更详细的类型验证，但现在先这样，够用
+        // 结构性类型校验：只挡“形状”明显错位的入参，标量之间一律放行。
+        // 只挡形状的原因：schema 里 value: string 这类声明比桥接层的真实契约更窄（桥接层/COM 会把
+        // 42 和 "42" 都吞下去），按 schema 强校验会误伤合法调用；而 data: "[[1,2]]"、calls: {} 这类
+        // 容器/标量错位，桥接层只能给出很晦涩的报错，提前挡掉更清楚。
+        // 枚举值仍然由桥接层裁决（错误措辞含 unknown xxx、未知 xxx，有测试覆盖），这里不重复校验。
+        const properties = inputSchema.properties || {};
+        const isScalar = (t) => t === 'string' || t === 'number' || t === 'boolean';
+        for (const [key, value] of Object.entries(args)) {
+            if (value === undefined || value === null) {
+                continue;
+            }
+            const schema = properties[key];
+            if (!schema) {
+                // 未声明的参数交给桥接层报“未知参数”，那里的措辞和提示更完整
+                continue;
+            }
+            const actual = Array.isArray(value) ? 'array' : typeof value === 'object' ? 'object' : typeof value;
+            const expected = schema.type;
+            const shapeOk = expected === actual || (isScalar(expected) && isScalar(actual));
+            if (!shapeOk) {
+                throw new error_1.InvalidParamsError(`参数 ${key} 的形状不对：需要 ${expected}，实际收到 ${actual}`, { toolName: definition.name, param: key, expected, actual });
+            }
+        }
     }
     /**
      * 获取Tool数量

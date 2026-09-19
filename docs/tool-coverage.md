@@ -23,8 +23,8 @@
 
 | 工具 | 应用 | 桥 action | 广告 | 被测试点名（证据） |
 | --- | --- | --- | :---: | --- |
-| `wps_batch` | 其他 | — | ✅ | error-contract.test.mjs, e2e |
-| `wps_call` | 其他 | — | ✅ | cell-format.test.mjs, close-safety.test.mjs, deprecated.test.mjs, +22 |
+| `wps_batch` | 其他 | — | ✅ | arg-shape-guard.test.mjs, error-contract.test.mjs, e2e |
+| `wps_call` | 其他 | — | ✅ | cell-format.test.mjs, close-safety.test.mjs, deprecated.test.mjs, +23 |
 | `wps_common_get_app_info` | 通用 | `getAppInfo` |  | word-common-coverage.test.mjs |
 | `wps_common_get_selected_text` | 通用 | `getSelectedText` |  | word-common-coverage.test.mjs |
 | `wps_common_ping` | 通用 | `ping` |  | error-contract.test.mjs, open-safety.test.mjs |
@@ -104,7 +104,7 @@
 | `wps_excel_paste_range` | Excel | `pasteRange` |  | excel-coverage.test.mjs |
 | `wps_excel_protect_sheet` | Excel | `protectSheet` |  | excel-contract-fixes.test.mjs |
 | `wps_excel_protect_workbook` | Excel | `protectWorkbook` |  | excel-contract-fixes.test.mjs |
-| `wps_excel_read_range` | Excel | `getRangeData` | ✅ | excel-contract-fixes.test.mjs, excel-list-object.test.mjs, excel-missing-halves-2.test.mjs, +2 |
+| `wps_excel_read_range` | Excel | `getRangeData` | ✅ | arg-shape-guard.test.mjs, excel-contract-fixes.test.mjs, excel-list-object.test.mjs, +3 |
 | `wps_excel_refresh_all_data` | Excel | `refreshAllData` |  | excel-advanced.test.mjs |
 | `wps_excel_refresh_links` | Excel | `refreshLinks` |  | excel-missing-halves-2.test.mjs |
 | `wps_excel_refresh_pivot_tables` | Excel | `refreshPivotTables` |  | excel-advanced.test.mjs |
@@ -118,7 +118,7 @@
 | `wps_excel_set_border` | Excel | `setBorder` |  | excel-contract-fixes.test.mjs |
 | `wps_excel_set_cell_format` | Excel | `setCellFormat` | ✅ | cell-format.test.mjs, destructive-guard.test.mjs, excel-missing-halves-2.test.mjs |
 | `wps_excel_set_cell_style` | Excel | `setCellStyle` |  | excel-contract-fixes.test.mjs |
-| `wps_excel_set_cell_value` | Excel | `setCellValue` |  | excel-coverage.test.mjs |
+| `wps_excel_set_cell_value` | Excel | `setCellValue` |  | arg-shape-guard.test.mjs, excel-coverage.test.mjs |
 | `wps_excel_set_chart_labels` | Excel | `setChartLabels` | ✅ | excel-advanced.test.mjs |
 | `wps_excel_set_column_width` | Excel | `setColumnWidth` |  | excel-coverage.test.mjs |
 | `wps_excel_set_conditional_format` | Excel | `addConditionalFormat` |  | destructive-guard.test.mjs, excel-contract-fixes.test.mjs, excel-missing-halves-2.test.mjs |
@@ -151,8 +151,8 @@
 | `wps_excel_update_chart` | Excel | `updateChart` |  | excel-coverage.test.mjs |
 | `wps_excel_update_list_object` | Excel | `updateListObject` |  | excel-list-object.test.mjs |
 | `wps_excel_update_pivot_table` | Excel | `updatePivotTable` |  | excel-coverage.test.mjs |
-| `wps_excel_write_range` | Excel | `setRangeData` | ✅ | cell-format.test.mjs, destructive-guard.test.mjs, excel-advanced.test.mjs, +10 |
-| `wps_execute_method` | execute | — |  | cell-format.test.mjs, close-safety.test.mjs, destructive-guard.test.mjs, +12 |
+| `wps_excel_write_range` | Excel | `setRangeData` | ✅ | arg-shape-guard.test.mjs, cell-format.test.mjs, destructive-guard.test.mjs, +11 |
+| `wps_execute_method` | execute | — |  | cell-format.test.mjs, close-safety.test.mjs, destructive-guard.test.mjs, +13 |
 | `wps_help` | 其他 | — | ✅ | deprecated.test.mjs, merged-tools.test.mjs, word-lifecycle.test.mjs, +1 |
 | `wps_ppt_add_animation` | PPT | `setAnimation` |  | destructive-guard.test.mjs, ppt-contract-fixes.test.mjs, ppt-coverage.test.mjs, +1 |
 | `wps_ppt_add_master_element` | PPT | `addMasterElement` |  | ppt-coverage.test.mjs |
@@ -212,7 +212,7 @@
 | `wps_ppt_set_shape_style` | PPT | `setShapeStyle` |  | ppt-coverage.test.mjs |
 | `wps_ppt_set_shape_text` | PPT | `setShapeText` | ✅ | ppt-contract-fixes.test.mjs |
 | `wps_ppt_set_shape_z_order` | PPT | `setShapeZOrder` |  | ppt-coverage.test.mjs |
-| `wps_ppt_set_slide_background` | PPT | `setSlideBackground` |  | merged-tools.test.mjs, ppt-contract-fixes.test.mjs |
+| `wps_ppt_set_slide_background` | PPT | `setSlideBackground` |  | arg-shape-guard.test.mjs, merged-tools.test.mjs, ppt-contract-fixes.test.mjs |
 | `wps_ppt_set_slide_content` | PPT | `setSlideContent` | ✅ | ppt-coverage.test.mjs |
 | `wps_ppt_set_slide_footer` | PPT | `setSlideFooter` |  | ppt-contract-fixes.test.mjs, ppt-slimming.test.mjs |
 | `wps_ppt_set_slide_layout` | PPT | `setSlideLayout` |  | ppt-coverage.test.mjs |

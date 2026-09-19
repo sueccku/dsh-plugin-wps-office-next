@@ -143,6 +143,16 @@ function Clear-WpsWarnings() {
     $script:WpsWarnings = New-Object System.Collections.ArrayList
 }
 
+# C7：调用方没指定目标名时，动作落在当前“活动”对象上；同时打开多个文件时，这个目标会随窗口焦点漂移，
+# 于是超时重试或连续两次调用可能落到另一个文件上。只在确有歧义（打开数大于 1 且未给目标名）时记一条
+# 警告，并按消息去重，免得同一个动作里多次解析目标时刷屏。
+function Add-WpsAmbiguousTargetWarning($explicitName, [string]$message) {
+    if ($explicitName) { return }
+    if ($null -eq $script:WpsWarnings) { $script:WpsWarnings = New-Object System.Collections.ArrayList }
+    if ($script:WpsWarnings -contains $message) { return }
+    Add-WpsWarning $message
+}
+
 # S7: 面向客户端的三段式错误文案——「中文一句话 + 动作名 + 下一步」。英文/HRESULT 原文降级为附加信息，
 # 既让人看懂，也让模型拿得到重试所需的动作名与原始细节。未命中的文案原样保留，只补动作名与下一步。
 $script:WpsCurrentAction = ''
@@ -248,6 +258,12 @@ function Get-TargetPres($ppt, $p) {
     if ($null -eq $ppt) { return $null }
     if ($p.presentationName) {
         try { return $ppt.Presentations.Item([string]$p.presentationName) } catch { return $null }
+    }
+    # C7：没指定 presentationName 时落在活动文稿上；多文稿同时打开时目标会随窗口焦点漂移。
+    $openCount = 0
+    try { $openCount = [int]$ppt.Presentations.Count } catch { }
+    if ($openCount -gt 1) {
+        Add-WpsAmbiguousTargetWarning $null ("检测到 " + $openCount + " 个打开的演示文稿，本次未指定 presentationName，操作会作用在当前活动文稿上；多文稿时建议显式指定，以免改错。")
     }
     return $ppt.ActivePresentation
 }
@@ -359,6 +375,12 @@ function Resolve-Worksheet($excel, $wb, $p, [switch]$RequireName) {
         if ($null -ne $value -and "$value" -ne "") { return $wb.Sheets.Item($value) }
     }
     if ($RequireName) { return $null }
+    # C7：没有指定工作表时落在活动工作表上；多工作簿同时打开时目标会随窗口焦点漂移。
+    $openCount = 0
+    try { $openCount = [int]$excel.Workbooks.Count } catch { }
+    if ($openCount -gt 1) {
+        Add-WpsAmbiguousTargetWarning $null ("检测到 " + $openCount + " 个打开的工作簿，本次未指定工作表（sheet/name/oldName），操作会作用在当前活动工作表上；多工作簿时建议显式指定，以免改错。")
+    }
     return $excel.ActiveSheet
 }
 
@@ -424,6 +446,12 @@ function Get-WorksheetByParam($excel, $p) {
     if ($null -ne $name -and "$name" -ne "") {
         $wb = $excel.ActiveWorkbook
         if ($null -ne $wb) { return $wb.Sheets.Item($name) }
+    }
+    # C7：没指定 sheet 时落在活动工作表上；多工作簿同时打开时目标会随窗口焦点漂移。
+    $openCount = 0
+    try { $openCount = [int]$excel.Workbooks.Count } catch { }
+    if ($openCount -gt 1) {
+        Add-WpsAmbiguousTargetWarning $name ("检测到 " + $openCount + " 个打开的工作簿，本次未指定 sheet，操作会作用在当前活动工作表上；多工作簿时建议显式指定 sheet，以免改错。")
     }
     return $excel.ActiveSheet
 }
@@ -1581,7 +1609,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $cell = $sheet.Cells.Item([int]$p.row, [int]$p.col)
         Output-Json @{ success = $true; data = @{ value = $cell.Value2; text = $cell.Text; formula = $cell.Formula } }
     }
@@ -1590,7 +1618,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $row = [int]$p.row
         $col = [int]$p.col
         # ConvertFrom-Json wraps scalars in PSObject; COM parameterised properties and Value2
@@ -1617,7 +1645,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $rawValue = $range.Value2
         $data = @()
@@ -1641,7 +1669,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $rows = @($p.data).Count
         if ($rows -eq 0) { Output-Json @{ success = $false; error = "data must not be empty" }; return }
         $cols = 0
@@ -1708,7 +1736,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
         $opsResult = @()
         foreach ($op in $p.operations) {
@@ -1894,7 +1922,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $range = if ($p.range) { $sheet.Range($p.range) } else { $sheet.Cells.Item($p.row, $p.col) }
         $cellCount = $range.Cells.Count
         $span = Get-AddressSpan ([string]$p.range)
@@ -1935,7 +1963,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         try {
             $range = $sheet.Range([string]$p.range)
             # The tool may send a nested format object, flat properties, or both.
@@ -2286,7 +2314,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         try {
             $cell = $sheet.Range([string]$p.cell)
             $value = Get-ComValue $cell 'Value2'
@@ -2454,7 +2482,7 @@ return }
     "updateChart" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $chartObj = $null
         if ($p.chartName) {
             try { $chartObj = $sheet.ChartObjects($p.chartName) } catch { Add-WpsWarning $_.Exception.Message }
@@ -2513,7 +2541,7 @@ return }
     "exportChartAsImage" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; return }
         $chartName = $p.chartName
@@ -2529,7 +2557,7 @@ return }
     "exportRangeAsImage" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; return }
         if ([string]::IsNullOrEmpty($p.range)) { Output-Json @{ success = $false; error = "Missing range" }; return }
@@ -4608,7 +4636,7 @@ return }
     "protectSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $password = if ($p.password) { $p.password } else { "" }
         # protect=false is how the tool asks to remove protection.
         $wantProtect = if ($null -ne $p.protect) { [bool]$p.protect } else { $true }
@@ -4623,7 +4651,7 @@ return }
     "unprotectSheet" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $password = if ($p.password) { $p.password } else { "" }
         $sheet.Unprotect($password)
         Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; protected = $false } }
@@ -6844,7 +6872,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($null -ne $p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         try {
             $target = $sheet.Range([string]$p.targetCell)
             $target.Formula = "=SUM(" + [string]$p.range + ")"
@@ -6972,7 +7000,7 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
-        $sheet = if ($null -ne $p.sheet -and "$($p.sheet)" -ne "") { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $sheet = Get-WorksheetByParam $excel $p
         $findText = if ($null -ne $p.findText) { [string]$p.findText } else { [string]$p.find }
         $replaceText = if ($null -ne $p.replaceText) { [string]$p.replaceText } else { [string]$p.replace }
         if (-not $findText) { Output-Json @{ success = $false; error = "findText must not be empty" }; return }

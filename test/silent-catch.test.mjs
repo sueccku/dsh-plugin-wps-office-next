@@ -40,6 +40,8 @@ const ALLOWLIST = {
     "$bld = \"\"; try { $bld = [string]$word.Build } catch { }": { count: 1, reason: "getAppInfo: read the running WPS build; report empty if unavailable" },
     "$ver = \"\"; try { $ver = [string]$ppt.Version } catch { }": { count: 1, reason: "getAppInfo: read the running WPS version; report empty if unavailable" },
     "$bld = \"\"; try { $bld = [string]$ppt.Build } catch { }": { count: 1, reason: "getAppInfo: read the running WPS build; report empty if unavailable" },
+    "try { $openCount = [int]$ppt.Presentations.Count } catch { }": { count: 1, reason: "Get-TargetPres: count open presentations to warn about an ambiguous active target; skip the warning if the count cannot be read" },
+    "try { $openCount = [int]$excel.Workbooks.Count } catch { }": { count: 2, reason: "Get-WorksheetByParam / Resolve-Worksheet: count open workbooks to warn about an ambiguous active target; skip the warning if the count cannot be read" },
   },
   "host/wps-com-host.ps1": {
     "} catch { }": { count: 1, reason: "Update-HostState: bookkeeping must never take an action down" },
