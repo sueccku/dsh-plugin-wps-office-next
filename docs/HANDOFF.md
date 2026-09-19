@@ -114,7 +114,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | e2e | 28 项检查，约 94 秒 | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～64 号 | `docs/FIXES.md` |
+| FIXES | 1～65 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -161,7 +161,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 ## 8. 待办（下一步）
 
 **加固计划 S1–S9 已全部完成，S3 余量（破坏性动作确认框实测）也已收尾**：S3 25/25、S4 覆盖率 267/267、
-S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架构检查、S9 安装自检，见 `docs/FIXES.md` 52–64。
+S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架构检查、S9 安装自检，审计 P2 与进程残留根因见 `docs/FIXES.md` 52–65。
 **当前没有必须做的技术债。**
 
 计划之外、审计出来的可选工作（文档同步是其中 P0 项，本轮已做）：
@@ -172,6 +172,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | ~~P1~~ | 补 `docs/tool-coverage.md`；对齐版本号与 lockfile | **本轮已做**（生成器 `scripts/gen-tool-coverage.mjs` + CI 对账；`index.ts` serverInfo 改为读根 `package.json`，根/mcp lockfile 对齐 0.3.0） |
 | ~~P2~~ | C7 目标漂移的统一前置；TS 层类型与枚举校验 | **本轮已做**（FIXES 64）：三处共用解析点加歧义警告（多文件且未指定目标才提示）+ 15 处内联解析回迁到共用解析点；TS 层只做**结构**校验，枚举仍由桥裁决。C7 残留（Word、第一方工具丢 warnings）记在 `known-defects.md` |
 | P3（可选） | 运行时 WPS 版本前置检查、fresh-profile 安装验收、e2e 扩充、lint 门禁 | 体验与工程化 |
+| P3（可选） | 跨会话回收 WPS 孤儿实例（FIXES 65 的待办） | 需要先定“归属 PID + 误伤用户实例”的取舍 |
 
 **发版**：S3–S9 + 确认框实测尚未打包成版本；按用户决定**先不发**，需要时发 **v0.4.0**
 （升 `package.json`、写 CHANGELOG、更新 README 安装 pin、tag + Release）。
@@ -266,13 +267,14 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `scripts/{extract-spec,gen-tool-surface,gen-skill-tools}.mjs` | 契约管线（顺序见 §4） |
 | `scripts/{verify,doctor,param-contract,e2e}.mjs` | 验证入口 |
 | `scripts/build-host-actions.ps1` | 生成宿主动作表，打印 `switch_cases` / `functions` / `guard_installed` |
+| `scripts/run-tests.ps1` | **整轮测试入口**：跑完每个文件回收无头 WPS 孤儿（FIXES 65），`-KeepOrphans` / `-Filter` 可调 |
 | `test/*.test.mjs` | 39 个文件、835 断言；账本在 `spec-reproduction.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/host-lease.test.mjs` | S2 单实例租约（**不需要 WPS**，已进 CI） |
 | `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死；**开头有环境体检**（需要真实 WPS） |
 | `test/watchdog.test.mjs` | S1 超时契约（**不需要 WPS**，已进 CI） |
-| `docs/FIXES.md` | 1～64 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～65 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

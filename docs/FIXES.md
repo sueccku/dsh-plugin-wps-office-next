@@ -1703,6 +1703,45 @@ WPS 的模态对话框是 Qt 窗口，文档窗口是 `XLMAIN` / `OpusApp` / `PP
 **仍未闭合的部分**（记在 `baseline/known-defects.md` C7）：桥的 `warnings` 只在**原样透传桥输出**的面上能到模型
 （`wps_call` / `wps_execute_method` / `wps_batch` 的单项结果）——第一方工具 handler 只返回 `data`，会把 `warnings` 丢掉；
 Word 没有共用文档解析点；`transpose` 的目标表、`copySheet` 的源表、已用范围探测这几处仍读活动对象且不提醒。
+
+### 65. 整轮泄漏约 10 个 Writer 的根因：宿主随 MCP 客户端一起被强杀
+
+**现象**：连跑几轮全量测试后机器上残留几十个 `wps.exe`（每轮约 10 个、累计 5.8GB），按启动时间看是按轮成批出现
+（16:21 / 16:23 / 16:54 / 17:03 / 17:17 各一批）。
+
+### 定位过程（都是实测，不是推断）
+
+1. 从 0 基线单独跑一个 Word 测试文件 → 残留 2–5 个 `wps.exe`；只做 `createDocument` 一个动作就产生 3–5 个进程
+   （WPS 12.1 是多进程：一个自动化实例带若干文档宿主进程）。
+2. 直接起宿主、手工发 `__shutdown` → 回包 `{"closed":["word"]}`，**进程全部退出**。
+   说明 `Close-WpsAppsStartedByUs`（FIXES 57）本身没问题。
+3. 直接起宿主后**关掉它的 stdin**（EOF 路径）→ 退出码 0、`com-host.json` 写 `phase=stopped`、进程全清。
+   这暴露一个真缺陷：清理只挂在 `__shutdown` 分支里，EOF 退出什么都不做。
+4. 换成真实链路——`node mcp/dist/index.js` 起宿主、调 `createDocument`、再 `child.kill()` 客户端
+   （**测试文件收尾就是这么做的**）——宿主直接消失，临时插桩的标记文件**一个都没写**，
+   `com-host.json` 停在 `phase=idle`：脚本层面根本没机会执行。
+5. 最小复现：父进程 spawn 一个长期存活的孙进程，杀父进程 → 孙进程也死；孙进程改 `detached: true` → 存活。
+
+**根因**：Windows 上 libuv 把非 detached 的子进程放进一个 job object，杀子进程时**连整棵树一起终止**。
+所以测试（以及任何被强杀的 DSH 会话）`child.kill()` MCP server 时，常驻宿主被系统一并杀掉，它启动的那些
+WPS 实例就成了孤儿。这不是宿主脚本能修的：被 TerminateProcess 掉的进程没有“最后一句”。
+
+**本轮落地的两件事**：
+
+- **宿主退出兜底（生产代码）**：`host/wps-com-host.ps1` 在循环之后补了退出清理，覆盖**所有**退出路径
+  （原来只有 `__shutdown` 分支有），并让 `__shutdown` 先把归属记清、避免重复 Quit。实测：起宿主 → 建文档 →
+  关 stdin → 进程全清、状态文件写 `stopped`。这条修的是“客户端正常关管道/正常退出”的路径。
+- **测试运行器回收孤儿（仓库新增 `scripts/run-tests.ps1`）**：每个测试文件跑完，关掉**窗口标题为空**的
+  `wps/et/wpp` 进程——即自动化留下的无头实例；有标题的真实 WPS 窗口（你在编辑的文档）一律不碰。
+  整轮跑完不再攒残留（`ORPHANS_LEFT=0`）。
+
+**顺带排除的一条思路**：`detached: true` 让宿主不再是那棵树的成员，理论上更彻底；但 PowerShell 5.1 在
+`DETACHED_PROCESS` 下会**静默退出**（加不加 `-WindowStyle Hidden` 都一样），所以没采用。
+
+**为什么不顺手做“下次启动时回收”**：`GetActiveObject` 只能拿到 ROT 里那一个实例，用户此刻自己开着的 WPS
+会被误伤；要安全回收得记录归属 PID 并承担误判风险。这是设计取舍，留作待办。
+
+**验收**：`scripts/run-tests.ps1` 从 0 基线跑完全量 → `ORPHANS_LEFT=0`；全套 **835 项 / 39 文件**全绿。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

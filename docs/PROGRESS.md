@@ -485,6 +485,16 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 - 新增 `test/target-ambiguity.test.mjs`（13 项，真实 WPS）与 `test/arg-shape-guard.test.mjs`（6 项，已进 CI 静态门禁）
 - 空 catch 账本 29 → 38（桥 34 + 宿主 4），全部登记；全套 **835 项 / 39 文件**；记录见 `docs/FIXES.md` 64
 
+## 进程残留根因（FIXES 65，已完成）
+
+- 现象：整轮测试每轮残留约 10 个 `wps.exe`（累计 5.8GB），按轮成批出现
+- 根因：Windows 上 libuv 把非 detached 子进程放进 job object，`child.kill()` MCP server 时**整棵树一起被终止**，
+  常驻宿主随之消失，它启动的 WPS 实例成了孤儿（实测：插桩标记一个都没写，状态文件停在 `phase=idle`）
+- 落地：宿主循环后补退出兜底（覆盖 EOF 等所有退出路径）；新增 `scripts/run-tests.ps1`，每个测试文件跑完
+  关掉**窗口标题为空**的无头 WPS 进程（有标题的真实窗口不碰）
+- 排除：`detached: true` 理论上更彻底，但 PowerShell 5.1 在 `DETACHED_PROCESS` 下静默退出，未采用
+- 验收：从 0 基线整轮跑完 `ORPHANS_LEFT=0`；全套 **835 项 / 39 文件**；记录见 `docs/FIXES.md` 65
+
 ## 全项目最终数字（P5 收尾 + 加固第 1 波）
 
 | 项 | 起点（上游基线） | 现在 |

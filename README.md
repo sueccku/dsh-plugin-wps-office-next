@@ -381,6 +381,7 @@ node scripts\param-contract.mjs
 
 # 5) 需要本机 WPS 的部分
 node test\xxx.test.mjs                 # 逐文件跑
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1  # 整轮 + 回收无头 WPS 孤儿
 node scripts\e2e.mjs --profile <name>  # 一键端到端验收
 ```
 
@@ -416,7 +417,7 @@ tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并�
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
 | scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具 |
-| test/ | 25 个回归测试文件（多数需要本机 WPS） |
+| test/ | 39 个回归测试文件（多数需要本机 WPS）；整轮用 `scripts/run-tests.ps1` 跑，收尾自动回收无头 WPS 孤儿 |
 | baseline/ | 早期基线快照与缺陷清单 |
 | docs/ | FIXES（修复记录）、PROGRESS（进度）、param-contract（生成的契约报告） |
 
