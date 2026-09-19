@@ -77,7 +77,7 @@ jobs:
       - name: Committed contract report must match
         run: git diff --exit-code -- docs/param-contract.md
 
-      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger)
+      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger, argument shape guard)
         run: |
           node test/plugin.test.mjs
           node test/com-host.test.mjs
@@ -85,3 +85,4 @@ jobs:
           node test/watchdog.test.mjs
           node test/silent-catch.test.mjs
           node test/install-selfcheck.test.mjs
+          node test/arg-shape-guard.test.mjs

@@ -1672,6 +1672,37 @@ WPS 的模态对话框是 Qt 窗口，文档窗口是 `XLMAIN` / `OpusApp` / `PP
 **验收**：`confirm-dialog` 6 项全绿（watcher 起得来 + 三个场景通过 + 0 弹框）；结论写进
 [`docs/destructive-operations.md`](destructive-operations.md) 的「确认框实测」。全套 **816 项 / 37 文件**。
 
+### 64. P2：目标漂移（C7）可见化 + 入参形状守卫
+
+**问题一：目标漂移（C7）**。桥里「调用方没给目标名」的动作都退回 `ActiveWorkbook` / `ActiveSheet` /
+`ActivePresentation`。同时打开多个文件时，这个「活动对象」跟着窗口焦点走：一次超时重试、或同一会话里的
+第二次调用，就可能落到另一个文件上，而结果里看不出任何异常。
+
+**做法**：让桥在**确有歧义**时说一句，而不是闷头改错文件。
+
+- 新增 `Add-WpsAmbiguousTargetWarning($explicitName, $message)`：只有「调用方没给目标名」时才记警告，
+  并按消息去重（同一个动作里多次解析目标只记一条）。
+- 三个共用解析点接入：`Get-WorksheetByParam`（Excel，`sheet`）、`Resolve-Worksheet`（Excel 的
+  `sheet` / `name` / `oldName` 三种写法）、`Get-TargetPres`（PPT，`presentationName`）。
+- 触发条件是「打开的工作簿 / 演示文稿 **> 1**」：单文件时没有歧义，不打扰；显式给了目标名也不打扰。
+- 顺手把 **15 处**内联的 `$sheet = if (...) { $wb.Sheets.Item(...) } else { $excel.ActiveSheet }`
+  改回共用解析点。否则最常用的 `read_range` / `write_range` 主路径恰恰绕过警告——`getRangeData` 就是这么漏掉的
+  （第一次实跑时 Excel 那半边测试全红）。参数契约对账确认这次改写没丢任何参数读取（A/B/C/D 四类仍为 0）。
+
+**问题二：入参形状**。`tool-registry.validateArguments` 原本只查必填项，现在补**结构**校验：schema 声明
+`array` / `object` 的参数不能收到标量，反之亦然；**标量之间一律放行**，因为 schema 比真实契约窄
+（`wps_excel_set_cell_value` 声明 `value: string`，但 `value: 42` 是合法用法，桥与 COM 都会吞）。
+枚举值仍由桥裁决（`unknown paperSize` 等措辞与测试都在桥侧），TS 层不重复校验。
+
+**验收**：新增 `test/target-ambiguity.test.mjs` 13 项（真实 WPS：先关空 → 开 1 个文件无警告 → 开第 2 个有警告，
+提示里带「活动工作表 / 文稿」与修复建议 → 显式给目标则警告消失 → `data.warnings` 同样携带）；
+新增 `test/arg-shape-guard.test.mjs` 6 项（`data:"[[1,2]]"`、`background:"solid"`、`calls:{}` 三种错位被拒，
+`value:42` 与正常调用不受影响，必填错误措辞不变），已进 CI 静态门禁。
+空 catch 账本 **29 → 38**（桥 34 + 宿主 4），全部登记（口径见第 59 条）。全套 **835 项 / 39 文件**全绿。
+
+**仍未闭合的部分**（记在 `baseline/known-defects.md` C7）：桥的 `warnings` 只在**原样透传桥输出**的面上能到模型
+（`wps_call` / `wps_execute_method` / `wps_batch` 的单项结果）——第一方工具 handler 只返回 `data`，会把 `warnings` 丢掉；
+Word 没有共用文档解析点；`transpose` 的目标表、`copySheet` 的源表、已用范围探测这几处仍读活动对象且不提醒。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

@@ -30,7 +30,7 @@ KPI 卡片、时间线、流程图等「高层场景封装」已不再作为工�
 ## 常用流程
 
 1. wps_ppt_get_slide_count 与 get_slide_info 确认文稿与页码。
-2. 多份演示文稿同时打开时，先用 set_active_target 锁定目标文稿（通过 wps_call），否则 ActivePresentation 会漂移。
+2. 多份演示文稿同时打开时，**显式传 presentationName** 指定目标文稿；不传时动作会落在「活动文稿」上（跟着窗口焦点走），桥会在结果的 `warnings` 里提醒。`set_active_target`（通过 wps_call）也能改全局焦点，但它是全局状态，优先用参数。
 3. **新建文稿后先 add_slide**：WPS 的 Presentations.Add() 返回 null，且新建文稿通常是 0 页；此时 get_slide_count 可能仍报 0，不要据此判断文稿为空。
 4. 加页用 add_slide，然后 set_slide_title 与 set_slide_content 填内容。
 5. 需要精细排版时先 get_shapes 取形状索引，再对具体形状操作。

@@ -30,6 +30,21 @@
 
 断言：`test/error-wording.test.mjs`（28 项：抽样 26 条必失败路径 + 动作名 + 幂等）。
 
+## 1c. 目标歧义警告（C7）
+
+不指定目标时，动作落在「活动」对象上（`ActiveWorkbook` / `ActiveSheet` / `ActivePresentation`），而它跟着窗口焦点走：
+一次超时重试、或同一会话里的第二次调用，就可能落到另一个文件上。所以桥在**确有歧义**时补一条 warning：
+
+- **触发**：该解析点没拿到显式目标名，且**打开的工作簿 / 演示文稿 > 1**；同一动作内按消息去重。
+- **解析点**：`Get-WorksheetByParam`（`sheet`）、`Resolve-Worksheet`（`sheet` / `name` / `oldName`）、
+  `Get-TargetPres`（`presentationName`）。
+- **消除**：显式传目标名；单文件时不打扰。
+- **仍未覆盖**（记在 `baseline/known-defects.md` C7）：Word 的文档解析、`transpose` 目标表、`copySheet` 源表、已用范围探测。
+- **能到哪儿**：`warnings` 只在**原样透传桥输出**的工具上到模型（`wps_call` / `wps_execute_method` / `wps_batch` 单项结果）；
+  第一方工具 handler 只取 `data`，会丢掉 `warnings`。
+
+断言：`test/target-ambiguity.test.mjs`（真实 WPS）。
+
 ## 2. 批量契约（`wps_batch`）
 
 | 情况 | 行为 |

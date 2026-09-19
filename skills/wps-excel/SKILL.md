@@ -15,7 +15,7 @@ wps_excel_get_sheet_list、wps_excel_read_range、wps_excel_write_range、wps_ex
 ## 参数约定
 
 - 单元格定位用 {sheet, row, col}，行列都从 1 开始。
-- 区域用 A1 记法字符串，如 A1:C10；**sheet 参数在几乎所有工具上都已生效**，不传时才用当前活动工作表。要操作非活动工作表就显式传 sheet。
+- 区域用 A1 记法字符串，如 A1:C10；**sheet 参数在几乎所有工具上都已生效**，不传时才用当前活动工作表。要操作非活动工作表就显式传 sheet。多工作簿同时打开时不传 sheet 会落在「活动工作表」上（跟着窗口焦点走），桥会在结果的 `warnings` 里提醒——请养成显式传 sheet 的习惯。
 - read_range 的 include_header 为 true 时把首行当表头返回。
 - 批量写入用 wps_excel_write_range，数据是二维数组，从起始单元格向右下填充。
 - 常用工具的参数名（写错会被参数校验拒绝，不再静默忽略）：

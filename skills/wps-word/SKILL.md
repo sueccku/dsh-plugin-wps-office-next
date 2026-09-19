@@ -21,6 +21,7 @@ wps_word_get_active_document、wps_word_get_document_text、wps_word_get_paragra
 - set_line_spacing 用 lineSpacing（倍数）；set_paragraph 可同时设 alignment 与 lineSpacing。
 - 从零起草（不是编辑现有文档）时先 `wps_word_create_document`，它会回报新文档名，再 insert_text 写内容，最后 wps_common_save_as 落盘。
 - 关闭文档用 `wps_word_close_document`（save 默认 true）；它不在广告位，用 `wps_call {tool:"wps_word_close_document", args:{save:false}}`。对从未落盘的文档会自动改为不保存关闭并回报 warning，不会弹保存对话框。
+- 多份文档同时打开时，读写正文的动作都作用在**活动文档**上，而活动文档跟着窗口焦点走；Word 侧本轮没有加自动提醒，动手前先 `wps_word_get_active_document` 确认目标，或先把多余文档 `close_document` 收掉。
 
 ## 常用流程
 
