@@ -1742,6 +1742,36 @@ WPS 实例就成了孤儿。这不是宿主脚本能修的：被 TerminateProces
 会被误伤；要安全回收得记录归属 PID 并承担误判风险。这是设计取舍，留作待办。
 
 **验收**：`scripts/run-tests.ps1` 从 0 基线跑完全量 → `ORPHANS_LEFT=0`；全套 **835 项 / 39 文件**全绿。
+### 66. 跨会话回收 WPS 孤儿实例
+
+**由来**：FIXES 65 把整轮残留的根因定死在 Windows 的 job object 上——客户端被强杀时，常驻宿主连同进程树
+一起消失，它启动的 WPS 实例没人收。`scripts/run-tests.ps1` 只解决了**测试**场景；生产里 DSH 被强杀或崩溃
+同样会留下实例，而且没有运行器兜底。本条补的就是这一半。
+
+**做法：把归属写进磁盘，让下一个宿主来收**
+
+- 桥里 `Get-WpsApp` 每次**新起**实例时（`New-Object -ComObject` 那条分支）调用 `Save-WpsOwnedApps`，把
+  `{hostPid, clientPid, apps:[excel|word|ppt], updatedUtc}` 写进 `~/.wps-office-mcp/owned-apps.json`。
+- 新宿主拿到单实例租约后、进入请求循环前调用 `Invoke-WpsOrphanReclaim`：读这条记录，**只有记录的宿主进程与
+  客户端进程都已不在**时才动手（pid 被复用只会让我们跳过，那是安全的一侧）。
+- 对每个记录的 kind：`GetActiveObject` 取实例 → 先过 `Test-WpsAppHasUnsavedWork`（有未保存内容就放手，
+  与 `Close-WpsAppsStartedByUs` 同一把尺子）→ `Quit()`。
+- 记录一律在收尾时清掉：正常退出时 `Close-WpsAppsStartedByUs` 也会清，所以**只有强杀才会留下记录**。
+  反过来，故意留下的（有未保存内容的）窗口不会被下一个会话偷偷关掉。
+- 快路径零成本：没有记录文件时只做一次 `Test-Path`，不碰 COM，不影响温启动延迟。
+
+**测试**：新增 `test/orphan-reclaim.test.mjs`（7 项，真实 WPS）：
+
+1. 会话 A 建文档 → 记录里出现 `apps:["word"]`，残留 5 个进程；
+2. 强杀 A（与测试收尾完全相同的动作）→ 记录还在、实例还在；
+3. 会话 B 启动 → 轮询到实例清零、记录被清；
+4. **安全闸**：删掉记录（假装这个实例不是我们起的）→ 会话 D 启动后实例**原样活着**。
+
+**为什么不按 PID 精确回收**：`GetActiveObject` 只给 ROT 里那一个实例，拿不到“这个实例的进程号”，所以归属
+只能用 (kind + 已死的主人) 近似；配上“有未保存内容不动”这条硬规则，最坏情况只是关掉一个**我们起的、且没有
+任何未保存内容**的空窗口。要更精确得走 `Application.Hwnd` + `GetWindowThreadProcessId`，收益不抵复杂度。
+
+**验收**：`orphan-reclaim` 7 项全绿；全套 **842 项 / 40 文件**全绿（由 `scripts/run-tests.ps1` 跑，`ORPHANS_LEFT=0`）。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

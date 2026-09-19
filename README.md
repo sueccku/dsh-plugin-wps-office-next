@@ -385,7 +385,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1  # 整
 node scripts\e2e.mjs --profile <name>  # 一键端到端验收
 ```
 
-当前数字：**835 项测试（39 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；
+当前数字：**842 项测试（40 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；
 广告面 69 工具 / 37,573 字节（内部预算上限 70 / 40,000）；桥 action 267，与注册表三方一致；
 参数契约 256 对，四类静默失效均为 0。
 
