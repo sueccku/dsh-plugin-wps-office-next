@@ -680,7 +680,7 @@ export const setZoomHandler: ToolHandler = async (
   }
   try {
     const response = await wpsClient.executeMethod<{ message: string }>(
-      'setZoom', // NOTE: macOS未实现，仅Windows支持
+      'setZoom',
       { percent },
       WpsAppType.SPREADSHEET
     );

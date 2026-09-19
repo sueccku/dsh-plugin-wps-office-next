@@ -415,7 +415,7 @@ export const setFontColorHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'setFontColor', // NOTE: macOS未实现，仅Windows支持
+      'setFontColor',
       { slideIndex, shapeIndex, color },
       WpsAppType.PRESENTATION
     );

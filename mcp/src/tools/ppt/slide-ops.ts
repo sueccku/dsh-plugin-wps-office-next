@@ -1248,7 +1248,7 @@ export const setSlideSizeHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'setSlideSize', // NOTE: macOS未实现，仅Windows支持
+      'setSlideSize',
       { width, height },
       WpsAppType.PRESENTATION
     );
@@ -1334,7 +1334,7 @@ export const setShapeFillHandler: ToolHandler = async (
       message: string;
       name?: string;
     }>(
-      'setShapeFill', // NOTE: macOS未实现，仅Windows支持
+      'setShapeFill',
       { slideIndex, shapeIndex, color },
       WpsAppType.PRESENTATION
     );

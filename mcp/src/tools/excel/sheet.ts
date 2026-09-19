@@ -868,7 +868,7 @@ export const autoSumHandler: ToolHandler = async (
       targetCell: string;
       result: number;
     }>(
-      'autoSum', // NOTE: macOS未实现，仅Windows支持
+      'autoSum',
       { range, targetCell },
       WpsAppType.SPREADSHEET
     );

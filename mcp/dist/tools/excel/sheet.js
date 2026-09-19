@@ -670,8 +670,7 @@ exports.autoSumDefinition = {
 const autoSumHandler = async (args) => {
     const { range, targetCell } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('autoSum', // NOTE: macOS未实现，仅Windows支持
-        { range, targetCell }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('autoSum', { range, targetCell }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return {
                 id: (0, uuid_1.v4)(),

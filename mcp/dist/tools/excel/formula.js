@@ -312,8 +312,7 @@ exports.evaluateFormulaDefinition = {
     },
 };
 const evaluateFormulaHandler = async (args) => {
-    const response = await wps_client_1.wpsClient.executeMethod('evaluateFormula', args, wps_1.WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
-    );
+    const response = await wps_client_1.wpsClient.executeMethod('evaluateFormula', args, wps_1.WpsAppType.SPREADSHEET);
     return { id: (0, uuid_1.v4)(), success: response.success, content: [{ type: "text", text: JSON.stringify(response.data ?? { error: response.error }) }] };
 };
 exports.evaluateFormulaHandler = evaluateFormulaHandler;

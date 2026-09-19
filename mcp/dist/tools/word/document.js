@@ -457,8 +457,7 @@ exports.insertSectionBreakDefinition = {
 const insertSectionBreakHandler = async (args) => {
     const { breakType = 'nextPage' } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertSectionBreak', // NOTE: macOS未实现，仅Windows支持
-        { breakType }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('insertSectionBreak', { breakType }, wps_1.WpsAppType.WRITER);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -527,8 +526,7 @@ const setLineSpacingHandler = async (args) => {
         const params = { lineSpacing };
         if (paragraphIndex !== undefined)
             params.paragraphIndex = paragraphIndex;
-        const response = await wps_client_1.wpsClient.executeMethod('setLineSpacing', // NOTE: macOS未实现，仅Windows支持
-        params, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('setLineSpacing', params, wps_1.WpsAppType.WRITER);
         if (response.success) {
             const target = paragraphIndex !== undefined ? `第${paragraphIndex}段` : '当前段落';
             return {

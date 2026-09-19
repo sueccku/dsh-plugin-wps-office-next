@@ -365,7 +365,7 @@ export const evaluateFormulaDefinition: ToolDefinition = {
 
 export const evaluateFormulaHandler = async (args: Record<string, unknown>) => {
   const response = await wpsClient.executeMethod<{ success: boolean; result: unknown }>(
-    'evaluateFormula', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
+    'evaluateFormula', args, WpsAppType.SPREADSHEET
   );
 
   return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: JSON.stringify(response.data ?? { error: response.error }) }] };

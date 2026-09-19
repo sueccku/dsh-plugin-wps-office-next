@@ -542,7 +542,7 @@ export const insertSectionBreakHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'insertSectionBreak', // NOTE: macOS未实现，仅Windows支持
+      'insertSectionBreak',
       { breakType },
       WpsAppType.WRITER
     );
@@ -622,7 +622,7 @@ export const setLineSpacingHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'setLineSpacing', // NOTE: macOS未实现，仅Windows支持
+      'setLineSpacing',
       params,
       WpsAppType.WRITER
     );

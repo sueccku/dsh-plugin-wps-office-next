@@ -562,8 +562,7 @@ const setZoomHandler = async (args) => {
         return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '缩放比例必须在10-400之间' }], error: '缩放比例超出范围' };
     }
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setZoom', // NOTE: macOS未实现，仅Windows支持
-        { percent }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('setZoom', { percent }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `设置缩放失败: ${response.error}` }], error: response.error };
         }

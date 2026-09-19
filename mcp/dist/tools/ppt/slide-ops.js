@@ -1015,8 +1015,7 @@ exports.setSlideSizeDefinition = {
 const setSlideSizeHandler = async (args) => {
     const { width, height } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setSlideSize', // NOTE: macOS未实现，仅Windows支持
-        { width, height }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('setSlideSize', { width, height }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -1080,8 +1079,7 @@ exports.setShapeFillDefinition = {
 const setShapeFillHandler = async (args) => {
     const { slideIndex, shapeIndex, color } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setShapeFill', // NOTE: macOS未实现，仅Windows支持
-        { slideIndex, shapeIndex, color }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('setShapeFill', { slideIndex, shapeIndex, color }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),

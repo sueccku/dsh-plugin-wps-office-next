@@ -529,8 +529,7 @@ const setTextColorHandler = async (args) => {
         return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '颜色值不能为空！' }], error: '颜色值为空' };
     }
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setTextColor', // NOTE: macOS未实现，仅Windows支持
-        { color }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('setTextColor', { color }, wps_1.WpsAppType.WRITER);
         return {
             id: (0, uuid_1.v4)(),
             success: response.success,
