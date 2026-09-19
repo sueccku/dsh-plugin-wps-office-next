@@ -65,6 +65,9 @@ jobs:
       - name: Committed coverage matrix must match
         run: git diff --exit-code -- docs/tool-coverage.md
 
+      - name: Project lint (byte conventions, tabs, console, test exit codes)
+        run: npm run lint
+
       - name: Spec reproduces the model-facing surface (P1 acceptance)
         run: node test/spec-reproduction.test.mjs
 
@@ -86,3 +89,4 @@ jobs:
           node test/silent-catch.test.mjs
           node test/install-selfcheck.test.mjs
           node test/arg-shape-guard.test.mjs
+          node test/wps-version.test.mjs

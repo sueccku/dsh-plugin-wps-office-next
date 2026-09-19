@@ -16,7 +16,7 @@ const ALLOWLIST = {
   "mcp/scripts/wps-com.ps1": {
     "if ($kind -ne 'excel') { try { $active.Visible = $true } catch { } }": { count: 1, reason: "Get-WpsApp: make a reused non-Excel instance visible; harmless if it refuses" },
     "if ($kind -ne 'excel') { try { $created.Visible = $true } catch { } }": { count: 1, reason: "Get-WpsApp: same, for the freshly created instance" },
-    "} catch { }": { count: 8, reason: "function-level fallback: Get-WpsApp / Get-RangeAddressSafe / Get-ListObjectAddress / Get-WpsRangeImpact fall back to a default when the read fails, and the FIXES 66 ownership record (Save-WpsOwnedApps / Clear-WpsOwnedApps) plus the per-kind reclaim quit are best effort" },
+    "} catch { }": { count: 9, reason: "function-level fallback: Get-WpsApp / Get-RangeAddressSafe / Get-ListObjectAddress / Get-WpsRangeImpact / Get-WpsAppRealVersion fall back to a default when the read fails, and the FIXES 66 ownership record (Save-WpsOwnedApps / Clear-WpsOwnedApps) plus the per-kind reclaim quit are best effort" },
     "try { $app.Quit(); $closed += $kind } catch { }": { count: 1, reason: "Close-WpsAppsStartedByUs: a failed Quit only means one instance is not released" },
     "try { $app.DisplayAlerts = $prev } catch { }": { count: 1, reason: "Restore-WpsAlerts: a failed restore degrades to silence, the action result is already in hand" },
     "try { return [int]$range.Application.WorksheetFunction.CountA($range) } catch { }": { count: 1, reason: "Get-WpsRangeNonEmpty: preferred count path; falls through on failure" },

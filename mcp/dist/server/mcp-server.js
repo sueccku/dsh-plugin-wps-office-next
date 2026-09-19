@@ -20,6 +20,7 @@ const toolset_1 = require("./toolset");
 const deprecated_1 = require("../tools/deprecated");
 const tools_2 = require("../tools");
 const logger_1 = require("../utils/logger");
+const wps_version_1 = require("../utils/wps-version");
 const error_1 = require("../utils/error");
 const logger = (0, logger_1.createChildLogger)('McpServer');
 /**
@@ -221,11 +222,22 @@ class WpsMcpServer {
                     note = error instanceof Error ? error.message : String(error);
                 }
             }
+            // 版本前置检查：判定逻辑是 utils/wps-version.ts 里的纯函数，CI 有单测；这里只负责读与报。
+            // 必须用 fileVersion（exe 文件版本）：Application.Version 是 Office 兼容值，WPS 12.1 会报 12.0。
+            const info = (appInfo || {});
+            const version = (0, wps_version_1.parseWpsVersion)(info.fileVersion);
+            const tooOld = (0, wps_version_1.wpsVersionTooOld)(version);
+            const compatibilityWarning = (0, wps_version_1.wpsCompatibilityWarning)(info.appName, info.fileVersion);
             const all = this.registry.listTools().tools;
             const advertised = (0, toolset_1.selectTools)(currentMode(), all);
             return text({
                 connected,
                 appInfo,
+                wpsVersion: info.fileVersion || undefined,
+                officeCompatVersion: info.version || undefined,
+                wpsBuild: info.build || undefined,
+                wpsVersionSupported: version.length === 0 ? undefined : !tooOld,
+                compatibilityWarning,
                 toolset: currentMode(),
                 advertisedTools: advertised.length,
                 registeredTools: all.length,

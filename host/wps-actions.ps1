@@ -57,6 +57,25 @@ function Test-WpsAppUsable($app, [string]$kind) {
     } catch { return $false }
 }
 
+function Get-WpsAppRealVersion($app, [string]$exeName) {
+    # Application.Version is the Office-compatibility lie (WPS 12.1 reports 12.0), so it must never be
+    # compared against a version floor. The real number lives in the executable's file version; if that
+    # cannot be read, the install folder name usually carries it (...\WPS Office\12.1.0.28488\office6).
+    try {
+        $dir = [string]$app.Path
+        if (-not $dir) { return '' }
+        if ($exeName) {
+            $exe = Join-Path $dir $exeName
+            if (Test-Path $exe) {
+                $fv = [string](Get-Item -LiteralPath $exe).VersionInfo.FileVersion
+                if ($fv) { return ([string]($fv -replace ',', '.')).Trim() }
+            }
+        }
+        $leaf = Split-Path -Leaf (Split-Path -Parent $dir)
+        if ($leaf -match '^\d+(\.\d+)+') { return $Matches[0] }
+    } catch { }
+    return ''
+}
 function Reset-WpsApp([string]$kind) {
     # Drop the cached instance so the next Get-WpsApp acquires a fresh one.
     $cacheName = 'WpsAppCache_' + $kind
@@ -1376,7 +1395,8 @@ switch ($Action) {
             try { $hasSelection = ($null -ne $excel.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             $ver = ""; try { $ver = [string]$excel.Version } catch { }
             $bld = ""; try { $bld = [string]$excel.Build } catch { }
-            Output-Json @{ success = $true; data = @{ appType = "excel"; appName = $excel.Name; hasSelection = $hasSelection; version = $ver; build = $bld } }
+            $real = Get-WpsAppRealVersion $excel 'et.exe'
+            Output-Json @{ success = $true; data = @{ appType = "excel"; appName = $excel.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real } }
 return }
         $word = Get-WpsWord
         if ($null -ne $word) {
@@ -1384,7 +1404,8 @@ return }
             try { $hasSelection = ($null -ne $word.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             $ver = ""; try { $ver = [string]$word.Version } catch { }
             $bld = ""; try { $bld = [string]$word.Build } catch { }
-            Output-Json @{ success = $true; data = @{ appType = "word"; appName = $word.Name; hasSelection = $hasSelection; version = $ver; build = $bld } }
+            $real = Get-WpsAppRealVersion $word 'wps.exe'
+            Output-Json @{ success = $true; data = @{ appType = "word"; appName = $word.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real } }
 return }
         $ppt = Get-WpsPpt
         if ($null -ne $ppt) {
@@ -1392,7 +1413,8 @@ return }
             try { $hasSelection = ($null -ne $ppt.ActiveWindow.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             $ver = ""; try { $ver = [string]$ppt.Version } catch { }
             $bld = ""; try { $bld = [string]$ppt.Build } catch { }
-            Output-Json @{ success = $true; data = @{ appType = "ppt"; appName = $ppt.Name; hasSelection = $hasSelection; version = $ver; build = $bld } }
+            $real = Get-WpsAppRealVersion $ppt 'wpp.exe'
+            Output-Json @{ success = $true; data = @{ appType = "ppt"; appName = $ppt.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real } }
 return }
         Output-Json @{ success = $false; error = "No WPS application running" }
     }

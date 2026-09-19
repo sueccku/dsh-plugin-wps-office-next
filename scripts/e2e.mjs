@@ -663,6 +663,52 @@ const leakDetail = leakCalls.map((entry, index) => shortToolName(entry.name) + '
 check('no document left open after the run', leakCounts.every((count) => count === null || count === 0), leakDetail);
 check('leak probe understood every answer', leakCounts.every((count) => count !== null), leakDetail);
 
+// Ownership hygiene (FIXES 65/66). A headless session tears its plugin host down with itself, so it can
+// leave an ownership record pointing at a dead host/client. That is expected: the record exists precisely
+// so the NEXT host reclaims it. What this checks is the contract - a fresh host must run that reclaim and
+// clear the record.
+//
+// Deliberately NOT asserted: the absence of WPS processes. Measured on this machine (WPS 12.1):
+// Application.Quit() returns success while the processes stay exactly as they were (same pids, same start
+// times), so process-level absence is not something COM can promise; scripts/run-tests.ps1 reaps the
+// headless leftovers instead. Asserting it here would only produce a flaky red.
+function startHostAndClose() {
+  return new Promise((resolve) => {
+    const host = spawn('powershell', ['-NoProfile', '-NoLogo', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', join(ROOT, 'host', 'wps-com-host.ps1')], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    host.stdout.on('data', (chunk) => {
+      // No action is sent: the reclaim runs between the ready frame and the request loop. Closing stdin
+      // right after lets the host leave through its own exit net instead of being killed.
+      if (!settled && String(chunk).includes('"ready":true')) { try { host.stdin.end(); } catch { } }
+    });
+    host.on('exit', finish);
+    host.on('error', finish);
+    setTimeout(() => { try { host.kill(); } catch { } finish(); }, 40000);
+  });
+}
+
+const ownedPath = join(homedir(), '.wps-office-mcp', 'owned-apps.json');
+const pidAlive = (pid) => {
+  const probe = spawnSync('powershell', ['-NoProfile', '-Command',
+    'if (Get-Process -Id ' + Number(pid) + ' -ErrorAction SilentlyContinue) { 1 } else { 0 }'], { encoding: 'utf8' });
+  return String(probe.stdout || '').trim() === '1';
+};
+let danglingRecord = false;
+let recordDetail = 'no ownership record';
+if (existsSync(ownedPath)) {
+  try {
+    const record = JSON.parse(readFileSync(ownedPath, 'utf8'));
+    danglingRecord = !pidAlive(record.hostPid) && !pidAlive(record.clientPid);
+    recordDetail = 'hostPid=' + record.hostPid + ' clientPid=' + record.clientPid + ' apps=' + JSON.stringify(record.apps);
+  } catch (error) {
+    danglingRecord = true;
+    recordDetail = 'unreadable ownership record: ' + error.message;
+  }
+}
+if (danglingRecord) await startHostAndClose();
+check('a fresh host reclaims the record a dead session left behind', !danglingRecord || !existsSync(ownedPath), recordDetail + (danglingRecord ? ' -> ' + (existsSync(ownedPath) ? 'still there' : 'reclaimed') : ''));
+
 // Only operation results are scanned: wps_help returns documentation and skill loads return the
 // skill text, and both legitimately quote these very strings while explaining how to handle them.
 const defectHits = [];

@@ -32,6 +32,7 @@ import {
 import { DEPRECATED_TOOLS, DEPRECATED_NAMES, renameArgs } from '../tools/deprecated';
 import { allTools } from '../tools';
 import { createChildLogger } from '../utils/logger';
+import { parseWpsVersion, wpsVersionTooOld, wpsCompatibilityWarning } from '../utils/wps-version';
 import { McpError } from '../utils/error';
 
 const logger = createChildLogger('McpServer');
@@ -56,6 +57,8 @@ const DEFAULT_CONFIG: McpServerConfig = {
   version: '1.0.0',
   debug: false,
 };
+
+
 
 /**
  * WPS MCP Server - 核心服务器类
@@ -288,11 +291,23 @@ export class WpsMcpServer {
             note = error instanceof Error ? error.message : String(error);
           }
         }
+        // 版本前置检查：判定逻辑是 utils/wps-version.ts 里的纯函数，CI 有单测；这里只负责读与报。
+        // 必须用 fileVersion（exe 文件版本）：Application.Version 是 Office 兼容值，WPS 12.1 会报 12.0。
+        const info = (appInfo || {}) as { appName?: string; version?: string; build?: string; fileVersion?: string };
+        const version = parseWpsVersion(info.fileVersion);
+        const tooOld = wpsVersionTooOld(version);
+        const compatibilityWarning = wpsCompatibilityWarning(info.appName, info.fileVersion);
+
         const all = this.registry.listTools().tools;
         const advertised = selectTools(currentMode(), all);
         return text({
           connected,
           appInfo,
+          wpsVersion: info.fileVersion || undefined,
+          officeCompatVersion: info.version || undefined,
+          wpsBuild: info.build || undefined,
+          wpsVersionSupported: version.length === 0 ? undefined : !tooOld,
+          compatibilityWarning,
           toolset: currentMode(),
           advertisedTools: advertised.length,
           registeredTools: all.length,
