@@ -1772,6 +1772,69 @@ WPS 实例就成了孤儿。这不是宿主脚本能修的：被 TerminateProces
 任何未保存内容**的空窗口。要更精确得走 `Application.Hwnd` + `GetWindowThreadProcessId`，收益不抵复杂度。
 
 **验收**：`orphan-reclaim` 7 项全绿；全套 **842 项 / 40 文件**全绿（由 `scripts/run-tests.ps1` 跑，`ORPHANS_LEFT=0`）。
+### 67. P3 四项：运行时版本前置检查、lint 门禁、e2e 进程卫生、全新 profile 安装验收
+
+**1. 运行时 WPS 版本前置检查（差点写错，过程值得记）**
+
+doctor 只能在安装那一刻查一次版本；用户之后升级或回退 WPS，插件并不知道。于是给 `wps_status` 加版本与兼容性判定。
+
+第一版拿 `Application.Version` 去比 12.1，**实测直接误报**：本机受支持的 WPS 12.1.0.28488 通过 COM 报出来的
+`Version` 是 **12.0**（Office 兼容值）。换个来源看真实数字：
+
+| 来源 | 取值 |
+| --- | --- |
+| `Application.Version` | `12.0`（兼容值，不能用来比较） |
+| `Application.Build` | `28488` |
+| `Application.Path` | `...\WPS Office\12.1.0.28488\office6` |
+| `et.exe` 的 FileVersion | `12,1,0,28488` |
+
+改成读 **exe 文件版本**：新增 `Get-WpsAppRealVersion`（先取 `Application.Path` 下 `et.exe` / `wps.exe` /
+`wpp.exe` 的 FileVersion，逗号归一化成点号；读不到再退而取安装目录名），判定逻辑抽成纯函数模块
+`mcp/src/utils/wps-version.ts`。`wps_status` 现在回报 `wpsVersion` / `officeCompatVersion` /
+`wpsVersionSupported` / `compatibilityWarning`；**读不到版本就不下结论**，不误报。
+实测：`wpsVersion: "12.1.0.28488"`、`wpsVersionSupported: true`、无警告；单测 14 项覆盖边界（12.0 判旧、
+12.1/12.2/13.0 判新、只有一位或空串算未知）。
+
+**2. lint 门禁（`scripts/lint.mjs` + `npm run lint` + CI）**
+
+不做通用风格警察，只查这个仓库真的踩过、而且机器一眼能判定的四类：
+
+1. 手写 PowerShell 的字节约定——桥 `mcp/scripts/wps-com.ps1` 无 BOM、宿主 `host/wps-com-host.ps1` 有 BOM，两者都必须纯 CRLF；
+2. 文本文件不许有制表符、行尾空白，必须以换行结尾；
+3. `mcp/src` 不留 `console.*`（要走 logger）；
+4. 每个测试文件必须有 `process.exit(...)`，否则失败不传播。
+
+首次实测 164 个文件只有 **6 处**违规，全是「文件末尾没换行」，已补齐；现在 165 文件 0 违规。这条正好对应本轮
+踩过的两个坑（编辑脚本吃掉 BOM、文件末尾丢换行）。
+
+**3. e2e 补归属记录断言（顺带推翻一个想当然的检查）**
+
+`scripts/e2e.mjs` 原本只断言「没留下打开的文档」。新增一条：整轮跑完**归属记录不能指向已经死掉的主人**
+（FIXES 66 那个文件的契约）。e2e 检查数 **28 → 29**。
+
+一开始还写了第二条「跑完没有无头 WPS 进程残留」，跑 e2e **直接红**：残留 7 个进程。追下去发现**不是我们的 bug**——
+实测（WPS 12.1，同一台机器）：
+
+| 动作 | 观察 |
+| --- | --- |
+| 残留实例 `Workbooks/Presentations/Documents.Count` | 0 |
+| 未保存文档数 | 0 |
+| `Application.Quit()` | **返回成功** |
+| Quit 之后 | **进程一个没少**（pid、启动时间都一样） |
+
+也就是说 `Quit()` 只让 COM 服务器脱开，**不保证进程退出**。所以「进程级不残留」不是插件能承诺的事——
+`scripts/run-tests.ps1` 才用 `Stop-Process` 收无头残留（FIXES 65），归属回收那边也一样受这个限制。
+这条检查已删掉，理由写进了代码注释，免得下次再有人加回来。
+
+**4. 全新 profile 安装验收（`scripts/accept-install.mjs`）**
+
+README 让用户把一段话交给 AI 安装，而这条路径此前只在本机既有的 web profile 上手工验证过。新脚本在一个一次性的
+`wps-acceptance` profile 里完整走一遍：`dsh plugin add <本地仓库>` → `dump-config` 里出现两个 id → 装出来的
+副本自带 `mcp/dist`、`host/*.ps1`、技能文件 → 从副本里跑 `doctor.mjs` 得到 `DOCTOR OK` → 卸载 → 删掉一次性 profile。
+**14 项全绿**。脚本自己也修了一处：`shell:true` 会把带空格的 node 路径拆坏，doctor 那一步必须 `shell:false`。
+
+**验收**：全套 **856 项 / 41 文件**全绿（`scripts/run-tests.ps1`，`ORPHANS_LEFT=0`）；`verify --static` 18、
+lint 165 文件 0 违规、参数契约四类 0、spec 复现 13、install-selfcheck 6、wps-version 14、accept-install 14。
 ## 新发现的 WPS / Office 差异
 
 - **WPS 的 Presentations.Add() 返回 0 页演示文稿**，PowerPoint 返回 1 页。

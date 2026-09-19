@@ -230,7 +230,7 @@
 | `wps_ppt_switch_presentation` | PPT | `switchPresentation` |  | ppt-coverage.test.mjs |
 | `wps_ppt_switch_slide` | PPT | `switchSlide` |  | ppt-coverage.test.mjs |
 | `wps_ppt_unify_font` | PPT | `unifyFont` |  | ppt-contract-fixes.test.mjs |
-| `wps_status` | 其他 | — | ✅ | deprecated.test.mjs, e2e |
+| `wps_status` | 其他 | — | ✅ | deprecated.test.mjs, wps-version.test.mjs, e2e |
 | `wps_word_accept_revisions` | Word | `acceptRevisions` |  | word-produce.test.mjs |
 | `wps_word_add_content_control` | Word | `addContentControl` |  | word-longtail.test.mjs |
 | `wps_word_add_endnote` | Word | `addEndnote` |  | word-longtail.test.mjs |

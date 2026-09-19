@@ -344,21 +344,23 @@ powershell -NoProfile -File scripts\build-host-actions.ps1
 node scripts\gen-tool-surface.mjs
 node scripts\gen-skill-tools.mjs
 
-# 4) 门禁：门面、派发、预算、action 数量三方一致 + 参数契约对账
+# 4) 门禁：项目 lint、门面 / 派发 / 预算 / action 数量三方一致、参数契约对账
+npm run lint
 node scripts\verify.mjs
 node scripts\param-contract.mjs
 
 # 5) 需要本机 WPS 的部分
 node test\xxx.test.mjs                 # 逐文件跑
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1  # 整轮 + 回收无头 WPS 孤儿
-node scripts\e2e.mjs --profile <name>  # 一键端到端验收
+node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫生断言）
+node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：**842 项测试（40 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；广告面 69 工具 / 37,573 字节（内部预算上限 70 / 40,000）；桥 action 267，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
+当前数字：**856 项测试（41 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；广告面 69 工具 / 37,573 字节（内部预算上限 70 / 40,000）；桥 action 267，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
 
-`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及七个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard`）。需要真实 WPS 的测试与一键 e2e 留在本机。
+`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及八个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
-一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」。**28 项检查、约 95 秒。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
+一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」，以及「归属记录不会指向已经死掉的主人」。**29 项检查、约 2–4 分钟。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
 </details>
 
