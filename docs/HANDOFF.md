@@ -44,7 +44,7 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 项 | 值 |
 | --- | --- |
 | 仓库根 | `D:\dsh\a` |
-| 分支 / HEAD | `main` / `d7736e1` release: v0.3.0（稳定性加固第 1 波）——已推送，与 `origin/main` 一致 |
+| 分支 / HEAD | `main` / `319648a` release: v0.4.0（稳定性加固第 2 波 + 审计 P2 + P3）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0` |
