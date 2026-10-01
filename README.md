@@ -123,7 +123,8 @@ AI 装完后，按它说的**完全关闭 DSH 再重新打开**。重启后新�
 - **只支持 Windows x64 + WPS 12.1+（64 位）。** macOS / Linux 支持已经整体移除；32 位的 WPS 和「多组件模式」也不行。
 - **不给 WPS 装或卸加载项。** 走的是纯 COM 通道，本来就不需要加载项。
 - **不承诺能撤销。** COM 改动不一定进撤销栈。
-- **带打开密码的文件不会被打开。** WPS 遇到加密文档会弹一个密码框，而模态框一旦弹出来会把整个会话卡住（把后台进程杀掉也没用，框还在）。插件现在不弹这个框，而是在一秒内直接报错并告诉你怎么办：先用 WPS 手工打开它、另存为一份不加密的副本，再对副本操作。加密的**演示文稿（.pptx）是唯一没堵住的口子**：`Presentations.Open` 没有密码参数，拦不住弹框。
+- **带打开密码的文件不会被打开。** WPS 遇到加密文档会弹一个密码框，而模态框一旦弹出来会把整个会话卡住（把后台进程杀掉也没用，框还在）。插件现在**在打开之前先看文件本身**：加密的文件会被直接认出来，不弹框、也不去碰 WPS，立刻报错并告诉你怎么办——先用 WPS 手工打开它、另存为一份不加密的副本，再对副本操作。三个应用（表格 / 文字 / 演示）以及「从另一个演示文稿插入幻灯片」都走这条预检。
+- **文件正被别的程序占用、或者文件在网络盘上而网络掉线时，打开可能要等很久。** 插件在打开前不做占用探测（WPS 自己就持有文件句柄，独占探测会误伤「重新打开已经打开的文件」），网络路径的可达性检查也没有便宜的做法；遇到这种情况请先在资源管理器里确认文件可用，再让 AI 重试。
 - **超时的意思是「状态未知」，不是「已经失败」。** 如果某个操作超时，插件会告诉你 WPS 可能被某个对话框挡住、或者已经没响应，**并且不会替你关掉 WPS**（关掉会丢了你没保存的东西）。请切到 WPS 窗口把弹框处理掉再重试。之后插件会先用一个较短的超时快速失败，成功一次就恢复正常。
 - **下面这些能力卡在 WPS 自身，实测做不了**，如实记录、不再反复尝试：
   - 水印：WPS 页眉的 Shapes 集合不接受任何图形；
@@ -356,9 +357,9 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：**856 项测试（41 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；广告面 69 工具 / 37,573 字节（内部预算上限 70 / 40,000）；桥 action 267，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
+当前数字：**914 项测试（45 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；广告面 69 工具 / 37,573 字节（内部预算上限 100 / 60,000）；桥 action 267，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
 
-`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及八个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version`）。需要真实 WPS 的测试与一键 e2e 留在本机。
+`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及十个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
 一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」，以及「归属记录不会指向已经死掉的主人」。**29 项检查、约 2–4 分钟。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
@@ -419,7 +420,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | 目标环境 | WPS 12.1+ x64 |
 | 形态 | 单一 npm 包 = DSH bundle + 自带 MCP server + 自带 COM host + 全部 skills |
 | MCP serverName | wps-office-next |
-| 默认工具面 | standard 档 69 个工具；预算上限 70 工具 / 40,000 字节 |
+| 默认工具面 | standard 档 69 个工具；预算上限 100 工具 / 60,000 字节 |
 | 传输层 | 常驻 PowerShell STA 宿主 + stdin/stdout JSON 行 |
 | 加载项 | 全部删除，零依赖 |
 | 构建产物 | 预构建产物入库，安装后开箱可用 |

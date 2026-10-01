@@ -188,6 +188,15 @@ if ($parseErrors -and $parseErrors.Count -gt 0) {
     throw ('generated module has ' + $parseErrors.Count + ' parse error(s); first: line ' + $first.Extent.StartLineNumber + ' ' + $first.Message)
 }
 
+# The generated module is dot-sourced by a long-lived host: an `exit` in a helper function would
+# kill the host process instead of failing one action. The dispatch body's exits were rewritten to
+# `return` above, so anything left is a helper - refuse to ship it.
+# Count on a comment-stripped copy: a comment that merely mentions the keyword is not a statement.
+$exitLeftBeforeWrite = ([regex]::Matches(([regex]::Replace($module, '(?m)#.*$', '')), '\bexit\b')).Count
+if ($exitLeftBeforeWrite -ne 0) {
+    throw ('generated module still contains ' + $exitLeftBeforeWrite + ' exit statement(s); keep exit in the dispatch body (it becomes return) and out of helper functions')
+}
+
 $enc = New-Object System.Text.UTF8Encoding($true)
 [System.IO.File]::WriteAllText($OutFile, $module, $enc)
 

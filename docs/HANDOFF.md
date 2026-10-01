@@ -58,7 +58,7 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 
 ## 3. 已定决策（不要再翻案）
 
-- **D1 广告预算**：对外工具 ≤ **70 个**、schema ≤ **40,000 字节**（当前 69 / 37,573）。
+- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 69 / 37,573）。
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
 - **D4 废弃名处理**：18 个旧工具名**保留一个周期**作为 dispatch 别名；12 个 builtin 直接删除。
@@ -70,6 +70,15 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
   用户未保存的内容。改为讲清「状态未知」+ 短超时快速失败 + 宿主陈旧接管自愈。
 - **S2 决策（新增）**：同一时间**只允许一个宿主**；第二个 DSH 会话得到中文错误而不是互相卡住。
 - **`wps_execute_method`**：维持**隐藏**（P5-1 的最后手段契约不变），README「已知限制」已写清定位。
+
+### v0.5.0 线决策（2026-09-30，用户拍板）
+
+- **废弃名清理**：v0.5.0 里**清掉** 18 个废弃工具名与 `ALIAS_DEBT`（P1-4 目标 0），作为一次明确的
+  breaking 变更处理，技能文档与 README 同步。这一条**推翻**上面 D4 的「保留一个周期」——窗口已过。
+- **npm 发行**：**准备**发布链路（打包、`npm pack` / dry-run、发布检查单），但**暂不真正发布**；
+  真正发布的时机另行拍板（因此 §2 的「仅 GitHub 发布」暂时仍然生效）。
+- **真机整轮回归**：**不作为发版前必跑项**；`scripts/run-tests.ps1` 保持「需要时手动跑」。
+- **广告预算**：见更新后的 D1（100 / 60,000，FIXES 68）。
 
 ---
 
@@ -107,14 +116,14 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | --- | --- | --- |
 | 注册动作 | **267** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
 | 对外工具 | **69**（65 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
-| 广告面字节 | **37,573** / 上限 40,000 | `node scripts/verify.mjs` |
+| 广告面字节 | **37,573** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
-| 预算 | `{ maxTools: 70, maxSchemaBytes: 40000 }` | `scripts/verify.mjs` |
-| 测试 | **856 断言 / 41 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
+| 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
+| 测试 | **914 断言 / 45 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～67 号 | `docs/FIXES.md` |
+| FIXES | 1～72 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -137,7 +146,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
    - 加密 `.xlsx`：裸开卡死；哨兵 → 1 秒内 `0xFFF40006`。
    - 扩展名不符的老 `.doc`：**不弹**（18 秒内直接转换成功）——原计划的假设不成立。
    - `DisplayAlerts` 不是解（Word 侧本来就是 0，密码框照样弹）。
-   - **已修**；残余口子是加密 **.pptx**（`Presentations.Open` 无密码参数，无法阻止弹框），已写入 README。
+   - **已修**；残余的加密 **.pptx** 口子已由 **FIXES 69** 用文件头预检堵死（`Presentations.Open` 仍然没有密码参数，所以预检放在调用 Open 之前）。
 2. **宿主并发**：已加命名互斥体 + 租约文件 + 陈旧接管，第二个会话得到可读中文错误（**已修**）。
 3. **破坏性调用面**：`Delete()` **27 处**、`Clear()` 3、`ClearFormats()` 2、`ClearContents()` 2、
    `Unlist()` 1、`ResetAllPageBreaks()` 1（合计 35 站点 / 29 动作）。**S3 三批已落地**：**25 / 25 个用户数据动作**
@@ -269,9 +278,10 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `scripts/build-host-actions.ps1` | 生成宿主动作表，打印 `switch_cases` / `functions` / `guard_installed` |
 | `scripts/run-tests.ps1` | **整轮测试入口**：跑完每个文件回收无头 WPS 孤儿（FIXES 65），`-KeepOrphans` / `-Filter` 可调 |
 | `scripts/lint.mjs` | 项目化 lint：手写 PowerShell 的 BOM/CRLF、制表符与行尾空白、`console.*`、测试退出码（进 CI） |
+| `scripts/lint-alerts.mjs` | **弹框守卫门禁**（FIXES 70）：可能弹框的调用必须关 `DisplayAlerts` 并还原，且不许绕过两个共用助手 |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | 39 个文件、835 断言；账本在 `spec-reproduction.test.mjs` |
+| `test/*.test.mjs` | 45 个文件、914 断言；账本在 `spec-reproduction.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
@@ -279,7 +289,11 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `test/host-lease.test.mjs` | S2 单实例租约（**不需要 WPS**，已进 CI） |
 | `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死；**开头有环境体检**（需要真实 WPS） |
 | `test/watchdog.test.mjs` | S1 超时契约（**不需要 WPS**，已进 CI） |
-| `docs/FIXES.md` | 1～67 号修复记录（**新 bug 继续追加编号**） |
+| `test/encrypted-preflight.test.mjs` | FIXES 69：加密 OOXML 在打开前被文件头认出来（**不需要 WPS**，已进 CI） |
+| `test/alerts-gate.test.mjs` | FIXES 70：弹窗守卫门禁自己的断言（**不需要 WPS**，已进 CI） |
+| `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
+| `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
+| `docs/FIXES.md` | 1～72 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

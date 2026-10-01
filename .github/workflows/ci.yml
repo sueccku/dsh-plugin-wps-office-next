@@ -65,7 +65,7 @@ jobs:
       - name: Committed coverage matrix must match
         run: git diff --exit-code -- docs/tool-coverage.md
 
-      - name: Project lint (byte conventions, tabs, console, test exit codes)
+      - name: Project lint (byte conventions, tabs, console, test exit codes, modal-dialog guards)
         run: npm run lint
 
       - name: Spec reproduces the model-facing surface (P1 acceptance)
@@ -80,7 +80,7 @@ jobs:
       - name: Committed contract report must match
         run: git diff --exit-code -- docs/param-contract.md
 
-      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger, argument shape guard)
+      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger, argument shape guard, encrypted-file preflight)
         run: |
           node test/plugin.test.mjs
           node test/com-host.test.mjs
@@ -90,3 +90,5 @@ jobs:
           node test/install-selfcheck.test.mjs
           node test/arg-shape-guard.test.mjs
           node test/wps-version.test.mjs
+          node test/encrypted-preflight.test.mjs
+          node test/alerts-gate.test.mjs

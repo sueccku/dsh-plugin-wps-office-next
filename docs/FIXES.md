@@ -1856,6 +1856,196 @@ lint 165 文件 0 违规、参数契约四类 0、spec 复现 13、install-selfc
   打开不需要任何密码。想给文档加打开密码的业务，**不要**用这条路径；
   本插件的正式工具里也没有「设置打开密码」的能力（只有工作表/工作簿保护，那个是另一回事）。
 
+### 68. D1 上限第三次上抬：70 / 40,000 → 100 / 60,000（用户决定）
+
+**背景**：v0.4.0 结束时广告面是 **69 工具 / 37,573 字节**，只余 1 个工具位与 2,427 字节；
+而 v0.5.0「试点就绪」要把稳定性与可解释性改动涉及的工具摆到广告面上，预算成了硬约束。
+
+**决定（2026-09-30，用户拍板）**：上限放宽到 **100 个工具 / 60,000 字节**。
+
+**落地**
+- `scripts/verify.mjs` 的 `BUDGET` 与 `test/deprecated.test.mjs` 的 `ADVERTISED_TOOL_BUDGET` /
+  `ADVERTISED_BYTE_BUDGET` 同步；
+- 文档里**当前生效的上限**同步（README、HANDOFF §3/§5、stabilization-plan 纪律、tool-roadmap §2）；
+- **历史记录不改**：FIXES 42 与 PROGRESS 里的两次上抬过程保留原值。
+
+**验收**：`node scripts/verify.mjs` 全绿——实际用量不变（69 / 37,573），上限放宽只改门禁，
+不触发任何产物重生成。
+
+### 69. 加密 OOXML 打开前预检：堵死最后一个「必卡死」路径
+
+**问题**：S1（FIXES 52）只堵住了 docx/xlsx —— 靠**非空哨兵密码**让 WPS 快速报错。`Presentations.Open`
+根本没有密码参数，所以加密 .pptx 仍然会弹模态框：宿主在 60 秒（`openPresentation`）或 300 秒
+（`insertSlidesFromFile` 属 LONG_ACTION）后被客户端杀掉，框还留在 WPS 里，之后每次调用只能 15 秒
+快速失败 —— 会话实际废掉。README 把它写成「唯一没堵住的口子」。
+
+**做法：打开之前先看文件头，不看 WPS 脸色**
+
+- 加密的 OOXML 在磁盘上是 OLE/CFB 复合文件（魔数 `D0 CF 11 E0 A1 B1 1A E1`），明文 OOXML 是 ZIP
+  （`PK\x03\x04`）。判据只要「**扩展名属于 OOXML**（docx/docm/xlsx/xlsm/pptx/pptm）＋ 头 4 字节是
+  CFB」——旧格式 `.doc/.xls/.ppt` 同样是 CFB，**不能**一并拒绝（实测：本地 4 个加密 docx/xlsx 全是
+  CFB 且含 `EncryptedPackage`/`EncryptionInfo` 流名，明文样本全是 ZIP）。
+- 桥里新增 `Test-WpsOoxmlEncrypted`：只读前 4 字节；读不到、路径不存在、扩展名不在名单里一律放行
+  （交给原有路径报自己的错），因此只挡「一定会弹框」的那一种。
+- 接入 **5 个入口**：`openFile` / `openWorkbook` / `openDocument` / `openPresentation` 的动作开头
+  （放在 `Get-WpsApp` **之前**，所以失败时不拉起 WPS、报错与 WPS 是否在跑无关），以及
+  `insertSlidesFromFile` 的源文件校验处；三个打开 helper（`Open-WordDocument` / `Open-ExcelWorkbook` /
+  `Open-PptPresentation`）里再挡一次，防止将来有人绕过 action 直接调 helper。
+- 文案复用 `Format-WpsOpenError`：与 S1 完全一致的「文件已加密，需要密码……请先另存为不加密的副本」。
+
+**验收**：新增 `test/encrypted-preflight.test.mjs` **15 项**——三个 OOXML 扩展名各自「返回而不挂起 /
+失败 / 文案含加密·密码·另存为 / 立即失败（实测 6–574 ms）」，外加两条静态断言（名单含全部 OOXML、
+不含旧格式）。**不需要 WPS**，已进 CI 静态门禁。
+
+**残留**：它判的是「加密、或扩展名与内容不符」的 OOXML；真正损坏的 ZIP 仍走原来的打开错误路径。
+### 70. 弹窗守卫从「按清单」改成「按不变量」：SaveAs / Close / 刷新 全族补齐 + 静态门禁
+
+**问题**：S1（FIXES 52）只处理了「打开加密文件」这一个弹框来源，S3 只处理破坏性动作，所以**同源的
+弹框站点成片漏网**。新写的静态门禁第一次运行就量出 **11 个 action、22 处违规**：
+
+| action | 漏网的调用 | 会弹什么 |
+| --- | --- | --- |
+| `save` | `.Save()` ×3 | 未落盘文档弹「另存为」 |
+| `saveAs` | `.SaveAs()` ×6 | 覆盖同名文件弹「是否替换」 |
+| `convertToPDF` | `ExportAsFixedFormat` ×2、`.SaveAs()` ×1 | 覆盖确认 / PPT 的另存语义 |
+| `convertFormat` | `.SaveAs()` ×6 | 覆盖同名文件弹「是否替换」 |
+| `refreshLinks` | `.UpdateLink()` | 外链源缺失弹提示（这里连 `try/catch` 都没有） |
+| `refreshAllData` | `.RefreshAll()` | 带参数的查询弹参数框 |
+| `createWorkbook` | `.SaveAs($p.name)` | 覆盖同名文件 |
+| `closeWorkbook` / `closeDocument` | `.Close()` | 脏文档 / 只读文档弹保存框 |
+| `closePresentation` | `.Save()` + `.Close()` | 未落盘 / 只读 |
+| `insertSlidesFromFile` | `.InsertFromFile()` | 来源不可读 / 格式提示 |
+
+另外 `deleteSheet` **写死** `$excel.DisplayAlerts = $true` 还原：调用方本来关掉的弹窗会被它顶开，
+而异常路径又会把它留在 `$false`（之后所有弹窗被静默自动确认）。
+
+**做法**
+
+1. **能弹框的调用一律套共用助手**：上面 11 个 action 全部改成
+   `$prevAlerts = Set-WpsAlertsSuppressed <app> <kind>` + `try { ... } finally { Restore-WpsAlerts ... }`；
+   `deleteSheet` 改用助手存/还原；`closeWorkbook` / `closeDocument` 里那段手写的
+   `[bool]$x.DisplayAlerts` 读写一并收敛到助手 —— **桥里再没有一处绕过助手的 DisplayAlerts 读写**。
+2. **把规矩变成静态门禁**（新增 `scripts/lint-alerts.mjs`，挂进 `npm run lint` 与 CI）：
+   - 覆盖：任何包含「可能弹框的调用」的 action 必须有 `Set-WpsAlertsSuppressed`；
+   - 配对：同一 action 里 set 与 restore 数量必须相等（漏还原即红）；
+   - 不绕过：`DisplayAlerts` 的直接读写只允许出现在两个共用助手里；
+   - 例外有账：例外表里的条目必须对得上真实 action，过期即红。
+   `.Open(` 明确不在其中 —— 密码框不吃 `DisplayAlerts`，它由文件头预检挡（FIXES 69）。
+3. **实测修正：`DisplayAlerts` 拦不住「另存为」**。给 `save` 补上守卫后按项目纪律实测，结果推翻了
+   原本的假设：
+
+   | 场景 | 结果 |
+   | --- | --- |
+   | Excel 未落盘工作簿 `.Save()` | **静默写到** `Documents\工作簿4.xlsx` 并回报「保存成功」（探针产物已删） |
+   | Word 未落盘文档 `.Save()` | **60 秒超时**，留在 WPS 里的 `Qt5QWindowIcon`「另存为」框只能手工关掉 |
+   | PPT 未落盘演示文稿 `.Save()` | `RPC_E_CALL_REJECTED`（被上面那个框堵住） |
+
+   也就是说「未落盘对象不能保存」这条判断必须是显式的。新增 `Test-WpsHasDiskPath`（判据是
+   **FullName 指向一个真实存在的文件**，不依赖 `Path` 到底是空串还是裸名字）；`save` 对未落盘对象
+   直接拒绝并指向 `save_as`，`closePresentation` 的「未落盘」判断也改用同一助手。
+
+**验收**
+
+- `node scripts/lint-alerts.mjs`：**0 violation**（修复前 22）；`npm run lint`（168 文件）0 违规。
+- 新增 `test/alerts-gate.test.mjs` **10 项**（不需要 WPS，已进 CI）：无守卫的 `SaveAs` 会被报、报出里的
+  action 名、守卫齐全是干净的、关了没还原会红、绕过助手直接写 `DisplayAlerts` 会红、注释不算、
+  `.Open(` 不算、过期例外会红，以及**真实桥为 0**、**把任意一个守卫拿掉立刻变红**。
+- 真机实测（WPS 12.1 x64）：未落盘的工作簿 / 文档 / 演示文稿调 `save` 分别 **14 / 39 / 57 ms** 得到
+  明确中文拒绝，无弹框（`EnumWindows` 复查 `leftover Qt dialogs: 0`）；已有路径的工作簿 `save`
+  仍回报「文档保存成功！」。
+- 真机回归（`run-tests.ps1 -Filter`，逐个文件）：`file-ops` 11、`sheet-ops` 21、`word-lifecycle` 18、
+  `new-actions` 28、`excel-advanced` 24、`excel-missing-halves-2` 30、`word-common-coverage` 26 ——
+  **158 项全绿**，覆盖 save_as / 转换 / 删表 / 关文档 / 关演示文稿 / 刷新外链 / 全量刷新。
+- 空 catch 账本按规矩收紧：`closeWorkbook` / `closeDocument` 里手写的 6 处 `catch { }` 随代码一起消失，
+  登记 **38 → 32**（桥 32 + 宿主 6），`test/silent-catch.test.mjs` 全绿。
+
+**残留**：弹框来源还没有穷尽（保护密码错误、外部数据源参数框等），但**新增调用点现在会被门禁拦住**
+—— 这是本条改动的重点：不再靠人记得。
+### 71. 结果如实：close 的「已保存」、保护状态、删除列影响、刷新计数、PPT 导出
+
+**问题**（审计逐条列出，全部实测过）：
+
+1. `closeWorkbook` / `closeDocument` 在 `Close($saveChanges)` 之后直接上报 `saved = [bool]$saveChanges`
+   —— 那是「我请求了保存」，不是「保存成功」。只读 / 被占用 / 网络盘掉线时保存会无声失败，文档被丢弃，
+   而结果告诉用户「已保存」。
+2. `protectSheet` / `unprotectSheet` / `protectWorkbook` 直接上报 `protected = $wantProtect`；密码不对时
+   WPS 可能静默不解除，调用方以为前置条件已成立，后续写入大面积失败。
+3. `deleteColumns` 只统计第一列的 impact，却删 `count` 列：少报 (count-1) 列被抹掉的数据量；而且逐列删
+   `count` 次，多打 count 次 COM 往返。
+4. `refreshLinks` 的 `$wb.LinkSources(1)` 没标量化：只有一个外链时 PowerShell 把返回解包成字符串，
+   `.Length` 变成字符数、`$links[0]` 变成单个字符。
+5. `convertToPDF` 的 PPT 分支用 `SaveAs`：会把窗口里的 .pptx 换成 PDF（改 `Path`/`Name`、清脏标记），
+   用户那份未保存的修改之后关 WPS 时再也不会被提醒。
+
+**做法**
+
+- **close**：先显式 `Save()`，成功才 `Close($false)` 并回报 `saved=true`；保存失败**不关闭**、原样返回错误。
+- **protect**：调用后读回真实状态（`ProtectContents` / `ProtectDrawingObjects` / `ProtectScenarios`；工作簿用
+  `ProtectStructure` / `ProtectWindows`），与请求不符即 `success=false`；读不到就不下结论。
+- **deleteColumns**：算出 `endCol`，一次删整段（与 `deleteRows` 对称），impact 覆盖整段，越过 XFD 明确拒绝。
+- **refreshLinks**：`@($wb.LinkSources(1))` 标量化，循环与计数都用 `.Count`。
+- **convertToPDF(ppt)**：改用 `SaveCopyAs($outputPath, 32)` —— **实测** WPS 12.1 支持它，且 `FullName` 不变。
+
+**实测（WPS 12.1 x64）**
+
+| 场景 | 结果 |
+| --- | --- |
+| 已落盘工作簿 `close(save=true)` | 「（已保存）」，文件真的落盘 |
+| 未落盘工作簿 `close(save=true)` | 「（未保存）」+ 明确 warning（不再假装保存） |
+| 保护后拿错密码取消保护 | 明确失败（COM 抛 E_FAIL，或读回仍受保护） |
+| 正确密码取消保护 | 成功 |
+| `deleteColumns B count=3` | 「从B列开始删除了3列（原有 3 个非空单元格）」；`A1:C1` 回读 = `a | e | f` |
+| 无外链 `refreshLinks` | 「已刷新外部链接 0 条」 |
+| 脏 pptx 转 PDF | PDF 生成；`FullName` 前后一致，源 .pptx 仍在 |
+
+**验收**：新增 `test/honest-reporting.test.mjs` **19 项**（真实 WPS）：close 的已保存 / 未保存（含 warning）、
+保护读回三态、删除列整段、刷新计数、PPT 导出的 FullName 不变与产物落盘，外加 4 条**静态**断言
+（`Save` 在 `Close($false)` 之前、不再有 `saved = [bool]$saveChanges`、`SaveCopyAs` 就位）。
+
+**哪一条没有自动化断言**：`Save()` 真的失败的分支。三种注入都试了 —— DOS 只读属性 WPS 不认（照常保存）、
+ACL 拒绝写在**打开阶段**就弹出「无法打开文件」模态框（实测 60 秒超时，已清理）、把文件换成目录会被 WPS 的
+句柄挡住。这条由代码结构保证（先 Save 后 Close、失败即不关），并有静态断言盯着结构不退化。
+### 72. 大范围预算：让「太大」在跑之前就失败（外加两个被测试抓出来的真 bug）
+
+**问题**（审计 C1–C5，逐条核对过）：常驻宿主是单线程 STA，一个动作跑几分钟，后面所有调用排队；客户端
+60 秒后杀掉宿主（之后还要走 suspect 短超时）。以下路径此前没有任何上限：
+
+- `read_range` → `getRangeData`：`A:A` = 1,048,576 格，整块 Value2 读回、逐行拼 JSON；
+- `find_in_sheet` / `find_replace`：不给 range 时用整片 `UsedRange`，再在 PowerShell 里逐格比较；
+- `clean_data`：trim / unify_date 逐格 COM 写入（每格一次往返）；
+- `auto_fit`（整表）：`UsedRange.Rows/Columns.AutoFit()` 在几十万行时是分钟级；
+- `insert_columns`：逐列插 `count` 次，多打 count 次 COM 往返。
+
+**做法**
+
+- 新增分档预算 + `Get-WpsRangeBudgetError`：`read=50000`（要进模型上下文的 JSON）、`scan=200000`
+  （PowerShell 逐格比较）、`layout=200000`（AutoFit）、`percell=20000`（逐格 COM 写）。**在执行前**判
+  `$range.Count`，超限直接回中文错误并给出「缩小范围 / 分批」的建议；读不到格数就放行（守卫本身绝不
+  能把动作弄失败）。
+- `insert_columns` 改成一次插整段（与 `deleteRows` / `deleteColumns` 对称）。
+- **长路径**：`Resolve-InputFilePath` 的 `$null` 原来一律译成 `<kind> not found`，而 Windows 260 字符上限
+  下 PS 5.1 会把真实存在的长路径当成不存在。新增 `Format-WpsInputPathError` 说清「路径 307 字符，超过
+  Windows 的 260 上限」，图片 / 声音 / 邮件合并 CSV / PPT 背景图四处共用。
+- **生成器补一门禁**：常驻宿主是 dot-source 的长期进程，函数里的 `exit` 会把宿主整个干掉，而生成器只把
+  dispatch 段里的 `exit` 改写成 `return`。`build-host-actions.ps1` 现在在写文件前拒绝任何残留 `exit`
+  （按去注释后的代码统计，`exit_remaining=0` 重新成为不变量）。
+
+**测试抓出来的两个真 bug（都在本轮修掉）**
+
+1. `New-Object 'object[]' N` 返回的是 **PSObject 包装的数组**，嵌在上面的结构里被 `ConvertTo-Json` 序列化成
+   `{"value":[…],"Count":N}` —— `read_range` 的返回形状被破坏，工具层直接抛 `response.forEach is not a
+   `function`。改用 `ArrayList` 收集行 + `@()` 逐格构造（实测这才是干净的 CLR 数组）。**教训**：这种
+   「类型看着对、序列化不对」的坑只有端到端实测能发现，静态检查与代码审读都看不出来。
+2. `wpsClient.getRangeData` 无视 `success:false` 直接 `return response.data?.data || []`，于是**预算拒绝被显示
+   成「范围是空的，没有数据」** —— 和 FIXES 71 同族的静默失败。已改为抛出桥侧错误原文。
+
+**验收**：新增 `test/range-limits.test.mjs` **14 项**（真实 WPS）：整列读取被拒且 **118 ms** 内返回、小范围
+读回形状不变、整列清洗被拒、普通查找与 AutoFit 不被误伤、插入 2 列一次完成且数据右移、>260 字符路径
+解释清楚、四条预算档与「助手不许 exit」的静态断言。
+
+**没做的两条（如实记录）**：① 文件被别的程序占用时的探测 —— 三种做法都不安全（WPS 自己就持有句柄，
+独占探测会误伤「重新打开已经打开的文件」）；② 不可达网络盘的预检 —— `Test-Path` 本身就会阻塞，没有
+便宜的带超时探测。两条都属「打开路径」风险，已在 README 的已知限制里点名。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

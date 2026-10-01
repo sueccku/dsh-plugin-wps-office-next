@@ -314,7 +314,36 @@ function Restore-WpsAlerts($app, $prev) {
     try { $app.DisplayAlerts = $prev } catch { }
 }
 
+# 加密 OOXML 可以在**打开之前**从文件头认出来，不必只靠哨兵密码那半招（它挡不住 pptx）：
+# 明文 OOXML 是 ZIP（PK\x03\x04），带打开密码的 OOXML 是 OLE/CFB 复合文件
+# （D0 CF 11 E0 A1 B1 1A E1）。判据要求「扩展名属于 OOXML」——旧格式 .doc/.xls/.ppt 同样是
+# CFB，不能一并拒绝（实测见 docs/FIXES.md 69）。
+$script:WpsOoxmlExtensions = @('.docx', '.docm', '.xlsx', '.xlsm', '.pptx', '.pptm')
+
+function Test-WpsOoxmlEncrypted([string]$path) {
+    # 只认「一定会弹密码框」的那一种：读不到、路径不存在、扩展名不在名单里都返回 $false，
+    # 放行给原有的打开路径去报它自己的错。
+    if ([string]::IsNullOrEmpty($path)) { return $false }
+    try { $ext = [System.IO.Path]::GetExtension($path) } catch { return $false }
+    if ([string]::IsNullOrEmpty($ext)) { return $false }
+    if ($script:WpsOoxmlExtensions -notcontains $ext.ToLowerInvariant()) { return $false }
+    try {
+        $resolved = (Resolve-Path -LiteralPath $path -ErrorAction Stop).ProviderPath
+        if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { return $false }
+        $fs = [System.IO.File]::Open($resolved, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        try {
+            $head = New-Object byte[] 4
+            $read = $fs.Read($head, 0, 4)
+        } finally { $fs.Dispose() }
+        if ($read -lt 4) { return $false }
+        return ($head[0] -eq 0xD0 -and $head[1] -eq 0xCF -and $head[2] -eq 0x11 -and $head[3] -eq 0xE0)
+    } catch {
+        return $false
+    }
+}
+
 function Open-WordDocument($word, [string]$path) {
+    if (Test-WpsOoxmlEncrypted $path) { throw ('文件已加密（打开密码）：' + $path) }
     # WPS 的 IDispatch 不支持命名参数（实测 E_INVALIDARG），只能按位置传，顺序不能改：
     # FileName, ConfirmConversions, ReadOnly, AddToRecentFiles, PasswordDocument, PasswordTemplate,
     # Revert, WritePasswordDocument, WritePasswordTemplate, Format, Encoding, Visible, OpenAndRepair,
@@ -323,6 +352,7 @@ function Open-WordDocument($word, [string]$path) {
 }
 
 function Open-ExcelWorkbook($excel, [string]$path, $updateLinks, [bool]$readOnly) {
+    if (Test-WpsOoxmlEncrypted $path) { throw ('文件已加密（打开密码）：' + $path) }
     # UpdateLinks 默认 0（不更新外部链接）而不是留空：留空等同于「按设置来」，而设置里
     # AskToUpdateLinks 为真时照样弹框。调用方显式给了值就尊重它。
     # FileName, UpdateLinks, ReadOnly, Format, Password, WriteResPassword, IgnoreReadOnlyRecommended
@@ -332,8 +362,9 @@ function Open-ExcelWorkbook($excel, [string]$path, $updateLinks, [bool]$readOnly
 }
 
 function Open-PptPresentation($ppt, [string]$path) {
-    # Presentations.Open 没有密码参数，加密演示文稿仍会弹框（已知残余限制，见 README）；
-    # 其余弹窗由调用方的 DisplayAlerts 抑制。FileName, ReadOnly, Untitled, WithWindow
+    # Presentations.Open 没有密码参数，所以加密演示文稿只能靠这里的**文件头预检**挡住
+    # （FIXES 69）：真到了 Open 这一步就只剩模态框一条路。FileName, ReadOnly, Untitled, WithWindow
+    if (Test-WpsOoxmlEncrypted $path) { throw ('文件已加密（打开密码）：' + $path) }
     return $ppt.Presentations.Open($path, $false, $false, $true)
 }
 
@@ -510,6 +541,39 @@ function Resolve-InputFilePath($value) {
     return $candidate
 }
 
+function Format-WpsInputPathError([string]$value, [string]$kind) {
+    # Resolve-InputFilePath 返回 $null 只说明「读不到」，不等于「不存在」：Windows 的 260 字符
+    # 上限下 PS 5.1 / .NET 4.x 会把一个真实存在的长路径当成不存在，而调用方原来一律译成
+    # "<kind> not found"，用户于是去找一个明明在的文件（FIXES 72）。
+    $candidate = [string]$value
+    try {
+        if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+            $candidate = [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $candidate))
+        }
+    } catch { }
+    if ($candidate.Length -ge 260) {
+        return ($kind + " not found: 路径长度 " + $candidate.Length + " 超过 Windows 的 260 字符上限，当前 PowerShell / .NET 访问不到它；请把文件移到更短的路径，或用 \\?\ 前缀。（完整路径：" + $candidate + "）")
+    }
+    return ($kind + " not found: " + [string]$value)
+}
+
+function Test-WpsHasDiskPath($obj) {
+    # 「有没有真实落盘」是拒绝保存/关闭前必须回答的问题：未落盘的对象在 WPS 里 Path 给空串、
+    # FullName 给一个裸名字，而 Save / Close 对未落盘对象会弹「另存为」——**实测这个框不吃
+    # DisplayAlerts**（FIXES 70），Word 上一次就能把会话钉住。判据用「FullName 指向一个真实
+    # 存在的文件」，Path / FullName 的具体表现怎么变都不会误判。
+    if ($null -eq $obj) { return $false }
+    try {
+        $full = [string]$obj.FullName
+        if ([string]::IsNullOrEmpty($full)) { return $false }
+        # 未落盘对象的 FullName 是裸名字（相对路径），必须要求绝对路径，免得撞上同名的本地文件。
+        if (-not [System.IO.Path]::IsPathRooted($full)) { return $false }
+        return (Test-Path -LiteralPath $full -PathType Leaf)
+    } catch {
+        return $false
+    }
+}
+
 function Get-RowRefList($p) {
     # The tool layer may pass rows, row (+count), or startRow/endRow. Normalise to row refs.
     $rows = @()
@@ -589,7 +653,7 @@ function Get-PptBackgroundSpec($p) {
         if ($null -eq $image -or $image -eq "") { $spec.error = "an image background needs imagePath" }
         else {
             $resolved = Resolve-InputFilePath $image
-            if ($null -eq $resolved) { $spec.error = ("background image not found: " + $image) } else { $spec.imagePath = $resolved }
+            if ($null -eq $resolved) { $spec.error = (Format-WpsInputPathError $image 'background image') } else { $spec.imagePath = $resolved }
         }
     } else { $spec.error = ("unknown background type '" + $kind + "'; use solid/gradient/image") }
     return $spec
@@ -917,6 +981,29 @@ function Get-WpsRangeImpact($range, [int]$maxPreview = 8) {
     return $impact
 }
 
+# ==================== 大范围预算 (FIXES 72) ====================
+# 常驻宿主是单线程 STA：一个动作跑几分钟，后面所有调用排队；客户端 60 秒后杀掉宿主（之后还要
+# 走 suspect 短超时）。所以「一次能吃下多少格」必须有上限，而且要**在执行前**判断，不能等它跑完。
+# 分档理由：
+#   read    —— 读回整块 Value2 并序列化成 JSON 送进模型上下文（50,000 格 ≈ 几百 KB 文本）
+#   scan    —— 在 PowerShell 里逐格比较：吃 CPU，返回很小（200,000 格 ≈ 数秒）
+#   layout  —— AutoFit 这类按内容行数增长的排版操作（200,000 格 ≈ 上限）
+#   percell —— 逐格 COM 写入，每格一次往返（20,000 格 ≈ 数十秒）
+$script:WpsRangeBudget = @{ read = 50000; scan = 200000; layout = 200000; percell = 20000 }
+
+function Get-WpsRangeBudgetError($range, [string]$tier, [string]$action, [string]$hint) {
+    # 返回 $null = 在预算内；否则返回给调用方报错的中文句子。
+    # **不要在这个助手里做脚本级退出**：生成器只把 dispatch 段里的退出改写成 return，函数里的退出
+    # 会把常驻宿主整个干掉（build-host-actions.ps1 现在会直接拒绝这种产物）。读不到格数就不拦，
+    # 守卫本身绝不能把动作弄失败（和 Get-WpsRangeImpact 一个态度）。
+    $limit = $script:WpsRangeBudget[$tier]
+    if ($null -eq $limit -or $null -eq $range) { return $null }
+    $cells = $null
+    try { $cells = [int]$range.Count } catch { return $null }
+    if ($null -eq $cells -or $cells -le $limit) { return $null }
+    return ("范围太大：共 " + $cells + " 个单元格，超过「" + $action + "」的上限 " + $limit + "。" + $hint)
+}
+
 function ConvertTo-ConsolidateSource([string]$reference) {
     if (-not $reference) { return $null }
     $rangePart = $reference.Trim()
@@ -1183,19 +1270,30 @@ switch ($Action) {
     "save" {
         $excel = Get-WpsExcel
         if ($null -ne $excel -and $null -ne $excel.ActiveWorkbook) {
-            $excel.ActiveWorkbook.Save()
+            $wb = $excel.ActiveWorkbook
+            # 未落盘的对象不能 Save：弹出的「另存为」框实测不受 DisplayAlerts 控制（FIXES 70），
+            # 而 Excel 会静默写到「文档」目录——两种都不该发生，所以直接拒绝并让调用方走 save_as。
+            if (-not (Test-WpsHasDiskPath $wb)) { Output-Json @{ success = $false; error = "这个工作簿还没有保存过，调用「保存」会弹出「另存为」对话框把会话卡住；请先用 wps_common_save_as 指定路径。" }; exit }
+            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+            try { $wb.Save() } finally { Restore-WpsAlerts $excel $prevAlerts }
             Output-Json @{ success = $true; app = "excel" }
             exit
         }
         $word = Get-WpsWord
         if ($null -ne $word -and $null -ne $word.ActiveDocument) {
-            $word.ActiveDocument.Save()
+            $doc = $word.ActiveDocument
+            if (-not (Test-WpsHasDiskPath $doc)) { Output-Json @{ success = $false; error = "这个文档还没有保存过，调用「保存」会弹出「另存为」对话框把会话卡住；请先用 wps_common_save_as 指定路径。" }; exit }
+            $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
+            try { $doc.Save() } finally { Restore-WpsAlerts $word $prevAlerts }
             Output-Json @{ success = $true; app = "word" }
             exit
         }
         $ppt = Get-WpsPpt
         if ($null -ne $ppt -and $null -ne $ppt.ActivePresentation) {
-            $ppt.ActivePresentation.Save()
+            $pres = $ppt.ActivePresentation
+            if (-not (Test-WpsHasDiskPath $pres)) { Output-Json @{ success = $false; error = "这个演示文稿还没有保存过，调用「保存」会弹出「另存为」对话框把会话卡住；请先用 wps_common_save_as 指定路径。" }; exit }
+            $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+            try { $pres.Save() } finally { Restore-WpsAlerts $ppt $prevAlerts }
             Output-Json @{ success = $true; app = "ppt" }
             exit
         }
@@ -1210,8 +1308,12 @@ switch ($Action) {
             $excel = Get-WpsExcel
             if ($null -eq $excel -or $null -eq $excel.ActiveWorkbook) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
             $format = Get-ExcelFileFormat $p.format
-            if ($null -ne $format) { $excel.ActiveWorkbook.SaveAs($path, $format) }
-            else { $excel.ActiveWorkbook.SaveAs($path) }
+            # 覆盖已存在的文件会弹「是否替换」，统一关掉并还原（FIXES 70）。
+            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+            try {
+                if ($null -ne $format) { $excel.ActiveWorkbook.SaveAs($path, $format) }
+                else { $excel.ActiveWorkbook.SaveAs($path) }
+            } finally { Restore-WpsAlerts $excel $prevAlerts }
             Output-Json @{ success = $true; data = @{ path = $path; appType = "excel" } }
             exit
         }
@@ -1219,8 +1321,11 @@ switch ($Action) {
             $word = Get-WpsWord
             if ($null -eq $word -or $null -eq $word.ActiveDocument) { Output-Json @{ success = $false; error = "No active document" }; exit }
             $format = Get-WordSaveFormat $p.format
-            if ($null -ne $format) { $word.ActiveDocument.SaveAs($path, $format) }
-            else { $word.ActiveDocument.SaveAs($path) }
+            $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
+            try {
+                if ($null -ne $format) { $word.ActiveDocument.SaveAs($path, $format) }
+                else { $word.ActiveDocument.SaveAs($path) }
+            } finally { Restore-WpsAlerts $word $prevAlerts }
             Output-Json @{ success = $true; data = @{ path = $path; appType = "word" } }
             exit
         }
@@ -1228,8 +1333,11 @@ switch ($Action) {
             $ppt = Get-WpsPpt
             if ($null -eq $ppt -or $null -eq $ppt.ActivePresentation) { Output-Json @{ success = $false; error = "No active presentation" }; exit }
             $format = Get-PptSaveFormat $p.format
-            if ($null -ne $format) { $ppt.ActivePresentation.SaveAs($path, $format) }
-            else { $ppt.ActivePresentation.SaveAs($path) }
+            $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+            try {
+                if ($null -ne $format) { $ppt.ActivePresentation.SaveAs($path, $format) }
+                else { $ppt.ActivePresentation.SaveAs($path) }
+            } finally { Restore-WpsAlerts $ppt $prevAlerts }
             Output-Json @{ success = $true; data = @{ path = $path; appType = "ppt" } }
             exit
         }
@@ -1240,6 +1348,9 @@ switch ($Action) {
         $path = $p.path
         if (-not $path) { Output-Json @{ success = $false; error = "Path required" }; exit }
         $appType = if ($p.appType) { $p.appType } else { Get-AppTypeByExtension $path }
+        # 打开前先做文件头预检，且放在 Get-WpsApp 之前：加密 OOXML 一旦进了 .Open() 就只剩
+        # 模态框一条路，而预检失败了也不该先拉起 WPS（FIXES 69）。
+        if (Test-WpsOoxmlEncrypted $path) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path $appType ('文件已加密（打开密码）：' + $path)) }; exit }
         if ($appType -eq 'excel') {
             $excel = Get-WpsExcel
             if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
@@ -1327,7 +1438,8 @@ switch ($Action) {
             $wb = $excel.ActiveWorkbook
             $sourcePath = $wb.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, 'pdf') }
-            $wb.ExportAsFixedFormat(0, $outputPath)
+            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+            try { $wb.ExportAsFixedFormat(0, $outputPath) } finally { Restore-WpsAlerts $excel $prevAlerts }
             $openResult = Open-ExportedFile $outputPath $openAfter
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "excel"; openAfterExport = $openResult } }
             exit
@@ -1337,7 +1449,8 @@ switch ($Action) {
             $doc = $word.ActiveDocument
             $sourcePath = $doc.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, 'pdf') }
-            $doc.ExportAsFixedFormat($outputPath, 17)
+            $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
+            try { $doc.ExportAsFixedFormat($outputPath, 17) } finally { Restore-WpsAlerts $word $prevAlerts }
             $openResult = Open-ExportedFile $outputPath $openAfter
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "word"; openAfterExport = $openResult } }
             exit
@@ -1347,7 +1460,11 @@ switch ($Action) {
             $pres = Get-TargetPres $ppt $p
             $sourcePath = $pres.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, 'pdf') }
-            $pres.SaveAs($outputPath, 32)
+            # SaveCopyAs 而不是 SaveAs：实测 WPS 12.1 支持 SaveCopyAs，且它不改指当前演示文稿
+            # （FullName 不变、脏标记不动）；SaveAs 会把窗口里的 .pptx 换成 PDF，那份未保存的修改
+            # 之后用户关 WPS 时再也不会被提醒（FIXES 71）。
+            $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+            try { $pres.SaveCopyAs($outputPath, 32) } finally { Restore-WpsAlerts $ppt $prevAlerts }
             $openResult = Open-ExportedFile $outputPath $openAfter
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "ppt"; openAfterExport = $openResult } }
             exit
@@ -1370,7 +1487,10 @@ switch ($Action) {
             $sourcePath = $wb.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, $targetFormat) }
             $format = Get-ExcelFileFormat $targetFormat
-            if ($null -ne $format) { $wb.SaveAs($outputPath, $format) } else { $wb.SaveAs($outputPath) }
+            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+            try {
+                if ($null -ne $format) { $wb.SaveAs($outputPath, $format) } else { $wb.SaveAs($outputPath) }
+            } finally { Restore-WpsAlerts $excel $prevAlerts }
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "excel"; targetFormat = $targetFormat } }
             exit
         }
@@ -1380,7 +1500,10 @@ switch ($Action) {
             $sourcePath = $doc.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, $targetFormat) }
             $format = Get-WordSaveFormat $targetFormat
-            if ($null -ne $format) { $doc.SaveAs($outputPath, $format) } else { $doc.SaveAs($outputPath) }
+            $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
+            try {
+                if ($null -ne $format) { $doc.SaveAs($outputPath, $format) } else { $doc.SaveAs($outputPath) }
+            } finally { Restore-WpsAlerts $word $prevAlerts }
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "word"; targetFormat = $targetFormat } }
             exit
         }
@@ -1390,7 +1513,10 @@ switch ($Action) {
             $sourcePath = $pres.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, $targetFormat) }
             $format = Get-PptSaveFormat $targetFormat
-            if ($null -ne $format) { $pres.SaveAs($outputPath, $format) } else { $pres.SaveAs($outputPath) }
+            $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+            try {
+                if ($null -ne $format) { $pres.SaveAs($outputPath, $format) } else { $pres.SaveAs($outputPath) }
+            } finally { Restore-WpsAlerts $ppt $prevAlerts }
             Output-Json @{ success = $true; data = @{ sourcePath = $sourcePath; outputPath = $outputPath; appType = "ppt"; targetFormat = $targetFormat } }
             exit
         }
@@ -1453,6 +1579,8 @@ switch ($Action) {
         $wb = $excel.ActiveWorkbook
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
+        $budgetError = Get-WpsRangeBudgetError $range 'read' 'read_range' '请缩小读取范围，或按行分段读取。'
+        if ($null -ne $budgetError) { Output-Json @{ success = $false; error = $budgetError }; exit }
         $rawValue = $range.Value2
         $data = @()
         if ($null -eq $rawValue) {
@@ -1460,11 +1588,15 @@ switch ($Action) {
         } elseif ($rawValue -is [Array] -and $rawValue.Rank -eq 2) {
             $r0 = $rawValue.GetLowerBound(0); $r1 = $rawValue.GetUpperBound(0)
             $c0 = $rawValue.GetLowerBound(1); $c1 = $rawValue.GetUpperBound(1)
+            # 用 ArrayList 收集行，避免原来的 "$data += ,@($row)"（每加一行复制整个数组，O(n^2)）。
+            # 行本身仍用 @() += 构造：这是 ConvertTo-Json 验证过会序列化成 JSON 数组的写法。
+            $rows = New-Object System.Collections.ArrayList
             for ($r = $r0; $r -le $r1; $r++) {
                 $row = @()
                 for ($c = $c0; $c -le $c1; $c++) { $row += $rawValue[$r, $c] }
-                $data += ,@($row)
+                $null = $rows.Add($row)
             }
+            $data = $rows.ToArray()
         } else {
             $data = @(,@($rawValue))
         }
@@ -1544,6 +1676,8 @@ switch ($Action) {
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
+        $budgetError = Get-WpsRangeBudgetError $range 'percell' 'clean_data' '清理是逐格改写的（每格一次 COM 往返），请分批处理，例如一次几千行。'
+        if ($null -ne $budgetError) { Output-Json @{ success = $false; error = $budgetError }; exit }
         $opsResult = @()
         foreach ($op in $p.operations) {
             $success = $true
@@ -2147,12 +2281,22 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        $links = $wb.LinkSources(1)
-        if ($links) {
-            for ($i = 1; $i -le $links.Length; $i++) {
-                $wb.UpdateLink($links[$i - 1], 1)
-            }
-            Output-Json @{ success = $true; data = @{ refreshed = $links.Length } }
+        # 先标量化再判断：只有一个外链时 PowerShell 会把返回解包成字符串，$links.Length 就变成
+        # 字符数、$links[0] 变成单个字符，UpdateLink 会收到一个字（FIXES 71）。
+        $links = @()
+        $rawLinks = $wb.LinkSources(1)
+        if ($null -ne $rawLinks) { $links = @($rawLinks) }
+        if ($links.Count -gt 0) {
+            # 外链源缺失/被移动时 UpdateLink 会弹提示；以前这里连 try/catch 都没有（FIXES 70）。
+            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+            $refreshError = $null
+            try {
+                for ($i = 0; $i -lt $links.Count; $i++) {
+                    $wb.UpdateLink($links[$i], 1)
+                }
+            } catch { $refreshError = $_.Exception.Message } finally { Restore-WpsAlerts $excel $prevAlerts }
+            if ($null -ne $refreshError) { Output-Json @{ success = $false; error = $refreshError }; exit }
+            Output-Json @{ success = $true; data = @{ refreshed = $links.Count } }
         } else {
             Output-Json @{ success = $true; data = @{ refreshed = 0; message = "没有外部链接" } }
         }
@@ -2451,18 +2595,19 @@ switch ($Action) {
         $sheet = Resolve-Worksheet $excel $wb $p -RequireName
         if ($null -eq $sheet) { Output-Json @{ success = $false; error = "sheet name is required to delete a sheet" }; exit }
         if ($wb.Sheets.Count -le 1) { Output-Json @{ success = $false; error = "cannot delete the only sheet in a workbook" }; exit }
+        # 弹窗抑制改用共用助手：以前这里写死 $true，会把调用方设过的 DisplayAlerts 顶掉，
+        # 之后的动作重新暴露在模态框下；异常路径否则还会把它留在 $false（FIXES 70）。
+        $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+        $deleteError = $null
+        $impact = $null
         try {
             $name = $sheet.Name
             # 删表是最不可逆的一类动作：先把它用了多少格、有多少非空格子记下来再删。
             $impact = Get-WpsRangeImpact $sheet.UsedRange
-            $excel.DisplayAlerts = $false
             $sheet.Delete()
-            $excel.DisplayAlerts = $true
-            Output-Json @{ success = $true; data = @{ deletedSheet = $name; remaining = $wb.Sheets.Count; impact = $impact } }
-        } catch {
-            $excel.DisplayAlerts = $true
-            Output-Json @{ success = $false; error = $_.Exception.Message }
-        }
+        } catch { $deleteError = $_.Exception.Message } finally { Restore-WpsAlerts $excel $prevAlerts }
+        if ($null -ne $deleteError) { Output-Json @{ success = $false; error = $deleteError }; exit }
+        Output-Json @{ success = $true; data = @{ deletedSheet = $name; remaining = $wb.Sheets.Count; impact = $impact } }
     }
 
     "renameSheet" {
@@ -2605,7 +2750,10 @@ switch ($Action) {
             if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
             $sheet.Range("${col}:${col}").AutoFit()
         } else {
-            $sheet.UsedRange.Columns.AutoFit()
+            $used = $sheet.UsedRange
+            $budgetError = Get-WpsRangeBudgetError $used 'layout' 'auto_fit（整表）' '请显式给出范围或列，例如 range="A1:Z200"。'
+            if ($null -ne $budgetError) { Output-Json @{ success = $false; error = $budgetError }; exit }
+            $used.Columns.AutoFit()
         }
         Output-Json @{ success = $true; data = @{ message = "列宽已自动调整" } }
     }
@@ -2619,7 +2767,10 @@ switch ($Action) {
         } elseif ($p.row) {
             $sheet.Range("$($p.row):$($p.row)").AutoFit()
         } else {
-            $sheet.UsedRange.Rows.AutoFit()
+            $used = $sheet.UsedRange
+            $budgetError = Get-WpsRangeBudgetError $used 'layout' 'auto_fit（整表）' '请显式给出范围或行，例如 range="A1:Z200"。'
+            if ($null -ne $budgetError) { Output-Json @{ success = $false; error = $budgetError }; exit }
+            $used.Rows.AutoFit()
         }
         Output-Json @{ success = $true; data = @{ message = "行高已自动调整" } }
     }
@@ -2629,6 +2780,10 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         $range = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
+        if (-not $p.range) {
+            $budgetError = Get-WpsRangeBudgetError $range 'layout' 'auto_fit（整表）' '请显式给出范围，例如 range="A1:Z200"。'
+            if ($null -ne $budgetError) { Output-Json @{ success = $false; error = $budgetError }; exit }
+        }
         $range.Columns.AutoFit()
         $range.Rows.AutoFit()
         Output-Json @{ success = $true; data = @{ message = "列宽行高已自动调整" } }
@@ -2710,10 +2865,15 @@ switch ($Action) {
         if ($null -eq $col) { Output-Json @{ success = $false; error = "column/startColumn required" }; exit }
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
         $count = if ($p.count) { [int]$p.count } else { 1 }
-        for ($i = 0; $i -lt $count; $i++) {
-            $sheet.Range("${col}:${col}").Insert()
-        }
-        Output-Json @{ success = $true; data = @{ insertedAt = $col; count = $count } }
+        if ($count -lt 1) { $count = 1 }
+        $startNumber = Convert-ColumnLetterToNumber ([string]$col)
+        if ($null -eq $startNumber -or $startNumber -lt 1) { Output-Json @{ success = $false; error = ("cannot parse the column reference: " + [string]$col) }; exit }
+        $endNumber = $startNumber + $count - 1
+        if ($endNumber -gt 16384) { Output-Json @{ success = $false; error = ("column count " + $count + " runs past the last column (XFD)") }; exit }
+        # 一次插整段，和 deleteRows / deleteColumns 对称：逐列插 count 次只是多打 count 次 COM 往返。
+        $endCol = Convert-ColumnNumberToLetter $endNumber
+        $sheet.Range("${col}:${endCol}").Insert()
+        Output-Json @{ success = $true; data = @{ insertedAt = $col; through = $endCol; count = $count } }
     }
 
     "deleteRows" {
@@ -2737,11 +2897,17 @@ switch ($Action) {
         if ($null -eq $col) { Output-Json @{ success = $false; error = "column/startColumn required" }; exit }
         if ($col -is [int]) { $col = Convert-ColumnNumberToLetter([int]$col) }
         $count = if ($p.count) { [int]$p.count } else { 1 }
-        $impact = Get-WpsRangeImpact $sheet.Range("${col}:${col}")
-        for ($i = 0; $i -lt $count; $i++) {
-            $sheet.Range("${col}:${col}").Delete()
-        }
-        Output-Json @{ success = $true; data = @{ deletedFrom = $col; count = $count; impact = $impact } }
+        if ($count -lt 1) { $count = 1 }
+        # 一次删整段，和 deleteRows 对称。以前是「统计第一列、循环删 count 次」：影响统计少报
+        # (count-1) 列，而逐列删 count 次也多打 count 次 COM 往返（FIXES 71）。
+        $startNumber = Convert-ColumnLetterToNumber ([string]$col)
+        if ($null -eq $startNumber -or $startNumber -lt 1) { Output-Json @{ success = $false; error = ("cannot parse the column reference: " + [string]$col) }; exit }
+        $endNumber = $startNumber + $count - 1
+        if ($endNumber -gt 16384) { Output-Json @{ success = $false; error = ("column count " + $count + " runs past the last column (XFD)") }; exit }
+        $endCol = Convert-ColumnNumberToLetter $endNumber
+        $impact = Get-WpsRangeImpact $sheet.Range("${col}:${endCol}")
+        $sheet.Range("${col}:${endCol}").Delete()
+        Output-Json @{ success = $true; data = @{ deletedFrom = $col; through = $endCol; count = $count; impact = $impact } }
     }
 
     "hideRows" {
@@ -3331,7 +3497,10 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        try { $wb.RefreshAll() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; exit }
+        $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+        $refreshError = $null
+        try { $wb.RefreshAll() } catch { $refreshError = $_.Exception.Message } finally { Restore-WpsAlerts $excel $prevAlerts }
+        if ($null -ne $refreshError) { Output-Json @{ success = $false; error = $refreshError }; exit }
         Output-Json @{ success = $true; data = @{ workbook = $wb.Name; message = "已刷新工作簿的全部外部数据与透视表" } }
     }
 
@@ -3949,7 +4118,7 @@ switch ($Action) {
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         if (-not $p.dataFile) { Output-Json @{ success = $false; error = "dataFile required" }; exit }
         $path = Resolve-InputFilePath $p.dataFile
-        if ($null -eq $path) { Output-Json @{ success = $false; error = ("data file not found: " + $p.dataFile) }; exit }
+        if ($null -eq $path) { Output-Json @{ success = $false; error = (Format-WpsInputPathError $p.dataFile 'data file') }; exit }
         $fields = @()
         if ($null -ne $p.fields) { $fields = @($p.fields) }
         $original = [string]$doc.Name
@@ -4197,6 +4366,8 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p
         $searchRange = if ($p.range) { $sheet.Range([string]$p.range) } else { $sheet.UsedRange }
+        $budgetError = Get-WpsRangeBudgetError $searchRange 'scan' 'find_in_sheet' '请给出更小的 range（例如 A1:Z5000）。'
+        if ($null -ne $budgetError) { Output-Json @{ success = $false; error = $budgetError }; exit }
         # The old Find()+Address() version could never work here: Address() answers only for ranges the
         # resident host reaches directly, and a Find() result is not one of them (measured in P2 wave 1).
         # UsedRange.Address() does work - getExcelContext relies on it - and the cells are then scanned
@@ -4483,7 +4654,19 @@ switch ($Action) {
         } else {
             $sheet.Unprotect($password)
         }
-        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; protected = $wantProtect } }
+        # 回报前先读回真实状态：密码不对 / WPS 静默拒绝时，直接报 protected=$wantProtect 就是撒谎，
+        # 而调用方会据此认为「前置条件已成立」继续写（FIXES 71）。读不到就不下结论。
+        $actual = $wantProtect
+        try {
+            $actual = [bool]$sheet.ProtectContents
+            if (-not $actual) { $actual = [bool]$sheet.ProtectDrawingObjects }
+            if (-not $actual) { $actual = [bool]$sheet.ProtectScenarios }
+        } catch { $actual = $wantProtect }
+        if ($actual -ne $wantProtect) {
+            Output-Json @{ success = $false; error = ("工作表保护状态没有按请求改变：请求 " + $wantProtect + "，实际 " + $actual + "。若刚才是解除保护，通常是密码不对。") }
+            exit
+        }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; protected = $actual } }
     }
 
     "unprotectSheet" {
@@ -4492,6 +4675,14 @@ switch ($Action) {
         $sheet = Get-WorksheetByParam $excel $p
         $password = if ($p.password) { $p.password } else { "" }
         $sheet.Unprotect($password)
+        # 读回：Unprotect 在密码不对时可能静默失败（FIXES 71）。
+        $stillProtected = $false
+        try {
+            $stillProtected = [bool]$sheet.ProtectContents
+            if (-not $stillProtected) { $stillProtected = [bool]$sheet.ProtectDrawingObjects }
+            if (-not $stillProtected) { $stillProtected = [bool]$sheet.ProtectScenarios }
+        } catch { $stillProtected = $false }
+        if ($stillProtected) { Output-Json @{ success = $false; error = "工作表仍处于保护状态：密码不对，或保护不是这个密码设的。" }; exit }
         Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; protected = $false } }
     }
 
@@ -4508,7 +4699,17 @@ switch ($Action) {
         } else {
             $wb.Unprotect($password)
         }
-        Output-Json @{ success = $true; data = @{ workbook = $wb.Name; protected = $wantProtect } }
+        # 读回结构 / 窗口保护的真实状态（FIXES 71）。
+        $actual = $wantProtect
+        try {
+            $actual = [bool]$wb.ProtectStructure
+            if (-not $actual) { $actual = [bool]$wb.ProtectWindows }
+        } catch { $actual = $wantProtect }
+        if ($actual -ne $wantProtect) {
+            Output-Json @{ success = $false; error = ("工作簿保护状态没有按请求改变：请求 " + $wantProtect + "，实际 " + $actual + "。若刚才是解除保护，通常是密码不对。") }
+            exit
+        }
+        Output-Json @{ success = $true; data = @{ workbook = $wb.Name; protected = $actual } }
     }
 
     "insertExcelImage" {
@@ -4529,7 +4730,7 @@ switch ($Action) {
         $height = if ($null -ne $p.height) { $p.height } else { -1 }
         if ($null -eq $p.path -or "$($p.path)" -eq "") { Output-Json @{ success = $false; error = "path is required to insert an image" }; exit }
         $imagePath = Resolve-InputFilePath $p.path
-        if ($null -eq $imagePath) { Output-Json @{ success = $false; error = ("image file not found: " + "$($p.path)") }; exit }
+        if ($null -eq $imagePath) { Output-Json @{ success = $false; error = (Format-WpsInputPathError $p.path 'image file') }; exit }
         $pic = $sheet.Shapes.AddPicture($imagePath, $false, $true, $left, $top, $width, $height)
         Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $imagePath; left = $left; top = $top } }
     }
@@ -4559,9 +4760,10 @@ switch ($Action) {
     }
 
     "openWorkbook" {
+        if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; exit }
+        if (Test-WpsOoxmlEncrypted $p.path) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'excel' ('文件已加密（打开密码）：' + $p.path)) }; exit }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; exit }
         $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
         # AskToUpdateLinks 也是弹框来源，和 UpdateLinks 参数一起双重保险。
         $prevAskLinks = $null
@@ -4609,24 +4811,27 @@ switch ($Action) {
         elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
         $saveChanges = $saveWanted
         $warning = $null
+        $saved = $false
         if ($saveWanted -and $path -eq "") {
             # Close(save) on a workbook that has no file yet opens a modal Save As dialog and
             # blocks the COM call until something answers it. Never allow that.
             $saveChanges = $false
             $warning = "workbook was never saved to disk; closed without saving (use save_as first if you need it on disk)"
         }
-        $prevAlerts = $false
-        try { $prevAlerts = [bool]$excel.DisplayAlerts } catch { }
-        try { $excel.DisplayAlerts = $false } catch { }
+        $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+        $closeError = $null
         try {
-            $wb.Close($saveChanges)
-        } catch {
-            try { $excel.DisplayAlerts = $prevAlerts } catch { }
-            Output-Json @{ success = $false; error = $_.Exception.Message }
-            exit
-        }
-        try { $excel.DisplayAlerts = $prevAlerts } catch { }
-        $data = @{ closed = $name; saved = [bool]$saveChanges; saveRequested = $saveWanted }
+            # 先显式 Save、再以「不需要保存」关闭：只有 Save 真的成功才敢回报 saved=true。以前是
+            # Close($true) 之后直接上报 saved=true —— 只读 / 被占用 / 网络盘掉线时保存失败会无声
+            # 丢弃修改，而结果还告诉用户「已保存」。保存失败时不关闭，数据留在原处（FIXES 71）。
+            if ($saveChanges) {
+                $wb.Save()
+                $saved = $true
+            }
+            $wb.Close($false)
+        } catch { $closeError = $_.Exception.Message } finally { Restore-WpsAlerts $excel $prevAlerts }
+        if ($null -ne $closeError) { Output-Json @{ success = $false; error = $closeError }; exit }
+        $data = @{ closed = $name; saved = $saved; saveRequested = $saveWanted }
         if ($null -ne $warning) { $data.warning = $warning }
         Output-Json @{ success = $true; data = $data }
     }
@@ -4635,7 +4840,10 @@ switch ($Action) {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.Workbooks.Add()
-        if ($p.name) { $wb.SaveAs($p.name) }
+        if ($p.name) {
+            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
+            try { $wb.SaveAs($p.name) } finally { Restore-WpsAlerts $excel $prevAlerts }
+        }
         Output-Json @{ success = $true; data = @{ name = $wb.Name; path = $wb.FullName; sheets = $wb.Sheets.Count } }
     }
 
@@ -4697,9 +4905,10 @@ switch ($Action) {
     }
 
     "openDocument" {
+        if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; exit }
+        if (Test-WpsOoxmlEncrypted $p.path) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'word' ('文件已加密（打开密码）：' + $p.path)) }; exit }
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
-        if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; exit }
         $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
         $docItem = $null
         $openError = $null
@@ -4723,22 +4932,23 @@ switch ($Action) {
         elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
         $saveChanges = $saveWanted
         $warning = $null
+        $saved = $false
         if ($saveWanted -and $path -eq "") {
             $saveChanges = $false
             $warning = "document was never saved to disk; closed without saving (use save_as first if you need it on disk)"
         }
-        $prevAlerts = $false
-        try { $prevAlerts = [bool]$word.DisplayAlerts } catch { }
-        try { $word.DisplayAlerts = 0 } catch { }
+        $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
+        $closeError = $null
         try {
-            $docItem.Close($saveChanges)
-        } catch {
-            try { $word.DisplayAlerts = $prevAlerts } catch { }
-            Output-Json @{ success = $false; error = $_.Exception.Message }
-            exit
-        }
-        try { $word.DisplayAlerts = $prevAlerts } catch { }
-        $data = @{ closed = $name; saved = [bool]$saveChanges; saveRequested = $saveWanted }
+            # 同 closeWorkbook：Save 成功才算 saved=true，失败就不关（FIXES 71）。
+            if ($saveChanges) {
+                $docItem.Save()
+                $saved = $true
+            }
+            $docItem.Close($false)
+        } catch { $closeError = $_.Exception.Message } finally { Restore-WpsAlerts $word $prevAlerts }
+        if ($null -ne $closeError) { Output-Json @{ success = $false; error = $closeError }; exit }
+        $data = @{ closed = $name; saved = $saved; saveRequested = $saveWanted }
         if ($null -ne $warning) { $data.warning = $warning }
         Output-Json @{ success = $true; data = $data }
     }
@@ -5321,9 +5531,10 @@ switch ($Action) {
     }
 
     "openPresentation" {
+        if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; exit }
+        if (Test-WpsOoxmlEncrypted $p.path) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'ppt' ('文件已加密（打开密码）：' + $p.path)) }; exit }
         $ppt = Get-WpsPpt
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
-        if (-not $p.path) { Output-Json @{ success = $false; error = "path required" }; exit }
         $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
         $pres = $null
         $openError = $null
@@ -5339,26 +5550,33 @@ switch ($Action) {
         $pres = if ($p.name) { $ppt.Presentations.Item($p.name) } else { $ppt.ActivePresentation }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No presentation" }; exit }
         $name = $pres.Name
-        $path = ""
-        try { $path = [string]$pres.Path } catch { Add-WpsWarning $_.Exception.Message }
+        # 用「文件是否真的在磁盘上」判断，而不是 Path 字符串（未落盘时它未必是空串）。
+        $onDisk = Test-WpsHasDiskPath $pres
         # Same "save" vs "saveChanges" mismatch as closeWorkbook.
         $saveWanted = $true
         if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
         elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
         $saved = $false
         $warning = $null
-        if ($saveWanted) {
-            if ($path -eq "") {
-                # Presentation.Close() takes no save argument, so it only stays quiet if the
-                # document is already marked clean.
-                $warning = "presentation was never saved to disk; closed without saving (use save_as first if you need it on disk)"
-            } else {
-                $pres.Save()
-                $saved = $true
+        # Save 与 Close 都会弹框（只读 / 未落盘 / 被占用），统一关掉并在 finally 还原（FIXES 70）；
+        # 保存失败时报错且不关闭（FIXES 71）。
+        $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+        $closeError = $null
+        try {
+            if ($saveWanted) {
+                if (-not $onDisk) {
+                    # Presentation.Close() takes no save argument, so it only stays quiet if the
+                    # document is already marked clean.
+                    $warning = "presentation was never saved to disk; closed without saving (use save_as first if you need it on disk)"
+                } else {
+                    $pres.Save()
+                    $saved = $true
+                }
             }
-        }
-        if (-not $saved) { $pres.Saved = $true }
-        $pres.Close()
+            if (-not $saved) { $pres.Saved = $true }
+            $pres.Close()
+        } catch { $closeError = $_.Exception.Message } finally { Restore-WpsAlerts $ppt $prevAlerts }
+        if ($null -ne $closeError) { Output-Json @{ success = $false; error = $closeError }; exit }
         $data = @{ closed = $name; saved = $saved; saveRequested = $saveWanted }
         if ($null -ne $warning) { $data.warning = $warning }
         Output-Json @{ success = $true; data = $data }
@@ -5419,24 +5637,31 @@ switch ($Action) {
 
     "insertSlidesFromFile" {
         # 从另一个 PPT 文件把整页幻灯片插入当前演示文稿，保留来源格式（跨PPT整合）
+        # 源文件校验放在取 WPS 实例之前：加密源一旦进了 InsertFromFile 就是 300 秒的模态框
+        # 等待，而且这条路径失败了也不该先拉起 WPS（FIXES 69）。
+        $src = if ($p.filePath) { $p.filePath } elseif ($p.path) { $p.path } else { $null }
+        if (-not $src) { Output-Json @{ success = $false; error = "filePath required" }; exit }
+        if (-not (Test-Path $src)) { Output-Json @{ success = $false; error = "source file not found: $src" }; exit }
+        if (Test-WpsOoxmlEncrypted $src) { Output-Json @{ success = $false; error = (Format-WpsOpenError $src 'ppt' ('文件已加密（打开密码）：' + $src)) }; exit }
         $ppt = Get-WpsPpt
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
         $pres = Get-TargetPres $ppt $p
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No active presentation" }; exit }
-        $src = if ($p.filePath) { $p.filePath } elseif ($p.path) { $p.path } else { $null }
-        if (-not $src) { Output-Json @{ success = $false; error = "filePath required" }; exit }
-        if (-not (Test-Path $src)) { Output-Json @{ success = $false; error = "source file not found: $src" }; exit }
         $before = $pres.Slides.Count
         $afterIndex = if ($null -ne $p.afterIndex) { [int]$p.afterIndex } else { $before }
         if ($afterIndex -lt 0) { $afterIndex = 0 }
         if ($afterIndex -gt $before) { $afterIndex = $before }
-        if ($null -ne $p.slideStart -and $null -ne $p.slideEnd) {
-            [void]$pres.Slides.InsertFromFile($src, $afterIndex, [int]$p.slideStart, [int]$p.slideEnd)
-        } elseif ($null -ne $p.slideStart) {
-            [void]$pres.Slides.InsertFromFile($src, $afterIndex, [int]$p.slideStart)
-        } else {
-            [void]$pres.Slides.InsertFromFile($src, $afterIndex)
-        }
+        # 插入整页同样会弹框（来源不可读 / 格式提示），和源文件预检一起兜住（FIXES 70）。
+        $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
+        try {
+            if ($null -ne $p.slideStart -and $null -ne $p.slideEnd) {
+                [void]$pres.Slides.InsertFromFile($src, $afterIndex, [int]$p.slideStart, [int]$p.slideEnd)
+            } elseif ($null -ne $p.slideStart) {
+                [void]$pres.Slides.InsertFromFile($src, $afterIndex, [int]$p.slideStart)
+            } else {
+                [void]$pres.Slides.InsertFromFile($src, $afterIndex)
+            }
+        } finally { Restore-WpsAlerts $ppt $prevAlerts }
         $after = $pres.Slides.Count
         Output-Json @{ success = $true; data = @{ inserted = ($after - $before); afterIndex = $afterIndex; totalSlides = $after; source = $src } }
     }
@@ -6247,7 +6472,7 @@ switch ($Action) {
         if ($null -ne $p.duration) { $slide.SlideShowTransition.Duration = [single]$p.duration }
         if ($null -ne $p.sound -and "$($p.sound)" -ne "") {
             $soundPath = Resolve-InputFilePath $p.sound
-            if ($null -eq $soundPath) { Output-Json @{ success = $false; error = ("sound file not found: " + "$($p.sound)") }; exit }
+            if ($null -eq $soundPath) { Output-Json @{ success = $false; error = (Format-WpsInputPathError $p.sound 'sound file') }; exit }
             $slide.SlideShowTransition.SoundEffect.ImportFromFile($soundPath)
         }
         Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; effect = $p.effect; entryEffect = $effect; duration = $p.duration } }
@@ -6856,6 +7081,8 @@ switch ($Action) {
         $lookAt = if ($matchWholeWord) { 1 } else { 2 }
         try {
             $scope = if ($null -ne $p.range -and "$($p.range)" -ne "") { $sheet.Range([string]$p.range) } else { $sheet.UsedRange }
+            $budgetError = Get-WpsRangeBudgetError $scope 'scan' 'find_replace' '请给出更小的 range（例如 A1:Z5000）。'
+            if ($null -ne $budgetError) { Output-Json @{ success = $false; error = $budgetError }; exit }
             # Count matching cells from a single Value2 read. Excel's Find/FindNext binding is
             # unreliable under PowerShell's COM binder cache; reading values is exact and cheap.
             $cells = 0

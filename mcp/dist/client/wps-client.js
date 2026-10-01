@@ -146,6 +146,10 @@ class WpsClient {
     }
     async getRangeData(sheet, range) {
         const response = await this.invokeAction('getRangeData', { sheet, range });
+        // A failed read must never look like an empty range: the FIXES 72 budget refusal (and every other
+        // bridge error) lands here, and swallowing it made read_range answer "范围是空的，没有数据".
+        if (!response.success)
+            throw new Error(response.error || 'getRangeData failed');
         return response.data?.data || [];
     }
     async setRangeData(sheet, range, data) {

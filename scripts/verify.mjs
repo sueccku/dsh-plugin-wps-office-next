@@ -11,11 +11,12 @@ import { readFileSync } from "node:fs";
 const argv = process.argv.slice(2);
 const staticOnly = argv.includes("--static");
 const entry = argv.find((arg) => !arg.startsWith("--")) || "mcp/dist/index.js";
-// D1 (locked 2026-09-13, docs/tool-roadmap.md): the advertised surface is allowed 70 tools / 40,000
-// bytes. It was 45 / 25,000, then 60 / 32,000; P2-3 ended at 56 / 30,885 - 1,115 bytes short of the
-// ceiling - with P2-4, P3 and P4 still ahead, so the user raised it again (FIXES 42). The number moves
-// with the decision, and this gate is what makes the next growth a deliberate edit instead of a drift.
-const BUDGET = { maxTools: 70, maxSchemaBytes: 40000 };
+// D1 (locked 2026-09-13, docs/tool-roadmap.md): the advertised surface is allowed 100 tools / 60,000
+// bytes. It was 45 / 25,000, then 60 / 32,000, then 70 / 40,000 (FIXES 42); v0.4.0 ended at
+// 69 / 37,573 - one tool slot and 2,427 bytes short of the ceiling - and the v0.5.0 pilot work needs
+// room, so the user raised it again (FIXES 68). The number moves with the decision, and this gate is
+// what makes the next growth a deliberate edit instead of a drift.
+const BUDGET = { maxTools: 100, maxSchemaBytes: 60000 };
 // Snapshot of how many actions the bridge dispatches. Ad-hoc source edits have silently dropped a
 // whole case before (a patch script swallowed "slide.unifyFont"), and nothing noticed because every
 // remaining action still worked. Update this number deliberately when adding or removing an action.

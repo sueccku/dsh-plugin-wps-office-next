@@ -3,6 +3,7 @@
 // Run: node scripts/lint.mjs [--quiet]
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { collectAlertsViolations } from './lint-alerts.mjs';
 
 const ROOT = process.cwd();
 const QUIET = process.argv.includes('--quiet');
@@ -70,6 +71,11 @@ for (const name of readdirSync(join(ROOT, 'test'))) {
   if (!name.endsWith('.test.mjs')) continue;
   if (!/process\.exit\(/.test(readFileSync(join(ROOT, 'test', name), 'utf8'))) bad('test-exit-code', join(ROOT, 'test', name), '没有 process.exit(...)');
 }
+
+// 5) 弹出式对话框的静态门禁（FIXES 70）：可能弹框的调用必须先关 DisplayAlerts 并在 finally 还原，
+//    且不许绕过两个共用助手直接读写 DisplayAlerts。规则与理由见 scripts/lint-alerts.mjs。
+const bridge = join(ROOT, 'mcp/scripts/wps-com.ps1');
+for (const v of collectAlertsViolations(readFileSync(bridge, 'utf8'), bridge)) bad(v.rule, v.file, v.detail);
 
 if (!QUIET) {
   for (const v of violations.slice(0, 40)) console.log('LINT ' + v.rule + '  ' + v.file + '  ' + v.detail);
