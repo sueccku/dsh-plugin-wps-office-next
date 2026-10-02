@@ -2,6 +2,17 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.5.3（桥键统一：一个概念一个键 + set_cell_format 的 numberFormat）
+
+> 破坏性变更两处：① 参数键统一，**旧拼写不再被接受**（`filePath` / `dataRange` / `address` / `transition` 等）；
+> ② `wps_common_save_as` 的路径键由 `path` 改为 `outputPath`。
+
+- **一个概念一个键**（FIXES 79）：输入文件 `path`、输出目标 `outputPath`、图片 `imagePath`、幻灯片切换
+  `transition`、链接 `url`、区域 `range` —— 三个应用一致，可以直接类推。桥侧每个 action 只认自己的规范键，
+  兼容别名按 D15-B 删除；旧写法会明确报错，不再静默忽略。
+- `set_cell_format` 的扁平 `numberFormat` 一并声明（D10，FIXES 78 的收尾）。
+- 顺带修掉三个导出工具重复发 `path` 造成的静默失效（由 `param-contract` 抓出）。
+- 数字：测试 **914 项 / 46 文件**；注册工具 267、广告面 **69 / 38,878 字节**（内部上限 100 / 60,000）。
 ## 0.5.2（模型能发现 set_cell_format 的扁平参数）
 
 - `wps_excel_set_cell_format` 的扁平写法（`bold` / `fontSize` / `fontColor` / `bgColor` / `horizontalAlignment` …）
