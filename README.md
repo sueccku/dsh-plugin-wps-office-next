@@ -274,7 +274,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 |---|---|---|---|---|
 | minimal | 4 | 1,348 | 385 | 仅 4 个门面工具 |
 | **standard（默认）** | **69** | **38,878** | **≈11,100** | 门面 + 65 个精选工具 |
-| full | 268 | 155,488 | 44,425 | 全量，保留完整描述 |
+| full | 268 | 155,613 | 44,461 | 全量，保留完整描述 |
 
 注册目录 **268** 个工具：Excel 118 / Word 59 / PPT 77 / 通用 14（含门面）。
 
@@ -357,9 +357,9 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：**918 项测试（46 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 15 项**全绿；广告面 69 工具 / 38,878 字节（内部预算上限 100 / 60,000）；桥 action 263，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
+当前数字：**918 项测试（46 个文件，多数需要真实 WPS）+ verify 24 项 + spec 复现 15 项**全绿；广告面 69 工具 / 38,878 字节（内部预算上限 100 / 60,000）；桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
 
-`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及十个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate`）。需要真实 WPS 的测试与一键 e2e 留在本机。
+`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及十一个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `deprecated`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
 一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」，以及「归属记录不会指向已经死掉的主人」。**29 项检查、约 2–4 分钟。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
@@ -372,7 +372,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 |---|---|
 | cordis.patch.yml | DSH 接线：插件入口 + MCP 客户端（serverName 为 wps-office-next） |
 | plugin.js | DSH 入口：发布包内绝对路径、注册 4 个技能 |
-| mcp/src | MCP server（TypeScript）与工具实现、参数闸门、弃用表 |
+| mcp/src | MCP server（TypeScript）与工具实现、参数闸门（弃用转发表已在 v0.5.0 删除） |
 | mcp/src/spec | **操作规格（唯一真源）**：工具名 ↔ 桥 action ↔ 参数/类型/必填/效果 |
 | spec/ | 由 spec 生成的产物（入库、CI 漂移检查） |
 | mcp/dist | 预构建产物（已入库，安装即用） |

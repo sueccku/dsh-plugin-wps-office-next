@@ -20,7 +20,7 @@
 | wps_ppt_get_slide_notes | wps_call | 获取指定幻灯片的备注内容。 |
 | wps_ppt_set_slide_notes | wps_call | 设置幻灯片的备注内容，用于演讲提示。 |
 | wps_ppt_add_shape | wps_call | 在幻灯片中添加形状。 |
-| wps_ppt_set_shape_style | wps_call | 设置幻灯片中形状的样式，包括填充颜色、边框颜色和边框粗细。 |
+| wps_ppt_set_shape_style | wps_call | 设置幻灯片中形状的样式，包括填充颜色、边框颜色、边框粗细和圆角半径。 |
 | wps_ppt_add_textbox | 直达 | 在幻灯片中添加文本框。 |
 | wps_ppt_set_slide_title | 直达 | 设置幻灯片的标题文本。 |
 | wps_ppt_set_shape_text | 直达 | 设置幻灯片中指定形状的文字内容。 |

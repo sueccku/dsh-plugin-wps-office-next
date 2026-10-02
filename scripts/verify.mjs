@@ -5,6 +5,8 @@
 // runner without WPS. Everything else - the advertised surface, the budget, the bridge action count
 // and the discovery/dispatch guards - is decided before any call reaches the bridge.
 import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { readFileSync } from "node:fs";
 
@@ -53,6 +55,21 @@ console.log("advertised tools=" + tools.length + " schemaBytes=" + bytes + " app
 
 check("budget: tools <= " + BUDGET.maxTools, tools.length <= BUDGET.maxTools, "actual=" + tools.length);
 check("budget: schemaBytes <= " + BUDGET.maxSchemaBytes, bytes <= BUDGET.maxSchemaBytes, "actual=" + bytes);
+
+// Guardrail: every long-action name must be a real bridge action. A typo here is invisible at
+// runtime - the action just quietly gets the 60s default and dies mid-flight (FIXES 81).
+try {
+  const { LONG_ACTIONS } = await import(pathToFileURL(resolve('mcp/dist/client/com-host.js')).href);
+  const hostText = readFileSync('host/wps-actions.ps1', 'utf8');
+  const keysAt = hostText.indexOf('$script:ActionParamKeys');
+  const keysSeg = hostText.slice(keysAt, hostText.indexOf('$script:ActionParamAliases', keysAt));
+  const known = new Set([...keysSeg.matchAll(/'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(/g)].map((m) => m[1]));
+  for (const extra of ['setCellFormat']) known.add(extra);
+  const unknown = [...LONG_ACTIONS].filter((a) => !known.has(a));
+  check('every long-action name is a real bridge action', unknown.length === 0, unknown.length ? unknown.join(', ') : LONG_ACTIONS.size + ' names, all real');
+} catch (e) {
+  check('every long-action name is a real bridge action', false, e instanceof Error ? e.message : String(e));
+}
 
 // Guardrail: the generated dispatcher must still carry every action of the source of truth.
 try {

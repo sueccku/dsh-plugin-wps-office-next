@@ -668,11 +668,12 @@ exports.addShapeHandler = addShapeHandler;
 // ============================================================
 exports.setShapeStyleDefinition = {
     name: 'wps_ppt_set_shape_style',
-    description: `设置幻灯片中形状的样式，包括填充颜色、边框颜色和边框粗细。
+    description: `设置幻灯片中形状的样式，包括填充颜色、边框颜色、边框粗细和圆角半径。
 
 使用场景：
 - "把矩形改成红色"
 - "设置形状的边框为蓝色"
+- "把圆角调大一点"（roundness，仅带调整柄的形状有效；结果会回传实际生效值）
 - "修改形状样式"`,
     category: tools_1.ToolCategory.PRESENTATION,
     inputSchema: {

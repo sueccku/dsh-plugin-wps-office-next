@@ -15,8 +15,15 @@ import { log } from '../utils/logger';
 export const HOST_SCRIPT =
   process.env.WPS_OFFICE_HOST_SCRIPT || path.join(__dirname, '../../..', 'host', 'wps-com-host.ps1');
 
-/** Actions that legitimately run for minutes (export, pivot, beautify, batch insert). */
-const LONG_ACTIONS = new Set([
+/**
+ * Actions that legitimately run for minutes (export, pivot, beautify, batch insert).
+ *
+ * Every name here must be a real bridge action: a typo silently downgrades the action to the default
+ * 60s timeout, so a slow `calculateSheet` would be killed mid-flight and reported as「状态未知」.
+ * FIXES 81 fixed three such names (`beautify` -> `beautifySlide`, `recalculate` -> `calculateSheet`,
+ * `proofreadBasic` -> not a bridge action at all) and `scripts/verify.mjs` now asserts they all exist.
+ */
+export const LONG_ACTIONS = new Set([
   'convertToPDF',
   'convertFormat',
   'exportChartAsImage',
@@ -24,11 +31,9 @@ const LONG_ACTIONS = new Set([
   'exportSlideAsImage',
   'createPivotTable',
   'updatePivotTable',
-  'beautify',
   'beautifySlide',
   'insertSlidesFromFile',
-  'recalculate',
-  'proofreadBasic',
+  'calculateSheet',
   'saveAs',
 ]);
 

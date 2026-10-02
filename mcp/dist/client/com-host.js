@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.comHost = exports.ComHost = exports.POWERSHELL_EXE = exports.HOST_SCRIPT = void 0;
+exports.comHost = exports.ComHost = exports.POWERSHELL_EXE = exports.LONG_ACTIONS = exports.HOST_SCRIPT = void 0;
 /**
  * Input: WPS action name and parameters
  * Output: WPS action result
@@ -48,8 +48,15 @@ const path = __importStar(require("path"));
 const logger_1 = require("../utils/logger");
 /** Path to the resident host script; overridable for tests and relocated installs. */
 exports.HOST_SCRIPT = process.env.WPS_OFFICE_HOST_SCRIPT || path.join(__dirname, '../../..', 'host', 'wps-com-host.ps1');
-/** Actions that legitimately run for minutes (export, pivot, beautify, batch insert). */
-const LONG_ACTIONS = new Set([
+/**
+ * Actions that legitimately run for minutes (export, pivot, beautify, batch insert).
+ *
+ * Every name here must be a real bridge action: a typo silently downgrades the action to the default
+ * 60s timeout, so a slow `calculateSheet` would be killed mid-flight and reported as「状态未知」.
+ * FIXES 81 fixed three such names (`beautify` -> `beautifySlide`, `recalculate` -> `calculateSheet`,
+ * `proofreadBasic` -> not a bridge action at all) and `scripts/verify.mjs` now asserts they all exist.
+ */
+exports.LONG_ACTIONS = new Set([
     'convertToPDF',
     'convertFormat',
     'exportChartAsImage',
@@ -57,11 +64,9 @@ const LONG_ACTIONS = new Set([
     'exportSlideAsImage',
     'createPivotTable',
     'updatePivotTable',
-    'beautify',
     'beautifySlide',
     'insertSlidesFromFile',
-    'recalculate',
-    'proofreadBasic',
+    'calculateSheet',
     'saveAs',
 ]);
 const DEFAULT_TIMEOUT_MS = Number(process.env.WPS_OFFICE_TIMEOUT_MS || 60000);
@@ -83,7 +88,7 @@ const SUSPECT_TIMEOUT_MS = Number(process.env.WPS_OFFICE_SUSPECT_TIMEOUT_MS || 1
 exports.POWERSHELL_EXE = process.env.WPS_OFFICE_POWERSHELL ||
     path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 function timeoutFor(action, suspect = false) {
-    const normal = LONG_ACTIONS.has(action) ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+    const normal = exports.LONG_ACTIONS.has(action) ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
     return suspect ? Math.min(normal, SUSPECT_TIMEOUT_MS) : normal;
 }
 /**

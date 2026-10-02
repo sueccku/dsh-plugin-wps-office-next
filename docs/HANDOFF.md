@@ -17,7 +17,7 @@
 ```powershell
 Set-Location "D:\dsh\a"
 git log --oneline -6 ; git status --porcelain ; git tag --list
-node scripts/verify.mjs          # 预算 + 桥动作数 + 契约（23 项）
+node scripts/verify.mjs          # 预算 + 桥动作数 + 契约 + 长动作名单（24 项）
 node scripts/doctor.mjs          # 环境自检（末尾应打印 DOCTOR OK）
 ```
 
@@ -33,7 +33,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 
 **功能面仍与 v0.2.1 完全一致（工具数、广告面、参数契约都没变）；加固计划 S1–S9 已全部完成**：
 第 1 波（S1 弹窗围堵 + S2 宿主单实例）作为 `v0.3.0` 于 2026-09-16 发布（提交 `d7736e1`）；
-第 2～4 波（S3 破坏性守卫 25/25、S4 覆盖率 267/267、S5 空 catch 账本、S6 失败/超时契约、
+第 2～4 波（S3 破坏性守卫 25/25、S4 覆盖率 267/267（当时；现 268/268）、S5 空 catch 账本、S6 失败/超时契约、
 S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确认框实测）随后全部落地并推送，CI 全绿。
 本机最近一次整轮真机回归 **856/0**、一键 e2e **29/29**（v0.4.0 时）；此后新增的断言逐文件跑过、未重跑整轮。S3–S9 与审计后续已作为 **v0.4.0**（2026-09-19）发布；**v0.5.0（2026-10-02，FIXES 68–76）已发布**：稳定性收口（加密预检 / 弹窗不变量 / 结果如实 / 大范围预算）+ warnings 到模型 + 验证口径分层 + 模型文档生成化 + 废弃别名清理；随后 **v0.5.1**（2026-10-02）把 59 处参数名对齐到桥键（ALIAS_DEBT 归零）；接着 **v0.5.2**（2026-10-02）补声明 `set_cell_format` 的扁平参数（FIXES 78）、**v0.5.3** 统一桥键（FIXES 79）。
 
@@ -105,8 +105,8 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 
 **S1 新增的桥内助手**（都在 `wps-com.ps1` 头部，生成物里会一并出现，不要手改生成物）：
 `Set-WpsAlertsSuppressed` / `Restore-WpsAlerts` / `Open-WordDocument` / `Open-ExcelWorkbook` /
-`Open-PptPresentation` / `Format-WpsOpenError`。四条打开路径（`openFile` / `openWorkbook` /
-`openDocument` / `openPresentation`）已经统一走它们；**再加打开路径时必须复用，不要直接调 `.Open()`**。
+`Open-PptPresentation` / `Format-WpsOpenError`。三条打开路径（`openWorkbook` / `openDocument` /
+`openPresentation`）已经统一走它们（第四条 `openFile` 已在 FIXES 80 删除）；**再加打开路径时必须复用，不要直接调 `.Open()`**。
 
 ---
 
@@ -117,7 +117,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 注册动作 | **263** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
 | 对外工具 | **69**（65 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
 | 广告面字节 | **38,878** / 上限 60,000 | `node scripts/verify.mjs` |
-| 全量 schema | 153,777 字节 | 同上 |
+| 全量 schema | 155,613 字节（268 工具，≈44,461 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
 | 测试 | **918 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
@@ -151,9 +151,9 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 3. **破坏性调用面**：`Delete()` **27 处**、`Clear()` 3、`ClearFormats()` 2、`ClearContents()` 2、
    `Unlist()` 1、`ResetAllPageBreaks()` 1（合计 35 站点 / 29 动作）。**S3 三批已落地**：**25 / 25 个用户数据动作**
    回传前置影响统计（范围类 5 + 对象类 8 + 批注/验证/Word/PPT 12）；清单见 `docs/destructive-operations.md`（FIXES 53 / 54 / 55）。
-4. **测试覆盖缺口**：267 个工具里**只有 159 个被测试点名**（PPT 最弱，76 中仅 26）。
+4. **测试覆盖缺口**（以下三个数字是 S4 当时的口径）：267 个工具里**只有 159 个被测试点名**（PPT 最弱，76 中仅 26）。
    历史上 **7 个「从来没工作过」的缺陷（FIXES 38 / 39 / 43，按正文逐条数共 7 处）全部落在无测试覆盖的路径上**。
-   **S4 已完成**：覆盖率 **267/267**（ratchet 进 `spec-reproduction`，只许涨），`scripts/smoke-tools.mjs`
+   **S4 已完成**：覆盖率 **267/267**（当时；现在 **268/268**，ratchet 进 `spec-reproduction`，只许涨），`scripts/smoke-tools.mjs`
    出矩阵并可 `--live` 只读冒烟；剩余是把 PPT（25/76）等未覆盖工具补上场景测试（FIXES 56）。
 5. **静默失败**：空 catch 走账本（**S5 已完成**，FIXES 59）：桥 34 + 宿主 6 全部登记，新增即红（`test/silent-catch.test.mjs`）。
 6. **恢复路径原有的两个缺陷已修**（由本轮新测试抓出）：陈旧子进程的 `exit` 会反杀新宿主；
@@ -169,9 +169,14 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 ## 8. 待办（下一步）
 
-**加固计划 S1–S9 已全部完成，S3 余量（破坏性动作确认框实测）也已收尾**：S3 25/25、S4 覆盖率 267/267、
+**加固计划 S1–S9 已全部完成，S3 余量（破坏性动作确认框实测）也已收尾**：S3 25/25、S4 覆盖率 267/267（当时）、
 S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架构检查、S9 安装自检，审计 P2、进程残留根因、跨会话回收与 P3 见 `docs/FIXES.md` 52–67。
-**当前没有必须做的技术债。**
+**当前没有必须做的技术债。** 未工具化 action 账本已从 7 清到 **2**（FIXES 80）：只剩 `getActivePresentation` /
+`getActiveWorkbook`，两者的信息已由 `getOpenPresentations` / `getOpenWorkbooks` 的 `active` 标记覆盖，属对称性缺口
+（Word 的 `getActiveDocument` 是工具化的），**故意留着**。
+
+> **未发布状态**：`main` 上有 FIXES 79（桥键统一，随 v0.5.3 发布）、80（补缺口 + 清账本）、81（长动作名单修正）——
+> 其中 80 / 81 **尚未发版**，按 D18/D19 的决定先攒着。npm 发布已暂停（D18 = B，用户手动终止）。
 
 计划之外、审计出来的可选工作（文档同步是其中 P0 项，本轮已做）：
 
@@ -193,9 +198,14 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 
 ## 9. 环境与验证命令
 
-- 本机 DSH：`0.1.5-rc.1`，位于 `C:\Users\qwer\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\`；`DSH_HOME = C:\Users\qwer\.dsh`。
-- profile：`web`（GUI :3080，**活跃中，勿扰**）、`headless`（模板）。临时 profile `wpsdoc2` / `wpse2e`
-  已在 2026-09-16 清理；下次真机 e2e 用 `--setup` 新建，跑完记得 `dsh plugin --profile <name> remove …` 再删目录。
+- 本机 DSH **已经是桌面版打包运行时**（FIXES 76）：`%LOCALAPPDATA%\Programs\DeepSeek Harness\` 下的
+  `DeepSeek Harness.exe` + `resources\app.asar\dsh\...\dsh-desktop-host\lib\cli.js`（用 `ELECTRON_RUN_AS_NODE=1` 启动）；
+  旧的 npm 全局安装 `%APPDATA%\npm\node_modules\@deepseek-ai\dsh\lib\bin.js` **已不存在**。
+  `scripts/e2e.mjs` 两种装法都认（`resolveDshLauncher()`），找不到时用 `--dsh-bin <lib/bin.js>` 显式指定。
+  `DSH_HOME = C:\Users\qwer\.dsh`。
+- GUI：本会话通过 `http://127.0.0.1:19387` 交互（端口以实际启动为准，不要照抄旧值）；profile `headless` 是模板。
+  临时 profile（`wpsdoc2` / `wpse2e*`）用完要 `dsh plugin --profile <name> remove …` 再删目录。
+- 会话日志：`~/.dsh/sessions/<编码的工作目录>/session-<id>/session.v<N>.jsonl.zstd`（**v4**，e2e 需要它做行为断言）。
 - 真机 e2e（需要 WPS）：
   ```powershell
   node scripts/e2e.mjs --setup --timeout 420 --profile <name>
@@ -282,6 +292,9 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `scripts/lint-alerts.mjs` | **弹框守卫门禁**（FIXES 70）：可能弹框的调用必须关 `DisplayAlerts` 并还原，且不许绕过两个共用助手 |
 | `scripts/lint-com-boundary.mjs` | **COM 边界门禁**（FIXES 74）：`return $range` 必须 `return ,$range`；裸 `catch { continue }` 必须登记理由 |
 | `scripts/lib/coverage-tiers.mjs` | **覆盖率口径唯一实现**（FIXES 74）：bespoke / matrixOk / matrixAny / notDriven 四层，CLI 与 CI 共用 |
+| `mcp/src/utils/tool-warnings.ts` | **warnings 通道**（FIXES 73）：AsyncLocalStorage 收集桥侧 warnings，`tool-registry` 追加到结果文本 |
+| `test/deprecated.test.mjs` | FIXES 76：18 个废弃工具名已全部消失（**不需要 WPS**，已进 CI） |
+| `test/silent-catch.test.mjs` | S5：空 `catch { }` 必须登记理由，账本式（桥 34 + 宿主 6） |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
 | `test/*.test.mjs` | 46 个文件、918 断言；账本在 `spec-reproduction.test.mjs` |

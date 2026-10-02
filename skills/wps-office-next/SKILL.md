@@ -27,7 +27,7 @@ whenToUse: 用户要求读取、创建、编辑、排版、分析、导出 WPS �
 - **必填参数写错名**（例如用 rng 代替 range）会被 schema 校验挡下：`Missing required parameter: range`；
 - **可选参数写错名不会被发现**：调用照常执行、静默使用默认值，随后可能因为别的原因失败（例如在没有打开文稿时得到 no presentation is open），错误信息与拼错的名字毫无关系。
 
-所以：不确定参数名时先 wps_help {tool:"wps_ppt_set_animation"} 取完整 schema，再按 schema 里的名字调用，不要照搬其它工具集或旧示例的写法。
+所以：不确定参数名时先 wps_help {tool:"wps_ppt_add_animation"} 取完整 schema，再按 schema 里的名字调用，不要照搬其它工具集或旧示例的写法。
 FIXES 79 起每个概念只有一个键（旧拼写**不再被接受**）：**输入文件 path / 输出目标 outputPath / 图片 imagePath / 幻灯片切换 transition / 链接 url / 区域 range**。同一概念在三个应用里键名一致，可以直接类推；不确定时仍以 schema 为准。
 
 ## 工具面
@@ -37,7 +37,7 @@ FIXES 79 起每个概念只有一个键（旧拼写**不再被接受**）：**�
 <!-- GENERATED:advertised:end -->
 
 - 直接广告的工具见各应用技能与同目录 reference.md。
-- 未广告的工具：先 wps_help {app:"ppt"} 查目录，或 wps_help {query:"chart"} 搜索（支持中文与中英混排，例如 query:"关闭工作簿"、query:"新建 文档 create new"），再用 wps_help {tool:"wps_ppt_set_animation"} 取完整参数 schema，最后用 wps_call {tool, args} 执行。搜不到时结果会带 hint，别把「没搜到」当成「没有这个能力」。
+- 未广告的工具：先 wps_help {app:"ppt"} 查目录，或 wps_help {query:"chart"} 搜索（支持中文与中英混排，例如 query:"关闭工作簿"、query:"新建 文档 create new"），再用 wps_help {tool:"wps_ppt_add_animation"} 取完整参数 schema，最后用 wps_call {tool, args} 执行。搜不到时结果会带 hint，别把「没搜到」当成「没有这个能力」。
 - 多个连续操作可用 wps_batch 一次提交，最多 50 项。
 - 未广告的工具也可以按全名直接调用，wps_help 只负责让你发现它们。
 

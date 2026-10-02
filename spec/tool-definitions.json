@@ -4276,11 +4276,11 @@
     },
     "width": {
      "type": "number",
-     "description": "宽度（磅），可选，不指定则按原始比例"
+     "description": "宽度（磅），���选，不指定则按原始比例"
     },
     "height": {
      "type": "number",
-     "description": "高度（磅），可选，不指定则按原���比例"
+     "description": "高度（磅），可选，不指定则按原始比例"
     }
    },
    "required": [
@@ -4944,7 +4944,7 @@
  },
  {
   "name": "wps_ppt_set_shape_style",
-  "description": "设置幻灯片中形状的样式，包括填充颜色、边框颜色和边框粗细。\n\n使用场景：\n- \"把矩形改成红色\"\n- \"设置形状的边框为蓝色\"\n- \"修改形状样式\"",
+  "description": "设置幻灯片中形状的样式，包括填充颜色、边框颜色、边框粗细和圆角半径。\n\n使用场景：\n- \"把矩形改成红色\"\n- \"设置形状的边框为蓝色\"\n- \"把圆角调大一点\"（roundness，仅带调整柄的形状有效；结果会回传实际生效值）\n- \"修改形状样式\"",
   "inputSchema": {
    "type": "object",
    "properties": {

@@ -1,6 +1,15 @@
 /** Path to the resident host script; overridable for tests and relocated installs. */
 export declare const HOST_SCRIPT: string;
 /**
+ * Actions that legitimately run for minutes (export, pivot, beautify, batch insert).
+ *
+ * Every name here must be a real bridge action: a typo silently downgrades the action to the default
+ * 60s timeout, so a slow `calculateSheet` would be killed mid-flight and reported as「状态未知」.
+ * FIXES 81 fixed three such names (`beautify` -> `beautifySlide`, `recalculate` -> `calculateSheet`,
+ * `proofreadBasic` -> not a bridge action at all) and `scripts/verify.mjs` now asserts they all exist.
+ */
+export declare const LONG_ACTIONS: Set<string>;
+/**
  * Absolute path to Windows PowerShell 5.1. The action layer depends on 5.1 COM adapter
  * semantics, so the host is pinned to the in-box interpreter instead of whatever 'powershell'
  * resolves to on PATH.

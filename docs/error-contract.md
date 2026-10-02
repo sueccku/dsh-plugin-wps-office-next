@@ -8,7 +8,7 @@
 
 每个工具返回 `{ success, content, error? }`，MCP 层把它映射成 `isError: !success`：
 
-- `success: true`：`content` 里有结果；桥收集到的 `warnings` 会附在结果 JSON 的 `data.warnings`。
+- `success: true`：`content` 里有结果；桥收集到的 `warnings` 会附在结果 JSON 的 `data.warnings`，**并且**（FIXES 73 起）第一方工具还会把它追加到结果文本末尾，见 §1c。
 - `success: false`：`content[0].text` 与 `error` 是同一句中文原因。
 
 `warnings` 的语义是「主要操作完成，但某个次要步骤失败了」——不是失败，但需要看。
@@ -40,8 +40,10 @@
   `Get-TargetPres`（`presentationName`）。
 - **消除**：显式传目标名；单文件时不打扰。
 - **仍未覆盖**（记在 `baseline/known-defects.md` C7）：Word 的文档解析、`transpose` 目标表、`copySheet` 源表、已用范围探测。
-- **能到哪儿**：`warnings` 只在**原样透传桥输出**的工具上到模型（`wps_call` / `wps_execute_method` / `wps_batch` 单项结果）；
-  第一方工具 handler 只取 `data`，会丢掉 `warnings`。
+- **能到哪儿**：**所有工具**。FIXES 73 起，桥侧 warnings 会经第一方工具到达模型 —— `wps_call` / `wps_execute_method` /
+  `wps_batch` 原样透传；其余工具由 `mcp/src/server/tool-registry.ts` 收集后追加到结果文本
+  （`mcp/src/utils/tool-warnings.ts`，AsyncLocalStorage）。
+- **注意**：`wps_batch` 单项结果会截断到 2000 字符，追加的 warnings 可能被截掉（FIXES 73 的残留，单项调用可避免）。
 
 断言：`test/target-ambiguity.test.mjs`（真实 WPS）。
 
@@ -67,9 +69,13 @@
 | 长动作超时 | 300000 ms | `WPS_OFFICE_LONG_TIMEOUT_MS` |
 | 可疑（suspect）短超时 | 15000 ms | `WPS_OFFICE_SUSPECT_TIMEOUT_MS` |
 
-长动作集合（`LONG_ACTIONS`）：`convertToPDF`、`convertFormat`、`exportChartAsImage`、
+长动作集合（`LONG_ACTIONS`，11 个）：`convertToPDF`、`convertFormat`、`exportChartAsImage`、
 `exportRangeAsImage`、`exportSlideAsImage`、`createPivotTable`、`updatePivotTable`、
-`beautify`、`beautifySlide`、`insertSlidesFromFile`、`recalculate`、`proofreadBasic`、`saveAs`。
+`beautifySlide`、`insertSlidesFromFile`、`calculateSheet`、`saveAs`。
+
+> FIXES 81 修掉了这张表里的三个**废名**（`beautify` → `beautifySlide`、`recalculate` → `calculateSheet`、
+> `proofreadBasic` —— 它根本不是桥 action，校对是纯 TS 实现）：名字写错不会报错，只会让那个动作悄悄退回
+> 60s 默认超时、慢操作跑到一半被杀成「状态未知」。`scripts/verify.mjs` 现在会断言每个名字都是真实 action。
 
 超时后**不是**「已失败」，而是：
 
@@ -94,4 +100,4 @@
 | 批量上限 50、空批量、部分失败继续、结果截断 2000、门面/未知工具拒绝 | `test/error-contract.test.mjs` |
 | 空 catch 的静默必须登记 | `test/silent-catch.test.mjs` |
 | 错误文案三段式、动作名、幂等 | `test/error-wording.test.mjs` |
-| 广告面、桥动作数、门面行为 | `scripts/verify.mjs` |
+| 广告面、桥动作数、门面行为、长动作名单都是真实 action | `scripts/verify.mjs` |

@@ -68,7 +68,7 @@ wps_excel_add_list_row、wps_excel_auto_fit、wps_excel_calculate、wps_excel_cl
 - 条件格式、排序、筛选、转置等此前会静默忽略关键参数，现在参数名写错会报错，但**值仍不合法时也可能报错**——例如给不存在的具名样式、未知的条件格式名。报错信息会说明可用取值。
 - Hyperlinks 不会覆盖已有单元格的值：给非空单元格设超链接时，显示文本不会替换原内容。
 - 插入图片的路径可以是相对路径（按当前工作目录解析），文件不存在会明确报 image file not found。
-- create_chart 没有 has_header 参数（此前宣称但无法实现，已移除）；图表类型用 chartType。
+- create_chart 没有 has_header 参数（此前宣称但无法实现，已移除）；图表类型用 chartType，数据区域用 range（FIXES 79 起不再叫 dataRange）。
 - 全列引用如 A:A 在公式里代价高，尽量写成 A1:A1000 这类有界区域。
 - set_formula 写区域时**不做相对引用调整**：对 B2:B5 一次写入 `=SUMIF(明细!$A$2:$A$13,A2,明细!$C$2:$C$13)`，B2:B5 会全部引用 A2，看起来像公式算错。结果文本里会带这条提示；要逐行公式请逐格调用 set_formula。
 - generate_formula 需要 description 参数，不传会校验失败。

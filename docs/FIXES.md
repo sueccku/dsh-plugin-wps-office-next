@@ -2306,6 +2306,52 @@ handler 里那句「The schema declares the format fields twice」是空话。
 `getOpenPresentations` / `getOpenWorkbooks` 的 active 标记覆盖，留作对称性缺口）；`EXPECTED_ACTIONS` 267 → **263**
 （verify 的 source / generated / expected 三方一致）；注册工具 267 → **268**；真机 `ppt-contract-fixes` **60/60**
 （含 4 项新断言）。
+### 81. 长动作名单里的三个废名（代码 bug）+ 门禁
+
+**发现**（做文档审计时对出来的）：`docs/error-contract.md` 的「长动作集合」与 `mcp/src/client/com-host.ts` 的
+`LONG_ACTIONS` 内容一致，但其中**三个名字不是桥 action**：
+
+- `beautify` —— 真名是 `beautifySlide`（本来就在名单里）；
+- `recalculate` —— 真名是 `calculateSheet`；
+- `proofreadBasic` —— 桥里根本没有这个 action（校对是纯 TS 实现，0 次 `executeMethod`）。
+
+**后果**：名字写错不会报错，只会让那个动作悄悄退回 **60s 默认超时**。`calculateSheet` 这种慢操作一旦超过
+60s 就会被杀掉并报「状态未知」，而它本该有 300s —— 正是「静默降级」那一类缺陷。
+
+**做法**：`LONG_ACTIONS` 改成 11 个真实名字（`beautifySlide` / `calculateSheet` 在列，删掉两个废名）并导出；
+`scripts/verify.mjs` 新增静态断言：**每个名字都必须是真实桥 action**（从 `host/wps-actions.ps1` 的键表读，
+含动态动作白名单）。verify 静态 18 → 19 项、全量 23 → 24 项。
+
+**验收**：`node scripts/verify.mjs` 24 项全绿（新断言 `11 names, all real`）。
+
+### 82. 全项目文档审计（33 份）
+
+**范围**：33 份 Markdown（全库 581 份，排除 `node_modules` / `mcp/dist` / 冻结的 `baseline/upstream-0.1.0` /
+`test/.artifacts`）。**方法**：先机器扫描（会过期的数字、已删除的工具/action 名、失效链接、不存在的文件引用、
+文档里的 `wps_*` 名与注册表交叉核对），再逐份人工核对行为契约类文档。
+
+**修掉的真过期**：
+
+- `baseline/known-defects.md`：`267 COM actions` → **263**（连带说明是 FIXES 80 删了四个）；
+- `docs/HANDOFF.md`：§5 全量字节 153,777 → **155,488**（268 工具 / ≈44,425 tokens）；「四条打开路径」→ **三条**
+  （`openFile` 已删）；S4 覆盖率两处标注为「当时（现 268/268）」；§9 环境段重写（**DSH 已是桌面版打包运行时**、
+  GUI 端口以实际为准、会话日志 v4、`--dsh-bin` 逃生口）；§8 补上未发布状态与「账本已清到 2」的说明；
+- `mcp/src/client/README.md`：`THIRD_PARTY_NOTICES.md` 标明在仓库根部；`host/README.md`：去掉会漂的「4,900 行」。
+
+**修掉模型面向的死名字**：`skills/wps-office-next/SKILL.md` 有**两处**示例仍在用 v0.5.0 删掉的
+`wps_ppt_set_animation` → 改成 `wps_ppt_add_animation`（模型照着示例调用会直接失败）。
+
+**修掉行为契约的过期描述**：`docs/error-contract.md` §1c 还写着「warnings 只在原样透传的工具上到模型
+（`wps_call` / `wps_execute_method` / `wps_batch`），第一方工具 handler 只取 `data`，会丢掉 warnings」——
+FIXES 73 已经修好这件事，文档没跟上。改成事实描述（所有工具都能到，机制见 `tool-warnings.ts`）+
+`wps_batch` 单项 2000 字符截断的残留说明；§3 的长动作清单按 FIXES 81 更新。
+
+**交叉核对结果**：20 份 live 文档里的 `wps_*` 工具名 **0 个不存在**；18 个被引用的测试文件 **0 个缺失**；
+文档引用的 9 个脚本全部存在；4 份生成物（tool-coverage / param-contract / skills reference / spec）**无漂移**。
+
+**有意保留为历史的**（已在文中标注或本身就是日志）：`CHANGELOG.md`、`docs/FIXES.md`、`docs/PROGRESS.md`、
+`docs/tool-roadmap.md` 的 P0 审计快照、`docs/stabilization-plan.md`、`docs/CONTRACT-excel.md`（已标「P1 审计历史快照」）、
+`THIRD_PARTY_NOTICES.md` 的 mac 传输说明。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

@@ -1,6 +1,6 @@
 # host/
 
-常驻 WPS COM 宿主。替代「每次工具调用 spawn 一个 PowerShell 并重新解析 4,900 行脚本」的旧路径。
+常驻 WPS COM 宿主。替代「每次工具调用 spawn 一个 PowerShell 并重新解析整份桥脚本」的旧路径。
 
 ## 文件
 
