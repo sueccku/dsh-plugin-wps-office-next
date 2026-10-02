@@ -45,7 +45,7 @@ export const insertPptImageDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      filePath: {
+      path: {
         type: 'string',
         description: '图片文件路径',
       },
@@ -66,16 +66,16 @@ export const insertPptImageDefinition: ToolDefinition = {
         description: '高度（磅），可选，不指定则按原始比例',
       },
     },
-    required: ['slideIndex', 'filePath'],
+    required: ['slideIndex', 'path'],
   },
 };
 
 export const insertPptImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, filePath, left, top, width, height } = args as {
+  const { slideIndex, path, left, top, width, height } = args as {
     slideIndex: number;
-    filePath: string;
+    path: string;
     left?: number;
     top?: number;
     width?: number;
@@ -83,19 +83,19 @@ export const insertPptImageHandler: ToolHandler = async (
   };
 
   try {
-    // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path/imagePath 别名
+    // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
       imageIndex?: number;
     }>(
       'insertPptImage',
-      { slideIndex, filePath, path: filePath, imagePath: filePath, left, top, width, height },
+      { slideIndex, path, left, top, width, height },
       WpsAppType.PRESENTATION
     );
 
     if (response.success) {
-      let text = `图片插入成功！\n幻灯片: 第 ${slideIndex} 页\n文件: ${filePath}`;
+      let text = `图片插入成功！\n幻灯片: 第 ${slideIndex} 页\n文件: ${path}`;
       if (left !== undefined && top !== undefined) text += `\n位置: (${left}, ${top})`;
       if (width !== undefined) text += `\n宽度: ${width}`;
       if (height !== undefined) text += `\n高度: ${height}`;

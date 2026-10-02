@@ -41,9 +41,8 @@ const tb = await call("wps_ppt_add_textbox", { slideIndex: 1, text: "标题", le
 check("textbox added", ok(tb), text(tb).replace(/\s+/g, " ").slice(0, 60));
 
 // transition/effect and duration, footer show, slide number show, date-time format
-check("set_slide_transition accepts transition+duration", ok(await call("wps_ppt_set_transition", { slideIndex: 1, transition: "fade", duration: 1 })), "");
 check("set_slide_transition accepts effect", ok(await call("wps_ppt_set_slide_transition", { slideIndex: 1, effect: "fade", duration: 0.5 })), "");
-check("apply_transition_to_all accepts effect", ok(await call("wps_ppt_apply_transition_to_all", { effect: "fade" })), "");
+check("apply_transition_to_all accepts transition", ok(await call("wps_ppt_apply_transition_to_all", { transition: "fade" })), "");
 // P4 merged the three footer tools into one; the checks follow the new surface.
 check("footer can be shown", ok(await call("wps_ppt_set_slide_footer", { footerText: "probe", showFooter: true })), "");
 check("footer reports hidden", text(await call("wps_ppt_set_slide_footer", { footerText: "probe", showFooter: false })).includes("隐藏"), "");
@@ -94,11 +93,11 @@ check("animation preset accepts shapeIndex", ok(await call("wps_ppt_add_animatio
 check("animation preset rejects an out-of-range shape", !ok(await call("wps_ppt_add_animation", { slideIndex: 1, preset: "fadeIn", shapeIndex: 99 })), "");
 check("animation emphasis accepts an effect", ok(await call("wps_ppt_add_animation", { slideIndex: 1, shapeIndex: 1, effect: "pulse", effectKind: "emphasis" })), "");
 check("add_animation accepts shapeIndex+trigger", ok(await call("wps_ppt_add_animation", { slideIndex: 1, shapeIndex: 1, effect: 10, trigger: "onClick" })), "");
-check("remove_animation accepts animationIndex", ok(await call("wps_ppt_remove_animation", { slideIndex: 1, animationIndex: 1 })), "");
+check("remove_animation accepts index", ok(await call("wps_ppt_remove_animation", { slideIndex: 1, index: 1 })), "");
 
 // hyperlink url, font unification range, title decoration style
-check("hyperlink accepts url", ok(await call("wps_ppt_add_ppt_hyperlink", { slideIndex: 1, shapeIndex: 1, url: "https://example.com" })), "");
-check("unify_font accepts include_title/include_body", ok(await call("wps_ppt_unify_font", { font_name: "Arial", include_title: true, include_body: false })), "");
+check("hyperlink accepts address", ok(await call("wps_ppt_add_ppt_hyperlink", { slideIndex: 1, shapeIndex: 1, address: "https://example.com" })), "");
+check("unify_font accepts includeTitle/includeBody", ok(await call("wps_ppt_unify_font", { fontName: "Arial", includeTitle: true, includeBody: false })), "");
 // recipe: 标题装饰 = 标题下方一根细色条
 check("recipe: title decoration bar", ok(await addShape({ slideIndex: 1, type: "rectangle", left: 60, top: 96, width: 200, height: 6, fillColor: "#1A365D" })), "");
 
@@ -151,8 +150,8 @@ check("shape effect rejects an unknown border style", !ok(await call("wps_ppt_se
 check("shape effect rejects a call with no effect at all", !ok(await call("wps_ppt_set_shape_effect", { slideIndex: 1, shapeIndex: 1 })), "");
 
 // slide image: the action used to be Word's insertImage, and image style takes a nested object
-const img = await call("wps_ppt_insert_slide_image", { slideIndex: 2, imagePath: path.resolve(PROBE_PNG), left: 40, top: 40 });
-check("insert_slide_image inserts into the slide", ok(img), text(img).replace(/\s+/g, " ").slice(0, 70));
+const img = await call("wps_ppt_insert_ppt_image", { slideIndex: 2, path: path.resolve(PROBE_PNG), left: 40, top: 40 });
+check("insert_ppt_image inserts into the slide", ok(img), text(img).replace(/\s+/g, " ").slice(0, 70));
 const slide2Shapes = await shapes(2);
 const picture = slide2Shapes.find((s) => s.type === 13 || /Picture/i.test(String(s.name)));
 if (picture) {

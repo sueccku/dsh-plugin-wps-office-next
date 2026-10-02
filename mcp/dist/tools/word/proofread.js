@@ -139,11 +139,11 @@ exports.replaceRangeDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            start_pos: {
+            startPos: {
                 type: 'number',
                 description: '起始字符位置（从0开始）',
             },
-            end_pos: {
+            endPos: {
                 type: 'number',
                 description: '结束字符位置',
             },
@@ -152,12 +152,12 @@ exports.replaceRangeDefinition = {
                 description: '替换后的文本内容',
             },
         },
-        required: ['start_pos', 'end_pos', 'text'],
+        required: ['startPos', 'endPos', 'text'],
     },
 };
 const replaceRangeHandler = async (args) => {
-    const { start_pos, end_pos, text } = args;
-    if (start_pos === undefined || end_pos === undefined) {
+    const { startPos, endPos, text } = args;
+    if (startPos === undefined || endPos === undefined) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -165,7 +165,7 @@ const replaceRangeHandler = async (args) => {
             error: '缺少位置参数',
         };
     }
-    if (typeof start_pos !== 'number' || typeof end_pos !== 'number' || !Number.isInteger(start_pos) || !Number.isInteger(end_pos)) {
+    if (typeof startPos !== 'number' || typeof endPos !== 'number' || !Number.isInteger(startPos) || !Number.isInteger(endPos)) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -173,7 +173,7 @@ const replaceRangeHandler = async (args) => {
             error: '位置参数类型错误',
         };
     }
-    if (start_pos < 0 || end_pos < 0) {
+    if (startPos < 0 || endPos < 0) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -181,7 +181,7 @@ const replaceRangeHandler = async (args) => {
             error: '位置参数为负数',
         };
     }
-    if (start_pos >= end_pos) {
+    if (startPos >= endPos) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -198,7 +198,7 @@ const replaceRangeHandler = async (args) => {
         };
     }
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('replaceRange', { startPos: start_pos, endPos: end_pos, text }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('replaceRange', { startPos: startPos, endPos: endPos, text }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const d = response.data;
             return {

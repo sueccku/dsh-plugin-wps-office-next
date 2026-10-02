@@ -35,7 +35,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 第 1 波（S1 弹窗围堵 + S2 宿主单实例）作为 `v0.3.0` 于 2026-09-16 发布（提交 `d7736e1`）；
 第 2～4 波（S3 破坏性守卫 25/25、S4 覆盖率 267/267、S5 空 catch 账本、S6 失败/超时契约、
 S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确认框实测）随后全部落地并推送，CI 全绿。
-本机最近一次整轮真机回归 **856/0**、一键 e2e **29/29**（v0.4.0 时）；此后新增的断言逐文件跑过、未重跑整轮。S3–S9 与审计后续已作为 **v0.4.0**（2026-09-19）发布；**v0.5.0（2026-10-02，FIXES 68–76）已发布**：稳定性收口（加密预检 / 弹窗不变量 / 结果如实 / 大范围预算）+ warnings 到模型 + 验证口径分层 + 模型文档生成化 + 废弃别名清理。
+本机最近一次整轮真机回归 **856/0**、一键 e2e **29/29**（v0.4.0 时）；此后新增的断言逐文件跑过、未重跑整轮。S3–S9 与审计后续已作为 **v0.4.0**（2026-09-19）发布；**v0.5.0（2026-10-02，FIXES 68–76）已发布**：稳定性收口（加密预检 / 弹窗不变量 / 结果如实 / 大范围预算）+ warnings 到模型 + 验证口径分层 + 模型文档生成化 + 废弃别名清理；随后 **v0.5.1**（2026-10-02）把 59 处参数名对齐到桥键（ALIAS_DEBT 归零）。
 
 ---
 
@@ -47,9 +47,9 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 分支 / HEAD | `main` / `v0.4.0-2-g468d542`（v0.4.0 之后 2 个提交，以 `git describe --tags` 为准）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0`、`v0.5.0` |
-| Releases | v0.5.0（Latest，2026-10-02）、v0.4.0、v0.3.0、v0.2.1、v0.2.0——正文均为正常 UTF-8 |
-| 包 | `dsh-plugin-wps-office-next@0.5.0`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0`、`v0.5.0`、`v0.5.1` |
+| Releases | v0.5.1（Latest，2026-10-02）、v0.5.0、v0.4.0、v0.3.0、v0.2.1、v0.2.0——正文均为正常 UTF-8 |
+| 包 | `dsh-plugin-wps-office-next@0.5.1`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
 **工作区**：干净（`docs/HANDOFF.md` 本身已随仓库跟踪）。临时 profile `wpsdoc2` / `wpse2e` 已删除。
@@ -119,11 +119,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **37,573** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **927 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
+| 测试 | **914 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～76 号 | `docs/FIXES.md` |
+| FIXES | 1～77 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -185,9 +185,9 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 
 **发版**：S3–S9、审计 P2、进程残留治理（FIXES 65/66）与 P3 已作为 **v0.4.0（2026-09-19）** 打包发布；
 **v0.5.0（2026-10-02，FIXES 68–76）** 同样走完整流程：升 `package.json` / lockfile、写 CHANGELOG、
-更新 README 安装 pin（`#v0.5.0`）、tag + Release，并跑了一键 e2e **29/29**。
+更新 README 安装 pin（`#v0.5.0`）、tag + Release，并跑了一键 e2e **29/29**。**v0.5.1（2026-10-02）** 只做参数命名对齐，同样走完整流程（pin `#v0.5.1`）。
 
-**顺手可清**：无（`docs/PROGRESS.md` 已同步到 927 项 / 46 文件）。
+**顺手可清**：无（`docs/PROGRESS.md` 已同步到 914 项 / 46 文件）。
 
 ---
 
@@ -284,7 +284,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `scripts/lib/coverage-tiers.mjs` | **覆盖率口径唯一实现**（FIXES 74）：bespoke / matrixOk / matrixAny / notDriven 四层，CLI 与 CI 共用 |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | 46 个文件、927 断言；账本在 `spec-reproduction.test.mjs` |
+| `test/*.test.mjs` | 46 个文件、914 断言；账本在 `spec-reproduction.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
@@ -297,7 +297,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～76 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～77 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

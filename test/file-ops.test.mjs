@@ -1,6 +1,6 @@
 // Regression for the file-path and conversion batch.
 //
-// The open/save/convert tools all sent "filePath" (and often two more aliases) while the bridge read
+// The open/save/convert tools all sent "path" (and often two more aliases) while the bridge read
 // "path"/"outputPath", so the target path was dropped and the operation either failed or acted on the
 // wrong document. convertToPDF also picked the first running application, so with Excel open it
 // exported the workbook no matter which document the caller meant.
@@ -38,28 +38,28 @@ const viaAction = (method, params, appType) => call("wps_call", { tool: "wps_exe
 await viaAction("createWorkbook", {});
 await call("wps_excel_write_range", { range: "A1:B2", data: [["k", "v"], ["1", "2"]] });
 
-// save_as used to send filePath+outputPath and rely on one being read; the bridge reads path.
-const saved = await call("wps_common_save_as", { filePath: XLSX });
-check("save_as accepts filePath", ok(saved), text(saved).replace(/\s+/g, " ").slice(0, 90));
+// save_as used to send path+outputPath and rely on one being read; the bridge reads path.
+const saved = await call("wps_common_save_as", { path: XLSX });
+check("save_as accepts path", ok(saved), text(saved).replace(/\s+/g, " ").slice(0, 90));
 check("save_as actually wrote the file to the requested path", existsSync(XLSX), XLSX);
 
 // open_workbook had the same mismatch.
 const before = payload(await viaAction("getOpenWorkbooks", {})).data?.count ?? -1;
-const opened = await call("wps_excel_open_workbook", { filePath: XLSX });
-check("open_workbook accepts filePath", ok(opened), text(opened).replace(/\s+/g, " ").slice(0, 90));
+const opened = await call("wps_excel_open_workbook", { path: XLSX });
+check("open_workbook accepts path", ok(opened), text(opened).replace(/\s+/g, " ").slice(0, 90));
 const after = payload(await viaAction("getOpenWorkbooks", {})).data?.count ?? -1;
 check("open_workbook really opened the requested file", after >= before, "before=" + before + " after=" + after);
 
 // A missing file must be reported, not silently ignored.
-const missing = await call("wps_excel_open_workbook", { filePath: path.join(OUT, "does-not-exist.xlsx") });
+const missing = await call("wps_excel_open_workbook", { path: path.join(OUT, "does-not-exist.xlsx") });
 check("open_workbook reports a missing file instead of succeeding", !ok(missing), text(missing).replace(/\s+/g, " ").slice(0, 90));
 
 // convert_to_pdf picked Excel whenever Excel was running, whatever the caller meant.
-const pdf = await call("wps_convert_to_pdf", { outputPath: PDF, app_type: "excel" });
-check("convert_to_pdf accepts app_type", ok(pdf), text(pdf).replace(/\s+/g, " ").slice(0, 90));
+const pdf = await call("wps_convert_to_pdf", { outputPath: PDF, appType: "excel" });
+check("convert_to_pdf accepts appType", ok(pdf), text(pdf).replace(/\s+/g, " ").slice(0, 90));
 check("convert_to_pdf wrote the PDF to the requested path", existsSync(PDF), PDF);
-const pdfExcelOnly = await call("wps_convert_to_pdf", { outputPath: PDF, app_type: "ppt" });
-check("app_type=ppt does not silently export Excel instead", !ok(pdfExcelOnly), text(pdfExcelOnly).replace(/\s+/g, " ").slice(0, 90));
+const pdfExcelOnly = await call("wps_convert_to_pdf", { outputPath: PDF, appType: "ppt" });
+check("appType=ppt does not silently export Excel instead", !ok(pdfExcelOnly), text(pdfExcelOnly).replace(/\s+/g, " ").slice(0, 90));
 
 // Word header/footer now honour the section the tool passes.
 await viaAction("createDocument", {}, "wps");

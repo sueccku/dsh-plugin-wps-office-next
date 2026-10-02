@@ -294,7 +294,7 @@ exports.removeDuplicatesDefinition = {
                     type: 'string',
                 },
             },
-            has_header: {
+            hasHeader: {
                 type: 'boolean',
                 description: '第一行是否为表头，默认true',
             },
@@ -307,12 +307,12 @@ exports.removeDuplicatesDefinition = {
     },
 };
 const removeDuplicatesHandler = async (args) => {
-    const { range, columns, has_header, sheet } = args;
+    const { range, columns, hasHeader, sheet } = args;
     try {
         const response = await wps_client_1.wpsClient.executeMethod('removeDuplicates', {
             range,
             columns: columns || [],
-            hasHeader: has_header !== false, // 默认true
+            hasHeader: hasHeader !== false, // 默认true
             sheet,
         }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success || !response.data) {

@@ -58,7 +58,7 @@ await call('wps_excel_close_workbook', { save: false });
 
 // ---- long path must explain itself -------------------------------------------------------------------
 const long = 'C:\\' + 'x'.repeat(300) + '.png';
-const longPath = await call('wps_excel_insert_excel_image', { filePath: long, cell: 'A1' });
+const longPath = await call('wps_excel_insert_excel_image', { path: long, cell: 'A1' });
 check('a >260-character path explains the Windows limit', longPath.isErr && /260/.test(longPath.text) && /上限/.test(longPath.text), longPath.text.slice(0, 160));
 check('and does not pretend it is simply missing', !/^.*not found: C:\\\\x+/.test(longPath.text), longPath.text.slice(0, 90));
 

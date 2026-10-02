@@ -314,7 +314,7 @@ export const alignShapesDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      shapeIndices: {
+      names: {
         type: 'array',
         items: { type: 'number' },
         description: '要对齐的形状索引数组（从1开始）',
@@ -325,7 +325,7 @@ export const alignShapesDefinition: ToolDefinition = {
         enum: ['left', 'center', 'right', 'top', 'middle', 'bottom'],
       },
     },
-    // shapeIndices is optional: without it every shape on the slide is aligned.
+    // names is optional: without it every shape on the slide is aligned.
     required: ['slideIndex', 'alignment'],
   },
 };
@@ -333,9 +333,9 @@ export const alignShapesDefinition: ToolDefinition = {
 export const alignShapesHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndices, alignment } = args as {
+  const { slideIndex, names, alignment } = args as {
     slideIndex: number;
-    shapeIndices: number[];
+    names: number[];
     alignment: string;
   };
 
@@ -347,7 +347,7 @@ export const alignShapesHandler: ToolHandler = async (
       shapes?: number;
     }>(
       'alignShapes',
-      { slideIndex, shapeIndices, alignment },
+      { slideIndex, names, alignment },
       WpsAppType.PRESENTATION
     );
 
@@ -367,9 +367,9 @@ export const alignShapesHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            // shapeIndices is optional: without it the action aligns every shape on the slide, and
+            // names is optional: without it the action aligns every shape on the slide, and
             // dereferencing it here used to fail with "Cannot read properties of undefined".
-            text: `形状对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}\n形状数量: ${shapeIndices ? shapeIndices.length + ' 个' : (response.data?.shapes ?? '全部')}`,
+            text: `形状对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}\n形状数量: ${names ? names.length + ' 个' : (response.data?.shapes ?? '全部')}`,
           },
         ],
       };
@@ -413,7 +413,7 @@ export const distributeShapesDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      shapeIndices: {
+      names: {
         type: 'array',
         items: { type: 'number' },
         description: '要分布的形状索引数组（从1开始）',
@@ -424,16 +424,16 @@ export const distributeShapesDefinition: ToolDefinition = {
         enum: ['horizontal', 'vertical'],
       },
     },
-    required: ['slideIndex', 'shapeIndices', 'direction'],
+    required: ['slideIndex', 'names', 'direction'],
   },
 };
 
 export const distributeShapesHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndices, direction } = args as {
+  const { slideIndex, names, direction } = args as {
     slideIndex: number;
-    shapeIndices: number[];
+    names: number[];
     direction: string;
   };
 
@@ -443,7 +443,7 @@ export const distributeShapesHandler: ToolHandler = async (
       message: string;
     }>(
       'distributeShapes',
-      { slideIndex, shapeIndices, direction },
+      { slideIndex, names, direction },
       WpsAppType.PRESENTATION
     );
 
@@ -456,7 +456,7 @@ export const distributeShapesHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `形状分布完成！\n幻灯片: 第 ${slideIndex} 页\n分布方向: ${dirName}\n形状数量: ${shapeIndices.length} 个`,
+            text: `形状分布完成！\n幻灯片: 第 ${slideIndex} 页\n分布方向: ${dirName}\n形状数量: ${names.length} 个`,
           },
         ],
       };
@@ -496,22 +496,22 @@ export const groupShapesDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      shapeIndices: {
+      names: {
         type: 'array',
         items: { type: 'number' },
         description: '要组合的形状索引数组（从1开始，至少2个）',
       },
     },
-    required: ['slideIndex', 'shapeIndices'],
+    required: ['slideIndex', 'names'],
   },
 };
 
 export const groupShapesHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndices } = args as {
+  const { slideIndex, names } = args as {
     slideIndex: number;
-    shapeIndices: number[];
+    names: number[];
   };
 
   try {
@@ -521,12 +521,12 @@ export const groupShapesHandler: ToolHandler = async (
       groupIndex?: number;
     }>(
       'groupShapes',
-      { slideIndex, shapeIndices },
+      { slideIndex, names },
       WpsAppType.PRESENTATION
     );
 
     if (response.success) {
-      let text = `形状组合成功！\n幻灯片: 第 ${slideIndex} 页\n组合形状: ${shapeIndices.length} 个`;
+      let text = `形状组合成功！\n幻灯片: 第 ${slideIndex} 页\n组合形状: ${names.length} 个`;
       if (response.data?.groupIndex) {
         text += `\n组合索引: ${response.data.groupIndex}`;
       }

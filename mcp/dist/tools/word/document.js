@@ -170,17 +170,17 @@ exports.openDocumentDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            filePath: {
+            path: {
                 type: 'string',
                 description: '要打开的文档文件路径',
             },
         },
-        required: ['filePath'],
+        required: ['path'],
     },
 };
 const openDocumentHandler = async (args) => {
-    const { filePath } = args;
-    if (!filePath || filePath.trim() === '') {
+    const { path } = args;
+    if (!path || path.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -190,7 +190,7 @@ const openDocumentHandler = async (args) => {
     }
     try {
         const params = {
-            path: filePath,
+            path: path,
         };
         const response = await wps_client_1.wpsClient.executeMethod('openDocument', params, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
@@ -200,7 +200,7 @@ const openDocumentHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `文档打开成功！\n文件: ${response.data.documentName || filePath}`,
+                        text: `文档打开成功！\n文件: ${response.data.documentName || path}`,
                     },
                 ],
             };

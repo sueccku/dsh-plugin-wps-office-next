@@ -47,7 +47,7 @@ exports.insertPptChartDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            chartType: {
+            type: {
                 type: 'string',
                 description: '图表类型',
             },
@@ -66,13 +66,13 @@ exports.insertPptChartDefinition = {
         },
         // Chart data is not injectable: filling a chart means opening its embedded workbook, which a
         // resident COM host can leave behind. The parameter was removed rather than silently ignored.
-        required: ['slideIndex', 'chartType'],
+        required: ['slideIndex', 'type'],
     },
 };
 const insertPptChartHandler = async (args) => {
-    const { slideIndex, chartType, title, left, top } = args;
+    const { slideIndex, type, title, left, top } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertPptChart', { slideIndex, chartType, title, left, top }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('insertPptChart', { slideIndex, type, title, left, top }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             const chartTypeName = {
                 bar: '柱状图',
@@ -89,7 +89,7 @@ const insertPptChartHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `图表插入成功！\n幻灯片: 第 ${slideIndex} 页\n类型: ${chartTypeName[chartType] || chartType}\n图表索引: ${response.data.chartIndex}`,
+                        text: `图表插入成功！\n幻灯片: 第 ${slideIndex} 页\n类型: ${chartTypeName[type] || type}\n图表索引: ${response.data.chartIndex}`,
                     },
                 ],
             };

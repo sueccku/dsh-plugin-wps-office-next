@@ -26,20 +26,20 @@ export const openWorkbookDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      filePath: {
+      path: {
         type: 'string',
         description: '工作簿文件路径',
       },
     },
-    required: ['filePath'],
+    required: ['path'],
   },
 };
 
 export const openWorkbookHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { filePath } = args as { filePath: string };
-  if (!filePath) {
+  const { path } = args as { path: string };
+  if (!path) {
     return {
       id: uuidv4(),
       success: false,
@@ -48,9 +48,9 @@ export const openWorkbookHandler: ToolHandler = async (
     };
   }
   try {
-    // The bridge reads "path"; filePath was never read, so a relative or alternate spelling of the
+    // The bridge reads "path"; path was never read, so a relative or alternate spelling of the
     // argument was silently ignored.
-    const params = { path: filePath };
+    const params = { path: path };
     const response = await wpsClient.executeMethod<{ message: string }>(
       'openWorkbook',
       params,
@@ -59,7 +59,7 @@ export const openWorkbookHandler: ToolHandler = async (
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `打开工作簿失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿已打开: ${filePath}` }] };
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿已打开: ${path}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `打开工作簿出错: ${errMsg}` }], error: errMsg };

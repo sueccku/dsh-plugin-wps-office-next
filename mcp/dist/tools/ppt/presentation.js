@@ -95,19 +95,19 @@ exports.openPresentationDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            filePath: {
+            path: {
                 type: 'string',
                 description: '演示文稿文件的完整路径',
             },
         },
-        required: ['filePath'],
+        required: ['path'],
     },
 };
 const openPresentationHandler = async (args) => {
-    const { filePath } = args;
+    const { path } = args;
     try {
-        // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path 别名
-        const response = await wps_client_1.wpsClient.executeMethod('openPresentation', { filePath, path: filePath }, wps_1.WpsAppType.PRESENTATION);
+        // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
+        const response = await wps_client_1.wpsClient.executeMethod('openPresentation', { path }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -115,7 +115,7 @@ const openPresentationHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `演示文稿打开成功！\n名称: ${response.data.name}\n路径: ${response.data.filePath}`,
+                        text: `演示文稿打开成功！\n名称: ${response.data.name}\n路径: ${response.data.path}`,
                     },
                 ],
             };

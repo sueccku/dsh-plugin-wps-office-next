@@ -343,7 +343,7 @@ export const removeDuplicatesDefinition: ToolDefinition = {
           type: 'string',
         },
       },
-      has_header: {
+      hasHeader: {
         type: 'boolean',
         description: '第一行是否为表头，默认true',
       },
@@ -359,10 +359,10 @@ export const removeDuplicatesDefinition: ToolDefinition = {
 export const removeDuplicatesHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { range, columns, has_header, sheet } = args as {
+  const { range, columns, hasHeader, sheet } = args as {
     range: string;
     columns?: string[];
-    has_header?: boolean;
+    hasHeader?: boolean;
     sheet?: string;
   };
 
@@ -376,7 +376,7 @@ export const removeDuplicatesHandler: ToolHandler = async (
       {
         range,
         columns: columns || [],
-        hasHeader: has_header !== false, // 默认true
+        hasHeader: hasHeader !== false, // 默认true
         sheet,
       },
       WpsAppType.SPREADSHEET

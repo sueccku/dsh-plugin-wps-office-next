@@ -126,7 +126,7 @@ exports.operations = [
         "app": "common",
         "summary": "将当前文档另存为指定路径和格式。\n\n使用场景：\n- \"另存为到桌面\"\n- \"换个名字保存\"\n- \"保存一份副本到指定位置\"\n\n特点：\n- 支持指定完整文件路径\n- 可选指定保存格式",
         "params": {
-            "filePath": {
+            "path": {
                 "type": "string",
                 "description": "目标文件完整路径，包含文件名和扩展名",
                 "required": true
@@ -139,12 +139,9 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [
-            "filePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "filePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_common_set_selected_text",
@@ -191,7 +188,7 @@ exports.operations = [
                 "type": "string",
                 "description": "输出路径（包含文件名），如不指定则使用原文件名改为新扩展名"
             },
-            "app_type": {
+            "appType": {
                 "type": "string",
                 "description": "要转换的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档",
                 "enum": [
@@ -206,10 +203,7 @@ exports.operations = [
         "required": [
             "targetFormat"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "app_type": "appType"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_convert_to_pdf",
@@ -225,7 +219,7 @@ exports.operations = [
                 "type": "boolean",
                 "description": "导出后是否自动打开PDF，默认false"
             },
-            "app_type": {
+            "appType": {
                 "type": "string",
                 "description": "要导出的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档",
                 "enum": [
@@ -238,10 +232,7 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [],
-        "engine": "bridge",
-        "aliases": {
-            "app_type": "appType"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_execute_method",
@@ -867,12 +858,12 @@ exports.operations = [
         "app": "excel",
         "summary": "在Excel中创建图表。支持柱状图、折线图、饼图、散点图等多种类型。\n\n使用场景：\n- \"帮我用A1:B10的数据画个柱状图\" -> 创建 column_clustered\n- \"把这些数据做成折线图看趋势\" -> 创建 line\n- \"显示各部门占比\" -> 创建 pie 饼图\n- \"分析两个变量的相关性\" -> 创建 scatter 散点图\n\n支持的图表类型：\n- column_clustered: 簇状柱形图（默认，最常用）\n- column_stacked: 堆积柱形图\n- bar_clustered: 簇状条形图\n- line: 折线图\n- line_markers: 带标记的折线图\n- pie: 饼图\n- doughnut: 环形图\n- scatter: 散点图\n- area: 面积图\n- radar: 雷达图",
         "params": {
-            "data_range": {
+            "dataRange": {
                 "type": "string",
                 "description": "数据范围，如 A1:C10，图表数据的来源",
                 "required": true
             },
-            "chart_type": {
+            "chartType": {
                 "type": "string",
                 "description": "图表类型，默认 column_clustered（簇状柱形图）",
                 "enum": [
@@ -922,11 +913,11 @@ exports.operations = [
                 "type": "string",
                 "description": "工作表名称，不填则使用当前活动工作表"
             },
-            "show_legend": {
+            "showLegend": {
                 "type": "boolean",
                 "description": "是否显示图例，默认true"
             },
-            "show_data_labels": {
+            "showDataLabels": {
                 "type": "boolean",
                 "description": "是否显示数据标签，默认false"
             }
@@ -934,15 +925,9 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [
-            "data_range"
+            "dataRange"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "data_range": "dataRange",
-            "chart_type": "chartType",
-            "show_legend": "showLegend",
-            "show_data_labels": "showDataLabels"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_excel_create_list_object",
@@ -2053,7 +2038,7 @@ exports.operations = [
         "app": "excel",
         "summary": "在Excel中插入图片到指定位置。",
         "params": {
-            "filePath": {
+            "path": {
                 "type": "string",
                 "description": "图片文件路径",
                 "required": true
@@ -2078,12 +2063,9 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "filePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "filePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_excel_insert_rows",
@@ -2195,7 +2177,7 @@ exports.operations = [
         "app": "excel",
         "summary": "打开指定路径的Excel工作簿文件。",
         "params": {
-            "filePath": {
+            "path": {
                 "type": "string",
                 "description": "工作簿文件路径",
                 "required": true
@@ -2204,12 +2186,9 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [
-            "filePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "filePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_excel_paste_range",
@@ -2431,7 +2410,7 @@ exports.operations = [
                     }
                 }
             },
-            "has_header": {
+            "hasHeader": {
                 "type": "boolean",
                 "description": "第一行是否为表头，默认true"
             },
@@ -2445,10 +2424,7 @@ exports.operations = [
         "required": [
             "range"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "has_header": "hasHeader"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_excel_rename_sheet",
@@ -3666,21 +3642,21 @@ exports.operations = [
         "tool": "wps_excel_update_chart",
         "action": "updateChart",
         "app": "excel",
-        "summary": "更新Excel图表的属性，包括标题、颜色、图例、数据标签等。\n\n使用场景：\n- \"把图表标题改成销售报表\" -> 更新 title\n- \"隐藏图例\" -> 设置 show_legend: false\n- \"显示数据标签\" -> 设置 show_data_labels: true\n- \"改变图表类型为折线图\" -> 设置 chart_type: line\n\n注意：需要先通过 wps_excel_create_chart 创建图表，或者指定已存在图表的名称/索引",
+        "summary": "更新Excel图表的属性，包括标题、颜色、图例、数据标签等。\n\n使用场景：\n- \"把图表标题改成销售报表\" -> 更新 title\n- \"隐藏图例\" -> 设置 showLegend: false\n- \"显示数据标签\" -> 设置 showDataLabels: true\n- \"改变图表类型为折线图\" -> 设置 chartType: line\n\n注意：需要先通过 wps_excel_create_chart 创建图表，或者指定已存在图表的名称/索引",
         "params": {
-            "chart_index": {
+            "chartIndex": {
                 "type": "number",
-                "description": "图表索引（从1开始），与chart_name二选一"
+                "description": "图表索引（从1开始），与chartName二选一"
             },
-            "chart_name": {
+            "chartName": {
                 "type": "string",
-                "description": "图表名称，与chart_index二选一"
+                "description": "图表名称，与chartIndex二选一"
             },
             "title": {
                 "type": "string",
                 "description": "新的图表标题"
             },
-            "chart_type": {
+            "chartType": {
                 "type": "string",
                 "description": "更改图表类型",
                 "enum": [
@@ -3696,11 +3672,11 @@ exports.operations = [
                     "radar"
                 ]
             },
-            "show_legend": {
+            "showLegend": {
                 "type": "boolean",
                 "description": "是否显示图例"
             },
-            "legend_position": {
+            "legendPosition": {
                 "type": "string",
                 "description": "图例位置：bottom（下）、top（上）、left（左）、right（右）",
                 "enum": [
@@ -3710,11 +3686,11 @@ exports.operations = [
                     "right"
                 ]
             },
-            "show_data_labels": {
+            "showDataLabels": {
                 "type": "boolean",
                 "description": "是否显示数据标签"
             },
-            "data_range": {
+            "dataRange": {
                 "type": "string",
                 "description": "更改数据源范围"
             },
@@ -3740,16 +3716,7 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [],
-        "engine": "bridge",
-        "aliases": {
-            "chart_index": "chartIndex",
-            "chart_name": "chartName",
-            "chart_type": "chartType",
-            "show_legend": "showLegend",
-            "legend_position": "legendPosition",
-            "show_data_labels": "showDataLabels",
-            "data_range": "dataRange"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_excel_update_list_object",
@@ -4126,7 +4093,7 @@ exports.operations = [
                 "description": "形状索引（从1开始）",
                 "required": true
             },
-            "url": {
+            "address": {
                 "type": "string",
                 "description": "超链接地址，如 \"https://example.com\" 或 \"mailto:test@example.com\"",
                 "required": true
@@ -4137,12 +4104,9 @@ exports.operations = [
         "required": [
             "slideIndex",
             "shapeIndex",
-            "url"
+            "address"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "url": "address"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_add_shape",
@@ -4290,7 +4254,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "shapeIndices": {
+            "names": {
                 "type": "array",
                 "description": "要对齐的形状索引数组（从1开始）",
                 "items": {
@@ -4324,10 +4288,7 @@ exports.operations = [
             "slideIndex",
             "alignment"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "shapeIndices": "names"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_apply_transition_to_all",
@@ -4335,7 +4296,7 @@ exports.operations = [
         "app": "ppt",
         "summary": "为所有幻灯片应用统一的切换效果。\n\n使用场景：\n- \"给所有页面加上淡出切换\"\n- \"统一设置切换效果\"\n- \"所有幻灯片用推入切换\"",
         "params": {
-            "effect": {
+            "transition": {
                 "type": "string",
                 "description": "切换效果名称，如 \"fade\"、\"push\"、\"wipe\" 等",
                 "required": true
@@ -4348,12 +4309,9 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "effect"
+            "transition"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "effect": "transition"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_beautify",
@@ -4361,7 +4319,7 @@ exports.operations = [
         "app": "ppt",
         "summary": "一键美化幻灯片，优化排版、配色、字体和间距。\n\n支持的配色方案：\n- business: 商务风（深蓝+灰色）\n- tech: 科技风（蓝色+绿色）\n- creative: 创意风（珊瑚红+金色）\n- minimal: 简约风（黑白灰）\n\n美化包含的操作：\n- 统一字体\n- 应用配色方案\n- 对齐元素\n- 优化间距\n\n使用场景：\n- \"美化这页PPT\"\n- \"用商务风格优化一下\"\n- \"把PPT弄好看点\"",
         "params": {
-            "slide_index": {
+            "slideIndex": {
                 "type": "number",
                 "description": "要美化的幻灯片页码，不填则美化当前页"
             },
@@ -4390,10 +4348,7 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [],
-        "engine": "bridge",
-        "aliases": {
-            "slide_index": "slideIndex"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_close_presentation",
@@ -4554,7 +4509,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "shapeIndices": {
+            "names": {
                 "type": "array",
                 "description": "要分布的形状索引数组（从1开始）",
                 "items": {
@@ -4583,13 +4538,10 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "shapeIndices",
+            "names",
             "direction"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "shapeIndices": "names"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_duplicate_shape",
@@ -4874,7 +4826,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "shapeIndices": {
+            "names": {
                 "type": "array",
                 "description": "要组合的形状索引数组（从1开始，至少2个）",
                 "items": {
@@ -4894,12 +4846,9 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "shapeIndices"
+            "names"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "shapeIndices": "names"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_insert_ppt_chart",
@@ -4912,7 +4861,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "chartType": {
+            "type": {
                 "type": "string",
                 "description": "图表类型",
                 "required": true
@@ -4934,12 +4883,9 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "chartType"
+            "type"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "chartType": "type"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_insert_ppt_image",
@@ -4952,7 +4898,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "filePath": {
+            "path": {
                 "type": "string",
                 "description": "图片文件路径",
                 "required": true
@@ -4978,12 +4924,9 @@ exports.operations = [
         "advertised": true,
         "required": [
             "slideIndex",
-            "filePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "filePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_insert_slides_from_file",
@@ -5086,7 +5029,7 @@ exports.operations = [
         "app": "ppt",
         "summary": "打开指定路径的演示文稿文件。\n\n支持的文件格式：\n- .pptx: PowerPoint 演示文稿\n- .ppt: 旧版 PowerPoint 格式\n- .dps: WPS 演示格式\n\n使用场景：\n- \"打开桌面上的演示文稿\"\n- \"打开这个PPT文件\"",
         "params": {
-            "filePath": {
+            "path": {
                 "type": "string",
                 "description": "演示文稿文件的完整路径",
                 "required": true
@@ -5095,12 +5038,9 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [
-            "filePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "filePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_remove_animation",
@@ -5113,7 +5053,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "animationIndex": {
+            "index": {
                 "type": "number",
                 "description": "动画索引（从1开始）",
                 "required": true
@@ -5123,12 +5063,9 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "animationIndex"
+            "index"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "animationIndex": "index"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_remove_ppt_hyperlink",
@@ -5265,12 +5202,12 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "animationIndex": {
+            "from": {
                 "type": "number",
                 "description": "当前动画索引（从1开始）",
                 "required": true
             },
-            "newOrder": {
+            "to": {
                 "type": "number",
                 "description": "新的播放顺序位置（从1开始）",
                 "required": true
@@ -5280,14 +5217,10 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "animationIndex",
-            "newOrder"
+            "from",
+            "to"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "animationIndex": "from",
-            "newOrder": "to"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_set_background_color",
@@ -5353,7 +5286,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "imagePath": {
+            "path": {
                 "type": "string",
                 "description": "图片文件的完整路径",
                 "required": true
@@ -5363,12 +5296,9 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "imagePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "imagePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_set_font_color",
@@ -5438,7 +5368,7 @@ exports.operations = [
                                 },
                                 "weight": {
                                     "type": "number",
-                                    "description": "边框粗细（磅）"
+                                    "description": "边框��细（磅）"
                                 }
                             }
                         },
@@ -5826,7 +5756,7 @@ exports.operations = [
         "tool": "wps_ppt_set_shape_z_order",
         "action": "setShapeZOrder",
         "app": "ppt",
-        "summary": "设置形状在幻灯片中的层级顺序（Z轴排列）。\n\n支持的层级操作（order）：\n- front: 置于顶层\n- back: 置于底层\n- forward: 上移一层\n- backward: 下移一层\n\n使用场景：\n- \"把这个形状移到最前面\"\n- \"将形状置于底层\"\n- \"上移一层\"",
+        "summary": "设置形状在幻灯片中的层级顺序（Z轴排列）。\n\n支持的层级操作（zOrder）：\n- front: 置于顶层\n- back: 置于底层\n- forward: 上移一层\n- backward: 下移一层\n\n使用场景：\n- \"把这个形状移到最前面\"\n- \"将形状置于底层\"\n- \"上移一层\"",
         "params": {
             "slideIndex": {
                 "type": "number",
@@ -5838,7 +5768,7 @@ exports.operations = [
                 "description": "形状索引（从1开始）",
                 "required": true
             },
-            "order": {
+            "zOrder": {
                 "type": "string",
                 "description": "层级操作类型",
                 "enum": [
@@ -5855,12 +5785,9 @@ exports.operations = [
         "required": [
             "slideIndex",
             "shapeIndex",
-            "order"
+            "zOrder"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "order": "zOrder"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_ppt_set_slide_background",
@@ -6371,20 +6298,20 @@ exports.operations = [
         "app": "ppt",
         "summary": "统一演示文稿中所有幻灯片的字体。\n\n使用场景：\n- \"把所有页面的字体都改成微软雅黑\"\n- \"统一字体\"\n- \"换个字体\"\n\n常用字体推荐：\n- 微软雅黑：现代简洁，适合商务\n- 思源黑体：开源免费，适合各种场合\n- 黑体：传统正式\n- 宋体：适合正式文档",
         "params": {
-            "font_name": {
+            "fontName": {
                 "type": "string",
                 "description": "要统一使用的字体名称，如 \"微软雅黑\"、\"思源黑体\"",
                 "required": true
             },
-            "slide_index": {
+            "slideIndex": {
                 "type": "number",
                 "description": "只处理指定页，不填则处理所有页"
             },
-            "include_title": {
+            "includeTitle": {
                 "type": "boolean",
                 "description": "是否包含标题，默认true"
             },
-            "include_body": {
+            "includeBody": {
                 "type": "boolean",
                 "description": "是否包含正文，默认true"
             }
@@ -6392,15 +6319,9 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "font_name"
+            "fontName"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "font_name": "fontName",
-            "slide_index": "slideIndex",
-            "include_title": "includeTitle",
-            "include_body": "includeBody"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_accept_revisions",
@@ -6532,7 +6453,7 @@ exports.operations = [
         "app": "word",
         "summary": "应用Word样式到当前选中区域或指定范围。\n\n支持的常用样式：\n- 标题1、标题2、标题3...（或 Heading 1, Heading 2...）\n- 正文、正文首行缩进\n- 引用、强调\n- 列表段落\n\n使用场景：\n- \"把这段设成标题1\"\n- \"应用正文样式\"",
         "params": {
-            "style_name": {
+            "styleName": {
                 "type": "string",
                 "description": "样式名称，如 \"标题 1\"、\"正文\"、\"Heading 1\"",
                 "required": true
@@ -6559,12 +6480,9 @@ exports.operations = [
         "effect": "write",
         "advertised": true,
         "required": [
-            "style_name"
+            "styleName"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "style_name": "styleName"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_close_document",
@@ -6683,20 +6601,20 @@ exports.operations = [
         "app": "word",
         "summary": "在Word文档中查找文本并返回位置信息，不执行替换操作。\n\n使用场景：\n- \"找一下'项目名称'在文档的哪个位置\"\n- \"看看文档里有哪些地方需要填写\"\n- 在使用smart_fill_field之前，先用此工具定位关键字\n\n返回信息包括：匹配文本、字符起止位置、所在段落索引、上下文（前后50字符）。\n与find_replace不同，此工具仅查找不替换，返回位置信息供后续操作使用。",
         "params": {
-            "find_text": {
+            "findText": {
                 "type": "string",
                 "description": "要查找的文本",
                 "required": true
             },
-            "match_case": {
+            "matchCase": {
                 "type": "boolean",
                 "description": "是否区分大小写，默认false"
             },
-            "match_whole_word": {
+            "matchWholeWord": {
                 "type": "boolean",
                 "description": "是否全字匹配，默认false"
             },
-            "max_results": {
+            "maxResults": {
                 "type": "number",
                 "description": "最大返回结果数，默认20"
             }
@@ -6704,15 +6622,9 @@ exports.operations = [
         "effect": "read",
         "advertised": false,
         "required": [
-            "find_text"
+            "findText"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "find_text": "findText",
-            "match_case": "matchCase",
-            "match_whole_word": "matchWholeWord",
-            "max_results": "maxResults"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_find_replace",
@@ -6720,24 +6632,24 @@ exports.operations = [
         "app": "word",
         "summary": "在Word文档中查找并替换文本。\n\n使用场景：\n- \"把所有的'公司'替换成'集团'\"\n- \"把文档里的错别字改过来\"\n- \"批量替换某个词\"\n\n支持选项：\n- 区分大小写\n- 全字匹配\n- 全部替换或仅替换一处",
         "params": {
-            "find_text": {
+            "findText": {
                 "type": "string",
                 "description": "要查找的文本",
                 "required": true
             },
-            "replace_text": {
+            "replaceText": {
                 "type": "string",
                 "description": "替换为的文本，如果只是查找不替换，可以不填"
             },
-            "replace_all": {
+            "replaceAll": {
                 "type": "boolean",
                 "description": "是否全部替换，默认true"
             },
-            "match_case": {
+            "matchCase": {
                 "type": "boolean",
                 "description": "是否区分大小写，默认false"
             },
-            "match_whole_word": {
+            "matchWholeWord": {
                 "type": "boolean",
                 "description": "是否全字匹配，默认false"
             }
@@ -6745,16 +6657,9 @@ exports.operations = [
         "effect": "read",
         "advertised": true,
         "required": [
-            "find_text"
+            "findText"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "find_text": "findText",
-            "replace_text": "replaceText",
-            "replace_all": "replaceAll",
-            "match_case": "matchCase",
-            "match_whole_word": "matchWholeWord"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_generate_toc",
@@ -6774,7 +6679,7 @@ exports.operations = [
                 "type": "number",
                 "description": "目录包含的标题级别数，如 3 表示包含标题1-3。默认3"
             },
-            "include_page_numbers": {
+            "includePageNumbers": {
                 "type": "boolean",
                 "description": "是否包含页码，默认true"
             }
@@ -6782,10 +6687,7 @@ exports.operations = [
         "effect": "write",
         "advertised": true,
         "required": [],
-        "engine": "bridge",
-        "aliases": {
-            "include_page_numbers": "includePageNumbers"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_get_active_document",
@@ -6884,11 +6786,11 @@ exports.operations = [
         "app": "word",
         "summary": "获取Word文档的段落结构信息，返回每段的文本、样式和字符位置。\n\n使用场景：\n- \"了解文档的结构\"\n- \"查看文档有哪些段落\"\n- \"帮我看看模板里有哪些需要填写的位置\"\n- 在填写模板前，先读取文档结构以识别填写位置\n\n返回信息包括：段落索引、文本内容、样式名称、字符起止位置。\n支持分页获取（startParagraph/endParagraph），默认返回前50段。",
         "params": {
-            "start_paragraph": {
+            "startParagraph": {
                 "type": "number",
                 "description": "起始段落索引（从1开始），默认1"
             },
-            "end_paragraph": {
+            "endParagraph": {
                 "type": "number",
                 "description": "结束段落索引，默认为起始+49"
             }
@@ -6896,11 +6798,7 @@ exports.operations = [
         "effect": "read",
         "advertised": true,
         "required": [],
-        "engine": "bridge",
-        "aliases": {
-            "start_paragraph": "startParagraph",
-            "end_paragraph": "endParagraph"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_get_revisions",
@@ -7099,7 +6997,7 @@ exports.operations = [
         "app": "word",
         "summary": "在Word文档中插入图片。\n\n使用场景：\n- \"在文档中插入一张图片\"\n- \"把这个截图放到文档里\"\n- \"在光标位置插入logo\"",
         "params": {
-            "imagePath": {
+            "path": {
                 "type": "string",
                 "description": "图片文件路径",
                 "required": true
@@ -7116,12 +7014,9 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "imagePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "imagePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_insert_index",
@@ -7333,7 +7228,7 @@ exports.operations = [
         "app": "word",
         "summary": "打开指定路径的Word文档。\n\n使用场景：\n- \"打开桌面上的报告.docx\"\n- \"帮我打开这个文件路径的文档\"\n- \"加载指定位置的Word文件\"",
         "params": {
-            "filePath": {
+            "path": {
                 "type": "string",
                 "description": "要打开的文档文件路径",
                 "required": true
@@ -7342,12 +7237,9 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [
-            "filePath"
+            "path"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "filePath": "path"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_proofread_basic",
@@ -7420,12 +7312,12 @@ exports.operations = [
         "app": "word",
         "summary": "按字符范围精确替换Word文档中的文本。\n在修订模式下，此操作会自动产生修订标记。\n\n使用场景：\n- 校对时替换指定位置的错别字\n- 精确替换某一段落中的文本\n- 在已知字符起止位置时替换内容\n\n注意：请先调用 wps_word_enable_track_changes 开启修订模式。",
         "params": {
-            "start_pos": {
+            "startPos": {
                 "type": "number",
                 "description": "起始字符位置（从0开始）",
                 "required": true
             },
-            "end_pos": {
+            "endPos": {
                 "type": "number",
                 "description": "结束字符位置",
                 "required": true
@@ -7439,15 +7331,11 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "start_pos",
-            "end_pos",
+            "startPos",
+            "endPos",
             "text"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "start_pos": "startPos",
-            "end_pos": "endPos"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_set_columns",
@@ -7482,11 +7370,11 @@ exports.operations = [
         "app": "word",
         "summary": "设置字体格式，包括字体名称、字号、加粗、斜体、颜色等。\n\n使用场景：\n- \"把标题改成微软雅黑24号加粗\"\n- \"把这段文字改成红色\"\n- \"全文字体改成宋体小四\"",
         "params": {
-            "font_name": {
+            "fontName": {
                 "type": "string",
                 "description": "字体名称，如 \"微软雅黑\"、\"宋体\"、\"Arial\""
             },
-            "font_size": {
+            "fontSize": {
                 "type": "number",
                 "description": "字号，如 12、14、24"
             },
@@ -7518,11 +7406,7 @@ exports.operations = [
         "effect": "write",
         "advertised": true,
         "required": [],
-        "engine": "bridge",
-        "aliases": {
-            "font_name": "fontName",
-            "font_size": "fontSize"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_set_line_spacing",
@@ -7561,19 +7445,19 @@ exports.operations = [
                     "landscape"
                 ]
             },
-            "marginTop": {
+            "topMargin": {
                 "type": "number",
                 "description": "上边距（磅值）"
             },
-            "marginBottom": {
+            "bottomMargin": {
                 "type": "number",
                 "description": "下边距（磅值）"
             },
-            "marginLeft": {
+            "leftMargin": {
                 "type": "number",
                 "description": "左边距（磅值）"
             },
-            "marginRight": {
+            "rightMargin": {
                 "type": "number",
                 "description": "右边距（磅值）"
             }
@@ -7581,13 +7465,7 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [],
-        "engine": "bridge",
-        "aliases": {
-            "marginTop": "topMargin",
-            "marginBottom": "bottomMargin",
-            "marginLeft": "leftMargin",
-            "marginRight": "rightMargin"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_set_paragraph",
@@ -7701,7 +7579,7 @@ exports.operations = [
         "tool": "wps_word_smart_fill_field",
         "action": "smartFillField",
         "app": "word",
-        "summary": "智能填写Word模板中的字段。自动识别关键字附近的填写模式，在正确位置插入内容并保持原有格式。\n\n使用场景：\n- \"把项目名称填写为'XX信息化项目'\"\n- \"填写建设单位为'XX公司'\"\n- \"模板里的项目编号填上'2026-001'\"\n- 任何需要在模板文档中\"填写\"而非\"替换\"的场景\n\n支持的填写模式（fill_mode，默认auto自动判断）：\n- auto: 自动判断（推荐）\n- underline: 关键字后有下划线___，替换下划线为填写内容\n- afterColon: 关键字后有冒号（：或:），在冒号后插入\n- afterLabel: 关键字是标签，直接在关键字后插入\n- placeholder: 关键字被{}或【】包裹，替换整个占位符\n\n重要：模板填写场景应优先使用此工具，而非find_replace。find_replace会删除关键字本身并可能破坏格式。",
+        "summary": "智能填写Word模板中的字段。自动识别关键字附近的填写模式，在正确位置插入内容并保持原有格式。\n\n使用场景：\n- \"把项目名称填写为'XX信息化项目'\"\n- \"填写建设单位为'XX公司'\"\n- \"模板里的项目编号填上'2026-001'\"\n- 任何需要在模板文档中\"填写\"而非\"替换\"的场景\n\n支持的填写模式（fillMode，默认auto自动判断）：\n- auto: 自动判断（推荐）\n- underline: 关键字后有下划线___，替换下划线为填写内容\n- afterColon: 关键字后有冒号（：或:），在冒号后插入\n- afterLabel: 关键字是标签，直接在关键字后插入\n- placeholder: 关键字被{}或【】包裹，替换整个占位符\n\n重要：模板填写场景应优先使用此工具，而非find_replace。find_replace会删除关键字本身并可能破坏格式。",
         "params": {
             "keyword": {
                 "type": "string",
@@ -7713,7 +7591,7 @@ exports.operations = [
                 "description": "要填写的值（如\"XX信息化项目\"）",
                 "required": true
             },
-            "fill_mode": {
+            "fillMode": {
                 "type": "string",
                 "description": "填写模式: auto(自动判断), underline(下划线), afterColon(冒号后), afterLabel(标签后), placeholder(占位符)。默认auto",
                 "enum": [
@@ -7731,10 +7609,7 @@ exports.operations = [
             "keyword",
             "value"
         ],
-        "engine": "bridge",
-        "aliases": {
-            "fill_mode": "fillMode"
-        }
+        "engine": "bridge"
     }),
     (0, types_1.op)({
         "tool": "wps_word_split_table_cell",

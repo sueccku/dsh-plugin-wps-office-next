@@ -98,13 +98,13 @@ for (const m of keysSeg.matchAll(/^\s*'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)
 // Two debts are ratchets instead: they fail when they GROW and must be updated deliberately when
 // they shrink.
 //   ALIAS_DEBT       parameters whose public name differs from the bridge key they land on. P1-4
-//                    aligns the names (filePath -> path, marginTop -> topMargin, ...) and this
-//                    number goes to 0.
+//                    aligned them all (FIXES 77), so this is now a hard 0: a new tool must name its
+//                    parameters exactly the way the bridge reads them.
 //   UNTOOLED_ACTIONS bridge actions no operation drives yet: the P2 backlog of capability that
 //                    already exists but has no tool.
 const spec = require(resolve('mcp/dist/spec/operations.js'));
-// P4's three merges removed three renamed parameters (59), so the ratchet moves down with them.
-const ALIAS_DEBT = 59;
+// P4 的合并带走了三处改名参数（59 降到 59 以下），FIXES 77 把剩下的全部对齐到桥键，到此归零。
+const ALIAS_DEBT = 0;
 // P2 tooled 10 of the 21, and P3-1 tooled the four Word gaps, so the ratchet moves down with them:
 // 21 -> 11 -> 7. What is left is deliberate (duplicate implementations) or belongs to P4.
 const UNTOOLED_ACTIONS = 7;
@@ -144,7 +144,7 @@ for (const op of spec.operations) {
 }
 check('every parameter has a declared destination', unresolved === 0, unresolved + ' unresolved; ' + localParams + " local to the handler, " + containerParams + ' flattened by a container');
 check('every bridge parameter lands on a key the bridge reads', keyMismatch.length === 0, keyMismatch.length ? keyMismatch.slice(0, 6).join(', ') : aliased + ' of them differ only by name');
-check('alias debt did not grow (P1-4 target: 0)', aliased <= ALIAS_DEBT, aliased + ' of ' + ALIAS_DEBT + ' recorded');
+check('every parameter name equals the bridge key (P1-4 target reached)', aliased === 0, aliased + ' parameter(s) still differ only by name');
 check('untooled-action backlog did not grow (P2 target: down to 0)', untooled.length <= UNTOOLED_ACTIONS, untooled.length + ' of ' + UNTOOLED_ACTIONS + ' recorded (pivot cache, openFile/replaceInSheet/unfreezePanes duplicates, getActivePresentation, endSlideShow, ...)');
 
 // The bridge-side compatibility table is declared in the spec (mcp/src/spec/aliases.ts) and emitted as

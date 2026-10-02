@@ -2171,6 +2171,50 @@ matrix-any-only 77)`；`spec-reproduction` 13 → **15 项**（新增三条分�
 **一键 e2e 29/29 全绿（76 秒）** —— headless 任务 60 次工具调用 / 3 次技能加载，独立 COM 复验确认两个工作簿
 与 Word 文档全部正确（明细+汇总、降序合计、簇状柱形图、ListObject `Orders@$A$1:$D$13`、条件格式、
 横向 A4、页脚页码域、打印标题），跑完无残留文档、无缺陷标记、模型没有自己写 COM 脚本。
+### 77. 参数命名对齐：ALIAS_DEBT 59 → 0（D7 = A）
+
+**问题**：工具 schema 对模型公开的参数名，与桥真正读取的键名不一致，靠 `mcp/src/spec/aliases.ts` 的别名表
+在派发时改名。**59 处、41 组**：`filePath`→`path`（8 处）、`app_type`→`appType`、`data_range`→`dataRange`、
+`chart_type`→`chartType`、`slide_index`→`slideIndex`、`find_text`→`findText`、`font_name`→`fontName`、
+`marginTop`→`topMargin`… 另有几个同义改名（`url`→`address`、`shapeIndices`→`names`、`effect`→`transition`、
+`chartType`→`type`、`order`→`zOrder`、`animationIndex`→`index`/`from`、`newOrder`→`to`）。
+后果：模型得逐工具查 schema；文档要写兼容说明；别名表本身是维护面。
+
+**做法**
+
+- 按 41 组映射，把每个工具的 **schema 属性名 + handler 里的标识符** 改到桥键。落点用脚本按「该工具的
+  `ToolDefinition` 块 + 注册表里配对的 `Handler` 块」精确定位：**369 处替换 / 18 个文件 / 0 处漏**，
+  不碰同一文件里别的工具。
+- 三处 handler 原本同时发规范键和旧别名（`{ path, path: path, filePath: path }`）——改名后成了重复键，
+  `tsc` 直接报错；顺手删掉多余别名（macOS 传输早在 P1 就删了，那段「跨平台参数对齐」注释也已过时）。
+- **桥侧别名表保留**（`paramAliases`）：旧提示词、旧技能副本仍然能用，只是不再有工具依赖它。账本从 59
+  改成**硬 0**（`ALIAS_DEBT = 0`，断言改名为 `every parameter name equals the bridge key`）。
+- 技能文档里教旧拼写的 5 处全部更新（`save_as` 的 `filePath`→`path`、转换的 `app_type`→`appType`、
+  表格的 `chart_type`→`chartType`、Word 的 `find_text`/`replace_text`/`replace_all`、`insert_excel_image` 的
+  `filePath`→`path`），并把「用 imagePath 代替 filePath」这类已过时的反例换成**仍然存在**的真陷阱
+  （Word `insert_image` 收 `imagePath`，PPT `insert_ppt_image` 收 `path`；`set_slide_transition` 收 `effect`，
+  `apply_transition_to_all` 收 `transition`）。
+- 测试：15 个文件里 65 处旧参数名全部改到新名；另用一次性检测（把 `call("工具", {…})` 的顶层键与
+  `spec/tool-definitions.json` 对齐）确认没有漏网。
+- `docs/CONTRACT-excel.md` 加上「P1 审计历史快照」说明，免得那 53 条旧结论被当成现状。
+
+**顺手修掉 v0.5.0 的漏网（上一版删了 18 个废弃工具名，但 3 个只能真机跑的测试文件还在调它们 —— CI 只看静态门禁，看不到）**
+
+- `test/merged-tools.test.mjs`：`require` 已删除的 `mcp/dist/tools/deprecated.js`，**文件直接崩**。它的主题
+  （旧名转发）已经不存在，重写成「吸收合并的规范工具仍然工作」（32 → 19 项）。
+- `test/ppt-contract-fixes.test.mjs`：仍在调 `wps_ppt_set_transition` / `wps_ppt_insert_slide_image` → 改成
+  `wps_ppt_set_slide_transition`（`effect`）/ `wps_ppt_insert_ppt_image`（`path`）。
+- `test/excel-contract-fixes.test.mjs`：仍在调 `wps_excel_hide_row` / `wps_excel_auto_fill` → 改成
+  `wps_excel_hide_rows` / `wps_excel_fill_series`。
+- 顺带修正 4 处「参数名写错但恰好没红」的断言：`apply_transition_to_all.effect`→`transition`、
+  `remove_animation.animationIndex`→`index`、`add_ppt_hyperlink.url`→`address`、`insert_ppt_chart.chartType`→`type`、
+  `add_shape.shapeType`→`type`。
+
+**已知残留（不在本次范围）**：`wps_excel_set_cell_format` 断言「扁平 bold/fontSize 也能用」——schema 只声明了
+嵌套的 `format.bold` / `format.fontSize`，扁平写法是否属于承诺能力需要单独裁定（要么补进 schema，要么改测试）。
+
+**验收**：`spec-reproduction` 的断言改成 **硬 0**（`every parameter name equals the bridge key`，`0 parameter(s) still differ only by name`）；`arg-shape-guard` 6 项；`gen-tool-surface` 报 `tools with aliases=0`；真机回归 10 个受影响套件全绿 —— merged-tools 19、ppt-contract-fixes 56、ppt-coverage 53、excel-contract-fixes 35、find-replace 14、file-ops 11、open-safety 21、word-common-coverage 26、destructive-guard 45、cell-format 16。
+
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

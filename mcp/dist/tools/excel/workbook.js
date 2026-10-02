@@ -21,17 +21,17 @@ exports.openWorkbookDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            filePath: {
+            path: {
                 type: 'string',
                 description: '工作簿文件路径',
             },
         },
-        required: ['filePath'],
+        required: ['path'],
     },
 };
 const openWorkbookHandler = async (args) => {
-    const { filePath } = args;
-    if (!filePath) {
+    const { path } = args;
+    if (!path) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -40,14 +40,14 @@ const openWorkbookHandler = async (args) => {
         };
     }
     try {
-        // The bridge reads "path"; filePath was never read, so a relative or alternate spelling of the
+        // The bridge reads "path"; path was never read, so a relative or alternate spelling of the
         // argument was silently ignored.
-        const params = { path: filePath };
+        const params = { path: path };
         const response = await wps_client_1.wpsClient.executeMethod('openWorkbook', params, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `打开工作簿失败: ${response.error}` }], error: response.error };
         }
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `工作簿已打开: ${filePath}` }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `工作簿已打开: ${path}` }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

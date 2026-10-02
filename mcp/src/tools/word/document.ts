@@ -198,21 +198,21 @@ export const openDocumentDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      filePath: {
+      path: {
         type: 'string',
         description: '要打开的文档文件路径',
       },
     },
-    required: ['filePath'],
+    required: ['path'],
   },
 };
 
 export const openDocumentHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { filePath } = args as { filePath: string };
+  const { path } = args as { path: string };
 
-  if (!filePath || filePath.trim() === '') {
+  if (!path || path.trim() === '') {
     return {
       id: uuidv4(),
       success: false,
@@ -223,7 +223,7 @@ export const openDocumentHandler: ToolHandler = async (
 
   try {
     const params = {
-      path: filePath,
+      path: path,
     };
 
     const response = await wpsClient.executeMethod<{
@@ -243,7 +243,7 @@ export const openDocumentHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `文档打开成功！\n文件: ${response.data.documentName || filePath}`,
+            text: `文档打开成功！\n文件: ${response.data.documentName || path}`,
           },
         ],
       };

@@ -249,7 +249,7 @@ exports.alignShapesDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            shapeIndices: {
+            names: {
                 type: 'array',
                 items: { type: 'number' },
                 description: '要对齐的形状索引数组（从1开始）',
@@ -260,14 +260,14 @@ exports.alignShapesDefinition = {
                 enum: ['left', 'center', 'right', 'top', 'middle', 'bottom'],
             },
         },
-        // shapeIndices is optional: without it every shape on the slide is aligned.
+        // names is optional: without it every shape on the slide is aligned.
         required: ['slideIndex', 'alignment'],
     },
 };
 const alignShapesHandler = async (args) => {
-    const { slideIndex, shapeIndices, alignment } = args;
+    const { slideIndex, names, alignment } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('alignShapes', { slideIndex, shapeIndices, alignment }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('alignShapes', { slideIndex, names, alignment }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             const alignName = {
                 left: '左对齐',
@@ -283,9 +283,9 @@ const alignShapesHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        // shapeIndices is optional: without it the action aligns every shape on the slide, and
+                        // names is optional: without it the action aligns every shape on the slide, and
                         // dereferencing it here used to fail with "Cannot read properties of undefined".
-                        text: `形状对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}\n形状数量: ${shapeIndices ? shapeIndices.length + ' 个' : (response.data?.shapes ?? '全部')}`,
+                        text: `形状对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}\n形状数量: ${names ? names.length + ' 个' : (response.data?.shapes ?? '全部')}`,
                     },
                 ],
             };
@@ -330,7 +330,7 @@ exports.distributeShapesDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            shapeIndices: {
+            names: {
                 type: 'array',
                 items: { type: 'number' },
                 description: '要分布的形状索引数组（从1开始）',
@@ -341,13 +341,13 @@ exports.distributeShapesDefinition = {
                 enum: ['horizontal', 'vertical'],
             },
         },
-        required: ['slideIndex', 'shapeIndices', 'direction'],
+        required: ['slideIndex', 'names', 'direction'],
     },
 };
 const distributeShapesHandler = async (args) => {
-    const { slideIndex, shapeIndices, direction } = args;
+    const { slideIndex, names, direction } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('distributeShapes', { slideIndex, shapeIndices, direction }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('distributeShapes', { slideIndex, names, direction }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             const dirName = direction === 'horizontal' ? '水平等距' : '垂直等距';
             return {
@@ -356,7 +356,7 @@ const distributeShapesHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `形状分布完成！\n幻灯片: 第 ${slideIndex} 页\n分布方向: ${dirName}\n形状数量: ${shapeIndices.length} 个`,
+                        text: `形状分布完成！\n幻灯片: 第 ${slideIndex} 页\n分布方向: ${dirName}\n形状数量: ${names.length} 个`,
                     },
                 ],
             };
@@ -397,21 +397,21 @@ exports.groupShapesDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            shapeIndices: {
+            names: {
                 type: 'array',
                 items: { type: 'number' },
                 description: '要组合的形状索引数组（从1开始，至少2个）',
             },
         },
-        required: ['slideIndex', 'shapeIndices'],
+        required: ['slideIndex', 'names'],
     },
 };
 const groupShapesHandler = async (args) => {
-    const { slideIndex, shapeIndices } = args;
+    const { slideIndex, names } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('groupShapes', { slideIndex, shapeIndices }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('groupShapes', { slideIndex, names }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
-            let text = `形状组合成功！\n幻灯片: 第 ${slideIndex} 页\n组合形状: ${shapeIndices.length} 个`;
+            let text = `形状组合成功！\n幻灯片: 第 ${slideIndex} 页\n组合形状: ${names.length} 个`;
             if (response.data?.groupIndex) {
                 text += `\n组合索引: ${response.data.groupIndex}`;
             }

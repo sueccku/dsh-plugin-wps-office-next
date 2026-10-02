@@ -165,11 +165,11 @@ export const replaceRangeDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      start_pos: {
+      startPos: {
         type: 'number',
         description: '起始字符位置（从0开始）',
       },
-      end_pos: {
+      endPos: {
         type: 'number',
         description: '结束字符位置',
       },
@@ -178,20 +178,20 @@ export const replaceRangeDefinition: ToolDefinition = {
         description: '替换后的文本内容',
       },
     },
-    required: ['start_pos', 'end_pos', 'text'],
+    required: ['startPos', 'endPos', 'text'],
   },
 };
 
 export const replaceRangeHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { start_pos, end_pos, text } = args as {
-    start_pos: number;
-    end_pos: number;
+  const { startPos, endPos, text } = args as {
+    startPos: number;
+    endPos: number;
     text: string;
   };
 
-  if (start_pos === undefined || end_pos === undefined) {
+  if (startPos === undefined || endPos === undefined) {
     return {
       id: uuidv4(),
       success: false,
@@ -200,7 +200,7 @@ export const replaceRangeHandler: ToolHandler = async (
     };
   }
 
-  if (typeof start_pos !== 'number' || typeof end_pos !== 'number' || !Number.isInteger(start_pos) || !Number.isInteger(end_pos)) {
+  if (typeof startPos !== 'number' || typeof endPos !== 'number' || !Number.isInteger(startPos) || !Number.isInteger(endPos)) {
     return {
       id: uuidv4(),
       success: false,
@@ -209,7 +209,7 @@ export const replaceRangeHandler: ToolHandler = async (
     };
   }
 
-  if (start_pos < 0 || end_pos < 0) {
+  if (startPos < 0 || endPos < 0) {
     return {
       id: uuidv4(),
       success: false,
@@ -218,7 +218,7 @@ export const replaceRangeHandler: ToolHandler = async (
     };
   }
 
-  if (start_pos >= end_pos) {
+  if (startPos >= endPos) {
     return {
       id: uuidv4(),
       success: false,
@@ -244,7 +244,7 @@ export const replaceRangeHandler: ToolHandler = async (
       newText: string;
     }>(
       'replaceRange',
-      { startPos: start_pos, endPos: end_pos, text },
+      { startPos: startPos, endPos: endPos, text },
       WpsAppType.WRITER
     );
 

@@ -45,18 +45,18 @@ exports.removeAnimationDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            animationIndex: {
+            index: {
                 type: 'number',
                 description: '动画索引（从1开始）',
             },
         },
-        required: ['slideIndex', 'animationIndex'],
+        required: ['slideIndex', 'index'],
     },
 };
 const removeAnimationHandler = async (args) => {
-    const { slideIndex, animationIndex } = args;
+    const { slideIndex, index } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('removeAnimation', { slideIndex, animationIndex }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('removeAnimation', { slideIndex, index }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -64,7 +64,7 @@ const removeAnimationHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `动画移除成功！\n幻灯片: 第 ${slideIndex} 页\n已移除第 ${animationIndex} 个动画${(0, impact_1.impactText)(response.data?.impact)}`,
+                        text: `动画移除成功！\n幻灯片: 第 ${slideIndex} 页\n已移除第 ${index} 个动画${(0, impact_1.impactText)(response.data?.impact)}`,
                     },
                 ],
             };
@@ -186,22 +186,22 @@ exports.setAnimationOrderDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            animationIndex: {
+            from: {
                 type: 'number',
                 description: '当前动画索引（从1开始）',
             },
-            newOrder: {
+            to: {
                 type: 'number',
                 description: '新的播放顺序位置（从1开始）',
             },
         },
-        required: ['slideIndex', 'animationIndex', 'newOrder'],
+        required: ['slideIndex', 'from', 'to'],
     },
 };
 const setAnimationOrderHandler = async (args) => {
-    const { slideIndex, animationIndex, newOrder } = args;
+    const { slideIndex, from, to } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setAnimationOrder', { slideIndex, animationIndex, newOrder }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('setAnimationOrder', { slideIndex, from, to }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -209,7 +209,7 @@ const setAnimationOrderHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `动画顺序调整成功！\n幻灯片: 第 ${slideIndex} 页\n动画 ${animationIndex} → 新位置 ${newOrder}`,
+                        text: `动画顺序调整成功！\n幻灯片: 第 ${slideIndex} 页\n动画 ${from} → 新位置 ${to}`,
                     },
                 ],
             };
@@ -400,7 +400,7 @@ exports.applyTransitionToAllDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            effect: {
+            transition: {
                 type: 'string',
                 description: '切换效果名称，如 "fade"、"push"、"wipe" 等',
             },
@@ -409,14 +409,14 @@ exports.applyTransitionToAllDefinition = {
                 description: '切换持续时间（秒），默认1秒',
             },
         },
-        required: ['effect'],
+        required: ['transition'],
     },
 };
 const applyTransitionToAllHandler = async (args) => {
-    const { effect, duration } = args;
+    const { transition, duration } = args;
     try {
         const response = await wps_client_1.wpsClient.executeMethod('applyTransitionToAll', {
-            effect,
+            transition,
             duration: duration || 1,
         }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
@@ -426,7 +426,7 @@ const applyTransitionToAllHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `切换效果已应用到所有幻灯片！\n效果: ${effect}\n持续时间: ${duration || 1} 秒\n应用页数: ${response.data.slideCount} 页`,
+                        text: `切换效果已应用到所有幻灯片！\n效果: ${transition}\n持续时间: ${duration || 1} 秒\n应用页数: ${response.data.slideCount} 页`,
                     },
                 ],
             };

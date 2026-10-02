@@ -31,7 +31,7 @@
  },
  {
   "tool": "wps_common_save_as",
-  "signature": "common_save_as(filePath*, format?)",
+  "signature": "common_save_as(path*, format?)",
   "effect": "lifecycle"
  },
  {
@@ -46,12 +46,12 @@
  },
  {
   "tool": "wps_convert_format",
-  "signature": "convert_format(targetFormat*, outputPath?, app_type?)",
+  "signature": "convert_format(targetFormat*, outputPath?, appType?)",
   "effect": "lifecycle"
  },
  {
   "tool": "wps_convert_to_pdf",
-  "signature": "convert_to_pdf(outputPath?, openAfterExport?, app_type?)",
+  "signature": "convert_to_pdf(outputPath?, openAfterExport?, appType?)",
   "effect": "lifecycle"
  },
  {
@@ -166,7 +166,7 @@
  },
  {
   "tool": "wps_excel_create_chart",
-  "signature": "excel_create_chart(data_range*, chart_type?, title?, position?, sheet?, show_legend?, show_data_labels?)",
+  "signature": "excel_create_chart(dataRange*, chartType?, title?, position?, sheet?, showLegend?, showDataLabels?)",
   "effect": "lifecycle"
  },
  {
@@ -376,7 +376,7 @@
  },
  {
   "tool": "wps_excel_insert_excel_image",
-  "signature": "excel_insert_excel_image(filePath*, cell?, width?, height?, sheet?)",
+  "signature": "excel_insert_excel_image(path*, cell?, width?, height?, sheet?)",
   "effect": "write"
  },
  {
@@ -401,7 +401,7 @@
  },
  {
   "tool": "wps_excel_open_workbook",
-  "signature": "excel_open_workbook(filePath*)",
+  "signature": "excel_open_workbook(path*)",
   "effect": "lifecycle"
  },
  {
@@ -451,7 +451,7 @@
  },
  {
   "tool": "wps_excel_remove_duplicates",
-  "signature": "excel_remove_duplicates(range*, columns?, has_header?, sheet?)",
+  "signature": "excel_remove_duplicates(range*, columns?, hasHeader?, sheet?)",
   "effect": "delete"
  },
  {
@@ -641,7 +641,7 @@
  },
  {
   "tool": "wps_excel_update_chart",
-  "signature": "excel_update_chart(chart_index?, chart_name?, title?, chart_type?, show_legend?, legend_position?, show_data_labels?, data_range?, colors?, sheet?)",
+  "signature": "excel_update_chart(chartIndex?, chartName?, title?, chartType?, showLegend?, legendPosition?, showDataLabels?, dataRange?, colors?, sheet?)",
   "effect": "write"
  },
  {
@@ -671,7 +671,7 @@
  },
  {
   "tool": "wps_ppt_add_ppt_hyperlink",
-  "signature": "ppt_add_ppt_hyperlink(slideIndex*, shapeIndex*, url*)",
+  "signature": "ppt_add_ppt_hyperlink(slideIndex*, shapeIndex*, address*)",
   "effect": "write"
  },
  {
@@ -691,17 +691,17 @@
  },
  {
   "tool": "wps_ppt_align_shapes",
-  "signature": "ppt_align_shapes(slideIndex*, shapeIndices?, alignment*)",
+  "signature": "ppt_align_shapes(slideIndex*, names?, alignment*)",
   "effect": "write"
  },
  {
   "tool": "wps_ppt_apply_transition_to_all",
-  "signature": "ppt_apply_transition_to_all(effect*, duration?)",
+  "signature": "ppt_apply_transition_to_all(transition*, duration?)",
   "effect": "write"
  },
  {
   "tool": "wps_ppt_beautify",
-  "signature": "ppt_beautify(slide_index?, color_scheme?, font?, beautify_all?)",
+  "signature": "ppt_beautify(slideIndex?, color_scheme?, font?, beautify_all?)",
   "effect": "write"
  },
  {
@@ -741,7 +741,7 @@
  },
  {
   "tool": "wps_ppt_distribute_shapes",
-  "signature": "ppt_distribute_shapes(slideIndex*, shapeIndices*, direction*)",
+  "signature": "ppt_distribute_shapes(slideIndex*, names*, direction*)",
   "effect": "write"
  },
  {
@@ -811,17 +811,17 @@
  },
  {
   "tool": "wps_ppt_group_shapes",
-  "signature": "ppt_group_shapes(slideIndex*, shapeIndices*)",
+  "signature": "ppt_group_shapes(slideIndex*, names*)",
   "effect": "write"
  },
  {
   "tool": "wps_ppt_insert_ppt_chart",
-  "signature": "ppt_insert_ppt_chart(slideIndex*, chartType*, title?, left?, top?)",
+  "signature": "ppt_insert_ppt_chart(slideIndex*, type*, title?, left?, top?)",
   "effect": "write"
  },
  {
   "tool": "wps_ppt_insert_ppt_image",
-  "signature": "ppt_insert_ppt_image(slideIndex*, filePath*, left?, top?, width?, height?)",
+  "signature": "ppt_insert_ppt_image(slideIndex*, path*, left?, top?, width?, height?)",
   "effect": "write"
  },
  {
@@ -841,12 +841,12 @@
  },
  {
   "tool": "wps_ppt_open_presentation",
-  "signature": "ppt_open_presentation(filePath*)",
+  "signature": "ppt_open_presentation(path*)",
   "effect": "lifecycle"
  },
  {
   "tool": "wps_ppt_remove_animation",
-  "signature": "ppt_remove_animation(slideIndex*, animationIndex*)",
+  "signature": "ppt_remove_animation(slideIndex*, index*)",
   "effect": "delete"
  },
  {
@@ -876,7 +876,7 @@
  },
  {
   "tool": "wps_ppt_set_animation_order",
-  "signature": "ppt_set_animation_order(slideIndex*, animationIndex*, newOrder*)",
+  "signature": "ppt_set_animation_order(slideIndex*, from*, to*)",
   "effect": "write"
  },
  {
@@ -891,7 +891,7 @@
  },
  {
   "tool": "wps_ppt_set_background_image",
-  "signature": "ppt_set_background_image(slideIndex*, imagePath*)",
+  "signature": "ppt_set_background_image(slideIndex*, path*)",
   "effect": "write"
  },
  {
@@ -946,7 +946,7 @@
  },
  {
   "tool": "wps_ppt_set_shape_z_order",
-  "signature": "ppt_set_shape_z_order(slideIndex*, shapeIndex*, order*)",
+  "signature": "ppt_set_shape_z_order(slideIndex*, shapeIndex*, zOrder*)",
   "effect": "write"
  },
  {
@@ -1036,7 +1036,7 @@
  },
  {
   "tool": "wps_ppt_unify_font",
-  "signature": "ppt_unify_font(font_name*, slide_index?, include_title?, include_body?)",
+  "signature": "ppt_unify_font(fontName*, slideIndex?, includeTitle?, includeBody?)",
   "effect": "write"
  },
  {
@@ -1066,7 +1066,7 @@
  },
  {
   "tool": "wps_word_apply_style",
-  "signature": "word_apply_style(style_name*, range?)",
+  "signature": "word_apply_style(styleName*, range?)",
   "effect": "write"
  },
  {
@@ -1101,17 +1101,17 @@
  },
  {
   "tool": "wps_word_find_in_document",
-  "signature": "word_find_in_document(find_text*, match_case?, match_whole_word?, max_results?)",
+  "signature": "word_find_in_document(findText*, matchCase?, matchWholeWord?, maxResults?)",
   "effect": "read"
  },
  {
   "tool": "wps_word_find_replace",
-  "signature": "word_find_replace(find_text*, replace_text?, replace_all?, match_case?, match_whole_word?)",
+  "signature": "word_find_replace(findText*, replaceText?, replaceAll?, matchCase?, matchWholeWord?)",
   "effect": "read"
  },
  {
   "tool": "wps_word_generate_toc",
-  "signature": "word_generate_toc(position?, levels?, include_page_numbers?)",
+  "signature": "word_generate_toc(position?, levels?, includePageNumbers?)",
   "effect": "write"
  },
  {
@@ -1156,7 +1156,7 @@
  },
  {
   "tool": "wps_word_get_paragraphs",
-  "signature": "word_get_paragraphs(start_paragraph?, end_paragraph?)",
+  "signature": "word_get_paragraphs(startParagraph?, endParagraph?)",
   "effect": "read"
  },
  {
@@ -1211,7 +1211,7 @@
  },
  {
   "tool": "wps_word_insert_image",
-  "signature": "word_insert_image(imagePath*, width?, height?)",
+  "signature": "word_insert_image(path*, width?, height?)",
   "effect": "write"
  },
  {
@@ -1256,7 +1256,7 @@
  },
  {
   "tool": "wps_word_open_document",
-  "signature": "word_open_document(filePath*)",
+  "signature": "word_open_document(path*)",
   "effect": "lifecycle"
  },
  {
@@ -1276,7 +1276,7 @@
  },
  {
   "tool": "wps_word_replace_range",
-  "signature": "word_replace_range(start_pos*, end_pos*, text*)",
+  "signature": "word_replace_range(startPos*, endPos*, text*)",
   "effect": "write"
  },
  {
@@ -1286,7 +1286,7 @@
  },
  {
   "tool": "wps_word_set_font",
-  "signature": "word_set_font(font_name?, font_size?, bold?, italic?, underline?, color?, range?)",
+  "signature": "word_set_font(fontName?, fontSize?, bold?, italic?, underline?, color?, range?)",
   "effect": "write"
  },
  {
@@ -1296,7 +1296,7 @@
  },
  {
   "tool": "wps_word_set_page_setup",
-  "signature": "word_set_page_setup(orientation?, marginTop?, marginBottom?, marginLeft?, marginRight?)",
+  "signature": "word_set_page_setup(orientation?, topMargin?, bottomMargin?, leftMargin?, rightMargin?)",
   "effect": "write"
  },
  {
@@ -1321,7 +1321,7 @@
  },
  {
   "tool": "wps_word_smart_fill_field",
-  "signature": "word_smart_fill_field(keyword*, value*, fill_mode?)",
+  "signature": "word_smart_fill_field(keyword*, value*, fillMode?)",
   "effect": "write"
  },
  {

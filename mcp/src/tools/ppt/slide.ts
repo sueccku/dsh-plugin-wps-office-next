@@ -162,7 +162,7 @@ export const beautifyDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      slide_index: {
+      slideIndex: {
         type: 'number',
         description: '要美化的幻灯片页码，不填则美化当前页',
       },
@@ -187,8 +187,8 @@ export const beautifyDefinition: ToolDefinition = {
 export const beautifyHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slide_index, color_scheme, font, beautify_all } = args as {
-    slide_index?: number;
+  const { slideIndex, color_scheme, font, beautify_all } = args as {
+    slideIndex?: number;
     color_scheme?: string;
     font?: string;
     beautify_all?: boolean;
@@ -207,7 +207,7 @@ export const beautifyHandler: ToolHandler = async (
     }>(
       'beautifySlide',
       {
-        slideIndex: beautify_all ? 'all' : slide_index,
+        slideIndex: beautify_all ? 'all' : slideIndex,
         style: {
           colorScheme: color_scheme || 'business',
           font: font || '微软雅黑',
@@ -287,35 +287,35 @@ export const unifyFontDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      font_name: {
+      fontName: {
         type: 'string',
         description: '要统一使用的字体名称，如 "微软雅黑"、"思源黑体"',
       },
-      slide_index: {
+      slideIndex: {
         type: 'number',
         description: '只处理指定页，不填则处理所有页',
       },
-      include_title: {
+      includeTitle: {
         type: 'boolean',
         description: '是否包含标题，默认true',
       },
-      include_body: {
+      includeBody: {
         type: 'boolean',
         description: '是否包含正文，默认true',
       },
     },
-    required: ['font_name'],
+    required: ['fontName'],
   },
 };
 
 export const unifyFontHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { font_name, slide_index, include_title, include_body } = args as {
-    font_name: string;
-    slide_index?: number;
-    include_title?: boolean;
-    include_body?: boolean;
+  const { fontName, slideIndex, includeTitle, includeBody } = args as {
+    fontName: string;
+    slideIndex?: number;
+    includeTitle?: boolean;
+    includeBody?: boolean;
   };
 
   try {
@@ -328,10 +328,10 @@ export const unifyFontHandler: ToolHandler = async (
     }>(
       'unifyFont',
       {
-        fontName: font_name,
-        slideIndex: slide_index,
-        includeTitle: include_title !== false,
-        includeBody: include_body !== false,
+        fontName: fontName,
+        slideIndex: slideIndex,
+        includeTitle: includeTitle !== false,
+        includeBody: includeBody !== false,
       },
       WpsAppType.PRESENTATION
     );

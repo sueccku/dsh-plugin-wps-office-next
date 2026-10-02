@@ -64,7 +64,7 @@ check("fill_series wrote a linear series", /第1行: 1\b/.test(filled) && /第3�
 
 // auto_fill sent sourceRange/targetRange, which the bridge never read.
 await call("wps_excel_write_range", { range: "C10:C11", data: [[1], [2]] });
-const af = await call("wps_excel_auto_fill", { sourceRange: "C10:C11", targetRange: "C10:C14" });
+const af = await call("wps_excel_fill_series", { sourceRange: "C10:C11", targetRange: "C10:C14" });
 check("auto_fill accepts sourceRange/targetRange", ok(af), text(af).replace(/\s+/g, " ").slice(0, 80));
 const autoFilled = await read("C10:C14");
 check("auto_fill extended the pattern", /4/.test(autoFilled), autoFilled.replace(/\s+/g, " ").slice(0, 110));
@@ -96,9 +96,9 @@ const styleBad = await call("wps_excel_set_cell_style", { range: "A1", style: "d
 check("an unknown cell style fails loudly instead of being dropped", !ok(styleBad), text(styleBad).replace(/\s+/g, " ").slice(0, 90));
 
 // hide/show rows and columns: the tools sent count/hide/startRow/endRow but the bridge only read row/rows.
-const hide = await call("wps_excel_hide_row", { row: 2, count: 2, hide: true });
+const hide = await call("wps_excel_hide_rows", { row: 2, count: 2, hide: true });
 check("hide_row accepts row+count+hide", ok(hide), text(hide).replace(/\s+/g, " ").slice(0, 80));
-const show = await call("wps_excel_hide_row", { row: 2, count: 2, hide: false });
+const show = await call("wps_excel_hide_rows", { row: 2, count: 2, hide: false });
 check("hide_row hide=false shows them again", ok(show), text(show).replace(/\s+/g, " ").slice(0, 80));
 const hideRows = await call("wps_excel_hide_rows", { startRow: 4, endRow: 5 });
 check("hide_rows accepts startRow/endRow", ok(hideRows), text(hideRows).replace(/\s+/g, " ").slice(0, 80));
@@ -126,9 +126,9 @@ check("protect_workbook protects", ok(wprot), text(wprot).replace(/\s+/g, " ").s
 const wunprot = await call("wps_excel_protect_workbook", { protect: false, password: "probe" });
 check("protect_workbook accepts protect=false", ok(wunprot), text(wunprot).replace(/\s+/g, " ").slice(0, 80));
 
-// insert_excel_image sent filePath/imagePath/cell; only path was read and cell was dropped.
-const img = await call("wps_excel_insert_excel_image", { filePath: path.resolve(PROBE_PNG), cell: "E10" });
-check("insert_excel_image accepts filePath+cell", ok(img), text(img).replace(/\s+/g, " ").slice(0, 80));
+// insert_excel_image sent path/imagePath/cell; only path was read and cell was dropped.
+const img = await call("wps_excel_insert_excel_image", { path: path.resolve(PROBE_PNG), cell: "E10" });
+check("insert_excel_image accepts path+cell", ok(img), text(img).replace(/\s+/g, " ").slice(0, 80));
 
 // The big one: wps_excel_add_comment called the Word action of the same name, so an Excel comment
 // was written into the Word document's selection instead.

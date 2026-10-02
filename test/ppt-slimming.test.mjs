@@ -24,7 +24,7 @@ send({ jsonrpc: '2.0', method: 'notifications/initialized' });
 
 check('scratch presentation created', ok(await call('wps_ppt_create_presentation', {})), '');
 check('a blank slide is added', ok(await call('wps_ppt_add_slide', { layout: 'blank' })), '');
-check('a rectangle is added', ok(await call('wps_ppt_add_shape', { slideIndex: 1, shapeType: 'rectangle' })), '');
+check('a rectangle is added', ok(await call('wps_ppt_add_shape', { slideIndex: 1, type: 'rectangle' })), '');
 
 const full = await text('wps_ppt_set_shape_effect', {
   slideIndex: 1, shapeIndex: 1,

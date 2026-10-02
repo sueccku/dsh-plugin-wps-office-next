@@ -196,25 +196,25 @@ exports.insertExcelImageDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            filePath: { type: 'string', description: '图片文件路径' },
+            path: { type: 'string', description: '图片文件路径' },
             cell: { type: 'string', description: '插入位置的单元格地址，如 A1。不填则插入到当前选中位置' },
             width: { type: 'number', description: '图片宽度（像素），不填则使用原始宽度' },
             height: { type: 'number', description: '图片高度（像素），不填则使用原始高度' },
             sheet: { type: 'string', description: '工作表名称，不填则使用当前活动工作表' },
         },
-        required: ['filePath'],
+        required: ['path'],
     },
 };
 const insertExcelImageHandler = async (args) => {
-    const { filePath, cell, width, height, sheet } = args;
+    const { path, cell, width, height, sheet } = args;
     try {
-        // The bridge reads "path"; the removed filePath/imagePath aliases carried the same value and
+        // The bridge reads "path"; the removed path/imagePath aliases carried the same value and
         // were never read, which the parameter guard now rejects outright.
-        const response = await wps_client_1.wpsClient.executeMethod('insertExcelImage', { path: filePath, cell, width, height, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('insertExcelImage', { path: path, cell, width, height, sheet }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `插入图片失败: ${response.error}` }], error: response.error };
         }
-        let text = `图片插入成功！文件: ${filePath}`;
+        let text = `图片插入成功！文件: ${path}`;
         if (cell)
             text += `，位置: ${cell}`;
         if (width || height)

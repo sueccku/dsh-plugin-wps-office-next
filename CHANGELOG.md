@@ -2,6 +2,21 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.5.1（参数命名对齐：公开名 = 桥键，ALIAS_DEBT 归零）
+
+> 破坏性变更一处：**59 处工具参数改名**（例如 `filePath` → `path`、`app_type` → `appType`）。桥侧仍然接受
+> 旧拼写，所以按旧技能或旧习惯写的调用照旧可用。
+
+- **公开参数名与桥键一一对应**，别名表不再被任何工具依赖；`ALIAS_DEBT` 从 59 变成**硬 0** —— 新增工具
+  必须照桥键命名，否则 CI 直接红。
+- 41 组改名：最大一族是 `filePath` → `path`（8 处），其余是 `app_type` / `data_range` / `chart_type` /
+  `slide_index` / `find_text` / `font_name` 这类 snake_case → camelCase，以及 `url`→`address`、
+  `shapeIndices`→`names`、`effect`→`transition`、`chartType`→`type`、`order`→`zOrder` 等同义改名。
+- 技能文档同步 5 处；已过时的反例换成**仍然存在**的真陷阱（Word 的 `insert_image` 收 `imagePath`，PPT 的
+  `insert_ppt_image` 收 `path`；`set_slide_transition` 收 `effect`，`apply_transition_to_all` 收 `transition`）。
+- 顺手修掉上一版漏掉的 3 个真机测试文件：`merged-tools` 因 `require` 已删除的模块而直接崩，另两个文件
+  还在调 v0.5.0 已删除的旧工具名。
+- 数字：测试 **914 项 / 46 文件**；注册工具 267、广告面 **69 / 37,573 字节**（内部上限 100 / 60,000）。
 ## 0.5.0（试点就绪：不卡死、结果如实、能解释、按不变量防守）
 
 > 破坏性变更一处：**18 个废弃工具名已删除**（D4 的兼容窗口到期，见 docs/FIXES.md 76）。

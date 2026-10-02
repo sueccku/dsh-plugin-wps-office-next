@@ -9,14 +9,14 @@
 
 | 应用 | 工具数 | 有专门测试 | 仅矩阵 ok/error | 仅矩阵 any | 广告面 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Excel | 118 | 91 | 3 | 24 | 26 |
-| Word | 59 | 41 | 2 | 16 | 21 |
+| Excel | 118 | 92 | 3 | 23 | 26 |
+| Word | 59 | 42 | 2 | 15 | 21 |
 | PPT | 76 | 27 | 17 | 32 | 14 |
 | 通用 | 7 | 3 | 0 | 4 | 2 |
 | 转换 | 2 | 1 | 0 | 1 | 2 |
 | 逃生舱 | 1 | 1 | 0 | 0 | 0 |
 | 其他 | 4 | 4 | 0 | 0 | 4 |
-| **合计** | **267** | **168** | **22** | **77** | **69** |
+| **合计** | **267** | **170** | **22** | **75** | **69** |
 
 ## 矩阵
 
@@ -61,10 +61,10 @@
 | `wps_excel_create_workbook` | Excel | `createWorkbook` |  | bespoke | close-safety.test.mjs, excel-advanced.test.mjs, excel-coverage.test.mjs, +8 |
 | `wps_excel_delete_cell_comment` | Excel | `deleteCellComment` |  | matrix any | excel-coverage.test.mjs |
 | `wps_excel_delete_chart` | Excel | `deleteChart` |  | bespoke | destructive-guard.test.mjs, excel-advanced.test.mjs |
-| `wps_excel_delete_columns` | Excel | `deleteColumns` |  | bespoke | excel-coverage.test.mjs, honest-reporting.test.mjs |
+| `wps_excel_delete_columns` | Excel | `deleteColumns` |  | bespoke | excel-coverage.test.mjs, honest-reporting.test.mjs, merged-tools.test.mjs |
 | `wps_excel_delete_list_row` | Excel | `deleteListRow` |  | bespoke | destructive-guard.test.mjs, excel-list-object.test.mjs |
 | `wps_excel_delete_named_range` | Excel | `deleteNamedRange` |  | bespoke | excel-missing-halves.test.mjs |
-| `wps_excel_delete_rows` | Excel | `deleteRows` |  | bespoke | destructive-guard.test.mjs |
+| `wps_excel_delete_rows` | Excel | `deleteRows` |  | bespoke | destructive-guard.test.mjs, merged-tools.test.mjs |
 | `wps_excel_delete_sheet` | Excel | `deleteSheet` |  | bespoke | destructive-guard.test.mjs, sheet-ops.test.mjs |
 | `wps_excel_diagnose_formula` | Excel | `diagnoseFormula` |  | matrix any | excel-coverage.test.mjs |
 | `wps_excel_evaluate_formula` | Excel | — |  | matrix ok | excel-coverage.test.mjs |
@@ -95,9 +95,9 @@
 | `wps_excel_group_rows` | Excel | `groupRows` |  | bespoke | excel-page-setup.test.mjs |
 | `wps_excel_hide_column` | Excel | `hideColumns` |  | bespoke | excel-contract-fixes.test.mjs |
 | `wps_excel_hide_rows` | Excel | `hideRows` |  | bespoke | excel-contract-fixes.test.mjs, merged-tools.test.mjs |
-| `wps_excel_insert_columns` | Excel | `insertColumns` |  | bespoke | excel-coverage.test.mjs, range-limits.test.mjs |
+| `wps_excel_insert_columns` | Excel | `insertColumns` |  | bespoke | excel-coverage.test.mjs, merged-tools.test.mjs, range-limits.test.mjs |
 | `wps_excel_insert_excel_image` | Excel | `insertExcelImage` |  | bespoke | excel-contract-fixes.test.mjs, range-limits.test.mjs |
-| `wps_excel_insert_rows` | Excel | `insertRows` |  | matrix any | excel-coverage.test.mjs |
+| `wps_excel_insert_rows` | Excel | `insertRows` |  | bespoke | excel-coverage.test.mjs, merged-tools.test.mjs |
 | `wps_excel_lock_cells` | Excel | `lockCells` |  | matrix any | excel-coverage.test.mjs |
 | `wps_excel_merge_cells` | Excel | `mergeCells` |  | matrix any | excel-coverage.test.mjs |
 | `wps_excel_move_sheet` | Excel | `moveSheet` |  | bespoke | sheet-ops.test.mjs |
@@ -155,7 +155,7 @@
 | `wps_excel_write_range` | Excel | `setRangeData` | ✅ | bespoke | arg-shape-guard.test.mjs, cell-format.test.mjs, destructive-guard.test.mjs, +14 |
 | `wps_execute_method` | 逃生舱 | — |  | bespoke | cell-format.test.mjs, close-safety.test.mjs, destructive-guard.test.mjs, +15 |
 | `wps_help` | 其他 | — | ✅ | bespoke | deprecated.test.mjs, merged-tools.test.mjs, word-lifecycle.test.mjs, +1 |
-| `wps_ppt_add_animation` | PPT | `setAnimation` |  | bespoke | destructive-guard.test.mjs, ppt-contract-fixes.test.mjs, ppt-coverage.test.mjs, +1 |
+| `wps_ppt_add_animation` | PPT | `setAnimation` |  | bespoke | destructive-guard.test.mjs, merged-tools.test.mjs, ppt-contract-fixes.test.mjs, +2 |
 | `wps_ppt_add_master_element` | PPT | `addMasterElement` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_add_ppt_hyperlink` | PPT | `addPptHyperlink` |  | bespoke | ppt-contract-fixes.test.mjs |
 | `wps_ppt_add_shape` | PPT | `addShape` |  | bespoke | destructive-guard.test.mjs, ppt-contract-fixes.test.mjs, ppt-coverage.test.mjs, +1 |
@@ -165,7 +165,7 @@
 | `wps_ppt_apply_transition_to_all` | PPT | `applyTransitionToAll` |  | bespoke | ppt-contract-fixes.test.mjs |
 | `wps_ppt_beautify` | PPT | `beautifySlide` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_close_presentation` | PPT | `closePresentation` |  | bespoke | close-safety.test.mjs, honest-reporting.test.mjs, ppt-slimming.test.mjs |
-| `wps_ppt_copy_slide` | PPT | `duplicateSlide` |  | bespoke | ppt-contract-fixes.test.mjs |
+| `wps_ppt_copy_slide` | PPT | `duplicateSlide` |  | bespoke | merged-tools.test.mjs, ppt-contract-fixes.test.mjs |
 | `wps_ppt_create_presentation` | PPT | `createPresentation` |  | bespoke | close-safety.test.mjs, destructive-guard.test.mjs, honest-reporting.test.mjs, +4 |
 | `wps_ppt_delete_ppt_image` | PPT | `deletePptImage` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_delete_shape` | PPT | `deleteShape` |  | matrix any | ppt-coverage.test.mjs |
@@ -186,8 +186,8 @@
 | `wps_ppt_get_table_cell` | PPT | `getPptTableCell` |  | matrix ok | ppt-coverage.test.mjs |
 | `wps_ppt_get_textboxes` | PPT | `getTextBoxes` |  | matrix ok | ppt-coverage.test.mjs |
 | `wps_ppt_group_shapes` | PPT | `groupShapes` |  | matrix any | ppt-coverage.test.mjs |
-| `wps_ppt_insert_ppt_chart` | PPT | `insertPptChart` |  | bespoke | ppt-coverage.test.mjs |
-| `wps_ppt_insert_ppt_image` | PPT | `insertPptImage` | ✅ | bespoke | destructive-guard.test.mjs, merged-tools.test.mjs, ppt-coverage.test.mjs |
+| `wps_ppt_insert_ppt_chart` | PPT | `insertPptChart` |  | bespoke | merged-tools.test.mjs, ppt-coverage.test.mjs |
+| `wps_ppt_insert_ppt_image` | PPT | `insertPptImage` | ✅ | bespoke | destructive-guard.test.mjs, merged-tools.test.mjs, ppt-contract-fixes.test.mjs, +1 |
 | `wps_ppt_insert_slides_from_file` | PPT | `insertSlidesFromFile` |  | matrix ok | ppt-coverage.test.mjs |
 | `wps_ppt_insert_table` | PPT | `insertPptTable` | ✅ | bespoke | ppt-coverage.test.mjs, ppt-slimming.test.mjs |
 | `wps_ppt_move_slide` | PPT | `moveSlide` |  | matrix any | ppt-coverage.test.mjs |
@@ -222,7 +222,7 @@
 | `wps_ppt_set_slide_subtitle` | PPT | `setSlideSubtitle` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_set_slide_theme` | PPT | `setSlideTheme` |  | matrix ok | ppt-coverage.test.mjs |
 | `wps_ppt_set_slide_title` | PPT | `setSlideTitle` | ✅ | matrix any | ppt-coverage.test.mjs |
-| `wps_ppt_set_slide_transition` | PPT | `setSlideTransition` |  | bespoke | ppt-contract-fixes.test.mjs |
+| `wps_ppt_set_slide_transition` | PPT | `setSlideTransition` |  | bespoke | merged-tools.test.mjs, ppt-contract-fixes.test.mjs |
 | `wps_ppt_set_table_cell` | PPT | `setPptTableCell` |  | matrix ok | ppt-coverage.test.mjs, ppt-slimming.test.mjs |
 | `wps_ppt_set_table_format` | PPT | `setPptTableFormat` | ✅ | bespoke | ppt-slimming.test.mjs |
 | `wps_ppt_set_textbox_style` | PPT | `setTextBoxStyle` |  | matrix any | ppt-coverage.test.mjs |
@@ -281,7 +281,7 @@
 | `wps_word_replace_bookmark_content` | Word | `replaceBookmarkContent` |  | matrix any | word-common-coverage.test.mjs |
 | `wps_word_replace_range` | Word | `replaceRange` |  | matrix any | word-common-coverage.test.mjs |
 | `wps_word_set_columns` | Word | `setColumns` |  | bespoke | word-produce.test.mjs |
-| `wps_word_set_font` | Word | `setFont` | ✅ | matrix any | deprecated.test.mjs, merged-tools.test.mjs, word-common-coverage.test.mjs |
+| `wps_word_set_font` | Word | `setFont` | ✅ | bespoke | deprecated.test.mjs, merged-tools.test.mjs, word-common-coverage.test.mjs |
 | `wps_word_set_line_spacing` | Word | `setLineSpacing` |  | matrix ok | word-common-coverage.test.mjs |
 | `wps_word_set_page_setup` | Word | `setPageSetup` |  | matrix any | word-common-coverage.test.mjs |
 | `wps_word_set_paragraph` | Word | — | ✅ | matrix any | word-common-coverage.test.mjs |

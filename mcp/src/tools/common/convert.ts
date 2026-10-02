@@ -151,7 +151,7 @@ export const convertToPdfDefinition: ToolDefinition = {
         type: 'boolean',
         description: '导出后是否自动打开PDF，默认false',
       },
-      app_type: {
+      appType: {
         type: 'string',
         enum: ['excel', 'word', 'ppt'],
         description: '要导出的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档',
@@ -164,10 +164,10 @@ export const convertToPdfDefinition: ToolDefinition = {
 export const convertToPdfHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { outputPath, openAfterExport, app_type } = args as {
+  const { outputPath, openAfterExport, appType } = args as {
     outputPath?: string;
     openAfterExport?: boolean;
-    app_type?: string;
+    appType?: string;
   };
 
   try {
@@ -186,7 +186,7 @@ export const convertToPdfHandler: ToolHandler = async (
         // never read; the parameter guard now rejects them outright.
         outputPath: outputPath || '',
         openAfterExport: openAfterExport || false,
-        appType: app_type,
+        appType: appType,
       }
       // 不指定appType，让WPS加载项自动检测当前活动的应用
     );
@@ -261,7 +261,7 @@ export const convertFormatDefinition: ToolDefinition = {
         type: 'string',
         description: '输出路径（包含文件名），如不指定则使用原文件名改为新扩展名',
       },
-      app_type: {
+      appType: {
         type: 'string',
         enum: ['excel', 'word', 'ppt'],
         description: '要转换的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档',
@@ -274,10 +274,10 @@ export const convertFormatDefinition: ToolDefinition = {
 export const convertFormatHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { targetFormat, outputPath, app_type } = args as {
+  const { targetFormat, outputPath, appType } = args as {
     targetFormat: string;
     outputPath?: string;
-    app_type?: string;
+    appType?: string;
   };
 
   if (!targetFormat || targetFormat.trim() === '') {
@@ -304,7 +304,7 @@ export const convertFormatHandler: ToolHandler = async (
       {
         targetFormat: targetFormat.toLowerCase().replace(/^\./, ''), // 去掉开头的点
         outputPath: outputPath || '',
-        appType: app_type,
+        appType: appType,
       }
       // 不指定appType，让WPS加载项自动检测
     );

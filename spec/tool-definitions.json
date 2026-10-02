@@ -91,7 +91,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "filePath": {
+    "path": {
      "type": "string",
      "description": "目标文件完整路径，包含文件名和扩展名"
     },
@@ -101,7 +101,7 @@
     }
    },
    "required": [
-    "filePath"
+    "path"
    ]
   }
  },
@@ -144,7 +144,7 @@
      "type": "string",
      "description": "输出路径（包含文件名），如不指定则使用原文件名改为新扩展名"
     },
-    "app_type": {
+    "appType": {
      "type": "string",
      "description": "要转换的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档",
      "enum": [
@@ -173,7 +173,7 @@
      "type": "boolean",
      "description": "导出后是否自动打开PDF，默认false"
     },
-    "app_type": {
+    "appType": {
      "type": "string",
      "description": "要导出的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档",
      "enum": [
@@ -724,11 +724,11 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "data_range": {
+    "dataRange": {
      "type": "string",
      "description": "数据范围，如 A1:C10，图表数据的来源"
     },
-    "chart_type": {
+    "chartType": {
      "type": "string",
      "description": "图表类型，默认 column_clustered（簇状柱形图）",
      "enum": [
@@ -774,17 +774,17 @@
      "type": "string",
      "description": "工作表名称，不填则使用当前活动工作表"
     },
-    "show_legend": {
+    "showLegend": {
      "type": "boolean",
      "description": "是否显示图例，默认true"
     },
-    "show_data_labels": {
+    "showDataLabels": {
      "type": "boolean",
      "description": "是否显示数据标签，默认false"
     }
    },
    "required": [
-    "data_range"
+    "dataRange"
    ]
   }
  },
@@ -1742,7 +1742,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "filePath": {
+    "path": {
      "type": "string",
      "description": "图片文件路径"
     },
@@ -1764,7 +1764,7 @@
     }
    },
    "required": [
-    "filePath"
+    "path"
    ]
   }
  },
@@ -1864,13 +1864,13 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "filePath": {
+    "path": {
      "type": "string",
      "description": "工作簿文件路径"
     }
    },
    "required": [
-    "filePath"
+    "path"
    ]
   }
  },
@@ -2061,7 +2061,7 @@
       "type": "string"
      }
     },
-    "has_header": {
+    "hasHeader": {
      "type": "boolean",
      "description": "第一行是否为表头，默认true"
     },
@@ -3151,23 +3151,23 @@
  },
  {
   "name": "wps_excel_update_chart",
-  "description": "更新Excel图表的属性，包括标题、颜色、图例、数据标签等。\n\n使用场景：\n- \"把图表标题改成销售报表\" -> 更新 title\n- \"隐藏图例\" -> 设置 show_legend: false\n- \"显示数据标签\" -> 设置 show_data_labels: true\n- \"改变图表类型为折线图\" -> 设置 chart_type: line\n\n注意：需要先通过 wps_excel_create_chart 创建图表，或者指定已存在图表的名称/索引",
+  "description": "更新Excel图表的属性，包括标题、颜色、图例、数据标签等。\n\n使用场景：\n- \"把图表标题改成销售报表\" -> 更新 title\n- \"隐藏图例\" -> 设置 showLegend: false\n- \"显示数据标签\" -> 设置 showDataLabels: true\n- \"改变图表类型为折线图\" -> 设置 chartType: line\n\n注意：需要先通过 wps_excel_create_chart 创建图表，或者指定已存在图表的名称/索引",
   "inputSchema": {
    "type": "object",
    "properties": {
-    "chart_index": {
+    "chartIndex": {
      "type": "number",
-     "description": "图表索引（从1开始），与chart_name二选一"
+     "description": "图表索引（从1开始），与chartName二选一"
     },
-    "chart_name": {
+    "chartName": {
      "type": "string",
-     "description": "图表名称，与chart_index二选一"
+     "description": "图表名称，与chartIndex二选一"
     },
     "title": {
      "type": "string",
      "description": "新的图表标题"
     },
-    "chart_type": {
+    "chartType": {
      "type": "string",
      "description": "更改图表类型",
      "enum": [
@@ -3183,11 +3183,11 @@
       "radar"
      ]
     },
-    "show_legend": {
+    "showLegend": {
      "type": "boolean",
      "description": "是否显示图例"
     },
-    "legend_position": {
+    "legendPosition": {
      "type": "string",
      "description": "图例位置：bottom（下）、top（上）、left（左）、right（右）",
      "enum": [
@@ -3197,11 +3197,11 @@
       "right"
      ]
     },
-    "show_data_labels": {
+    "showDataLabels": {
      "type": "boolean",
      "description": "是否显示数据标签"
     },
-    "data_range": {
+    "dataRange": {
      "type": "string",
      "description": "更改数据源范围"
     },
@@ -3509,7 +3509,7 @@
      "type": "number",
      "description": "形状索引（从1开始）"
     },
-    "url": {
+    "address": {
      "type": "string",
      "description": "超链接地址，如 \"https://example.com\" 或 \"mailto:test@example.com\""
     }
@@ -3517,7 +3517,7 @@
    "required": [
     "slideIndex",
     "shapeIndex",
-    "url"
+    "address"
    ]
   }
  },
@@ -3660,7 +3660,7 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "shapeIndices": {
+    "names": {
      "type": "array",
      "items": {
       "type": "number"
@@ -3692,7 +3692,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "effect": {
+    "transition": {
      "type": "string",
      "description": "切换效果名称，如 \"fade\"、\"push\"、\"wipe\" 等"
     },
@@ -3702,7 +3702,7 @@
     }
    },
    "required": [
-    "effect"
+    "transition"
    ]
   }
  },
@@ -3712,7 +3712,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "slide_index": {
+    "slideIndex": {
      "type": "number",
      "description": "要美化的幻灯片页码，不填则美化当前页"
     },
@@ -3874,7 +3874,7 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "shapeIndices": {
+    "names": {
      "type": "array",
      "items": {
       "type": "number"
@@ -3892,7 +3892,7 @@
    },
    "required": [
     "slideIndex",
-    "shapeIndices",
+    "names",
     "direction"
    ]
   }
@@ -4138,7 +4138,7 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "shapeIndices": {
+    "names": {
      "type": "array",
      "items": {
       "type": "number"
@@ -4148,7 +4148,7 @@
    },
    "required": [
     "slideIndex",
-    "shapeIndices"
+    "names"
    ]
   }
  },
@@ -4162,7 +4162,7 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "chartType": {
+    "type": {
      "type": "string",
      "description": "图表类型"
     },
@@ -4181,7 +4181,7 @@
    },
    "required": [
     "slideIndex",
-    "chartType"
+    "type"
    ]
   }
  },
@@ -4195,7 +4195,7 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "filePath": {
+    "path": {
      "type": "string",
      "description": "图片文件路径"
     },
@@ -4218,7 +4218,7 @@
    },
    "required": [
     "slideIndex",
-    "filePath"
+    "path"
    ]
   }
  },
@@ -4311,13 +4311,13 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "filePath": {
+    "path": {
      "type": "string",
      "description": "演示文稿文件的完整路径"
     }
    },
    "required": [
-    "filePath"
+    "path"
    ]
   }
  },
@@ -4331,14 +4331,14 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "animationIndex": {
+    "index": {
      "type": "number",
      "description": "动画索引（从1开始）"
     }
    },
    "required": [
     "slideIndex",
-    "animationIndex"
+    "index"
    ]
   }
  },
@@ -4457,19 +4457,19 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "animationIndex": {
+    "from": {
      "type": "number",
      "description": "当前动画索引（从1开始）"
     },
-    "newOrder": {
+    "to": {
      "type": "number",
      "description": "新的播放顺序位置（从1开始）"
     }
    },
    "required": [
     "slideIndex",
-    "animationIndex",
-    "newOrder"
+    "from",
+    "to"
    ]
   }
  },
@@ -4525,14 +4525,14 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "imagePath": {
+    "path": {
      "type": "string",
      "description": "图片文件的完整路径"
     }
    },
    "required": [
     "slideIndex",
-    "imagePath"
+    "path"
    ]
   }
  },
@@ -4594,7 +4594,7 @@
         },
         "weight": {
          "type": "number",
-         "description": "边框粗细（磅）"
+         "description": "边框��细（磅）"
         }
        }
       },
@@ -4937,7 +4937,7 @@
  },
  {
   "name": "wps_ppt_set_shape_z_order",
-  "description": "设置形状在幻灯片中的层级顺序（Z轴排列）。\n\n支持的层级操作（order）：\n- front: 置于顶层\n- back: 置于底层\n- forward: 上移一层\n- backward: 下移一层\n\n使用场景：\n- \"把这个形状移到最前面\"\n- \"将形状置于底层\"\n- \"上移一层\"",
+  "description": "设置形状在幻灯片中的层级顺序（Z轴排列）。\n\n支持的层级操作（zOrder）：\n- front: 置于顶层\n- back: 置于底层\n- forward: 上移一层\n- backward: 下移一层\n\n使用场景：\n- \"把这个形状移到最前面\"\n- \"将形状置于底层\"\n- \"上移一层\"",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -4949,7 +4949,7 @@
      "type": "number",
      "description": "形状索引（从1开始）"
     },
-    "order": {
+    "zOrder": {
      "type": "string",
      "description": "层级操作类型",
      "enum": [
@@ -4963,7 +4963,7 @@
    "required": [
     "slideIndex",
     "shapeIndex",
-    "order"
+    "zOrder"
    ]
   }
  },
@@ -5411,25 +5411,25 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "font_name": {
+    "fontName": {
      "type": "string",
      "description": "要统一使用的字体名称，如 \"微软雅黑\"、\"思源黑体\""
     },
-    "slide_index": {
+    "slideIndex": {
      "type": "number",
      "description": "只处理指定页，不填则处理所有页"
     },
-    "include_title": {
+    "includeTitle": {
      "type": "boolean",
      "description": "是否包含标题，默认true"
     },
-    "include_body": {
+    "includeBody": {
      "type": "boolean",
      "description": "是否包含正文，默认true"
     }
    },
    "required": [
-    "font_name"
+    "fontName"
    ]
   }
  },
@@ -5550,7 +5550,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "style_name": {
+    "styleName": {
      "type": "string",
      "description": "样式名称，如 \"标题 1\"、\"正文\"、\"Heading 1\""
     },
@@ -5570,7 +5570,7 @@
     }
    },
    "required": [
-    "style_name"
+    "styleName"
    ]
   }
  },
@@ -5677,25 +5677,25 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "find_text": {
+    "findText": {
      "type": "string",
      "description": "要查找的文本"
     },
-    "match_case": {
+    "matchCase": {
      "type": "boolean",
      "description": "是否区分大小写，默认false"
     },
-    "match_whole_word": {
+    "matchWholeWord": {
      "type": "boolean",
      "description": "是否全字匹配，默认false"
     },
-    "max_results": {
+    "maxResults": {
      "type": "number",
      "description": "最大返回结果数，默认20"
     }
    },
    "required": [
-    "find_text"
+    "findText"
    ]
   }
  },
@@ -5705,29 +5705,29 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "find_text": {
+    "findText": {
      "type": "string",
      "description": "要查找的文本"
     },
-    "replace_text": {
+    "replaceText": {
      "type": "string",
      "description": "替换为的文本，如果只是查找不替换，可以不填"
     },
-    "replace_all": {
+    "replaceAll": {
      "type": "boolean",
      "description": "是否全部替换，默认true"
     },
-    "match_case": {
+    "matchCase": {
      "type": "boolean",
      "description": "是否区分大小写，默认false"
     },
-    "match_whole_word": {
+    "matchWholeWord": {
      "type": "boolean",
      "description": "是否全字匹配，默认false"
     }
    },
    "required": [
-    "find_text"
+    "findText"
    ]
   }
  },
@@ -5749,7 +5749,7 @@
      "type": "number",
      "description": "目录包含的标题级别数，如 3 表示包含标题1-3。默认3"
     },
-    "include_page_numbers": {
+    "includePageNumbers": {
      "type": "boolean",
      "description": "是否包含页码，默认true"
     }
@@ -5836,11 +5836,11 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "start_paragraph": {
+    "startParagraph": {
      "type": "number",
      "description": "起始段落索引（从1开始），默认1"
     },
-    "end_paragraph": {
+    "endParagraph": {
      "type": "number",
      "description": "结束段落索引，默认为起始+49"
     }
@@ -6009,7 +6009,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "imagePath": {
+    "path": {
      "type": "string",
      "description": "图片文件路径"
     },
@@ -6023,7 +6023,7 @@
     }
    },
    "required": [
-    "imagePath"
+    "path"
    ]
   }
  },
@@ -6207,13 +6207,13 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "filePath": {
+    "path": {
      "type": "string",
      "description": "要打开的文档文件路径"
     }
    },
    "required": [
-    "filePath"
+    "path"
    ]
   }
  },
@@ -6277,11 +6277,11 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "start_pos": {
+    "startPos": {
      "type": "number",
      "description": "起始字符位置（从0开始）"
     },
-    "end_pos": {
+    "endPos": {
      "type": "number",
      "description": "结束字符位置"
     },
@@ -6291,8 +6291,8 @@
     }
    },
    "required": [
-    "start_pos",
-    "end_pos",
+    "startPos",
+    "endPos",
     "text"
    ]
   }
@@ -6328,11 +6328,11 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "font_name": {
+    "fontName": {
      "type": "string",
      "description": "字体名称，如 \"微软雅黑\"、\"宋体\"、\"Arial\""
     },
-    "font_size": {
+    "fontSize": {
      "type": "number",
      "description": "字号，如 12、14、24"
     },
@@ -6398,19 +6398,19 @@
       "landscape"
      ]
     },
-    "marginTop": {
+    "topMargin": {
      "type": "number",
      "description": "上边距（磅值）"
     },
-    "marginBottom": {
+    "bottomMargin": {
      "type": "number",
      "description": "下边距（磅值）"
     },
-    "marginLeft": {
+    "leftMargin": {
      "type": "number",
      "description": "左边距（磅值）"
     },
-    "marginRight": {
+    "rightMargin": {
      "type": "number",
      "description": "右边距（磅值）"
     }
@@ -6516,7 +6516,7 @@
  },
  {
   "name": "wps_word_smart_fill_field",
-  "description": "智能填写Word模板中的字段。自动识别关键字附近的填写模式，在正确位置插入内容并保持原有格式。\n\n使用场景：\n- \"把项目名称填写为'XX信息化项目'\"\n- \"填写建设单位为'XX公司'\"\n- \"模板里的项目编号填上'2026-001'\"\n- 任何需要在模板文档中\"填写\"而非\"替换\"的场景\n\n支持的填写模式（fill_mode，默认auto自动判断）：\n- auto: 自动判断（推荐）\n- underline: 关键字后有下划线___，替换下划线为填写内容\n- afterColon: 关键字后有冒号（：或:），在冒号后插入\n- afterLabel: 关键字是标签，直接在关键字后插入\n- placeholder: 关键字被{}或【】包裹，替换整个占位符\n\n重要：模板填写场景应优先使用此工具，而非find_replace。find_replace会删除关键字本身并可能破坏格式。",
+  "description": "智能填写Word模板中的字段。自动识别关键字附近的填写模式，在正确位置插入内容并保持原有格式。\n\n使用场景：\n- \"把项目名称填写为'XX信息化项目'\"\n- \"填写建设单位为'XX公司'\"\n- \"模板里的项目编号填上'2026-001'\"\n- 任何需要在模板文档中\"填写\"而非\"替换\"的场景\n\n支持的填写模式（fillMode，默认auto自动判断）：\n- auto: 自动判断（推荐）\n- underline: 关键字后有下划线___，替换下划线为填写内容\n- afterColon: 关键字后有冒号（：或:），在冒号后插入\n- afterLabel: 关键字是标签，直接在关键字后插入\n- placeholder: 关键字被{}或【】包裹，替换整个占位符\n\n重要：模板填写场景应优先使用此工具，而非find_replace。find_replace会删除关键字本身并可能破坏格式。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -6528,7 +6528,7 @@
      "type": "string",
      "description": "要填写的值（如\"XX信息化项目\"）"
     },
-    "fill_mode": {
+    "fillMode": {
      "type": "string",
      "description": "填写模式: auto(自动判断), underline(下划线), afterColon(冒号后), afterLabel(标签后), placeholder(占位符)。默认auto",
      "enum": [

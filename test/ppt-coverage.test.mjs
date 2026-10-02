@@ -45,8 +45,8 @@ check("add two blank slides", ok(await call("wps_ppt_add_slide", { layout: "blan
 for (const t of ["rectangle", "oval", "triangle"]) await call("wps_ppt_add_shape", { slideIndex: 1, type: t, text: t === "rectangle" ? "标题" : ("t-" + t) });
 await call("wps_ppt_add_textbox", { slideIndex: 1, text: "文本框" });
 await call("wps_ppt_insert_table", { slideIndex: 1, rows: 2, cols: 3 });
-await call("wps_ppt_insert_ppt_image", { slideIndex: 1, filePath: imgPath });
-await call("wps_ppt_insert_ppt_chart", { slideIndex: 1, chartType: "column_clustered", title: "销量" });
+await call("wps_ppt_insert_ppt_image", { slideIndex: 1, path: imgPath });
+await call("wps_ppt_insert_ppt_chart", { slideIndex: 1, type: "column_clustered", title: "销量" });
 await call("wps_ppt_add_animation", { slideIndex: 1, effect: "fadeIn", shapeIndex: 1 });
 
 // ---- matrix -------------------------------------------------------------------------------
@@ -76,13 +76,13 @@ const MATRIX = [
   // backgrounds
   ["wps_ppt_set_background_color", { slideIndex: 1, color: "#112233" }, "any"],
   ["wps_ppt_set_background_gradient", { slideIndex: 1, gradient: { color1: "#FFFFFF", color2: "#000000" } }, "any"],
-  ["wps_ppt_set_background_image", { slideIndex: 1, imagePath: imgPath }, "any"],
+  ["wps_ppt_set_background_image", { slideIndex: 1, path: imgPath }, "any"],
   // shapes
   ["wps_ppt_set_shape_position", { slideIndex: 1, shapeIndex: 1, left: 60, top: 60, width: 120, height: 80 }, "ok"],
   ["wps_ppt_set_shape_style", { slideIndex: 1, shapeIndex: 1, fillColor: "#FF0000", lineColor: "#000000", lineWidth: 1 }, "ok"],
   ["wps_ppt_set_font_color", { slideIndex: 1, shapeIndex: 1, color: "#00FF00" }, "any"],
   ["wps_ppt_duplicate_shape", { slideIndex: 1, shapeIndex: 1 }, "ok"],
-  ["wps_ppt_set_shape_z_order", { slideIndex: 1, shapeIndex: 1, order: "front" }, "any"],
+  ["wps_ppt_set_shape_z_order", { slideIndex: 1, shapeIndex: 1, zOrder: "front" }, "any"],
   // text
   ["wps_ppt_set_textbox_text", { slideIndex: 1, textboxIndex: 1, text: "新文本" }, "ok"],
   ["wps_ppt_set_textbox_style", { slideIndex: 1, textboxIndex: 1, style: { fontSize: 20 } }, "any"],
@@ -90,15 +90,15 @@ const MATRIX = [
   // table
   ["wps_ppt_set_table_cell", { slideIndex: 1, tableIndex: 1, row: 1, col: 1, text: "X" }, "ok"],
   // images
-  ["wps_ppt_replace_ppt_image", { slideIndex: 1, filePath: imgPath }, "any"],
+  ["wps_ppt_replace_ppt_image", { slideIndex: 1, path: imgPath }, "any"],
   // charts
   ["wps_ppt_set_ppt_chart_data", { slideIndex: 1, chartIndex: 1, data: { categories: ["A", "B"], series: [{ name: "S", values: [1, 2] }] } }, "any"],
   ["wps_ppt_set_ppt_chart_style", { slideIndex: 1, chartIndex: 1, style: "style1" }, "any"],
   // animations
-  ["wps_ppt_set_animation_order", { slideIndex: 1, animationIndex: 1, newOrder: 1 }, "any"],
+  ["wps_ppt_set_animation_order", { slideIndex: 1, from: 1, to: 1 }, "any"],
   // grouping / distribution (needs several shapes)
-  ["wps_ppt_group_shapes", { slideIndex: 1, shapeIndices: [1, 2] }, "any"],
-  ["wps_ppt_distribute_shapes", { slideIndex: 1, shapeIndices: [1, 2, 3], direction: "horizontal" }, "any"],
+  ["wps_ppt_group_shapes", { slideIndex: 1, names: [1, 2] }, "any"],
+  ["wps_ppt_distribute_shapes", { slideIndex: 1, names: [1, 2, 3], direction: "horizontal" }, "any"],
   // slide ops
   ["wps_ppt_move_slide", { fromIndex: 1, toIndex: 2 }, "any"],
   ["wps_ppt_switch_presentation", { name: "演示文稿1" }, "any"],
@@ -109,8 +109,8 @@ const MATRIX = [
   ["wps_ppt_add_master_element", { element: "slideNumber" }, "any"],
   ["wps_ppt_beautify", {}, "any"],
   ["wps_ppt_export_slide_as_image", { slideIndex: 1, outputPath: exportPath }, "any"],
-  ["wps_ppt_insert_slides_from_file", { filePath: resolvePath("test/.artifacts/nope.pptx") }, "error"],
-  ["wps_ppt_open_presentation", { filePath: resolvePath("test/.artifacts/nope.pptx") }, "error"],
+  ["wps_ppt_insert_slides_from_file", { path: resolvePath("test/.artifacts/nope.pptx") }, "error"],
+  ["wps_ppt_open_presentation", { path: resolvePath("test/.artifacts/nope.pptx") }, "error"],
   // destructive last
   ["wps_ppt_delete_shape", { slideIndex: 1, shapeIndex: 1 }, "any"],
   ["wps_ppt_delete_textbox", { slideIndex: 1, textboxIndex: 1 }, "any"],

@@ -34,7 +34,7 @@ async function call(name, args, ms) {
 check("create_workbook", ok(await call("wps_excel_create_workbook", {})), "");
 check("seed A1:C3", ok(await call("wps_excel_write_range", { range: "A1", data: [[1, 2, 3], [4, 5, 6], [7, 8, 9]] })), "");
 await call("wps_excel_write_range", { range: "F1", data: [["a,b"], ["c,d"], ["e,f"]] });
-await call("wps_excel_create_chart", { data_range: "A1:C3", chart_type: "column_clustered", title: "T" });
+await call("wps_excel_create_chart", { dataRange: "A1:C3", chartType: "column_clustered", title: "T" });
 
 const rangePng = resolvePath("test/.artifacts/excelcov-range.png");
 const chartPng = resolvePath("test/.artifacts/excelcov-chart.png");
@@ -73,7 +73,7 @@ const MATRIX = [
   // comments
   ["wps_excel_delete_cell_comment", { cell: "A1" }, "any"],
   // charts / pivots
-  ["wps_excel_update_chart", { chart_name: "Chart 1", title: "T2" }, "any"],
+  ["wps_excel_update_chart", { chartName: "Chart 1", title: "T2" }, "any"],
   ["wps_excel_update_pivot_table", {}, "any"],
   ["wps_excel_export_range_as_image", { range: "A1:C3", outputPath: rangePng }, "any"],
   ["wps_excel_export_chart_as_image", { chartName: "Chart 1", outputPath: chartPng }, "any"],

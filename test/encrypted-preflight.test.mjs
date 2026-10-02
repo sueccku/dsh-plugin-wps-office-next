@@ -50,7 +50,7 @@ function call(name, args, ms) {
 
 for (const c of cases) {
   const started = Date.now();
-  const res = await call(c.tool, { filePath: c.file }, 30000);
+  const res = await call(c.tool, { path: c.file }, 30000);
   const ms = Date.now() - started;
   const body = text(res);
   check(c.app + ": an encrypted file returns instead of hanging", !res.__timeout, ms + "ms");

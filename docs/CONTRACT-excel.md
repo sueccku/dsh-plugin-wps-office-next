@@ -1,5 +1,9 @@
 # Excel 参数契约测试结果
 
+> **历史快照（P1 审计，2026-09 中旬）**：下表是当时用 `scripts/contract-test.mjs` 合成的参数与桥实际读取
+> 的键做差集的结果。**这些不匹配后来都修了**：参数名已在 FIXES 77 全部对齐到桥键（`ALIAS_DEBT = 0`），
+> 桥侧也保留旧拼写兼容。要了解现状请看 `docs/tool-coverage.md` 与 `test/spec-reproduction.test.mjs`。
+
 方法：scripts/contract-test.mjs 为每个工具按 schema 合成参数，经 MCP 调用，
 并开启 WPS_OFFICE_TRACE（mcp/src/client/wps-client.ts 的参数追踪）记录工具**实际发出**的参数键，
 再与 wps-com.ps1 里各 action **实际读取**的 `$p.*` 键做差集。

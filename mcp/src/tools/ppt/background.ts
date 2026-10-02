@@ -222,31 +222,31 @@ export const setBackgroundImageDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      imagePath: {
+      path: {
         type: 'string',
         description: '图片文件的完整路径',
       },
     },
-    required: ['slideIndex', 'imagePath'],
+    required: ['slideIndex', 'path'],
   },
 };
 
 export const setBackgroundImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, imagePath } = args as {
+  const { slideIndex, path } = args as {
     slideIndex: number;
-    imagePath: string;
+    path: string;
   };
 
   try {
-    // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path/filePath 别名
+    // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
     }>(
       'setBackgroundImage',
-      { slideIndex, imagePath, path: imagePath, filePath: imagePath },
+      { slideIndex, path },
       WpsAppType.PRESENTATION
     );
 
@@ -257,7 +257,7 @@ export const setBackgroundImageHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${imagePath}`,
+            text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${path}`,
           },
         ],
       };
@@ -370,7 +370,7 @@ export const setShapeZOrderDefinition: ToolDefinition = {
   name: 'wps_ppt_set_shape_z_order',
   description: `设置形状在幻灯片中的层级顺序（Z轴排列）。
 
-支持的层级操作（order）：
+支持的层级操作（zOrder）：
 - front: 置于顶层
 - back: 置于底层
 - forward: 上移一层
@@ -392,23 +392,23 @@ export const setShapeZOrderDefinition: ToolDefinition = {
         type: 'number',
         description: '形状索引（从1开始）',
       },
-      order: {
+      zOrder: {
         type: 'string',
         description: '层级操作类型',
         enum: ['front', 'back', 'forward', 'backward'],
       },
     },
-    required: ['slideIndex', 'shapeIndex', 'order'],
+    required: ['slideIndex', 'shapeIndex', 'zOrder'],
   },
 };
 
 export const setShapeZOrderHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, order } = args as {
+  const { slideIndex, shapeIndex, zOrder } = args as {
     slideIndex: number;
     shapeIndex: number;
-    order: string;
+    zOrder: string;
   };
 
   try {
@@ -417,7 +417,7 @@ export const setShapeZOrderHandler: ToolHandler = async (
       message: string;
     }>(
       'setShapeZOrder',
-      { slideIndex, shapeIndex, order },
+      { slideIndex, shapeIndex, zOrder },
       WpsAppType.PRESENTATION
     );
 
@@ -435,7 +435,7 @@ export const setShapeZOrderHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `形状层级调整成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n操作: ${orderName[order] || order}`,
+            text: `形状层级调整成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n操作: ${orderName[zOrder] || zOrder}`,
           },
         ],
       };

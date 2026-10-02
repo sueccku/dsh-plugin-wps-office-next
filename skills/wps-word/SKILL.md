@@ -20,7 +20,7 @@ wps_word_apply_style、wps_word_create_document、wps_word_find_replace、wps_wo
 
 ## 参数约定
 
-- find_replace：find_text 必填；**不传 replace_text 就是纯查找**——只统计命中次数、不改动文档。传了 replace_text 才会替换，replace_all=false 时只替换第一处。
+- find_replace：findText 必填；**不传 replaceText 就是纯查找**——只统计命中次数、不改动文档。传了 replaceText 才会替换，replaceAll=false 时只替换第一处。
 - insert_header / insert_footer 用 {text, section}，section 从 1 开始；节号不存在会明确报错。
 - set_page_setup 的页边距单位是**磅**（整数，0-1584），键名是 marginTop / marginBottom / marginLeft / marginRight，orientation 取 portrait / landscape。成功后会回报实际生效值。
 - insert_image 用 imagePath（不是 path）。

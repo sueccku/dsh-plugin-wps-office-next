@@ -104,7 +104,7 @@ export const saveAsDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      filePath: {
+      path: {
         type: 'string',
         description: '目标文件完整路径，包含文件名和扩展名',
       },
@@ -113,19 +113,19 @@ export const saveAsDefinition: ToolDefinition = {
         description: '保存格式（可选），如 docx, xlsx, pptx 等',
       },
     },
-    required: ['filePath'],
+    required: ['path'],
   },
 };
 
 export const saveAsHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { filePath, format } = args as {
-    filePath: string;
+  const { path, format } = args as {
+    path: string;
     format?: string;
   };
 
-  if (!filePath || filePath.trim() === '') {
+  if (!path || path.trim() === '') {
     return {
       id: uuidv4(),
       success: false,
@@ -135,10 +135,10 @@ export const saveAsHandler: ToolHandler = async (
   }
 
   try {
-    // The bridge reads "path" for saveAs. Sending filePath and outputPath as well was a bet that
+    // The bridge reads "path" for saveAs. Sending path and outputPath as well was a bet that
     // one of them would be read, and the two that were not were silently discarded.
     const params: Record<string, unknown> = {
-      path: filePath,
+      path: path,
     };
     if (format) {
       params.format = format.toLowerCase().replace(/^\./, '');
@@ -157,7 +157,7 @@ export const saveAsHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `另存为成功！\n输出路径: ${response.data.outputPath || filePath}`,
+            text: `另存为成功！\n输出路径: ${response.data.outputPath || path}`,
           },
         ],
       };

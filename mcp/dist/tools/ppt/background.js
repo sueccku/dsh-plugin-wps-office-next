@@ -187,19 +187,19 @@ exports.setBackgroundImageDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            imagePath: {
+            path: {
                 type: 'string',
                 description: '图片文件的完整路径',
             },
         },
-        required: ['slideIndex', 'imagePath'],
+        required: ['slideIndex', 'path'],
     },
 };
 const setBackgroundImageHandler = async (args) => {
-    const { slideIndex, imagePath } = args;
+    const { slideIndex, path } = args;
     try {
-        // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path/filePath 别名
-        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundImage', { slideIndex, imagePath, path: imagePath, filePath: imagePath }, wps_1.WpsAppType.PRESENTATION);
+        // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
+        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundImage', { slideIndex, path }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -207,7 +207,7 @@ const setBackgroundImageHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${imagePath}`,
+                        text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${path}`,
                     },
                 ],
             };
@@ -305,7 +305,7 @@ exports.setShapeZOrderDefinition = {
     name: 'wps_ppt_set_shape_z_order',
     description: `设置形状在幻灯片中的层级顺序（Z轴排列）。
 
-支持的层级操作（order）：
+支持的层级操作（zOrder）：
 - front: 置于顶层
 - back: 置于底层
 - forward: 上移一层
@@ -327,19 +327,19 @@ exports.setShapeZOrderDefinition = {
                 type: 'number',
                 description: '形状索引（从1开始）',
             },
-            order: {
+            zOrder: {
                 type: 'string',
                 description: '层级操作类型',
                 enum: ['front', 'back', 'forward', 'backward'],
             },
         },
-        required: ['slideIndex', 'shapeIndex', 'order'],
+        required: ['slideIndex', 'shapeIndex', 'zOrder'],
     },
 };
 const setShapeZOrderHandler = async (args) => {
-    const { slideIndex, shapeIndex, order } = args;
+    const { slideIndex, shapeIndex, zOrder } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setShapeZOrder', { slideIndex, shapeIndex, order }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('setShapeZOrder', { slideIndex, shapeIndex, zOrder }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             const orderName = {
                 front: '置于顶层',
@@ -353,7 +353,7 @@ const setShapeZOrderHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `形状层级调整成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n操作: ${orderName[order] || order}`,
+                        text: `形状层级调整成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n操作: ${orderName[zOrder] || zOrder}`,
                     },
                 ],
             };

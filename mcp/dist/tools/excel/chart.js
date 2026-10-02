@@ -92,11 +92,11 @@ exports.createChartDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            data_range: {
+            dataRange: {
                 type: 'string',
                 description: '数据范围，如 A1:C10，图表数据的来源',
             },
-            chart_type: {
+            chartType: {
                 type: 'string',
                 description: '图表类型，默认 column_clustered（簇状柱形图）',
                 enum: Object.values(ChartType),
@@ -131,29 +131,29 @@ exports.createChartDefinition = {
                 type: 'string',
                 description: '工作表名称，不填则使用当前活动工作表',
             },
-            show_legend: {
+            showLegend: {
                 type: 'boolean',
                 description: '是否显示图例，默认true',
             },
-            show_data_labels: {
+            showDataLabels: {
                 type: 'boolean',
                 description: '是否显示数据标签，默认false',
             },
         },
-        required: ['data_range'],
+        required: ['dataRange'],
     },
 };
 const createChartHandler = async (args) => {
-    const { data_range, chart_type = ChartType.COLUMN_CLUSTERED, title, position, sheet, show_legend = true, show_data_labels = false, } = args;
+    const { dataRange, chartType = ChartType.COLUMN_CLUSTERED, title, position, sheet, showLegend = true, showDataLabels = false, } = args;
     // 校验数据范围格式
-    if (!data_range || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(data_range)) {
+    if (!dataRange || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(dataRange)) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
             content: [
                 {
                     type: 'text',
-                    text: `数据范围格式无效，应为类似 A1:C10 的格式，当前传入: ${data_range}`,
+                    text: `数据范围格式无效，应为类似 A1:C10 的格式，当前传入: ${dataRange}`,
                 },
             ],
             error: '数据范围格式无效',
@@ -161,14 +161,14 @@ const createChartHandler = async (args) => {
     }
     // 校验图表类型
     const validChartTypes = Object.values(ChartType);
-    if (!validChartTypes.includes(chart_type)) {
+    if (!validChartTypes.includes(chartType)) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
             content: [
                 {
                     type: 'text',
-                    text: `不支持的图表类型: ${chart_type}\n支持的类型: ${validChartTypes.join(', ')}`,
+                    text: `不支持的图表类型: ${chartType}\n支持的类型: ${validChartTypes.join(', ')}`,
                 },
             ],
             error: '无效的图表类型',
@@ -176,11 +176,11 @@ const createChartHandler = async (args) => {
     }
     try {
         // 获取WPS图表类型常量
-        const wpsChartType = CHART_TYPE_MAP[chart_type];
+        const wpsChartType = CHART_TYPE_MAP[chartType];
         const response = await wps_client_1.wpsClient.executeMethod('createChart', {
-            dataRange: data_range,
+            dataRange: dataRange,
             chartType: wpsChartType,
-            chartTypeName: chart_type,
+            chartTypeName: chartType,
             title: title || '',
             position: {
                 left: position?.left,
@@ -189,8 +189,8 @@ const createChartHandler = async (args) => {
                 height: position?.height || 300,
             },
             sheet,
-            showLegend: show_legend,
-            showDataLabels: show_data_labels,
+            showLegend: showLegend,
+            showDataLabels: showDataLabels,
         }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success || !response.data) {
             return {
@@ -213,8 +213,8 @@ const createChartHandler = async (args) => {
                     text: `图表创建成功！
 图表名称: ${result.chartName || 'Chart'}
 图表索引: ${result.chartIndex || 1}
-数据范围: ${result.dataRange || data_range}
-图表类型: ${chart_type}
+数据范围: ${result.dataRange || dataRange}
+图表类型: ${chartType}
 位置: 左${pos.left}px, 上${pos.top}px
 尺寸: ${pos.width}x${pos.height}px
 
@@ -244,46 +244,46 @@ exports.updateChartDefinition = {
 
 使用场景：
 - "把图表标题改成销售报表" -> 更新 title
-- "隐藏图例" -> 设置 show_legend: false
-- "显示数据标签" -> 设置 show_data_labels: true
-- "改变图表类型为折线图" -> 设置 chart_type: line
+- "隐藏图例" -> 设置 showLegend: false
+- "显示数据标签" -> 设置 showDataLabels: true
+- "改变图表类型为折线图" -> 设置 chartType: line
 
 注意：需要先通过 wps_excel_create_chart 创建图表，或者指定已存在图表的名称/索引`,
     category: tools_1.ToolCategory.SPREADSHEET,
     inputSchema: {
         type: 'object',
         properties: {
-            chart_index: {
+            chartIndex: {
                 type: 'number',
-                description: '图表索引（从1开始），与chart_name二选一',
+                description: '图表索引（从1开始），与chartName二选一',
             },
-            chart_name: {
+            chartName: {
                 type: 'string',
-                description: '图表名称，与chart_index二选一',
+                description: '图表名称，与chartIndex二选一',
             },
             title: {
                 type: 'string',
                 description: '新的图表标题',
             },
-            chart_type: {
+            chartType: {
                 type: 'string',
                 description: '更改图表类型',
                 enum: Object.values(ChartType),
             },
-            show_legend: {
+            showLegend: {
                 type: 'boolean',
                 description: '是否显示图例',
             },
-            legend_position: {
+            legendPosition: {
                 type: 'string',
                 description: '图例位置：bottom（下）、top（上）、left（左）、right（右）',
                 enum: ['bottom', 'top', 'left', 'right'],
             },
-            show_data_labels: {
+            showDataLabels: {
                 type: 'boolean',
                 description: '是否显示数据标签',
             },
-            data_range: {
+            dataRange: {
                 type: 'string',
                 description: '更改数据源范围',
             },
@@ -303,32 +303,32 @@ exports.updateChartDefinition = {
     },
 };
 const updateChartHandler = async (args) => {
-    const { chart_index, chart_name, title, chart_type, show_legend, legend_position, show_data_labels, data_range, colors, sheet, } = args;
+    const { chartIndex, chartName, title, chartType, showLegend, legendPosition, showDataLabels, dataRange, colors, sheet, } = args;
     // 必须指定图表索引或名称
-    if (chart_index === undefined && !chart_name) {
+    if (chartIndex === undefined && !chartName) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
             content: [
                 {
                     type: 'text',
-                    text: '请指定目标图表，chart_index 或 chart_name 至少填写一个',
+                    text: '请指定目标图表，chartIndex 或 chartName 至少填写一个',
                 },
             ],
             error: '未指定目标图表',
         };
     }
     // 校验图表类型（如果指定了）
-    if (chart_type) {
+    if (chartType) {
         const validChartTypes = Object.values(ChartType);
-        if (!validChartTypes.includes(chart_type)) {
+        if (!validChartTypes.includes(chartType)) {
             return {
                 id: (0, uuid_1.v4)(),
                 success: false,
                 content: [
                     {
                         type: 'text',
-                        text: `不支持的图表类型: ${chart_type}\n支持的类型: ${validChartTypes.join(', ')}`,
+                        text: `不支持的图表类型: ${chartType}\n支持的类型: ${validChartTypes.join(', ')}`,
                     },
                 ],
                 error: '无效的图表类型',
@@ -356,25 +356,25 @@ const updateChartHandler = async (args) => {
     try {
         // 构建更新参数
         const updateParams = {
-            chartIndex: chart_index,
-            chartName: chart_name,
+            chartIndex: chartIndex,
+            chartName: chartName,
             sheet,
         };
         // 只添加需要更新的属性
         if (title !== undefined)
             updateParams.title = title;
-        if (chart_type !== undefined) {
-            updateParams.chartType = CHART_TYPE_MAP[chart_type];
-            updateParams.chartTypeName = chart_type;
+        if (chartType !== undefined) {
+            updateParams.chartType = CHART_TYPE_MAP[chartType];
+            updateParams.chartTypeName = chartType;
         }
-        if (show_legend !== undefined)
-            updateParams.showLegend = show_legend;
-        if (legend_position !== undefined)
-            updateParams.legendPosition = legend_position;
-        if (show_data_labels !== undefined)
-            updateParams.showDataLabels = show_data_labels;
-        if (data_range !== undefined)
-            updateParams.dataRange = data_range;
+        if (showLegend !== undefined)
+            updateParams.showLegend = showLegend;
+        if (legendPosition !== undefined)
+            updateParams.legendPosition = legendPosition;
+        if (showDataLabels !== undefined)
+            updateParams.showDataLabels = showDataLabels;
+        if (dataRange !== undefined)
+            updateParams.dataRange = dataRange;
         if (colors !== undefined)
             updateParams.colors = colors;
         const response = await wps_client_1.wpsClient.executeMethod('updateChart', updateParams, wps_1.WpsAppType.SPREADSHEET);

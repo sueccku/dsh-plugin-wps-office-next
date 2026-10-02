@@ -40,15 +40,15 @@ async function call(name, args, ms) {
 check("create_document", ok(await call("wps_word_create_document", {})), "");
 await call("wps_word_insert_text", { text: "第一段测试文本。\n第二段测试文本。", position: "start" });
 await call("wps_word_insert_bookmark", { name: "BM1" });
-const saved = await call("wps_common_save_as", { filePath: docPath });
+const saved = await call("wps_common_save_as", { path: docPath });
 
 const MATRIX = [
   // Word
   ["wps_word_get_paragraphs", {}, "any"],
   ["wps_word_get_track_changes_status", {}, "ok"],
-  ["wps_word_find_in_document", { find_text: "测试" }, "any"],
-  ["wps_word_apply_style", { style_name: "Heading 1", range: "all" }, "any"],
-  ["wps_word_set_font", { font_name: "微软雅黑", font_size: 12, range: "all" }, "any"],
+  ["wps_word_find_in_document", { findText: "测试" }, "any"],
+  ["wps_word_apply_style", { styleName: "Heading 1", range: "all" }, "any"],
+  ["wps_word_set_font", { fontName: "微软雅黑", fontSize: 12, range: "all" }, "any"],
   ["wps_word_set_text_color", { color: "#FF0000" }, "any"],
   ["wps_word_set_line_spacing", { lineSpacing: 1.5 }, "ok"],
   ["wps_word_set_paragraph", { alignment: "center" }, "any"],
@@ -58,7 +58,7 @@ const MATRIX = [
   ["wps_word_insert_image", { imagePath: imgPath }, "any"],
   ["wps_word_generate_toc", {}, "any"],
   ["wps_word_replace_bookmark_content", { name: "BM1", text: "书签内容" }, "any"],
-  ["wps_word_replace_range", { start_pos: 0, end_pos: 2, text: "替换" }, "any"],
+  ["wps_word_replace_range", { startPos: 0, endPos: 2, text: "替换" }, "any"],
   ["wps_word_smart_fill_field", { keyword: "甲方", value: "某公司" }, "any"],
   ["wps_word_switch_document", { name: "wordcov.docx" }, "any"],
   ["wps_word_proofread_basic", { text: "这是一段需要校对的中文文本。" }, "any"],
@@ -67,7 +67,7 @@ const MATRIX = [
   ["wps_common_get_selected_text", {}, "any"],
   ["wps_common_set_selected_text", { text: "选中替换" }, "any"],
   ["wps_common_wire_check", {}, "any"],
-  ["wps_convert_format", { targetFormat: "pdf", outputPath: pdfPath, app_type: "wps" }, "any"],
+  ["wps_convert_format", { targetFormat: "pdf", outputPath: pdfPath, appType: "wps" }, "any"],
 ];
 
 let succeeded = 0;

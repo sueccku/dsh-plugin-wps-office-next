@@ -276,32 +276,32 @@ send({ jsonrpc: '2.0', method: 'notifications/initialized' });
 
 // Ordinary opens must keep working: the guard must not break the happy path.
 const before = await openCount('getOpenDocuments');
-const plain = await call('wps_word_open_document', { filePath: normalDoc }, 90000);
+const plain = await call('wps_word_open_document', { path: normalDoc }, 90000);
 check('ordinary .docx opens', ok(plain.res), text(plain.res).replace(/\s+/g, ' ').slice(0, 90));
 await closeAll('getOpenDocuments', 'closeDocument');
 check('no document left open', (await openCount('getOpenDocuments')) === before, 'documents=' + (await openCount('getOpenDocuments')));
 
 const wbBefore = await openCount('getOpenWorkbooks');
-const plainXls = await call('wps_excel_open_workbook', { filePath: normalWorkbook }, 90000);
+const plainXls = await call('wps_excel_open_workbook', { path: normalWorkbook }, 90000);
 check('ordinary .xlsx opens', ok(plainXls.res), text(plainXls.res).replace(/\s+/g, ' ').slice(0, 90));
 await closeAll('getOpenWorkbooks', 'closeWorkbook');
 check('no workbook left open', (await openCount('getOpenWorkbooks')) === wbBefore, 'workbooks=' + (await openCount('getOpenWorkbooks')));
 
 // A text file wearing a .doc extension: the format/extension mismatch used to be the other
 // candidate for a conversion prompt. It must return, not hang.
-const mismatch = await call('wps_word_open_document', { filePath: mismatchDoc }, 45000);
+const mismatch = await call('wps_word_open_document', { path: mismatchDoc }, 45000);
 check('a mismatched-extension file returns instead of prompting', !!mismatch.res, 'returned in ' + mismatch.elapsed + 'ms, ok=' + ok(mismatch.res));
 await closeAll('getOpenDocuments', 'closeDocument');
 
 // The regression proper: an encrypted document must fail fast with an actionable Chinese message.
-const lockedWord = await call('wps_word_open_document', { filePath: lockedDoc }, 30000);
+const lockedWord = await call('wps_word_open_document', { path: lockedDoc }, 30000);
 const lockedWordText = text(lockedWord.res);
 check('encrypted .docx returns instead of hanging', !!lockedWord.res, 'returned in ' + lockedWord.elapsed + 'ms');
 check('encrypted .docx fails', !ok(lockedWord.res), lockedWordText.replace(/\s+/g, ' ').slice(0, 110));
 check('encrypted .docx explains the password and the next step', /密码|加密/.test(lockedWordText) && /另存为/.test(lockedWordText), lockedWordText.replace(/\s+/g, ' ').slice(0, 150));
 check('encrypted .docx fails inside the timeout budget', lockedWord.elapsed < 20000, lockedWord.elapsed + 'ms');
 
-const lockedExcel = await call('wps_excel_open_workbook', { filePath: lockedWorkbook }, 30000);
+const lockedExcel = await call('wps_excel_open_workbook', { path: lockedWorkbook }, 30000);
 const lockedExcelText = text(lockedExcel.res);
 check('encrypted .xlsx returns instead of hanging', !!lockedExcel.res, 'returned in ' + lockedExcel.elapsed + 'ms');
 check('encrypted .xlsx fails', !ok(lockedExcel.res), lockedExcelText.replace(/\s+/g, ' ').slice(0, 110));
@@ -313,7 +313,7 @@ const after = await call('wps_common_ping', {}, 20000);
 check('the bridge still answers after the encrypted opens', ok(after.res), text(after.res).replace(/\s+/g, ' ').slice(0, 80));
 
 // A missing file must be an error, never a wait.
-const missing = await call('wps_word_open_document', { filePath: join(ARTIFACTS, 'definitely-not-here.docx') }, 30000);
+const missing = await call('wps_word_open_document', { path: join(ARTIFACTS, 'definitely-not-here.docx') }, 30000);
 check('a missing file fails fast with a readable reason', !ok(missing.res) && missing.elapsed < 20000, 'returned in ' + missing.elapsed + 'ms: ' + text(missing.res).replace(/\s+/g, ' ').slice(0, 90));
 
 // Nothing may be left open by the failed opens.

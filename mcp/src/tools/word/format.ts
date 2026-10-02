@@ -45,7 +45,7 @@ export const applyStyleDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      style_name: {
+      styleName: {
         type: 'string',
         description: '样式名称，如 "标题 1"、"正文"、"Heading 1"',
       },
@@ -64,15 +64,15 @@ export const applyStyleDefinition: ToolDefinition = {
         },
       },
     },
-    required: ['style_name'],
+    required: ['styleName'],
   },
 };
 
 export const applyStyleHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { style_name, range } = args as {
-    style_name: string;
+  const { styleName, range } = args as {
+    styleName: string;
     range?: { start: number; end: number };
   };
 
@@ -83,7 +83,7 @@ export const applyStyleHandler: ToolHandler = async (
       affectedText: string;
     }>(
       'applyStyle',
-      { styleName: style_name, range },
+      { styleName: styleName, range },
       WpsAppType.WRITER
     );
 
@@ -94,7 +94,7 @@ export const applyStyleHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `样式应用成功！\n样式: ${style_name}\n影响的文本: ${response.data.affectedText}`,
+            text: `样式应用成功！\n样式: ${styleName}\n影响的文本: ${response.data.affectedText}`,
           },
         ],
       };
@@ -132,11 +132,11 @@ export const setFontDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      font_name: {
+      fontName: {
         type: 'string',
         description: '字体名称，如 "微软雅黑"、"宋体"、"Arial"',
       },
-      font_size: {
+      fontSize: {
         type: 'number',
         description: '字号，如 12、14、24',
       },
@@ -169,9 +169,9 @@ export const setFontDefinition: ToolDefinition = {
 export const setFontHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { font_name, font_size, bold, italic, underline, color, range } = args as {
-    font_name?: string;
-    font_size?: number;
+  const { fontName, fontSize, bold, italic, underline, color, range } = args as {
+    fontName?: string;
+    fontSize?: number;
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
@@ -180,12 +180,12 @@ export const setFontHandler: ToolHandler = async (
   };
 
   // 至少要设置一个属性吧
-  if (!font_name && !font_size && bold === undefined && italic === undefined &&
+  if (!fontName && !fontSize && bold === undefined && italic === undefined &&
       underline === undefined && !color) {
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '请至少指定一个字体属性（如 font_name、font_size、bold 等）' }],
+      content: [{ type: 'text', text: '请至少指定一个字体属性（如 fontName、fontSize、bold 等）' }],
       error: '没有指定任何字体属性',
     };
   }
@@ -198,8 +198,8 @@ export const setFontHandler: ToolHandler = async (
     }>(
       'setFont',
       {
-        fontName: font_name,
-        fontSize: font_size,
+        fontName: fontName,
+        fontSize: fontSize,
         bold,
         italic,
         underline,
@@ -273,7 +273,7 @@ export const generateTocDefinition: ToolDefinition = {
         type: 'number',
         description: '目录包含的标题级别数，如 3 表示包含标题1-3。默认3',
       },
-      include_page_numbers: {
+      includePageNumbers: {
         type: 'boolean',
         description: '是否包含页码，默认true',
       },
@@ -285,10 +285,10 @@ export const generateTocDefinition: ToolDefinition = {
 export const generateTocHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { position, levels, include_page_numbers } = args as {
+  const { position, levels, includePageNumbers } = args as {
     position?: string;
     levels?: number;
-    include_page_numbers?: boolean;
+    includePageNumbers?: boolean;
   };
 
   try {
@@ -301,7 +301,7 @@ export const generateTocHandler: ToolHandler = async (
       {
         position: position || 'start',
         levels: levels || 3,
-        includePageNumbers: include_page_numbers !== false,
+        includePageNumbers: includePageNumbers !== false,
       },
       WpsAppType.WRITER
     );
@@ -431,19 +431,19 @@ export const setPageSetupDefinition: ToolDefinition = {
         description: '页面方向: "portrait"(纵向) 或 "landscape"(横向)',
         enum: ['portrait', 'landscape'],
       },
-      marginTop: {
+      topMargin: {
         type: 'number',
         description: '上边距（磅值）',
       },
-      marginBottom: {
+      bottomMargin: {
         type: 'number',
         description: '下边距（磅值）',
       },
-      marginLeft: {
+      leftMargin: {
         type: 'number',
         description: '左边距（磅值）',
       },
-      marginRight: {
+      rightMargin: {
         type: 'number',
         description: '右边距（磅值）',
       },
@@ -455,20 +455,20 @@ export const setPageSetupDefinition: ToolDefinition = {
 export const setPageSetupHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { orientation, marginTop, marginBottom, marginLeft, marginRight } = args as {
+  const { orientation, topMargin, bottomMargin, leftMargin, rightMargin } = args as {
     orientation?: string;
-    marginTop?: number;
-    marginBottom?: number;
-    marginLeft?: number;
-    marginRight?: number;
+    topMargin?: number;
+    bottomMargin?: number;
+    leftMargin?: number;
+    rightMargin?: number;
   };
 
-  if (!orientation && marginTop === undefined && marginBottom === undefined &&
-      marginLeft === undefined && marginRight === undefined) {
+  if (!orientation && topMargin === undefined && bottomMargin === undefined &&
+      leftMargin === undefined && rightMargin === undefined) {
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '请至少指定一个页面设置属性（如 orientation、marginTop 等）' }],
+      content: [{ type: 'text', text: '请至少指定一个页面设置属性（如 orientation、topMargin 等）' }],
       error: '没有指定任何页面设置属性',
     };
   }
@@ -482,7 +482,7 @@ export const setPageSetupHandler: ToolHandler = async (
       'setPageSetup',
       // The bridge's keys are topMargin/bottomMargin/leftMargin/rightMargin; the schema keeps the
       // marginX spelling for callers.
-      { orientation, topMargin: marginTop, bottomMargin: marginBottom, leftMargin: marginLeft, rightMargin: marginRight },
+      { orientation, topMargin: topMargin, bottomMargin: bottomMargin, leftMargin: leftMargin, rightMargin: rightMargin },
       WpsAppType.WRITER
     );
 
@@ -490,10 +490,10 @@ export const setPageSetupHandler: ToolHandler = async (
       const s = response.data.settings;
       let desc = '';
       if (s.orientation) desc += `页面方向: ${s.orientation === 'landscape' ? '横向' : '纵向'}\n`;
-      if (s.marginTop !== undefined) desc += `上边距: ${s.marginTop}pt\n`;
-      if (s.marginBottom !== undefined) desc += `下边距: ${s.marginBottom}pt\n`;
-      if (s.marginLeft !== undefined) desc += `左边距: ${s.marginLeft}pt\n`;
-      if (s.marginRight !== undefined) desc += `右边距: ${s.marginRight}pt\n`;
+      if (s.topMargin !== undefined) desc += `上边距: ${s.topMargin}pt\n`;
+      if (s.bottomMargin !== undefined) desc += `下边距: ${s.bottomMargin}pt\n`;
+      if (s.leftMargin !== undefined) desc += `左边距: ${s.leftMargin}pt\n`;
+      if (s.rightMargin !== undefined) desc += `右边距: ${s.rightMargin}pt\n`;
 
       return {
         id: uuidv4(),

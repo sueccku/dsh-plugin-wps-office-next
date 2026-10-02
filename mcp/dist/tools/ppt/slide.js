@@ -139,7 +139,7 @@ exports.beautifyDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            slide_index: {
+            slideIndex: {
                 type: 'number',
                 description: '要美化的幻灯片页码，不填则美化当前页',
             },
@@ -161,10 +161,10 @@ exports.beautifyDefinition = {
     },
 };
 const beautifyHandler = async (args) => {
-    const { slide_index, color_scheme, font, beautify_all } = args;
+    const { slideIndex, color_scheme, font, beautify_all } = args;
     try {
         const response = await wps_client_1.wpsClient.executeMethod('beautifySlide', {
-            slideIndex: beautify_all ? 'all' : slide_index,
+            slideIndex: beautify_all ? 'all' : slideIndex,
             style: {
                 colorScheme: color_scheme || 'business',
                 font: font || '微软雅黑',
@@ -240,34 +240,34 @@ exports.unifyFontDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            font_name: {
+            fontName: {
                 type: 'string',
                 description: '要统一使用的字体名称，如 "微软雅黑"、"思源黑体"',
             },
-            slide_index: {
+            slideIndex: {
                 type: 'number',
                 description: '只处理指定页，不填则处理所有页',
             },
-            include_title: {
+            includeTitle: {
                 type: 'boolean',
                 description: '是否包含标题，默认true',
             },
-            include_body: {
+            includeBody: {
                 type: 'boolean',
                 description: '是否包含正文，默认true',
             },
         },
-        required: ['font_name'],
+        required: ['fontName'],
     },
 };
 const unifyFontHandler = async (args) => {
-    const { font_name, slide_index, include_title, include_body } = args;
+    const { fontName, slideIndex, includeTitle, includeBody } = args;
     try {
         const response = await wps_client_1.wpsClient.executeMethod('unifyFont', {
-            fontName: font_name,
-            slideIndex: slide_index,
-            includeTitle: include_title !== false,
-            includeBody: include_body !== false,
+            fontName: fontName,
+            slideIndex: slideIndex,
+            includeTitle: includeTitle !== false,
+            includeBody: includeBody !== false,
         }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             const result = response.data;

@@ -110,32 +110,32 @@ export const openPresentationDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      filePath: {
+      path: {
         type: 'string',
         description: '演示文稿文件的完整路径',
       },
     },
-    required: ['filePath'],
+    required: ['path'],
   },
 };
 
 export const openPresentationHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { filePath } = args as {
-    filePath: string;
+  const { path } = args as {
+    path: string;
   };
 
   try {
-    // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path 别名
+    // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
       name: string;
-      filePath: string;
+      path: string;
     }>(
       'openPresentation',
-      { filePath, path: filePath },
+      { path },
       WpsAppType.PRESENTATION
     );
 
@@ -146,7 +146,7 @@ export const openPresentationHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `演示文稿打开成功！\n名称: ${response.data.name}\n路径: ${response.data.filePath}`,
+            text: `演示文稿打开成功！\n名称: ${response.data.name}\n路径: ${response.data.path}`,
           },
         ],
       };

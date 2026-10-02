@@ -135,33 +135,33 @@ exports.findReplaceDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            find_text: {
+            findText: {
                 type: 'string',
                 description: '要查找的文本',
             },
-            replace_text: {
+            replaceText: {
                 type: 'string',
                 description: '替换为的文本，如果只是查找不替换，可以不填',
             },
-            replace_all: {
+            replaceAll: {
                 type: 'boolean',
                 description: '是否全部替换，默认true',
             },
-            match_case: {
+            matchCase: {
                 type: 'boolean',
                 description: '是否区分大小写，默认false',
             },
-            match_whole_word: {
+            matchWholeWord: {
                 type: 'boolean',
                 description: '是否全字匹配，默认false',
             },
         },
-        required: ['find_text'],
+        required: ['findText'],
     },
 };
 const findReplaceHandler = async (args) => {
-    const { find_text, replace_text, replace_all, match_case, match_whole_word } = args;
-    if (!find_text || find_text.trim() === '') {
+    const { findText, replaceText, replaceAll, matchCase, matchWholeWord } = args;
+    if (!findText || findText.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -171,15 +171,15 @@ const findReplaceHandler = async (args) => {
     }
     try {
         // 如果没有替换文本，就只是查找
-        const isReplaceMode = replace_text !== undefined && replace_text !== null;
+        const isReplaceMode = replaceText !== undefined && replaceText !== null;
         const response = await wps_client_1.wpsClient.executeMethod('findReplace', {
-            findText: find_text,
+            findText: findText,
             // replaceText is only meaningful in replace mode: sending an empty string while merely
             // searching used to be applied as a replacement and erased every match.
-            replaceText: isReplaceMode ? replace_text : undefined,
-            replaceAll: replace_all !== false, // 默认true
-            matchCase: match_case || false,
-            matchWholeWord: match_whole_word || false,
+            replaceText: isReplaceMode ? replaceText : undefined,
+            replaceAll: replaceAll !== false, // 默认true
+            matchCase: matchCase || false,
+            matchWholeWord: matchWholeWord || false,
             replaceMode: isReplaceMode,
         }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
@@ -193,7 +193,7 @@ const findReplaceHandler = async (args) => {
                         content: [
                             {
                                 type: 'text',
-                                text: `未找到 "${find_text}"，没有进行替换`,
+                                text: `未找到 "${findText}"，没有进行替换`,
                             },
                         ],
                     };
@@ -205,7 +205,7 @@ const findReplaceHandler = async (args) => {
                     content: [
                         {
                             type: 'text',
-                            text: `替换完成！\n查找: "${find_text}"\n替换为: "${replace_text}"\n${replaced}`,
+                            text: `替换完成！\n查找: "${findText}"\n替换为: "${replaceText}"\n${replaced}`,
                         },
                     ],
                 };
@@ -219,8 +219,8 @@ const findReplaceHandler = async (args) => {
                     {
                         type: 'text',
                         text: typeof found === 'number'
-                            ? `查找完成！\n"${find_text}" 在文档中出现了 ${found} 次`
-                            : `查找完成！\n已查找 "${find_text}"（桥未回报匹配次数）`,
+                            ? `查找完成！\n"${findText}" 在文档中出现了 ${found} 次`
+                            : `查找完成！\n已查找 "${findText}"（桥未回报匹配次数）`,
                     },
                 ],
             };
@@ -389,7 +389,7 @@ exports.insertImageDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            imagePath: {
+            path: {
                 type: 'string',
                 description: '图片文件路径',
             },
@@ -402,12 +402,12 @@ exports.insertImageDefinition = {
                 description: '图片高度（磅），可选',
             },
         },
-        required: ['imagePath'],
+        required: ['path'],
     },
 };
 const insertImageHandler = async (args) => {
-    const { imagePath, width, height } = args;
-    if (!imagePath || imagePath.trim() === '') {
+    const { path, width, height } = args;
+    if (!path || path.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -416,8 +416,8 @@ const insertImageHandler = async (args) => {
         };
     }
     try {
-        // The bridge reads "path"; the imagePath/filePath aliases were never read.
-        const response = await wps_client_1.wpsClient.executeMethod('insertImage', { path: imagePath, width, height }, wps_1.WpsAppType.WRITER);
+        // The bridge reads "path"; the path/filePath aliases were never read.
+        const response = await wps_client_1.wpsClient.executeMethod('insertImage', { path: path, width, height }, wps_1.WpsAppType.WRITER);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -425,7 +425,7 @@ const insertImageHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `图片插入成功！\n路径: ${imagePath}${width ? `\n宽度: ${width}磅` : ''}${height ? `\n高度: ${height}磅` : ''}`,
+                        text: `图片插入成功！\n路径: ${path}${width ? `\n宽度: ${width}磅` : ''}${height ? `\n高度: ${height}磅` : ''}`,
                     },
                 ],
             };
@@ -561,20 +561,20 @@ exports.getParagraphsDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            start_paragraph: { type: 'number', description: '起始段落索引（从1开始），默认1' },
-            end_paragraph: { type: 'number', description: '结束段落索引，默认为起始+49' },
+            startParagraph: { type: 'number', description: '起始段落索引（从1开始），默认1' },
+            endParagraph: { type: 'number', description: '结束段落索引，默认为起始+49' },
         },
         required: [],
     },
 };
 const getParagraphsHandler = async (args) => {
-    const { start_paragraph, end_paragraph } = args;
+    const { startParagraph, endParagraph } = args;
     try {
         const execParams = {};
-        if (start_paragraph != null)
-            execParams.startParagraph = start_paragraph;
-        if (end_paragraph != null)
-            execParams.endParagraph = end_paragraph;
+        if (startParagraph != null)
+            execParams.startParagraph = startParagraph;
+        if (endParagraph != null)
+            execParams.endParagraph = endParagraph;
         const response = await wps_client_1.wpsClient.executeMethod('getDocumentParagraphs', execParams, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const { paragraphs, totalCount, returnedCount } = response.data;
@@ -622,17 +622,17 @@ exports.findInDocumentDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            find_text: { type: 'string', description: '要查找的文本' },
-            match_case: { type: 'boolean', description: '是否区分大小写，默认false' },
-            match_whole_word: { type: 'boolean', description: '是否全字匹配，默认false' },
-            max_results: { type: 'number', description: '最大返回结果数，默认20' },
+            findText: { type: 'string', description: '要查找的文本' },
+            matchCase: { type: 'boolean', description: '是否区分大小写，默认false' },
+            matchWholeWord: { type: 'boolean', description: '是否全字匹配，默认false' },
+            maxResults: { type: 'number', description: '最大返回结果数，默认20' },
         },
-        required: ['find_text'],
+        required: ['findText'],
     },
 };
 const findInDocumentHandler = async (args) => {
-    const { find_text, match_case, match_whole_word, max_results } = args;
-    if (!find_text || find_text.trim() === '') {
+    const { findText, matchCase, matchWholeWord, maxResults } = args;
+    if (!findText || findText.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -642,10 +642,10 @@ const findInDocumentHandler = async (args) => {
     }
     try {
         const response = await wps_client_1.wpsClient.executeMethod('findInDocument', {
-            findText: find_text,
-            matchCase: match_case || false,
-            matchWholeWord: match_whole_word || false,
-            maxResults: max_results || 20,
+            findText: findText,
+            matchCase: matchCase || false,
+            matchWholeWord: matchWholeWord || false,
+            maxResults: maxResults || 20,
         }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const { results, count, findText } = response.data;
@@ -691,7 +691,7 @@ exports.smartFillFieldDefinition = {
 - "模板里的项目编号填上'2026-001'"
 - 任何需要在模板文档中"填写"而非"替换"的场景
 
-支持的填写模式（fill_mode，默认auto自动判断）：
+支持的填写模式（fillMode，默认auto自动判断）：
 - auto: 自动判断（推荐）
 - underline: 关键字后有下划线___，替换下划线为填写内容
 - afterColon: 关键字后有冒号（：或:），在冒号后插入
@@ -705,7 +705,7 @@ exports.smartFillFieldDefinition = {
         properties: {
             keyword: { type: 'string', description: '要填写的关键字（如"项目名称"、"建设单位"）' },
             value: { type: 'string', description: '要填写的值（如"XX信息化项目"）' },
-            fill_mode: {
+            fillMode: {
                 type: 'string',
                 description: '填写模式: auto(自动判断), underline(下划线), afterColon(冒号后), afterLabel(标签后), placeholder(占位符)。默认auto',
                 enum: ['auto', 'underline', 'afterColon', 'afterLabel', 'placeholder'],
@@ -715,7 +715,7 @@ exports.smartFillFieldDefinition = {
     },
 };
 const smartFillFieldHandler = async (args) => {
-    const { keyword, value, fill_mode } = args;
+    const { keyword, value, fillMode } = args;
     if (!keyword || keyword.trim() === '') {
         return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '关键字不能为空！' }], error: '关键字为空' };
     }
@@ -723,7 +723,7 @@ const smartFillFieldHandler = async (args) => {
         return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: '填写值不能为空（空字符串将清除该字段内容）' }], error: '填写值为空' };
     }
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('smartFillField', { keyword, value, fillMode: fill_mode || 'auto' }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('smartFillField', { keyword, value, fillMode: fillMode || 'auto' }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const { fillMode, result } = response.data;
             return {
