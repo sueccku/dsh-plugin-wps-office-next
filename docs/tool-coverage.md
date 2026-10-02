@@ -49,7 +49,7 @@
 | `wps_excel_clear_pivot_table` | Excel | `clearPivotTable` | ✅ | bespoke | excel-advanced.test.mjs |
 | `wps_excel_clear_range` | Excel | `clearRange` |  | bespoke | destructive-guard.test.mjs |
 | `wps_excel_clear_sparkline` | Excel | `clearSparkline` |  | bespoke | destructive-guard.test.mjs, excel-advanced.test.mjs |
-| `wps_excel_close_workbook` | Excel | `closeWorkbook` |  | bespoke | close-safety.test.mjs, deprecated.test.mjs, excel-advanced.test.mjs, +8 |
+| `wps_excel_close_workbook` | Excel | `closeWorkbook` |  | bespoke | close-safety.test.mjs, excel-advanced.test.mjs, excel-list-object.test.mjs, +7 |
 | `wps_excel_consolidate` | Excel | `consolidate` |  | bespoke | excel-missing-halves-2.test.mjs |
 | `wps_excel_copy_format` | Excel | `copyFormat` | ✅ | bespoke | excel-missing-halves-2.test.mjs |
 | `wps_excel_copy_range` | Excel | `copyRange` |  | bespoke | excel-contract-fixes.test.mjs |
@@ -58,7 +58,7 @@
 | `wps_excel_create_list_object` | Excel | `createListObject` | ✅ | bespoke | destructive-guard.test.mjs, excel-list-object.test.mjs |
 | `wps_excel_create_pivot_table` | Excel | `createPivotTable` | ✅ | bespoke | excel-advanced.test.mjs |
 | `wps_excel_create_sheet` | Excel | `createSheet` |  | bespoke | destructive-guard.test.mjs, excel-missing-halves-2.test.mjs, excel-page-setup.test.mjs, +1 |
-| `wps_excel_create_workbook` | Excel | `createWorkbook` |  | bespoke | close-safety.test.mjs, deprecated.test.mjs, excel-advanced.test.mjs, +9 |
+| `wps_excel_create_workbook` | Excel | `createWorkbook` |  | bespoke | close-safety.test.mjs, excel-advanced.test.mjs, excel-coverage.test.mjs, +8 |
 | `wps_excel_delete_cell_comment` | Excel | `deleteCellComment` |  | matrix any | excel-coverage.test.mjs |
 | `wps_excel_delete_chart` | Excel | `deleteChart` |  | bespoke | destructive-guard.test.mjs, excel-advanced.test.mjs |
 | `wps_excel_delete_columns` | Excel | `deleteColumns` |  | bespoke | excel-coverage.test.mjs, honest-reporting.test.mjs |
@@ -281,7 +281,7 @@
 | `wps_word_replace_bookmark_content` | Word | `replaceBookmarkContent` |  | matrix any | word-common-coverage.test.mjs |
 | `wps_word_replace_range` | Word | `replaceRange` |  | matrix any | word-common-coverage.test.mjs |
 | `wps_word_set_columns` | Word | `setColumns` |  | bespoke | word-produce.test.mjs |
-| `wps_word_set_font` | Word | `setFont` | ✅ | matrix any | merged-tools.test.mjs, word-common-coverage.test.mjs |
+| `wps_word_set_font` | Word | `setFont` | ✅ | matrix any | deprecated.test.mjs, merged-tools.test.mjs, word-common-coverage.test.mjs |
 | `wps_word_set_line_spacing` | Word | `setLineSpacing` |  | matrix ok | word-common-coverage.test.mjs |
 | `wps_word_set_page_setup` | Word | `setPageSetup` |  | matrix any | word-common-coverage.test.mjs |
 | `wps_word_set_paragraph` | Word | — | ✅ | matrix any | word-common-coverage.test.mjs |

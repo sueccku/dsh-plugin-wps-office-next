@@ -77,6 +77,7 @@ function printHelp() {
     '  --profile <name>   DSH profile that has this bundle installed (required)',
     '  --setup            create that profile from the headless template and install this repo into it',
     '  --dsh-bin <path>   path to @deepseek-ai/dsh/lib/bin.js when it cannot be located automatically',
+  '                     (a plain Node install; the packaged desktop runtime is found automatically)',
     '  --timeout <sec>    per-run wall clock limit (default 420; the observed two-scenario run takes about 2-3 min)',
     '  --clean            delete the generated fixture and output document when every check passes',
   ].join('\n'));
@@ -100,7 +101,12 @@ function parseArgs(argv) {
 
 // DSH is launched through its real entry rather than the .cmd shim: argv then carries the task
 // text verbatim, with no cmd.exe quoting to get wrong.
-function resolveDshBin(explicit) {
+// DSH 现在有两种装法，e2e 两种都要能驱动（FIXES 76）：
+//   * 普通 Node 安装：node_modules/@deepseek-ai/dsh/lib/bin.js（最初假设的那种）；
+//   * 桌面版打包运行时："<app>/DeepSeek Harness.exe" + app.asar/dsh/.../dsh-desktop-host/lib/cli.js，
+//     需要 ELECTRON_RUN_AS_NODE=1 —— 也就是 dsh.cmd 那个 shim 的做法。
+// 先找第一种（--dsh-bin / DSH_BIN / PATH 上的 shim），找不到再找桌面版。
+function resolveDshLauncher(explicit) {
   const rel = join('node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js');
   const candidates = [];
   if (explicit) candidates.push(explicit);
@@ -116,7 +122,23 @@ function resolveDshBin(explicit) {
       if (shim) candidates.push(join(dirname(shim), rel));
     }
   }
-  return candidates.find((candidate) => candidate && existsSync(candidate)) || '';
+  const bin = candidates.find((candidate) => candidate && existsSync(candidate));
+  if (bin) return { label: bin, command: process.execPath, args: [bin], env: {} };
+
+  const roots = [];
+  if (process.env.LOCALAPPDATA) roots.push(join(process.env.LOCALAPPDATA, 'Programs', 'DeepSeek Harness'));
+  if (process.env.ProgramFiles) roots.push(join(process.env.ProgramFiles, 'DeepSeek Harness'));
+  for (const root of roots) {
+    // app.asar 是归档文件，fs 看不到里面的 cli.js（asar 支持只有 Electron 有），所以只检查
+    // exe 与归档本身存在；cli 路径按归档内部写法拼给 Electron（dsh.cmd shim 就是这么做的）。
+    const exe = join(root, 'DeepSeek Harness.exe');
+    const asar = join(root, 'resources', 'app.asar');
+    const cli = join(asar, 'dsh', 'node_modules', '@deepseek-ai', 'dsh-desktop-host', 'lib', 'cli.js');
+    if (existsSync(exe) && existsSync(asar)) {
+      return { label: exe + ' -> ' + cli, command: exe, args: ['--expose-internals', cli], env: { ELECTRON_RUN_AS_NODE: '1' } };
+    }
+  }
+  return null;
 }
 
 function runSync(bin, args, opts) {
@@ -358,9 +380,10 @@ function flatten(content) {
 }
 function oneLine(value, max) { return String(value).replace(/\s+/g, ' ').trim().slice(0, max); }
 
-// Layout is sessions/<encoded-cwd>/<session-id>/session.v3.jsonl.zstd; both depths are accepted
-// because the workspace level is easy to forget and a silent miss would quietly skip every
-// behaviour check below.
+// Layout is sessions/<encoded-cwd>/<session-id>/session.v<N>.jsonl.zstd. Both depths are accepted
+// because the workspace level is easy to forget; the version number is matched loosely because DSH
+// moved from v3 to v4 and a hard-coded name silently skipped every behaviour check below (FIXES 76).
+const SESSION_FILE = /^session\.v\d+\.jsonl\.zstd$/;
 function sessionFiles() {
   const root = join(DSH_HOME, 'sessions');
   const files = [];
@@ -369,11 +392,15 @@ function sessionFiles() {
     const workspaceDir = join(root, workspace);
     let entries;
     try { entries = readdirSync(workspaceDir); } catch { continue; }
-    const direct = join(workspaceDir, 'session.v3.jsonl.zstd');
-    if (existsSync(direct)) { files.push({ file: direct, workspace }); continue; }
     for (const entry of entries) {
-      const nested = join(workspaceDir, entry, 'session.v3.jsonl.zstd');
-      if (existsSync(nested)) files.push({ file: nested, workspace });
+      if (SESSION_FILE.test(entry)) files.push({ file: join(workspaceDir, entry), workspace });
+    }
+    for (const entry of entries) {
+      let nested;
+      try { nested = readdirSync(join(workspaceDir, entry)); } catch { continue; }
+      for (const inner of nested) {
+        if (SESSION_FILE.test(inner)) files.push({ file: join(workspaceDir, entry, inner), workspace });
+      }
     }
   }
   return files;
@@ -517,20 +544,21 @@ function parseOpenCount(text) {
 // --- main ----------------------------------------------------------------------------------
 
 const opts = parseArgs(process.argv.slice(2));
-const dshBin = resolveDshBin(opts.dshBin);
-if (!dshBin) die('could not locate @deepseek-ai/dsh/lib/bin.js; pass --dsh-bin <path> or set DSH_BIN');
-info('dsh entry: ' + dshBin);
+const dsh = resolveDshLauncher(opts.dshBin);
+if (!dsh) die('could not locate DSH (neither node_modules/@deepseek-ai/dsh/lib/bin.js nor the packaged desktop runtime); pass --dsh-bin <path> or set DSH_BIN');
+const runDsh = (args, runOpts) => runSync(dsh.command, dsh.args.concat(args), Object.assign({}, runOpts, { env: Object.assign({}, process.env, dsh.env) }));
+info('dsh entry: ' + dsh.label);
 
 if (opts.setup) {
   info('creating profile ' + opts.profile + ' from the headless template and installing ' + ROOT);
   const manifest = join(DSH_HOME, 'profiles', opts.profile, 'package.json');
-  const created = runSync(process.execPath, [dshBin, '--profile', opts.profile, '--from-default-profile', 'headless', '--dump-config'], { timeout: 300000 });
+  const created = runDsh(['--profile', opts.profile, '--from-default-profile', 'headless', '--dump-config'], { timeout: 300000 });
   // Checked against the profile it writes rather than against its stdout: the composed tree prints
   // bundle ids with forward slashes, so a path-joined needle never matches.
   if (created.error || !existsSync(manifest)) {
     die('could not create profile ' + opts.profile + ': ' + (created.error ? created.error.message : String(created.stderr || created.stdout || '').slice(0, 400)));
   }
-  const added = runSync(process.execPath, [dshBin, 'plugin', '--profile', opts.profile, 'add', ROOT], { timeout: 600000 });
+  const added = runDsh(['plugin', '--profile', opts.profile, 'add', ROOT], { timeout: 600000 });
   const manifestText = existsSync(manifest) ? readFileSync(manifest, 'utf8') : '';
   if (added.error || !manifestText.includes('dsh-plugin-wps-office-next')) {
     die('could not install the bundle into ' + opts.profile + ': ' + (added.error ? added.error.message : String(added.stderr || added.stdout || '').slice(0, 400)));
@@ -582,10 +610,10 @@ const stdoutFd = openSync(stdoutPath, 'w');
 const stderrFd = openSync(stderrPath, 'w');
 info('running headless task (limit ' + opts.timeoutSec + 's) ...');
 const runResult = await new Promise((resolvePromise) => {
-  const child = spawn(process.execPath, [dshBin, '--profile', opts.profile, task], {
+  const child = spawn(dsh.command, dsh.args.concat(['--profile', opts.profile, task]), {
     cwd: ROOT,
     windowsHide: true,
-    env: runEnv,
+    env: Object.assign({}, runEnv, dsh.env),
     stdio: ['ignore', stdoutFd, stderrFd],
   });
   const timer = setTimeout(() => { info('  time limit reached, killing the run'); child.kill(); }, opts.timeoutSec * 1000);
@@ -736,7 +764,7 @@ check('created the Word document with a plugin tool', wpsTools.includes('wps_wor
 // 6. report
 const failed = checks.filter((entry) => !entry.ok);
 writeUtf8Bom(join(runDir, 'report.json'), JSON.stringify({
-  runId, profile: opts.profile, dshBin, task, ordersPath, exitCode: runResult.code, elapsedMs: runResult.ms,
+  runId, profile: opts.profile, dsh: dsh.label, task, ordersPath, exitCode: runResult.code, elapsedMs: runResult.ms,
   sessionFile: session ? session.file : null,
   toolCalls: expandToolNames(trace.toolCalls),
   checks,

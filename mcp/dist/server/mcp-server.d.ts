@@ -25,7 +25,6 @@ export declare class WpsMcpServer {
     private readonly server;
     private readonly registry;
     private isRunning;
-    private deprecatedToolCount;
     constructor(config?: Partial<McpServerConfig>);
     /**
      * 设置请求处理器
@@ -44,13 +43,6 @@ export declare class WpsMcpServer {
      * wps_call 让全部已注册工具保持可用，而 tools/list 只广告一小部分
      */
     registerFacadeTools(): void;
-    /**
-     * 校验废弃别名指向的规范工具都还在，并把可解析的别名数量记下来供 wps_status 汇报。
-     * 别名不再注册成工具：旧名字在派发期解析（resolveDeprecated），既不占注册位也不重复 schema。
-     */
-    resolveDeprecatedTools(): void;
-    /** 废弃名 → {规范工具名, 改名后的参数}；不是废弃名、或规范工具缺失时返回 null。 */
-    private resolveDeprecated;
     /**
      * 启动服务器
      */

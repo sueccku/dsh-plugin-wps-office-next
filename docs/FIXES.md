@@ -2142,6 +2142,35 @@ matrix-any-only 77)`；`spec-reproduction` 13 → **15 项**（新增三条分�
 
 **验收**：`node scripts/gen-skill-tools.mjs` 后 `git diff --exit-code -- skills` 干净（CI 同款）；
 `gen-tool-coverage` 后汇总各列相加 = 267 / 69；`node scripts/lint.mjs` 0 违规。
+### 76. 废弃别名清理 + e2e 适配桌面版运行时与 v4 会话日志（第 5 步）
+
+**① 废弃别名清理（D1，破坏性变更）**
+
+- 18 个合并期旧名（`wps_excel_zoom` → `wps_excel_set_zoom`、`wps_ppt_set_animation` → `wps_ppt_add_animation` 等）
+  按 D4 从 v0.2.0 保留到 v0.4.0；v0.5.0 起**全部删除**：`mcp/src/tools/deprecated.ts` 整个模块、
+  `mcp/dist/tools/deprecated.*`、`mcp-server.ts` 里的派发别名解析（tools/call、wps_call、wps_batch）、
+  `wps_help` 的 deprecated 分支、`wps_status.deprecatedTools` 字段全部移除。旧名现在是**未知工具**。
+- `test/deprecated.test.mjs` 从「旧名仍能转发」改为「旧名已消失」（**不需要 WPS**，已进 CI）：18 个名字
+  逐个经 `wps_call` 得到「未知工具」、经 `wps_help` 得到「未找到工具」；规范名照常可用；`wps_status`
+  不再有 `deprecatedTools`；外加三条静态断言（src / dist 的模块已删、源码里再无引用）。
+- `scripts/verify.mjs` 的两处引用改用规范名（`wps_ppt_add_animation`）。
+- **没有动** `ALIAS_DEBT`（参数公开名 → 桥键的 59 处改名）：那是模型面向的参数名改名，会改 schema 与技能
+  文档，属独立的破坏性批次；账本仍在 `test/spec-reproduction.test.mjs`。
+
+**② e2e 两个「试跑直接抓出来」的环境适配**
+
+- **DSH 已经变成桌面版打包运行时**：`node scripts/e2e.mjs --setup` 直接失败（`could not locate
+  @deepseek-ai/dsh/lib/bin.js`）。新增 `resolveDshLauncher()`：先找普通 Node 安装（`--dsh-bin` / `DSH_BIN` /
+  PATH 上的 shim），再找桌面版 —— 用 `<app>\DeepSeek Harness.exe --expose-internals <asar 内 cli.js>` 启动并设
+  `ELECTRON_RUN_AS_NODE=1`（就是 `dsh.cmd` 的做法）；三处调用（建 profile / 装插件 / 跑任务）统一走 `runDsh()`。
+  只检查 exe 与 `app.asar` 是否存在：归档内部路径 `fs` 看不到（asar 支持只有 Electron 有）。
+- **会话日志升到 v4**：e2e 原先只认 `session.v3.jsonl.zstd`，于是「有没有真的用插件」这一组行为断言全部
+  静默失败（而任务本身是成功的：独立 COM 复验 17 项全绿）。改成匹配 `session.v<N>.jsonl.zstd`。
+
+**验收**：`test/deprecated.test.mjs` 7 项（WPS-free，进 CI）；`scripts/verify.mjs` 23 项全绿（含改名的两处）；
+**一键 e2e 29/29 全绿（76 秒）** —— headless 任务 60 次工具调用 / 3 次技能加载，独立 COM 复验确认两个工作簿
+与 Word 文档全部正确（明细+汇总、降序合计、簇状柱形图、ListObject `Orders@$A$1:$D$13`、条件格式、
+横向 A4、页脚页码域、打印标题），跑完无残留文档、无缺陷标记、模型没有自己写 COM 脚本。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

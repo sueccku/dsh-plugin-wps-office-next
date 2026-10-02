@@ -17,7 +17,6 @@ const wps_client_1 = require("../client/wps-client");
 const com_host_1 = require("../client/com-host");
 const tools_1 = require("../types/tools");
 const toolset_1 = require("./toolset");
-const deprecated_1 = require("../tools/deprecated");
 const tools_2 = require("../tools");
 const logger_1 = require("../utils/logger");
 const wps_version_1 = require("../utils/wps-version");
@@ -39,8 +38,6 @@ class WpsMcpServer {
     server;
     registry;
     isRunning = false;
-    // 已合并掉的重复工具数量，供 wps_status 汇报
-    deprecatedToolCount = 0;
     constructor(config) {
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.registry = tool_registry_1.toolRegistry;
@@ -88,10 +85,8 @@ class WpsMcpServer {
         this.server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
             const { name, arguments: args } = request.params;
             logger.debug('Handling tools/call request', { name, args });
-            // 已废弃的旧名字在派发期解析成规范工具：不再各占一个注册位与一份重复 schema
-            const aliased = this.resolveDeprecated(name, args || {});
-            const targetName = aliased ? aliased.name : name;
-            const targetArgs = aliased ? aliased.args : (args || {});
+            const targetName = name;
+            const targetArgs = args || {};
             // 检查Tool是否存在
             if (!this.registry.hasTool(targetName)) {
                 throw new types_js_1.McpError(types_js_1.ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
@@ -186,14 +181,10 @@ class WpsMcpServer {
             content: [{ type: 'text', text: message }],
             error: message,
         });
-        // 废弃名不再注册，所以要同时认规范工具与可解析的别名
         const callable = (name) => {
             if (!name || toolset_1.FACADE_TOOLS.includes(name))
                 return false;
-            if (this.registry.hasTool(name))
-                return true;
-            const spec = deprecated_1.DEPRECATED_TOOLS[name];
-            return !!spec && this.registry.hasTool(spec.canonical);
+            return this.registry.hasTool(name);
         };
         // 状态总览
         this.registry.register({
@@ -242,7 +233,6 @@ class WpsMcpServer {
                 advertisedTools: advertised.length,
                 registeredTools: all.length,
                 hiddenTools: all.length - advertised.length,
-                deprecatedTools: this.deprecatedToolCount,
                 note: note || undefined,
                 latencyMs: Date.now() - started,
             });
@@ -262,21 +252,9 @@ class WpsMcpServer {
             category: tools_1.ToolCategory.COMMON,
         }, async (args) => {
             const all = this.registry.listTools().tools;
-            const discoverable = all.filter((tool) => !deprecated_1.DEPRECATED_NAMES.has(tool.name));
+            const discoverable = all;
             const wanted = typeof args.tool === 'string' ? args.tool.trim() : '';
             if (wanted) {
-                // 废弃名已不在注册表里，必须先查别名表，否则 wps_help {tool:"旧名"} 会变成"未找到"
-                const deprecatedSpec = deprecated_1.DEPRECATED_TOOLS[wanted];
-                if (deprecatedSpec) {
-                    const canonical = all.find((tool) => tool.name === deprecatedSpec.canonical);
-                    return text({
-                        name: wanted,
-                        deprecated: true,
-                        canonical: deprecatedSpec.canonical,
-                        reason: deprecatedSpec.reason,
-                        inputSchema: canonical ? canonical.inputSchema : undefined,
-                    });
-                }
                 const exact = all.find((tool) => tool.name === wanted);
                 const found = exact || all.find((tool) => tool.name.endsWith(wanted));
                 if (!found)
@@ -348,14 +326,10 @@ class WpsMcpServer {
             if (toolset_1.FACADE_TOOLS.includes(name))
                 return failure('门面工具 ' + name + ' 不能通过 wps_call 调用');
             if (!this.registry.hasTool(name)) {
-                const spec = deprecated_1.DEPRECATED_TOOLS[name];
-                if (!spec || !this.registry.hasTool(spec.canonical)) {
-                    return failure('未知工具 ' + name + '，请先用 wps_help 查询');
-                }
+                return failure('未知工具 ' + name + '，请先用 wps_help 查询');
             }
             const inner = args.args && typeof args.args === 'object' ? args.args : {};
-            const aliased = this.resolveDeprecated(name, inner);
-            return this.registry.callTool(tool_registry_1.ToolRegistry.createRequest(aliased ? aliased.name : name, aliased ? aliased.args : inner));
+            return this.registry.callTool(tool_registry_1.ToolRegistry.createRequest(name, inner));
         });
         // 批量执行
         this.registry.register({
@@ -395,8 +369,7 @@ class WpsMcpServer {
                     continue;
                 }
                 const inner = entry.args && typeof entry.args === 'object' ? entry.args : {};
-                const aliased = this.resolveDeprecated(tool, inner);
-                const outcome = await this.registry.callTool(tool_registry_1.ToolRegistry.createRequest(aliased ? aliased.name : tool, aliased ? aliased.args : inner));
+                const outcome = await this.registry.callTool(tool_registry_1.ToolRegistry.createRequest(tool, inner));
                 const blocks = Array.isArray(outcome.content) ? outcome.content : [];
                 const joined = blocks
                     .map((block) => (block && typeof block === 'object' && 'text' in block ? String(block.text || '') : ''))
@@ -406,30 +379,6 @@ class WpsMcpServer {
             return text({ count: results.length, results });
         });
         logger.info('Registered facade tools', { tools: toolset_1.FACADE_TOOLS });
-    }
-    /**
-     * 校验废弃别名指向的规范工具都还在，并把可解析的别名数量记下来供 wps_status 汇报。
-     * 别名不再注册成工具：旧名字在派发期解析（resolveDeprecated），既不占注册位也不重复 schema。
-     */
-    resolveDeprecatedTools() {
-        let applied = 0;
-        for (const [name, spec] of Object.entries(deprecated_1.DEPRECATED_TOOLS)) {
-            if (!this.registry.hasTool(spec.canonical)) {
-                logger.warn('Canonical tool missing for deprecated alias', { name, canonical: spec.canonical });
-                continue;
-            }
-            applied++;
-        }
-        this.deprecatedToolCount = applied;
-        logger.info('Resolved deprecated tool aliases', { applied });
-    }
-    /** 废弃名 → {规范工具名, 改名后的参数}；不是废弃名、或规范工具缺失时返回 null。 */
-    resolveDeprecated(name, args) {
-        const spec = deprecated_1.DEPRECATED_TOOLS[name];
-        if (!spec || !this.registry.hasTool(spec.canonical))
-            return null;
-        logger.warn('Deprecated tool called', { name, canonical: spec.canonical });
-        return { name: spec.canonical, args: (0, deprecated_1.renameArgs)(args, spec.paramMap) };
     }
     /**
      * 启动服务器
@@ -447,8 +396,6 @@ class WpsMcpServer {
         // 注册Excel、Word、PPT专业Tools - 这才是老王的核心功能
         this.registry.registerAll(tools_2.allTools);
         logger.info(`Registered ${tools_2.allTools.length} professional tools (Excel/Word/PPT)`);
-        // 把完全等价的重复工具收敛到规范名
-        this.resolveDeprecatedTools();
         // 创建stdio传输层
         const transport = new stdio_js_1.StdioServerTransport();
         // 连接传输层

@@ -29,7 +29,6 @@ import {
   tokenizeHelpQuery,
   FACADE_TOOLS,
 } from './toolset';
-import { DEPRECATED_TOOLS, DEPRECATED_NAMES, renameArgs } from '../tools/deprecated';
 import { allTools } from '../tools';
 import { createChildLogger } from '../utils/logger';
 import { parseWpsVersion, wpsVersionTooOld, wpsCompatibilityWarning } from '../utils/wps-version';
@@ -68,9 +67,6 @@ export class WpsMcpServer {
   private readonly server: Server;
   private readonly registry: ToolRegistry;
   private isRunning: boolean = false;
-
-  // 已合并掉的重复工具数量，供 wps_status 汇报
-  private deprecatedToolCount = 0;
 
   constructor(config?: Partial<McpServerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -133,10 +129,8 @@ export class WpsMcpServer {
 
       logger.debug('Handling tools/call request', { name, args });
 
-      // 已废弃的旧名字在派发期解析成规范工具：不再各占一个注册位与一份重复 schema
-      const aliased = this.resolveDeprecated(name, args || {});
-      const targetName = aliased ? aliased.name : name;
-      const targetArgs = aliased ? aliased.args : (args || {});
+      const targetName = name;
+      const targetArgs = args || {};
 
       // 检查Tool是否存在
       if (!this.registry.hasTool(targetName)) {
@@ -256,12 +250,9 @@ export class WpsMcpServer {
       error: message,
     });
 
-    // 废弃名不再注册，所以要同时认规范工具与可解析的别名
     const callable = (name: string): boolean => {
       if (!name || FACADE_TOOLS.includes(name)) return false;
-      if (this.registry.hasTool(name)) return true;
-      const spec = DEPRECATED_TOOLS[name];
-      return !!spec && this.registry.hasTool(spec.canonical);
+      return this.registry.hasTool(name);
     };
 
     // 状态总览
@@ -312,7 +303,6 @@ export class WpsMcpServer {
           advertisedTools: advertised.length,
           registeredTools: all.length,
           hiddenTools: all.length - advertised.length,
-          deprecatedTools: this.deprecatedToolCount,
           note: note || undefined,
           latencyMs: Date.now() - started,
         });
@@ -336,21 +326,9 @@ export class WpsMcpServer {
       },
       async (args) => {
         const all = this.registry.listTools().tools;
-        const discoverable = all.filter((tool) => !DEPRECATED_NAMES.has(tool.name));
+        const discoverable = all;
         const wanted = typeof args.tool === 'string' ? args.tool.trim() : '';
         if (wanted) {
-          // 废弃名已不在注册表里，必须先查别名表，否则 wps_help {tool:"旧名"} 会变成"未找到"
-          const deprecatedSpec = DEPRECATED_TOOLS[wanted];
-          if (deprecatedSpec) {
-            const canonical = all.find((tool) => tool.name === deprecatedSpec.canonical);
-            return text({
-              name: wanted,
-              deprecated: true,
-              canonical: deprecatedSpec.canonical,
-              reason: deprecatedSpec.reason,
-              inputSchema: canonical ? canonical.inputSchema : undefined,
-            });
-          }
           const exact = all.find((tool) => tool.name === wanted);
           const found = exact || all.find((tool) => tool.name.endsWith(wanted));
           if (!found) return failure('未找到工具 ' + wanted + '，请先用 wps_help 查询目录');
@@ -426,16 +404,10 @@ export class WpsMcpServer {
         if (!name) return failure('缺少 tool 参数');
         if (FACADE_TOOLS.includes(name)) return failure('门面工具 ' + name + ' 不能通过 wps_call 调用');
         if (!this.registry.hasTool(name)) {
-          const spec = DEPRECATED_TOOLS[name];
-          if (!spec || !this.registry.hasTool(spec.canonical)) {
-            return failure('未知工具 ' + name + '，请先用 wps_help 查询');
-          }
+          return failure('未知工具 ' + name + '，请先用 wps_help 查询');
         }
         const inner = args.args && typeof args.args === 'object' ? (args.args as Record<string, unknown>) : {};
-        const aliased = this.resolveDeprecated(name, inner);
-        return this.registry.callTool(
-          ToolRegistry.createRequest(aliased ? aliased.name : name, aliased ? aliased.args : inner)
-        );
+        return this.registry.callTool(ToolRegistry.createRequest(name, inner));
       }
     );
 
@@ -477,10 +449,7 @@ export class WpsMcpServer {
             continue;
           }
           const inner = entry.args && typeof entry.args === 'object' ? (entry.args as Record<string, unknown>) : {};
-          const aliased = this.resolveDeprecated(tool, inner);
-          const outcome = await this.registry.callTool(
-            ToolRegistry.createRequest(aliased ? aliased.name : tool, aliased ? aliased.args : inner)
-          );
+          const outcome = await this.registry.callTool(ToolRegistry.createRequest(tool, inner));
           const blocks = Array.isArray(outcome.content) ? outcome.content : [];
           const joined = blocks
             .map((block) => (block && typeof block === 'object' && 'text' in block ? String((block as { text?: string }).text || '') : ''))
@@ -492,34 +461,6 @@ export class WpsMcpServer {
     );
 
     logger.info('Registered facade tools', { tools: FACADE_TOOLS });
-  }
-
-  /**
-   * 校验废弃别名指向的规范工具都还在，并把可解析的别名数量记下来供 wps_status 汇报。
-   * 别名不再注册成工具：旧名字在派发期解析（resolveDeprecated），既不占注册位也不重复 schema。
-   */
-  resolveDeprecatedTools(): void {
-    let applied = 0;
-    for (const [name, spec] of Object.entries(DEPRECATED_TOOLS)) {
-      if (!this.registry.hasTool(spec.canonical)) {
-        logger.warn('Canonical tool missing for deprecated alias', { name, canonical: spec.canonical });
-        continue;
-      }
-      applied++;
-    }
-    this.deprecatedToolCount = applied;
-    logger.info('Resolved deprecated tool aliases', { applied });
-  }
-
-  /** 废弃名 → {规范工具名, 改名后的参数}；不是废弃名、或规范工具缺失时返回 null。 */
-  private resolveDeprecated(
-    name: string,
-    args: Record<string, unknown>
-  ): { name: string; args: Record<string, unknown> } | null {
-    const spec = DEPRECATED_TOOLS[name];
-    if (!spec || !this.registry.hasTool(spec.canonical)) return null;
-    logger.warn('Deprecated tool called', { name, canonical: spec.canonical });
-    return { name: spec.canonical, args: renameArgs(args, spec.paramMap) };
   }
 
   /**
@@ -542,9 +483,6 @@ export class WpsMcpServer {
     // 注册Excel、Word、PPT专业Tools - 这才是老王的核心功能
     this.registry.registerAll(allTools);
     logger.info(`Registered ${allTools.length} professional tools (Excel/Word/PPT)`);
-
-    // 把完全等价的重复工具收敛到规范名
-    this.resolveDeprecatedTools();
 
     // 创建stdio传输层
     const transport = new StdioServerTransport();

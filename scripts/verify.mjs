@@ -72,7 +72,7 @@ for (const required of ["wps_status", "wps_help", "wps_call", "wps_batch"]) {
 for (const curated of ["wps_excel_read_range", "wps_word_insert_text", "wps_ppt_add_slide", "wps_convert_to_pdf"]) {
   check("curated advertised: " + curated, names.has(curated));
 }
-check("hidden tail is not advertised", !names.has("wps_ppt_set_animation") && !names.has("wps_common_get_app_info"));
+check("hidden tail is not advertised", !names.has("wps_ppt_add_animation") && !names.has("wps_common_get_app_info"));
 
 let id = 10;
 
@@ -80,7 +80,7 @@ let id = 10;
 const help = await req(id++, "tools/call", { name: "wps_help", arguments: {} });
 check("wps_help overview", isOk(help), textOf(help).replace(/\s+/g, " ").slice(0, 140));
 
-const helpTool = await req(id++, "tools/call", { name: "wps_help", arguments: { tool: "wps_ppt_set_animation" } });
+const helpTool = await req(id++, "tools/call", { name: "wps_help", arguments: { tool: "wps_ppt_add_animation" } });
 const helpToolText = textOf(helpTool);
 check("wps_help returns full schema", isOk(helpTool) && helpToolText.includes("inputSchema") && helpToolText.includes("shapeIndex"), helpToolText.slice(0, 90));
 
