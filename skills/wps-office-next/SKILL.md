@@ -31,7 +31,9 @@ whenToUse: 用户要求读取、创建、编辑、排版、分析、导出 WPS �
 
 ## 工具面
 
-默认 standard 档直接广告 44 个工具，其余工具仍然完全可用：
+<!-- GENERATED:advertised:start -->
+默认 standard 档直接广告 **69** 个工具（门面 4 / 通用 4 / 表格 26 / 文字 21 / 演示 14），其余 198 个工具仍然完全可用：
+<!-- GENERATED:advertised:end -->
 
 - 直接广告的工具见各应用技能与同目录 reference.md。
 - 未广告的工具：先 wps_help {app:"ppt"} 查目录，或 wps_help {query:"chart"} 搜索（支持中文与中英混排，例如 query:"关闭工作簿"、query:"新建 文档 create new"），再用 wps_help {tool:"wps_ppt_set_animation"} 取完整参数 schema，最后用 wps_call {tool, args} 执行。搜不到时结果会带 hint，别把「没搜到」当成「没有这个能力」。

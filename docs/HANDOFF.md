@@ -35,7 +35,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.p
 第 1 波（S1 弹窗围堵 + S2 宿主单实例）作为 `v0.3.0` 于 2026-09-16 发布（提交 `d7736e1`）；
 第 2～4 波（S3 破坏性守卫 25/25、S4 覆盖率 267/267、S5 空 catch 账本、S6 失败/超时契约、
 S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确认框实测）随后全部落地并推送，CI 全绿。
-本机完整回归 **842/0**、一键 e2e **28/28**。P2 与审计后续（FIXES 64 目标歧义、65 进程残留根因、66 跨会话回收孤儿）也已落地。**S3–S9 与这些后续尚未打包成版本**，见 §8。
+本机最近一次整轮真机回归 **856/0**、一键 e2e **29/29**（v0.4.0 时）；此后新增的断言逐文件跑过、未重跑整轮。S3–S9 与审计后续已作为 **v0.4.0**（2026-09-19）发布；v0.5.0 的第 1–3 步（FIXES 68–74）见 §8。
 
 ---
 
@@ -44,13 +44,13 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 项 | 值 |
 | --- | --- |
 | 仓库根 | `D:\dsh\a` |
-| 分支 / HEAD | `main` / `319648a` release: v0.4.0（稳定性加固第 2 波 + 审计 P2 + P3）——已推送，与 `origin/main` 一致 |
+| 分支 / HEAD | `main` / `v0.4.0-2-g468d542`（v0.4.0 之后 2 个提交，以 `git describe --tags` 为准）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0` |
 | Releases | v0.4.0（Latest，2026-09-19）、v0.3.0、v0.2.1、v0.2.0——正文均为正常 UTF-8 |
 | 包 | `dsh-plugin-wps-office-next@0.4.0`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
-| 构建脚本 | 只有 `snapshot` / `verify` / `gen:skills`——**没有 `prepare`**（安装时不需要构建） |
+| 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
 **工作区**：干净（`docs/HANDOFF.md` 本身已随仓库跟踪）。临时 profile `wpsdoc2` / `wpse2e` 已删除。
 
@@ -119,11 +119,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **37,573** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **926 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
+| 测试 | **928 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～73 号 | `docs/FIXES.md` |
+| FIXES | 1～75 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -152,10 +152,10 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
    `Unlist()` 1、`ResetAllPageBreaks()` 1（合计 35 站点 / 29 动作）。**S3 三批已落地**：**25 / 25 个用户数据动作**
    回传前置影响统计（范围类 5 + 对象类 8 + 批注/验证/Word/PPT 12）；清单见 `docs/destructive-operations.md`（FIXES 53 / 54 / 55）。
 4. **测试覆盖缺口**：267 个工具里**只有 159 个被测试点名**（PPT 最弱，76 中仅 26）。
-   历史上 **7 个「从来没工作过」的缺陷（FIXES 38/39/40/43/47/49）全部落在无测试覆盖的路径上**。
+   历史上 **7 个「从来没工作过」的缺陷（FIXES 38 / 39 / 43，按正文逐条数共 7 处）全部落在无测试覆盖的路径上**。
    **S4 已完成**：覆盖率 **267/267**（ratchet 进 `spec-reproduction`，只许涨），`scripts/smoke-tools.mjs`
    出矩阵并可 `--live` 只读冒烟；剩余是把 PPT（25/76）等未覆盖工具补上场景测试（FIXES 56）。
-5. **静默失败**：桥里 242 个 `catch`，其中 **13 个是空的**（S5 待做）。
+5. **静默失败**：空 catch 走账本（**S5 已完成**，FIXES 59）：桥 34 + 宿主 6 全部登记，新增即红（`test/silent-catch.test.mjs`）。
 6. **恢复路径原有的两个缺陷已修**（由本轮新测试抓出）：陈旧子进程的 `exit` 会反杀新宿主；
    `ready` 帧误清 `suspect` 标志。二者都在 `mcp/src/client/com-host.ts`。
 7. **新的 WPS 静默失效（FIXES 52）**：`Document.Password` 按长度失效——15 字符卡死调用、
@@ -177,16 +177,16 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 
 | 优先级 | 内容 | 说明 |
 | --- | --- | --- |
-| ~~P0~~ | 同步陈旧文档 + 清 9 处 macOS 注释 | **本轮已做**：HANDOFF / stabilization-plan / known-defects / 工具层注释 |
+| ~~P0~~ | 同步陈旧文档 + 清 9 处 macOS 注释 | **本轮已做**：HANDOFF / stabilization-plan / `baseline/known-defects.md` / 工具层注释 |
 | ~~P1~~ | 补 `docs/tool-coverage.md`；对齐版本号与 lockfile | **本轮已做**（生成器 `scripts/gen-tool-coverage.mjs` + CI 对账；`index.ts` serverInfo 改为读根 `package.json`，根/mcp lockfile 对齐 0.3.0） |
 | ~~P2~~ | C7 目标漂移的统一前置；TS 层类型与枚举校验 | **本轮已做**（FIXES 64）：三处共用解析点加歧义警告（多文件且未指定目标才提示）+ 15 处内联解析回迁到共用解析点；TS 层只做**结构**校验，枚举仍由桥裁决。C7 残留（Word、第一方工具丢 warnings）记在 `known-defects.md` |
-| P3（可选） | 运行时 WPS 版本前置检查、fresh-profile 安装验收、e2e 扩充、lint 门禁 | 体验与工程化 |
+| ~~P3~~（可选） | 运行时 WPS 版本前置检查、fresh-profile 安装验收、e2e 扩充、lint 门禁 | **已做**（FIXES 67，随 v0.4.0 发布） |
 | ~~P3~~ | 跨会话回收 WPS 孤儿实例 | **已做**（FIXES 66）：归属写盘 + 下一个宿主在租约下回收；有未保存内容不动 |
 
 **发版**：S3–S9、审计 P2、进程残留治理（FIXES 65/66）与 P3 已作为 **v0.4.0（2026-09-19）** 打包发布：
 升 `package.json` / lockfile、写 CHANGELOG、更新 README 安装 pin、tag + Release。
 
-**顺手可清**：无（`docs/PROGRESS.md` 已同步到 835 项 / 39 文件）。
+**顺手可清**：无（`docs/PROGRESS.md` 已同步到 928 项 / 46 文件）。
 
 ---
 
@@ -224,7 +224,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 - **不要用 `Get-Content -Raw` + `Set-Content -Encoding UTF8` 改含中文的 UTF-8 无 BOM 文件**
   （`.mjs` / 桥源码）：PS 5.1 会按 ANSI 读入、写成乱码，本轮把一个测试文件的 `密码|加密` 正则毁过一次。
   要么用编辑工具，要么 `[System.IO.File]::ReadAllText/WriteAllText` 并显式指定编码。
-- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（6542 行、60 函数）；改完要重新生成 host 并对账。
+- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（7126 行、77 函数）；改完要重新生成 host 并对账。
 - PS 逗号优先级高于 `+`：`$m[$a + $r, $b + $c]` 会被解析错，必须加括号。
 - `return $range` 会把多格 Range 展开成数组——要写 `return ,$range`。
 - `Worksheet.Scenarios` 是 PSMethod（`$s.Scenarios()`）。
@@ -264,7 +264,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 
 | 路径 | 作用 |
 | --- | --- |
-| `mcp/scripts/wps-com.ps1` | **桥，真源**（267 个动作分派、60 函数、6542 行、纯 CRLF 无 BOM） |
+| `mcp/scripts/wps-com.ps1` | **桥，真源**（267 个动作分派、77 函数、7126 行、纯 CRLF 无 BOM） |
 | `host/wps-actions.ps1` | 生成物（字节一致证明目标，UTF-8 BOM） |
 | `host/wps-com-host.ps1` | 常驻 STA 宿主：**单实例租约 + 心跳 + 陈旧接管**（手写，非生成，必须有 BOM） |
 | `mcp/src/client/com-host.ts` | 宿主客户端：`timeoutFor` + suspect 短超时 + 陈旧子进程守卫 + 等旧宿主退出 |
@@ -279,9 +279,11 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `scripts/run-tests.ps1` | **整轮测试入口**：跑完每个文件回收无头 WPS 孤儿（FIXES 65），`-KeepOrphans` / `-Filter` 可调 |
 | `scripts/lint.mjs` | 项目化 lint：手写 PowerShell 的 BOM/CRLF、制表符与行尾空白、`console.*`、测试退出码（进 CI） |
 | `scripts/lint-alerts.mjs` | **弹框守卫门禁**（FIXES 70）：可能弹框的调用必须关 `DisplayAlerts` 并还原，且不许绕过两个共用助手 |
+| `scripts/lint-com-boundary.mjs` | **COM 边界门禁**（FIXES 74）：`return $range` 必须 `return ,$range`；裸 `catch { continue }` 必须登记理由 |
+| `scripts/lib/coverage-tiers.mjs` | **覆盖率口径唯一实现**（FIXES 74）：bespoke / matrixOk / matrixAny / notDriven 四层，CLI 与 CI 共用 |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | 46 个文件、926 断言；账本在 `spec-reproduction.test.mjs` |
+| `test/*.test.mjs` | 46 个文件、928 断言；账本在 `spec-reproduction.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
@@ -294,7 +296,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～73 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～75 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

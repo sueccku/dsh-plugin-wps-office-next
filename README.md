@@ -357,7 +357,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：**926 项测试（46 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；广告面 69 工具 / 37,573 字节（内部预算上限 100 / 60,000）；桥 action 267，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
+当前数字：**928 项测试（46 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 13 项**全绿；广告面 69 工具 / 37,573 字节（内部预算上限 100 / 60,000）；桥 action 267，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及十个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
@@ -380,7 +380,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
 | scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口 |
-| test/ | 40 个回归测试文件（多数需要本机 WPS）；整轮用 `scripts/run-tests.ps1` 跑，收尾自动回收无头 WPS 孤儿 |
+| test/ | 46 个回归测试文件（多数需要本机 WPS）；整轮用 `scripts/run-tests.ps1` 跑，收尾自动回收无头 WPS 孤儿 |
 | baseline/ | 早期基线快照与缺陷清单 |
 | docs/ | FIXES（修复记录）、PROGRESS（进度）、param-contract（生成的契约报告） |
 

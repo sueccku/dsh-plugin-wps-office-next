@@ -1042,9 +1042,10 @@ function Get-MainTextRange($word, $doc) {
     # 末尾，并且如实告警——而不是悄悄插错地方。
     $story = 1
     try { $story = [int]$word.Selection.StoryType } catch { $story = 1 }
-    if ($story -eq 1) { return $word.Selection.Range }
+    # Word 的 Range 同样按仓库约定包一层逗号返回：不包会被管道当集合枚举（FIXES 74 的边界门禁）。
+    if ($story -eq 1) { return ,$word.Selection.Range }
     Add-WpsWarning "光标不在正文（可能停在脚注/尾注里），已在正文末尾插入"
-    return $doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
+    return ,$doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
 }
 
 function Get-ListObjectByName($sheet, $table) {

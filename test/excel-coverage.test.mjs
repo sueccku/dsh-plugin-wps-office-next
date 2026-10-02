@@ -93,7 +93,11 @@ for (const [name, args, expect] of MATRIX) {
   if (hung) check(label + " returns (no hang)", false, "HUNG after " + ms + "ms");
   else if (expect === "ok") check(label + " succeeds", good, ms + "ms " + text(res).replace(/\s+/g, " ").slice(0, 70));
   else if (expect === "error") check(label + " fails clearly", !good && /not found|不存在|失败|cannot|无法|required/.test(text(res)), ms + "ms " + text(res).replace(/\s+/g, " ").slice(0, 70));
-  else check(label + " returns (no hang)", true, ms + "ms " + (good ? "ok" : "business error"));
+  else {
+    const body = String((res && res.result && res.result.content && res.result.content[0].text) || "");
+    // "any" 只放行「没挂住」太弱了：至少要求返回了内容或一句可读的错误（FIXES 74）。
+    check(label + " returns something readable (no hang)", body.length > 0, ms + "ms " + (good ? "ok" : "business error") + (body ? "" : " EMPTY RESPONSE"));
+  }
 }
 
 for (let i = 0; i < 6; i++) {

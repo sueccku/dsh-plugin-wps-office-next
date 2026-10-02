@@ -2078,6 +2078,70 @@ ACL 拒绝写在**打开阶段**就弹出「无法打开文件」模态框（实
 
 **仍未覆盖**：warnings 只附在**文本**上，没有做成结构化字段（有些 handler 的结果里根本没有 `data`）；
 batch 单项结果按 2000 字符截断时，附在末尾的警告可能被切掉。
+### 74. 验证口径分层 + 边界门禁成真（第 3 步）
+
+**问题**：所谓「覆盖率 267/267」其实是「工具名在测试源码里出现过（**注释里也算**）」——必要条件，
+不是证据；更弱的是三个矩阵测试里 **81 行**的断言写成 `check(label, true, ...)`，条件字面量 `true`，
+只有超过 30 秒超时才红：那些工具返回 `isError:true`、空内容甚至乱码都会 PASS。
+同时 `scripts/lint-com-boundary.mjs` 只是「列清单」——没有退出码、没挂进 lint、没进 CI，而它要盯的
+正是 FIXES 38 / 43 那两类根因。
+
+**做法**
+
+- 新增 `scripts/lib/coverage-tiers.mjs`：口径的唯一实现，分三层 —— `bespoke`（有非矩阵条目代码点到它）、
+  `matrixOk`（只在矩阵里、期望 ok/error）、`matrixAny`（只在矩阵里、期望 any）、`notDriven`。
+  矩阵条目逐行解析（`["wps_x", {...}, "any"],`），嵌套花括号不会骗到它；注释里的名字不算。
+  实测：**bespoke 168 / matrixOk 22 / matrixAny 77 / notDriven 0**，矩阵共 104 条（ok 20、any 81、error 3）。
+- `smoke-tools.mjs --check` 与 `test/spec-reproduction.test.mjs`（CI）**共用同一份口径**做棘轮：
+  `driven = 267`、`bespoke >= 168`、`matrixAny <= 77`（两条棘轮方向相反，都要显式改）。
+- 三个矩阵文件的 `any` 分支从 `check(..., true, ...)` 改成**要求返回体非空**（有内容或一句可读的错误）。
+- `lint-com-boundary.mjs` 升级为真门禁：规则 A「`return $range` 必须 `return ,$range`」（变量形式、
+  直接表达式，含 `.Range` 属性式），规则 B「裸 `catch { continue }` 必须登记理由、账本过期即红」；
+  原有的「边界层外 COM 读写」计数保留为**信息**（那是逐步迁移的存量，不判红）。已挂进 `npm run lint`。
+  **首次运行就抓到一处真站点**：`Get-MainTextRange` 的两个 `return`（`$word.Selection.Range` /
+  `$doc.Range(...)`）没包逗号，已按仓库约定改成 `return ,...`。
+
+**验收**：`node scripts/smoke-tools.mjs --check` → `S4 COVERAGE OK (driven 267, bespoke 168,
+matrix-any-only 77)`；`spec-reproduction` 13 → **15 项**（新增三条分层断言）；`lint`（174 文件）0 违规；
+边界门禁 0 violation。
+
+**未做（无法静态判定，如实记录）**：FIXES 39 那一类「枚举常量凭记忆写」—— 常量表本身没法判真假，
+仍靠真机实测；本次只把它写进了 `lint-com-boundary.mjs` 的说明里。
+
+### 75. 模型面向文档生成化 + 文档漂移清扫（第 4 步）
+
+**问题**：`reference.md` 是生成物、CI 对账，但 **SKILL.md 里的清单与数字是手写的**，于是悄悄烂掉：
+「默认 standard 档直接广告 44 个」（实际 69）、表格「其余 80 多个」（实际 92）、演示「96 个」（实际 76）、
+文字清单只列 12 个（实际 21）。**模型读的就是这些数字** —— 它会因此多绕一次 `wps_help`，或者干脆认为做不到。
+
+**做法**
+
+- `scripts/gen-skill-tools.mjs` 新增两件事：① 重写四份 SKILL.md 里圈在 `<!-- GENERATED:advertised:start/end -->`
+  之间的清单与计数（office-next 给总览与分档；三个应用给各自清单 + 通用工具 + 其余数量）；② **标记缺失就让
+  生成失败** —— 手写数字不再有第二次漂移机会。生成结果：69（门面 4 / 通用 4 / 表格 26 / 文字 21 / 演示 14）、
+  其余 198；表格 26/92、文字 21/38、演示 14/62。
+- 手写 prose 里的硬数字一并去掉（「其余 80 多个」「96 个」）。
+- `docs/tool-coverage.md`（生成物）改用 `coverage-tiers` 的四层口径，顺带修好汇总表漏掉的「逃生舱」桶
+  （原先 6 行相加 266 ≠ 267）。现在：**bespoke 168 / 仅矩阵 ok 22 / 仅矩阵 any 77**，分应用一眼能看出
+  PPT 最弱（27 / 17 / 32）。
+
+**顺手清掉的文档漂移**（都是审计逐条核过的）
+
+- HANDOFF：§1 的「842/0 + e2e 28」→ 最近一次整轮 856/0 + 29/29，并注明本轮新增断言未重跑整轮；§2 的 HEAD
+  改成 `git describe` 口径（`v0.4.0-2-g…`，不再自指过期）；构建脚本补 `gen:coverage` / `lint`；§7.4 的
+  「7 个从未工作过的缺陷」出处统一为 **FIXES 38/39/43**；§7.5 的「242 catch / 13 空（S5 待做）」→ 账本已完成
+  （桥 34 + 宿主 6）；`known-defects` 补 `baseline/` 前缀；§8 的 P3 行标为已完成；§10/§11 的桥规模
+  6542 行 / 60 函数 → **7126 行 / 77 函数**；§8「顺手可清」的 835/39 → 928/46。
+- PROGRESS：顶部 P4「进行中」、P5「未开始」→ **完成**；`known-defects` 24 → 28 条；门禁行 spec 复现 13 → 15、
+  e2e 28 → 29；「7 个缺陷」出处统一；结尾「尚未打包成版本」→ 已作为 v0.4.0 发布。
+- CHANGELOG：v0.4.0 条目的「816 项 / 39 文件」→ **37 文件**。
+- FIXES 尾部的「验证」表标注为**截至 FIXES 63 的快照**，不再冒充当前值。
+- tool-roadmap：定位从「规划，不含已实施内容」改为「规划 + 实施台账」；「P0 完成后的当前值」→「P0 结束时的值」；
+  风险段的「还没有 release」→ 已发布到 v0.4.0。
+- `scripts/gen-tool-coverage.mjs` 的 labels / apps 补 `execute`（逃生舱）桶。
+
+**验收**：`node scripts/gen-skill-tools.mjs` 后 `git diff --exit-code -- skills` 干净（CI 同款）；
+`gen-tool-coverage` 后汇总各列相加 = 267 / 69；`node scripts/lint.mjs` 0 违规。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。
@@ -2125,7 +2189,7 @@ batch 单项结果按 2000 字符截断时，附在末尾的警告可能被切�
 | test/install-selfcheck.test.mjs | 6 | S8/S9：doctor 版本/架构/接线自检（不需要 WPS） |
 | test/confirm-dialog.test.mjs | 6 | S3 余量：破坏性动作的确认框实测（窗口监视器；真实 WPS） |
 
-合计 **816 项**（37 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁（含 70 工具 / 40,000 字节预算与 action 数量三方一致）。
+合计 **816 项**（37 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁。**本表是截至 FIXES 63 的快照**；之后新增与变化的文件见 `docs/HANDOFF.md` §5（现为 928 项 / 46 文件、预算 100 / 60,000）。
 
 另有 node scripts/param-contract.mjs：零副作用地把 256 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，

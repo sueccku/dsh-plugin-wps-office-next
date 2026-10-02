@@ -4,6 +4,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { collectAlertsViolations } from './lint-alerts.mjs';
+import { collectBoundaryViolations } from './lint-com-boundary.mjs';
 
 const ROOT = process.cwd();
 const QUIET = process.argv.includes('--quiet');
@@ -76,6 +77,10 @@ for (const name of readdirSync(join(ROOT, 'test'))) {
 //    且不许绕过两个共用助手直接读写 DisplayAlerts。规则与理由见 scripts/lint-alerts.mjs。
 const bridge = join(ROOT, 'mcp/scripts/wps-com.ps1');
 for (const v of collectAlertsViolations(readFileSync(bridge, 'utf8'), bridge)) bad(v.rule, v.file, v.detail);
+
+// 6) COM 边界门禁（FIXES 74）：`return $range` 必须 `return ,$range`；裸 `catch { continue }` 必须登记理由。
+//    规则与理由见 scripts/lint-com-boundary.mjs —— 它过去只是一份没人跑的清单。
+for (const v of collectBoundaryViolations(readFileSync(bridge, 'utf8'), bridge)) bad(v.rule, v.file, v.detail);
 
 if (!QUIET) {
   for (const v of violations.slice(0, 40)) console.log('LINT ' + v.rule + '  ' + v.file + '  ' + v.detail);

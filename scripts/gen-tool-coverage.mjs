@@ -9,6 +9,7 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { analyseToolSource } from "./lib/tool-action-map.mjs";
+import { computeCoverageTiers } from "./lib/coverage-tiers.mjs";
 
 const B = String.fromCharCode(96); // markdown code span, kept out of the source so this file stays quote-safe
 const code = (s) => B + s + B;
@@ -17,6 +18,9 @@ const root = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "
 const defs = JSON.parse(readFileSync(join(root, "spec", "tool-definitions.json"), "utf8"));
 const advertised = new Set(JSON.parse(readFileSync(join(root, "spec", "advertised.json"), "utf8")));
 const { map: toolAction } = analyseToolSource();
+// 覆盖证据引用唯一口径（FIXES 74/75）：不再是「工具名在源码里出现过（含注释）」，
+// 而是 scripts/lib/coverage-tiers.mjs 的四层分类；证据列仍列文件名，方便定位。
+const tiers = computeCoverageTiers(root);
 
 // Which test files (and the e2e run) name each tool.
 const testFiles = readdirSync(join(root, "test")).filter((f) => f.endsWith(".test.mjs")).sort();
@@ -32,24 +36,37 @@ function namedBy(tool) {
 const appOf = (name) => {
   const m = /^wps_([a-z]+)_/.exec(name);
   const key = m ? m[1] : "other";
-  const labels = { excel: "Excel", word: "Word", ppt: "PPT", common: "通用", convert: "转换", other: "其他" };
+  const labels = { excel: "Excel", word: "Word", ppt: "PPT", common: "通用", convert: "转换", execute: "逃生舱", other: "其他" };
   return labels[key] || key;
 };
+
+const tierOf = (name) =>
+  tiers.bespoke.includes(name) ? "bespoke"
+    : tiers.matrixOk.includes(name) ? "matrix ok"
+      : tiers.matrixAny.includes(name) ? "matrix any"
+        : "未驱动";
 
 const rows = defs.map((d) => {
   const evidence = namedBy(d.name);
   const ta = toolAction.get(d.name);
-  return { name: d.name, app: appOf(d.name), action: ta ? ta.action : "", advertised: advertised.has(d.name), tested: evidence.length > 0, evidence };
+  return { name: d.name, app: appOf(d.name), action: ta ? ta.action : "", advertised: advertised.has(d.name), tier: tierOf(d.name), evidence };
 }).sort((a, b) => a.name.localeCompare(b.name));
 
-const apps = ["Excel", "Word", "PPT", "通用", "转换", "其他"];
+const apps = ["Excel", "Word", "PPT", "通用", "转换", "逃生舱", "其他"];
 const summary = apps.map((app) => {
   const group = rows.filter((r) => r.app === app);
   if (group.length === 0) return null;
-  return { app, total: group.length, tested: group.filter((r) => r.tested).length, advertised: group.filter((r) => r.advertised).length };
+  return {
+    app,
+    total: group.length,
+    bespoke: group.filter((r) => r.tier === "bespoke").length,
+    matrixOk: group.filter((r) => r.tier === "matrix ok").length,
+    matrixAny: group.filter((r) => r.tier === "matrix any").length,
+    advertised: group.filter((r) => r.advertised).length,
+  };
 }).filter(Boolean);
 
-const untested = rows.filter((r) => !r.tested);
+const untested = rows.filter((r) => r.tier === "未驱动");
 const noAction = rows.filter((r) => !r.action);
 const evidenceCell = (list) => {
   if (list.length === 0) return "—";
@@ -67,24 +84,29 @@ lines.push("> " + code("test/*.test.mjs") + " 与 " + code("scripts/e2e.mjs") + 
 lines.push("");
 lines.push("## 汇总");
 lines.push("");
-lines.push("| 应用 | 工具数 | 被测试点名 | 广告面 |");
-lines.push("| --- | ---: | ---: | ---: |");
-for (const s of summary) lines.push("| " + s.app + " | " + s.total + " | " + s.tested + " | " + s.advertised + " |");
-lines.push("| **合计** | **" + rows.length + "** | **" + rows.filter((r) => r.tested).length + "** | **" + rows.filter((r) => r.advertised).length + "** |");
+lines.push("| 应用 | 工具数 | 有专门测试 | 仅矩阵 ok/error | 仅矩阵 any | 广告面 |");
+lines.push("| --- | ---: | ---: | ---: | ---: | ---: |");
+for (const s of summary) lines.push("| " + s.app + " | " + s.total + " | " + s.bespoke + " | " + s.matrixOk + " | " + s.matrixAny + " | " + s.advertised + " |");
+lines.push(
+  "| **合计** | **" + rows.length + "** | **" + rows.filter((r) => r.tier === "bespoke").length +
+  "** | **" + rows.filter((r) => r.tier === "matrix ok").length +
+  "** | **" + rows.filter((r) => r.tier === "matrix any").length +
+  "** | **" + rows.filter((r) => r.advertised).length + "** |"
+);
 lines.push("");
 lines.push("## 矩阵");
 lines.push("");
 lines.push("「广告」= 每次请求随 tools/list 下发的 69 个工具之一；其余经 " + code("wps_call") + " / " + code("wps_help") + " 触达。");
 lines.push("");
-lines.push("| 工具 | 应用 | 桥 action | 广告 | 被测试点名（证据） |");
-lines.push("| --- | --- | --- | :---: | --- |");
+lines.push("| 工具 | 应用 | 桥 action | 广告 | 测试层级 | 名字出现过的文件 |");
+lines.push("| --- | --- | --- | :---: | --- | --- |");
 for (const r of rows) {
-  lines.push("| " + code(r.name) + " | " + r.app + " | " + (r.action ? code(r.action) : "—") + " | " + (r.advertised ? "✅" : "") + " | " + evidenceCell(r.evidence) + " |");
+  lines.push("| " + code(r.name) + " | " + r.app + " | " + (r.action ? code(r.action) : "—") + " | " + (r.advertised ? "✅" : "") + " | " + r.tier + " | " + evidenceCell(r.evidence) + " |");
 }
 lines.push("");
-lines.push("## 未被测试点名的工具（" + untested.length + "）");
+lines.push("## 没有任何测试点到（未驱动，" + untested.length + "）");
 lines.push("");
-if (untested.length === 0) lines.push("无——" + rows.length + " 个工具全部至少被一个测试或 e2e 点名。");
+if (untested.length === 0) lines.push("无——" + rows.length + " 个工具都至少被一个测试或 e2e 在代码里点到（注释不算）。");
 else for (const r of untested) lines.push("- " + code(r.name));
 lines.push("");
 lines.push("## 解析不出桥 action 的工具（" + noAction.length + "）");
@@ -103,8 +125,9 @@ lines.push("- 方案管理器：" + code("Worksheet.Scenarios") + " 在 COM 里�
 lines.push("");
 lines.push("## 说明");
 lines.push("");
-lines.push("- 「被测试点名」只统计工具名在测试 / e2e 源码里出现过，是覆盖的**必要条件**，不是充分条件；真正验证行为的是各场景测试本身。");
-lines.push("- 覆盖率的 ratchet 断言在 " + code("test/spec-reproduction.test.mjs") + "；未覆盖清单也可用 " + code("node scripts/smoke-tools.mjs") + " 查看。");
+lines.push("- 测试层级由 " + code("scripts/lib/coverage-tiers.mjs") + " 给出（唯一口径）：**bespoke** = 有非矩阵条目的代码点到它；**matrix ok/error** = 只在矩阵里、至少断言了成功或明确失败；**matrix any** = 只在矩阵里、只断言「没挂住」（最弱，棘轮只许降）。");
+lines.push("- 「名字出现过的文件」只是定位用的索引（按字符串出现统计，含注释），不代表行为被断言。");
+lines.push("- 棘轮断言在 " + code("test/spec-reproduction.test.mjs") + "；矩阵与实时冒烟也可用 " + code("node scripts/smoke-tools.mjs") + " 查看。");
 lines.push("");
 
 writeFileSync(join(root, "docs", "tool-coverage.md"), lines.join("\n"));

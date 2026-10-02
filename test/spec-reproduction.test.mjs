@@ -11,6 +11,7 @@ import { createRequire } from 'node:module';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { computeCoverageTiers, TIER_LEDGER } from '../scripts/lib/coverage-tiers.mjs';
 
 const { analyseToolSource } = await import(pathToFileURL(resolve('scripts/lib/tool-action-map.mjs')).href);
 const { map: TOOL_MAP } = analyseToolSource();
@@ -180,17 +181,14 @@ for (const [action, map] of Object.entries(paramAliases)) {
 }
 check('every pass-through rename is declared on the bridge side', missingDeclared.length === 0, missingDeclared.length ? missingDeclared.slice(0, 5).join(', ') : passedThrough + ' pass-through renames checked, ' + legacyOnly + ' legacy spelling(s) declared');
 
-// S4 coverage ratchet: how many registered tools are actually named by a test or the e2e run.
-// The plan's S4 goal is to drive this up (PPT first, then Excel, then Word). Like the other debts it
-// may only grow and must be updated deliberately when it improves; the per-app matrix lives in
-// scripts/smoke-tools.mjs.
-const testCorpus = readdirSync('test').filter((f) => f.endsWith('.test.mjs'))
-  .map((f) => readFileSync(join('test', f), 'utf8')).join('\n') + '\n' + readFileSync('scripts/e2e.mjs', 'utf8');
-const namedTools = new Set([...testCorpus.matchAll(/\bwps_[a-z0-9_]+/g)].map((m) => m[0]));
-const registeredNames = generated.map((t) => t.name);
-const coveredTools = registeredNames.filter((n) => namedTools.has(n));
-const TOOL_COVERAGE = 267;
-check('tool coverage did not shrink (S4 ratchet)', coveredTools.length >= TOOL_COVERAGE, coveredTools.length + ' of ' + registeredNames.length + ' registered tools are named by a test or the e2e run (ratchet ' + TOOL_COVERAGE + ')');
+// S4 coverage, now tiered (FIXES 74). The old check asked only "does the name appear somewhere in the
+// test corpus" - comments counted, and it said nothing about how well a tool is exercised. The tiers
+// come from scripts/lib/coverage-tiers.mjs so the CLI and CI cannot drift apart; the two ratchets move
+// in opposite directions and must be edited deliberately.
+const tiers = computeCoverageTiers();
+check('every registered tool is driven by a test or the e2e run', tiers.notDriven.length === 0, tiers.notDriven.length ? tiers.notDriven.slice(0, 6).join(', ') : tiers.registered.length + ' driven');
+check('bespoke coverage did not shrink (S4 ratchet)', tiers.bespoke.length >= TIER_LEDGER.bespoke, tiers.bespoke.length + ' tools have a non-matrix test (ratchet ' + TIER_LEDGER.bespoke + ')');
+check('the weakest tier only shrinks (S4 ratchet)', tiers.matrixAny.length <= TIER_LEDGER.matrixAny, tiers.matrixAny.length + ' tools are only exercised by a matrix "any" row (ratchet ' + TIER_LEDGER.matrixAny + ')');
 
 console.log('');
 console.log('--- informational: keys the bridge reads that no tool sends: ' + readButNotSent.length);

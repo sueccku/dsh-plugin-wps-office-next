@@ -8,9 +8,15 @@ whenToUse: 任务针对表格、工作簿、单元格区域、公式、图表、
 
 ## 直接广告的工具
 
-wps_excel_get_sheet_list、wps_excel_read_range、wps_excel_write_range、wps_excel_set_cell_format、wps_excel_set_number_format、wps_excel_set_formula、wps_excel_create_chart、wps_excel_create_pivot_table、wps_excel_find_replace、wps_excel_get_open_workbooks、wps_excel_open_workbook，以及通用的 wps_common_save、wps_common_save_as、wps_convert_to_pdf、wps_convert_format。
+<!-- GENERATED:advertised:start -->
+直接广告的 26 个表格工具（其余 92 个用 wps_call，清单见同目录 reference.md）：
 
-其余 80 多个表格工具（排序、筛选、条件格式、批注、冻结窗格、命名范围、数据验证、转置、分列、分类汇总、导出图片等）通过 wps_call 使用，清单见同目录 reference.md。
+wps_excel_add_list_row、wps_excel_auto_fit、wps_excel_calculate、wps_excel_clear_formats、wps_excel_clear_pivot_table、wps_excel_copy_format、wps_excel_create_chart、wps_excel_create_list_object、wps_excel_create_pivot_table、wps_excel_find_in_sheet、wps_excel_find_replace、wps_excel_get_list_objects、wps_excel_get_named_ranges、wps_excel_get_open_workbooks、wps_excel_get_sheet_info、wps_excel_get_sheet_list、wps_excel_get_sheet_settings、wps_excel_goal_seek、wps_excel_open_workbook、wps_excel_read_range、wps_excel_set_cell_format、wps_excel_set_chart_labels、wps_excel_set_formula、wps_excel_set_number_format、wps_excel_set_sheet_page_setup、wps_excel_write_range
+
+通用工具（4 个，三个应用共用）：wps_common_save、wps_common_save_as、wps_convert_format、wps_convert_to_pdf
+<!-- GENERATED:advertised:end -->
+
+其余表格工具（排序、筛选、条件格式、批注、冻结窗格、命名范围、数据验证、转置、分列、分类汇总、导出图片等）通过 wps_call 使用，清单见同目录 reference.md。
 
 ## 参数约定
 

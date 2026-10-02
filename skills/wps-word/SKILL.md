@@ -8,7 +8,13 @@ whenToUse: 任务针对文档、段落、标题、样式、批注、页眉页脚
 
 ## 直接广告的工具
 
-wps_word_get_active_document、wps_word_get_document_text、wps_word_get_paragraphs、wps_word_insert_text、wps_word_find_replace、wps_word_apply_style、wps_word_set_font、wps_word_set_paragraph、wps_word_generate_toc、wps_word_smart_fill_field、wps_word_open_document、wps_word_create_document，以及通用的 wps_common_save、wps_convert_to_pdf。
+<!-- GENERATED:advertised:start -->
+直接广告的 21 个文字工具（其余 38 个用 wps_call，清单见同目录 reference.md）：
+
+wps_word_apply_style、wps_word_create_document、wps_word_find_replace、wps_word_generate_toc、wps_word_get_active_document、wps_word_get_comments、wps_word_get_document_stats、wps_word_get_document_text、wps_word_get_notes、wps_word_get_paragraphs、wps_word_get_revisions、wps_word_get_table_data、wps_word_get_tables、wps_word_insert_page_numbers、wps_word_insert_text、wps_word_mail_merge、wps_word_open_document、wps_word_set_font、wps_word_set_paragraph、wps_word_set_table_cell、wps_word_smart_fill_field
+
+通用工具（4 个，三个应用共用）：wps_common_save、wps_common_save_as、wps_convert_format、wps_convert_to_pdf
+<!-- GENERATED:advertised:end -->
 
 其余工具（表格、图片、书签、批注、页眉页脚、分节符、行距、页面设置、修订与校对、关闭文档）通过 wps_call 使用，清单见同目录 reference.md，也可以直接 `wps_help {query:"关闭文档"}` 搜。
 

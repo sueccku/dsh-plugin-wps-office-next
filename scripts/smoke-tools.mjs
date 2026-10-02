@@ -11,9 +11,9 @@
 //           risk, so the live smoke is deliberately restricted to get/read/list/find tools.
 //
 // Usage: node scripts/smoke-tools.mjs [--check] [--live]
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { computeCoverageTiers, TIER_LEDGER } from './lib/coverage-tiers.mjs';
 
 const RATCHET = 267;
 const READ_ONLY = /^wps_(excel|word|ppt|common)_(get|read|list|find|search|query)/;
@@ -21,11 +21,10 @@ const LIVE_TIMEOUT_MS = 20000;
 
 const defs = JSON.parse(readFileSync('spec/tool-definitions.json', 'utf8'));
 const names = defs.map((d) => d.name);
-const corpus = readdirSync('test').filter((f) => f.endsWith('.test.mjs'))
-  .map((f) => readFileSync(join('test', f), 'utf8')).join('\n') + '\n' + readFileSync('scripts/e2e.mjs', 'utf8');
-const named = new Set([...corpus.matchAll(/\bwps_[a-z0-9_]+/g)].map((m) => m[0]));
-const covered = names.filter((n) => named.has(n));
-const uncovered = names.filter((n) => !named.has(n));
+// 口径只有一个实现（scripts/lib/coverage-tiers.mjs），CLI 与 CI 不会各算一套（FIXES 74）。
+const tiers = computeCoverageTiers();
+const covered = names.filter((n) => !tiers.notDriven.includes(n));
+const uncovered = tiers.notDriven;
 
 const appOf = (n) => (n.match(/^wps_([a-z]+)_/) || [])[1] || 'other';
 const apps = new Map();
@@ -34,11 +33,12 @@ for (const n of names) {
   if (!apps.has(a)) apps.set(a, { total: 0, covered: 0, uncovered: [] });
   const g = apps.get(a);
   g.total++;
-  if (named.has(n)) g.covered++;
+  if (!tiers.notDriven.includes(n)) g.covered++;
   else g.uncovered.push(n);
 }
 
-console.log('registered tools: ' + names.length + '   named by a test/e2e: ' + covered.length + '   (' + Math.round((covered.length / names.length) * 100) + '%)');
+console.log('registered tools: ' + names.length + '   driven by a test/e2e: ' + covered.length + '   (' + Math.round((covered.length / names.length) * 100) + '%)');
+console.log('  tiers: bespoke=' + tiers.bespoke.length + ' (ratchet >= ' + TIER_LEDGER.bespoke + ')  matrix ok/error=' + tiers.matrixOk.length + '  matrix any-only=' + tiers.matrixAny.length + ' (ratchet <= ' + TIER_LEDGER.matrixAny + ')  not driven=' + tiers.notDriven.length);
 for (const a of [...apps.keys()].sort()) {
   const g = apps.get(a);
   console.log('  ' + a.padEnd(10) + String(g.covered).padStart(3) + ' / ' + String(g.total).padEnd(3) + (g.uncovered.length ? '  missing ' + g.uncovered.length : ''));
@@ -50,11 +50,15 @@ if (uncovered.length) {
 }
 
 if (process.argv.includes('--check')) {
-  if (covered.length < RATCHET) {
-    console.error('\nS4 FAIL: coverage ' + covered.length + ' < ratchet ' + RATCHET);
+  const problems = [];
+  if (covered.length < RATCHET) problems.push('driven ' + covered.length + ' < ' + RATCHET);
+  if (tiers.bespoke.length < TIER_LEDGER.bespoke) problems.push('bespoke ' + tiers.bespoke.length + ' < ' + TIER_LEDGER.bespoke);
+  if (tiers.matrixAny.length > TIER_LEDGER.matrixAny) problems.push('matrix-any-only ' + tiers.matrixAny.length + ' > ' + TIER_LEDGER.matrixAny);
+  if (problems.length) {
+    console.error('\nS4 FAIL: ' + problems.join('; '));
     process.exit(1);
   }
-  console.log('\nS4 COVERAGE OK (' + covered.length + ' >= ' + RATCHET + ')');
+  console.log('\nS4 COVERAGE OK (driven ' + covered.length + ', bespoke ' + tiers.bespoke.length + ', matrix-any-only ' + tiers.matrixAny.length + ')');
 }
 
 if (process.argv.includes('--live')) {

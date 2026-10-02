@@ -8,9 +8,15 @@ whenToUse: 任务针对演示文稿、幻灯片、形状、文本框、动画、
 
 ## 直接广告的工具
 
-wps_ppt_get_slide_count、wps_ppt_get_slide_info、wps_ppt_get_shapes、wps_ppt_set_shape_fill、wps_ppt_set_shape_text、wps_ppt_add_slide、wps_ppt_set_slide_title、wps_ppt_set_slide_content、wps_ppt_add_textbox、wps_ppt_insert_table、wps_ppt_insert_ppt_image、wps_ppt_export_slide_as_image、wps_ppt_open_presentation，以及通用的 wps_common_save、wps_convert_to_pdf。
+<!-- GENERATED:advertised:start -->
+直接广告的 14 个演示工具（其余 62 个用 wps_call，清单见同目录 reference.md）：
 
-演示仍是三个应用里工具最多的一个（96 个）。动画、切换、母版、图表、3D、表格等通过 wps_call 使用，清单见同目录 reference.md。
+wps_ppt_add_slide、wps_ppt_add_textbox、wps_ppt_export_slide_as_image、wps_ppt_get_shapes、wps_ppt_get_slide_count、wps_ppt_get_slide_info、wps_ppt_insert_ppt_image、wps_ppt_insert_table、wps_ppt_open_presentation、wps_ppt_set_shape_fill、wps_ppt_set_shape_text、wps_ppt_set_slide_content、wps_ppt_set_slide_title、wps_ppt_set_table_format
+
+通用工具（4 个，三个应用共用）：wps_common_save、wps_common_save_as、wps_convert_format、wps_convert_to_pdf
+<!-- GENERATED:advertised:end -->
+
+演示是三个应用里工具最多的一个。动画、切换、母版、图表、3D、表格等通过 wps_call 使用，清单见同目录 reference.md。
 KPI 卡片、时间线、流程图等「高层场景封装」已不再作为工具提供，改由下面的组合配方实现。
 
 ## 参数约定

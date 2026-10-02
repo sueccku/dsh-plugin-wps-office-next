@@ -4,13 +4,13 @@ MVP 目标（P0-P3 + 最小技能集）已全部完成并在真实 DSH 上端到
 
 | 阶段 | 状态 | 证据 |
 |---|---|---|
-| P0 冻结基线 | 完成 | baseline/upstream-0.1.0/：250 工具、141,872 schema 字节、约 40.5k tokens/请求、248 个 COM action；baseline/known-defects.md（24 条） |
+| P0 冻结基线 | 完成 | baseline/upstream-0.1.0/：250 工具、141,872 schema 字节、约 40.5k tokens/请求、248 个 COM action；baseline/known-defects.md（28 条） |
 | P1 合仓 + Windows 化 | 完成 | mcp/ 迁入 43 个 TS 源文件；删除 mac 传输、keepalive、平台分支、axios |
 | P2 常驻 COM host | 完成 | warm ping 1ms（原 969ms）；test/com-host.test.mjs 6/6 |
 | P3 工具面收敛 | 完成 | standard 43 工具 / 23,198 字节 / 约 6.6k tokens；scripts/verify.mjs 22/22 |
 | 最小技能集 + DSH 自举 | 完成 | plugin.js + cordis.patch.yml；4 个技能；test/plugin.test.mjs 32/32；真实 profile 启动验证通过 |
-| P4 缺陷修复 | 进行中 | 已修：11 个永久失败的工具、closePresentation、sheet 省略失败（6 处）、范围逐格读、3 对重复工具合并；证据 new-actions 28/28 + excel-range 10/10 + deprecated 8/8。新发现 PPT 动画/切换整族不可用（传英文名，COM 要数字枚举） |
-| P5 全量技能打磨 | 未开始 | 当前为最小技能集 |
+| P4 缺陷修复 | 完成 | 已修：11 个永久失败的工具、closePresentation、sheet 省略失败（6 处）、范围逐格读、3 对重复工具合并；证据 new-actions 28/28 + excel-range 10/10 + deprecated 8/8。新发现 PPT 动画/切换整族不可用（传英文名，COM 要数字枚举） |
+| P5 全量技能打磨 | 完成 | 4 个技能 + reference.md 由注册表生成；README 重写（FIXES 50） |
 
 ## DSH 端到端验证（真实 profile，非模拟）
 
@@ -520,14 +520,14 @@ raw schema 片段 32/549 · 带别名工具 15 · 带容器工具 12。
 | 注册工具 | 250 | **267**（Excel 118 / Word 59 / PPT 76 / 通用 14） |
 | 桥 action | — | **267** |
 | 测试 | 0 | **856 项 / 41 文件**（其中 8 个文件不需要 WPS，已进 CI） |
-| 门禁 | 无 | verify 23、spec 复现 13、参数契约 256 对（A/B/C/D 全 0）、一键 e2e 28 项 |
+| 门禁 | 无 | verify 23、spec 复现 15、参数契约 256 对（A/B/C/D 全 0）、一键 e2e 29 项 |
 | 台账 | — | 别名债务 **59**、未工具化 action **7**（全部刻意保留） |
 
-P0–P4 五个阶段共修掉 **7 个「从未生效」的缺陷**（FIXES 38/39/40/43），另有两处实测缺口如实记录
+P0–P4 五个阶段共修掉 **7 个「从未生效」的缺陷**（FIXES 38/39/43），另有两处实测缺口如实记录
 （水印、文档属性——WPS 自身不支持）。
 
 **发布状态**：v0.2.0、v0.2.1、v0.3.0（2026-09-16，加固第 1 波）、**v0.4.0（2026-09-19，加固第 2 波 + 审计 P2 + P3）**均已发布；本机完整回归
 **856/0**、一键 e2e **29/29** 全绿，可以开始小范围推广；第 2～4 波（S3 数据安全 / S4 冒烟矩阵 /
-S5 空 catch / S6 失败契约 / S7 文案 / S8 版本检查 / S9 安装兜底）与审计 P2、FIXES 65/66 已全部落地，尚未打包成版本。
+S5 空 catch / S6 失败契约 / S7 文案 / S8 版本检查 / S9 安装兜底）与审计 P2、FIXES 65/66 已全部落地，并作为 **v0.4.0**（2026-09-19）发布；v0.5.0 的 FIXES 68–74 见 `docs/FIXES.md`。
 
 

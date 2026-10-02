@@ -3,7 +3,7 @@
 // Spawns the server with WPS_OFFICE_TOOLSET=full so the reference lists every tool,
 // including the ones only reachable through wps_call.
 import { spawn } from "node:child_process";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const entry = process.argv[2] || "mcp/dist/index.js";
@@ -94,6 +94,30 @@ for (const [path, content] of Object.entries(out)) {
   mkdirSync(path.split("/").slice(0, -1).join("/"), { recursive: true });
   writeFileSync(path, content);
   console.log("wrote " + path + " (" + content.split("\n").length + " lines)");
+}
+// ---- SKILL.md 里「会漂的数字」改成生成物（FIXES 75）--------------------------------------------------
+// 这几段以前是手写的，于是 reference.md 由 CI 对账、SKILL.md 的数字却悄悄烂掉（44 vs 69、演示「96 个」
+// vs 76、表格「80 多个」vs 92）。把清单与计数圈进标记里由生成器维护，标记缺失就让生成失败 ——
+// 手写数字不再有第二次漂移的机会。
+const MARK_START = "<!-- GENERATED:advertised:start -->";
+const MARK_END = "<!-- GENERATED:advertised:end -->";
+const advertisedNames = (key) => groups[key].filter((t) => standard.has(t.name)).map((t) => t.name).sort();
+function rewriteAdvertised(path, body) {
+  const text = readFileSync(path, "utf8");
+  const start = text.indexOf(MARK_START);
+  const end = text.indexOf(MARK_END);
+  if (start < 0 || end < start) throw new Error(path + " 缺少 GENERATED:advertised 标记");
+  writeFileSync(path, text.slice(0, start) + [MARK_START, body, MARK_END].join("\n") + text.slice(end + MARK_END.length));
+  console.log("updated " + path + " (advertised block)");
+}
+const countsByApp = { facade: advertisedNames("facade").length, common: advertisedNames("common").length, excel: advertisedNames("excel").length, word: advertisedNames("word").length, ppt: advertisedNames("ppt").length };
+const totalAdvertised = Object.values(countsByApp).reduce((a, b) => a + b, 0);
+const commonLine = "通用工具（" + countsByApp.common + " 个，三个应用共用）：" + advertisedNames("common").join("、");
+rewriteAdvertised("skills/wps-office-next/SKILL.md", "默认 standard 档直接广告 **" + totalAdvertised + "** 个工具（门面 " + countsByApp.facade + " / 通用 " + countsByApp.common + " / 表格 " + countsByApp.excel + " / 文字 " + countsByApp.word + " / 演示 " + countsByApp.ppt + "），其余 " + (tools.length - totalAdvertised) + " 个工具仍然完全可用：");
+for (const key of ["excel", "word", "ppt"]) {
+  const label = { excel: "表格", word: "文字", ppt: "演示" }[key];
+  const own = advertisedNames(key);
+  rewriteAdvertised("skills/wps-" + key + "/SKILL.md", "直接广告的 " + own.length + " 个" + label + "工具（其余 " + (groups[key].length - own.length) + " 个用 wps_call，清单见同目录 reference.md）：\n\n" + own.join("、") + "\n\n" + commonLine);
 }
 console.log("total tools=" + tools.length + " advertised=" + tools.filter((t) => standard.has(t.name)).length);
 child.kill();
