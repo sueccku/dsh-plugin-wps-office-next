@@ -92,7 +92,7 @@ exports.saveAsDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            path: {
+            outputPath: {
                 type: 'string',
                 description: '目标文件完整路径，包含文件名和扩展名',
             },
@@ -101,12 +101,12 @@ exports.saveAsDefinition = {
                 description: '保存格式（可选），如 docx, xlsx, pptx 等',
             },
         },
-        required: ['path'],
+        required: ['outputPath'],
     },
 };
 const saveAsHandler = async (args) => {
-    const { path, format } = args;
-    if (!path || path.trim() === '') {
+    const { outputPath, format } = args;
+    if (!outputPath || outputPath.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -115,10 +115,10 @@ const saveAsHandler = async (args) => {
         };
     }
     try {
-        // The bridge reads "path" for saveAs. Sending path and outputPath as well was a bet that
+        // The bridge reads "outputPath" for saveAs. Sending outputPath and outputPath as well was a bet that
         // one of them would be read, and the two that were not were silently discarded.
         const params = {
-            path: path,
+            outputPath: outputPath,
         };
         if (format) {
             params.format = format.toLowerCase().replace(/^\./, '');
@@ -131,7 +131,7 @@ const saveAsHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `另存为成功！\n输出路径: ${response.data.outputPath || path}`,
+                        text: `另存为成功！\n输出路径: ${response.data.outputPath || outputPath}`,
                     },
                 ],
             };

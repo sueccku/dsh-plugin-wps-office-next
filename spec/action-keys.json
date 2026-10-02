@@ -5,7 +5,7 @@
  "save": [],
  "saveAs": [
   "format",
-  "path"
+  "outputPath"
  ],
  "setSelectedText": [
   "text"
@@ -31,9 +31,9 @@
   "values"
  ],
  "addSparkline": [
-  "dataRange",
   "location",
   "markers",
+  "range",
   "sheet",
   "sparklineType"
  ],
@@ -117,8 +117,8 @@
  ],
  "createChart": [
   "chartType",
-  "dataRange",
   "position",
+  "range",
   "sheet",
   "showDataLabels",
   "showLegend",
@@ -307,7 +307,7 @@
  "insertExcelImage": [
   "cell",
   "height",
-  "path",
+  "imagePath",
   "sheet",
   "width"
  ],
@@ -577,8 +577,8 @@
   "chartName",
   "chartType",
   "colors",
-  "dataRange",
   "legendPosition",
+  "range",
   "sheet",
   "showDataLabels",
   "showLegend",
@@ -627,9 +627,9 @@
   "element"
  ],
  "addPptHyperlink": [
-  "address",
   "shapeIndex",
-  "slideIndex"
+  "slideIndex",
+  "url"
  ],
  "addShape": [
   "fillColor",
@@ -752,15 +752,15 @@
  ],
  "insertPptImage": [
   "height",
+  "imagePath",
   "left",
-  "path",
   "slideIndex",
   "top",
   "width"
  ],
  "insertSlidesFromFile": [
   "afterIndex",
-  "filePath",
+  "path",
   "slideEnd",
   "slideStart"
  ],
@@ -790,7 +790,7 @@
   "slideIndex"
  ],
  "replacePptImage": [
-  "filePath",
+  "imagePath",
   "name",
   "shapeIndex",
   "slideIndex"
@@ -813,7 +813,7 @@
   "slideIndex"
  ],
  "setBackgroundImage": [
-  "path",
+  "imagePath",
   "slideIndex"
  ],
  "setFontColor": [
@@ -934,9 +934,9 @@
  ],
  "setSlideTransition": [
   "duration",
-  "effect",
   "slideIndex",
-  "sound"
+  "sound",
+  "transition"
  ],
  "setPptTableCell": [
   "col",
@@ -1092,7 +1092,7 @@
  ],
  "insertImage": [
   "height",
-  "path",
+  "imagePath",
   "width"
  ],
  "insertIndex": [],

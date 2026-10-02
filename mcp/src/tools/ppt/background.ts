@@ -222,31 +222,31 @@ export const setBackgroundImageDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      path: {
+      imagePath: {
         type: 'string',
         description: '图片文件的完整路径',
       },
     },
-    required: ['slideIndex', 'path'],
+    required: ['slideIndex', 'imagePath'],
   },
 };
 
 export const setBackgroundImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, path } = args as {
+  const { slideIndex, imagePath } = args as {
     slideIndex: number;
-    path: string;
+    imagePath: string;
   };
 
   try {
-    // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
+    // 桥读的就是 imagePath（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
     }>(
       'setBackgroundImage',
-      { slideIndex, path },
+      { slideIndex, imagePath },
       WpsAppType.PRESENTATION
     );
 
@@ -257,7 +257,7 @@ export const setBackgroundImageHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${path}`,
+            text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${imagePath}`,
           },
         ],
       };

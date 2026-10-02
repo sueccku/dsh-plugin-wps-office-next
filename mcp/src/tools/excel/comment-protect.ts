@@ -233,38 +233,38 @@ export const insertExcelImageDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      path: { type: 'string', description: '图片文件路径' },
+      imagePath: { type: 'string', description: '图片文件路径' },
       cell: { type: 'string', description: '插入位置的单元格地址，如 A1。不填则插入到当前选中位置' },
       width: { type: 'number', description: '图片宽度（像素），不填则使用原始宽度' },
       height: { type: 'number', description: '图片高度（像素），不填则使用原始高度' },
       sheet: { type: 'string', description: '工作表名称，不填则使用当前活动工作表' },
     },
-    required: ['path'],
+    required: ['imagePath'],
   },
 };
 
 export const insertExcelImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { path, cell, width, height, sheet } = args as {
-    path: string;
+  const { imagePath, cell, width, height, sheet } = args as {
+    imagePath: string;
     cell?: string;
     width?: number;
     height?: number;
     sheet?: string;
   };
   try {
-    // The bridge reads "path"; the removed path/imagePath aliases carried the same value and
+    // The bridge reads "imagePath"; the removed imagePath/imagePath aliases carried the same value and
     // were never read, which the parameter guard now rejects outright.
     const response = await wpsClient.executeMethod<{ message: string }>(
       'insertExcelImage',
-      { path: path, cell, width, height, sheet },
+      { imagePath: imagePath, cell, width, height, sheet },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入图片失败: ${response.error}` }], error: response.error };
     }
-    let text = `图片插入成功！文件: ${path}`;
+    let text = `图片插入成功！文件: ${imagePath}`;
     if (cell) text += `，位置: ${cell}`;
     if (width || height) text += `，尺寸: ${width || '自动'}x${height || '自动'}`;
     return { id: uuidv4(), success: true, content: [{ type: 'text', text }] };

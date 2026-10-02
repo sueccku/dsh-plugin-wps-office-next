@@ -127,7 +127,7 @@ const wunprot = await call("wps_excel_protect_workbook", { protect: false, passw
 check("protect_workbook accepts protect=false", ok(wunprot), text(wunprot).replace(/\s+/g, " ").slice(0, 80));
 
 // insert_excel_image sent path/imagePath/cell; only path was read and cell was dropped.
-const img = await call("wps_excel_insert_excel_image", { path: path.resolve(PROBE_PNG), cell: "E10" });
+const img = await call("wps_excel_insert_excel_image", { imagePath: path.resolve(PROBE_PNG), cell: "E10" });
 check("insert_excel_image accepts path+cell", ok(img), text(img).replace(/\s+/g, " ").slice(0, 80));
 
 // The big one: wps_excel_add_comment called the Word action of the same name, so an Excel comment

@@ -39,7 +39,7 @@ exports.insertPptImageDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            path: {
+            imagePath: {
                 type: 'string',
                 description: '图片文件路径',
             },
@@ -60,16 +60,16 @@ exports.insertPptImageDefinition = {
                 description: '高度（磅），可选，不指定则按原始比例',
             },
         },
-        required: ['slideIndex', 'path'],
+        required: ['slideIndex', 'imagePath'],
     },
 };
 const insertPptImageHandler = async (args) => {
-    const { slideIndex, path, left, top, width, height } = args;
+    const { slideIndex, imagePath, left, top, width, height } = args;
     try {
-        // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
-        const response = await wps_client_1.wpsClient.executeMethod('insertPptImage', { slideIndex, path, left, top, width, height }, wps_1.WpsAppType.PRESENTATION);
+        // 桥读的就是 imagePath（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
+        const response = await wps_client_1.wpsClient.executeMethod('insertPptImage', { slideIndex, imagePath, left, top, width, height }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
-            let text = `图片插入成功！\n幻灯片: 第 ${slideIndex} 页\n文件: ${path}`;
+            let text = `图片插入成功！\n幻灯片: 第 ${slideIndex} 页\n文件: ${imagePath}`;
             if (left !== undefined && top !== undefined)
                 text += `\n位置: (${left}, ${top})`;
             if (width !== undefined)
@@ -328,8 +328,6 @@ const exportSlideAsImageHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('exportSlideAsImage', {
             slideIndex,
             outputPath,
-            // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-            path: outputPath,
             format: filterName,
             width: finalWidth,
             height: finalHeight,
@@ -395,18 +393,18 @@ exports.replacePptImageDefinition = {
                 type: 'string',
                 description: '要替换的图片形状名称（与 shapeIndex 二选一）',
             },
-            filePath: {
+            imagePath: {
                 type: 'string',
                 description: '新图片文件的完整路径',
             },
         },
-        required: ['slideIndex', 'filePath'],
+        required: ['slideIndex', 'imagePath'],
     },
 };
 const replacePptImageHandler = async (args) => {
-    const { slideIndex, shapeIndex, name, filePath } = args;
+    const { slideIndex, shapeIndex, name, imagePath } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('replacePptImage', { slideIndex, shapeIndex, name, filePath, path: filePath, imagePath: filePath }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('replacePptImage', { slideIndex, shapeIndex, name, imagePath }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -414,7 +412,7 @@ const replacePptImageHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${filePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}${(0, impact_1.impactText)(response.data.impact)}`,
+                        text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${imagePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}${(0, impact_1.impactText)(response.data.impact)}`,
                     },
                 ],
             };

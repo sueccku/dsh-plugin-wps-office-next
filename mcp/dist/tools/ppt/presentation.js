@@ -412,7 +412,7 @@ exports.insertSlidesFromFileDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            filePath: {
+            path: {
                 type: 'string',
                 description: '来源 PPT 文件的完整路径',
             },
@@ -429,13 +429,13 @@ exports.insertSlidesFromFileDefinition = {
                 description: '来源文件结束页码（可选，与slideStart配合）',
             },
         },
-        required: ['filePath'],
+        required: ['path'],
     },
 };
 const insertSlidesFromFileHandler = async (args) => {
-    const { filePath, afterIndex, slideStart, slideEnd } = args;
+    const { path, afterIndex, slideStart, slideEnd } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertSlidesFromFile', { filePath, path: filePath, afterIndex, slideStart, slideEnd }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('insertSlidesFromFile', { path, afterIndex, slideStart, slideEnd }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -443,7 +443,7 @@ const insertSlidesFromFileHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `已从来源文件导入 ${response.data.inserted} 页幻灯片（保留来源格式）！\n来源: ${filePath}\n插入位置: 第 ${response.data.afterIndex} 页之后\n当前演示文稿总页数: ${response.data.totalSlides}`,
+                        text: `已从来源文件导入 ${response.data.inserted} 页幻灯片（保留来源格式）！\n来源: ${path}\n插入位置: 第 ${response.data.afterIndex} 页之后\n当前演示文稿总页数: ${response.data.totalSlides}`,
                     },
                 ],
             };

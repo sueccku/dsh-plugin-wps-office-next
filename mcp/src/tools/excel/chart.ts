@@ -98,7 +98,7 @@ export const createChartDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      dataRange: {
+      range: {
         type: 'string',
         description: '数据范围，如 A1:C10，图表数据的来源',
       },
@@ -146,7 +146,7 @@ export const createChartDefinition: ToolDefinition = {
         description: '是否显示数据标签，默认false',
       },
     },
-    required: ['dataRange'],
+    required: ['range'],
   },
 };
 
@@ -154,7 +154,7 @@ export const createChartHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
   const {
-    dataRange,
+    range,
     chartType = ChartType.COLUMN_CLUSTERED,
     title,
     position,
@@ -162,7 +162,7 @@ export const createChartHandler: ToolHandler = async (
     showLegend = true,
     showDataLabels = false,
   } = args as {
-    dataRange: string;
+    range: string;
     chartType?: ChartType;
     title?: string;
     position?: {
@@ -177,14 +177,14 @@ export const createChartHandler: ToolHandler = async (
   };
 
   // 校验数据范围格式
-  if (!dataRange || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(dataRange)) {
+  if (!range || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(range)) {
     return {
       id: uuidv4(),
       success: false,
       content: [
         {
           type: 'text',
-          text: `数据范围格式无效，应为类似 A1:C10 的格式，当前传入: ${dataRange}`,
+          text: `数据范围格式无效，应为类似 A1:C10 的格式，当前传入: ${range}`,
         },
       ],
       error: '数据范围格式无效',
@@ -214,13 +214,13 @@ export const createChartHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       chartName: string;
       chartIndex: number;
-      dataRange: string;
+      range: string;
       chartType: string;
       position: { left: number; top: number; width: number; height: number };
     }>(
       'createChart',
       {
-        dataRange: dataRange,
+        range: range,
         chartType: wpsChartType,
         chartTypeName: chartType,
         title: title || '',
@@ -260,7 +260,7 @@ export const createChartHandler: ToolHandler = async (
           text: `图表创建成功！
 图表名称: ${result.chartName || 'Chart'}
 图表索引: ${result.chartIndex || 1}
-数据范围: ${result.dataRange || dataRange}
+数据范围: ${result.range || range}
 图表类型: ${chartType}
 位置: 左${pos.left}px, 上${pos.top}px
 尺寸: ${pos.width}x${pos.height}px
@@ -329,7 +329,7 @@ export const updateChartDefinition: ToolDefinition = {
         type: 'boolean',
         description: '是否显示数据标签',
       },
-      dataRange: {
+      range: {
         type: 'string',
         description: '更改数据源范围',
       },
@@ -360,7 +360,7 @@ export const updateChartHandler: ToolHandler = async (
     showLegend,
     legendPosition,
     showDataLabels,
-    dataRange,
+    range,
     colors,
     sheet,
   } = args as {
@@ -371,7 +371,7 @@ export const updateChartHandler: ToolHandler = async (
     showLegend?: boolean;
     legendPosition?: 'bottom' | 'top' | 'left' | 'right';
     showDataLabels?: boolean;
-    dataRange?: string;
+    range?: string;
     colors?: string[];
     sheet?: string;
   };
@@ -445,7 +445,7 @@ export const updateChartHandler: ToolHandler = async (
     if (showLegend !== undefined) updateParams.showLegend = showLegend;
     if (legendPosition !== undefined) updateParams.legendPosition = legendPosition;
     if (showDataLabels !== undefined) updateParams.showDataLabels = showDataLabels;
-    if (dataRange !== undefined) updateParams.dataRange = dataRange;
+    if (range !== undefined) updateParams.range = range;
     if (colors !== undefined) updateParams.colors = colors;
 
     const response = await wpsClient.executeMethod<{
@@ -579,8 +579,6 @@ export const exportChartAsImageHandler: ToolHandler = async (
       {
         chartName,
         outputPath,
-        // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-        path: outputPath,
         format: filterName,
         sheet,
       },
@@ -726,8 +724,6 @@ export const exportRangeAsImageHandler: ToolHandler = async (
       {
         range,
         outputPath,
-        // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-        path: outputPath,
         format: filterName,
         sheet,
       },

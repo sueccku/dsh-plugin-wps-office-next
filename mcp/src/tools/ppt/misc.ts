@@ -270,22 +270,22 @@ export const addPptHyperlinkDefinition: ToolDefinition = {
         type: 'number',
         description: '形状索引（从1开始）',
       },
-      address: {
+      url: {
         type: 'string',
         description: '超链接地址，如 "https://example.com" 或 "mailto:test@example.com"',
       },
     },
-    required: ['slideIndex', 'shapeIndex', 'address'],
+    required: ['slideIndex', 'shapeIndex', 'url'],
   },
 };
 
 export const addPptHyperlinkHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, address } = args as {
+  const { slideIndex, shapeIndex, url } = args as {
     slideIndex: number;
     shapeIndex: number;
-    address: string;
+    url: string;
   };
 
   try {
@@ -294,7 +294,7 @@ export const addPptHyperlinkHandler: ToolHandler = async (
       message: string;
     }>(
       'addPptHyperlink',
-      { slideIndex, shapeIndex, address },
+      { slideIndex, shapeIndex, url },
       WpsAppType.PRESENTATION
     );
 
@@ -305,7 +305,7 @@ export const addPptHyperlinkHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `超链接添加成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n链接: ${address}`,
+            text: `超链接添加成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n链接: ${url}`,
           },
         ],
       };

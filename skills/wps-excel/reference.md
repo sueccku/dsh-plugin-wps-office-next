@@ -121,7 +121,7 @@
 | wps_excel_clear_pivot_table | 直达 | 清除透视表在表上的报表区域（数据源不动）。 |
 | wps_excel_refresh_all_data | wps_call | 刷新整个工作簿的外部数据连接与透视表（相当于 Excel 的「全部刷新」）。 |
 | wps_excel_goal_seek | 直达 | 单变量求解：反复调整 changingCell，直到 cell 的公式结果等于 goal。 |
-| wps_excel_add_sparkline | wps_call | 在单元格区域里加迷你图（单元格内的微型图表）：dataRange 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。 |
+| wps_excel_add_sparkline | wps_call | 在单元格区域里加迷你图（单元格内的微型图表）：range 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。 |
 | wps_excel_clear_sparkline | wps_call | 清除指定区域上的迷你图（数据不动）。 |
 | wps_excel_delete_chart | wps_call | 删除工作表上的图表（不删它引用的数据）。 |
 | wps_excel_set_chart_labels | 直达 | 给图表加标题与坐标轴标题（分类轴 = 横轴，数值轴 = 纵轴）。 |

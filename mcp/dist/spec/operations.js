@@ -126,7 +126,7 @@ exports.operations = [
         "app": "common",
         "summary": "将当前文档另存为指定路径和格式。\n\n使用场景：\n- \"另存为到桌面\"\n- \"换个名字保存\"\n- \"保存一份副本到指定位置\"\n\n特点：\n- 支持指定完整文件路径\n- 可选指定保存格式",
         "params": {
-            "path": {
+            "outputPath": {
                 "type": "string",
                 "description": "目标文件完整路径，包含文件名和扩展名",
                 "required": true
@@ -139,7 +139,7 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [
-            "path"
+            "outputPath"
         ],
         "engine": "bridge"
     }),
@@ -361,16 +361,16 @@ exports.operations = [
         "tool": "wps_excel_add_sparkline",
         "action": "addSparkline",
         "app": "excel",
-        "summary": "在单元格区域里加迷你图（单元格内的微型图表）：dataRange 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。使用场景：在表格旁边一行一个小趋势图，不占地方。",
+        "summary": "在单元格区域里加迷你图（单元格内的微型图表）：range 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。使用场景：在表格旁边一行一个小趋势图，不占地方。",
         "params": {
-            "dataRange": {
+            "range": {
                 "type": "string",
                 "description": "数据区域，如 B2:B5（每个单元格一条迷你图时按列给）",
                 "required": true
             },
             "location": {
                 "type": "string",
-                "description": "放置位置，如 C2:C5；形状要与 dataRange 一致",
+                "description": "放置位置，如 C2:C5；形状要与 range 一致",
                 "required": true
             },
             "sparklineType": {
@@ -394,7 +394,7 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "dataRange",
+            "range",
             "location"
         ],
         "engine": "bridge"
@@ -858,7 +858,7 @@ exports.operations = [
         "app": "excel",
         "summary": "在Excel中创建图表。支持柱状图、折线图、饼图、散点图等多种类型。\n\n使用场景：\n- \"帮我用A1:B10的数据画个柱状图\" -> 创建 column_clustered\n- \"把这些数据做成折线图看趋势\" -> 创建 line\n- \"显示各部门占比\" -> 创建 pie 饼图\n- \"分析两个变量的相关性\" -> 创建 scatter 散点图\n\n支持的图表类型：\n- column_clustered: 簇状柱形图（默认，最常用）\n- column_stacked: 堆积柱形图\n- bar_clustered: 簇状条形图\n- line: 折线图\n- line_markers: 带标记的折线图\n- pie: 饼图\n- doughnut: 环形图\n- scatter: 散点图\n- area: 面积图\n- radar: 雷达图",
         "params": {
-            "dataRange": {
+            "range": {
                 "type": "string",
                 "description": "数据范围，如 A1:C10，图表数据的来源",
                 "required": true
@@ -925,7 +925,7 @@ exports.operations = [
         "effect": "lifecycle",
         "advertised": true,
         "required": [
-            "dataRange"
+            "range"
         ],
         "engine": "bridge"
     }),
@@ -2038,7 +2038,7 @@ exports.operations = [
         "app": "excel",
         "summary": "在Excel中插入图片到指定位置。",
         "params": {
-            "path": {
+            "imagePath": {
                 "type": "string",
                 "description": "图片文件路径",
                 "required": true
@@ -2063,7 +2063,7 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "path"
+            "imagePath"
         ],
         "engine": "bridge"
     }),
@@ -2715,6 +2715,11 @@ exports.operations = [
             "wrapText": {
                 "type": "boolean",
                 "description": "是否自动换行（与 format.wrapText 等价）",
+                "kind": "local"
+            },
+            "numberFormat": {
+                "type": "string",
+                "description": "数字格式串，如 0.00%、#,##0；与 wps_excel_set_number_format 同义（D10 起一并声明）",
                 "kind": "local"
             },
             "sheet": {
@@ -3755,7 +3760,7 @@ exports.operations = [
                 "type": "boolean",
                 "description": "是否显示数据标签"
             },
-            "dataRange": {
+            "range": {
                 "type": "string",
                 "description": "更改数据源范围"
             },
@@ -4158,7 +4163,7 @@ exports.operations = [
                 "description": "形状索引（从1开始）",
                 "required": true
             },
-            "address": {
+            "url": {
                 "type": "string",
                 "description": "超链接地址，如 \"https://example.com\" 或 \"mailto:test@example.com\"",
                 "required": true
@@ -4169,7 +4174,7 @@ exports.operations = [
         "required": [
             "slideIndex",
             "shapeIndex",
-            "address"
+            "url"
         ],
         "engine": "bridge"
     }),
@@ -4963,7 +4968,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "path": {
+            "imagePath": {
                 "type": "string",
                 "description": "图片文件路径",
                 "required": true
@@ -4989,7 +4994,7 @@ exports.operations = [
         "advertised": true,
         "required": [
             "slideIndex",
-            "path"
+            "imagePath"
         ],
         "engine": "bridge"
     }),
@@ -4999,7 +5004,7 @@ exports.operations = [
         "app": "ppt",
         "summary": "从另一个 PPT 文件把整页幻灯片插入到【当前活动演示文稿】，并保留来源幻灯片的原始格式（字体/配色/版式/图片）。用于把多个 PPT 整合成一个。\n\n使用场景：\n- \"把可行性报告.pptx 的第3到5页插到当前PPT第10页后面\"\n- \"整合多个PPT：把另一个演示文稿的所有幻灯片合并进来\"\n- \"从某个PPT复制整页过来，保持原样式\"\n\n说明：\n- 先用 wps_ppt_switch_presentation 切换到【目标/接收页】演示文稿，再调用本工具\n- afterIndex 表示插入到第几页之后（0=插到最前，不填=追加到末尾）\n- slideStart/slideEnd 指定只导入来源文件的某段页码范围，不填则导入全部\n- 底层调用 WPS COM Slides.InsertFromFile，原样保留来源格式，避免AI重排导致的版式失真",
         "params": {
-            "filePath": {
+            "path": {
                 "type": "string",
                 "description": "来源 PPT 文件的完整路径",
                 "required": true
@@ -5020,7 +5025,7 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "filePath"
+            "path"
         ],
         "engine": "bridge"
     }),
@@ -5195,7 +5200,7 @@ exports.operations = [
                 "type": "string",
                 "description": "要替换的图片形状名称（与 shapeIndex 二选一）"
             },
-            "filePath": {
+            "imagePath": {
                 "type": "string",
                 "description": "新图片文件的完整路径",
                 "required": true
@@ -5205,7 +5210,7 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "filePath"
+            "imagePath"
         ],
         "engine": "bridge"
     }),
@@ -5351,7 +5356,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "path": {
+            "imagePath": {
                 "type": "string",
                 "description": "图片文件的完整路径",
                 "required": true
@@ -5361,7 +5366,7 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "path"
+            "imagePath"
         ],
         "engine": "bridge"
     }),
@@ -6106,7 +6111,7 @@ exports.operations = [
                 "description": "幻灯片页码（从1开始）",
                 "required": true
             },
-            "effect": {
+            "transition": {
                 "type": "string",
                 "description": "切换效果名称",
                 "required": true
@@ -6124,7 +6129,7 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "effect"
+            "transition"
         ],
         "engine": "bridge"
     }),
@@ -7062,7 +7067,7 @@ exports.operations = [
         "app": "word",
         "summary": "在Word文档中插入图片。\n\n使用场景：\n- \"在文档中插入一张图片\"\n- \"把这个截图放到文档里\"\n- \"在光标位置插入logo\"",
         "params": {
-            "path": {
+            "imagePath": {
                 "type": "string",
                 "description": "图片文件路径",
                 "required": true
@@ -7079,7 +7084,7 @@ exports.operations = [
         "effect": "write",
         "advertised": false,
         "required": [
-            "path"
+            "imagePath"
         ],
         "engine": "bridge"
     }),

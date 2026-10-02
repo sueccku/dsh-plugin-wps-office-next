@@ -187,19 +187,19 @@ exports.setBackgroundImageDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            path: {
+            imagePath: {
                 type: 'string',
                 description: '图片文件的完整路径',
             },
         },
-        required: ['slideIndex', 'path'],
+        required: ['slideIndex', 'imagePath'],
     },
 };
 const setBackgroundImageHandler = async (args) => {
-    const { slideIndex, path } = args;
+    const { slideIndex, imagePath } = args;
     try {
-        // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
-        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundImage', { slideIndex, path }, wps_1.WpsAppType.PRESENTATION);
+        // 桥读的就是 imagePath（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
+        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundImage', { slideIndex, imagePath }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -207,7 +207,7 @@ const setBackgroundImageHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${path}`,
+                        text: `背景图片设置成功！\n幻灯片: 第 ${slideIndex} 页\n图片: ${imagePath}`,
                     },
                 ],
             };

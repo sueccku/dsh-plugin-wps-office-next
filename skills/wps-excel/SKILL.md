@@ -39,7 +39,7 @@ wps_excel_add_list_row、wps_excel_auto_fit、wps_excel_calculate、wps_excel_cl
 | set_data_validation | range、type、formula（list 类型可直接给 "a,b,c"） |
 | set_conditional_format | range、condition（如 ">100"、"between(1,10)"）、format（red_fill 等或 #RRGGBB） |
 | set_cell_style | range、style（具名样式，名字不存在会报错） |
-| insert_excel_image | path、cell、width、height |
+| insert_excel_image | imagePath、cell、width、height |
 | get_cell_comments | range（可选，缩小范围） |
 | protect_sheet / protect_workbook | protect（false 为取消保护） |
 | freeze_panes | row、column（"冻结到第几行/列"），freeze=false 取消冻结 |

@@ -34,7 +34,7 @@ async function call(name, args, ms) {
 check("create_workbook", ok(await call("wps_excel_create_workbook", {})), "");
 check("seed A1:C3", ok(await call("wps_excel_write_range", { range: "A1", data: [[1, 2, 3], [4, 5, 6], [7, 8, 9]] })), "");
 await call("wps_excel_write_range", { range: "F1", data: [["a,b"], ["c,d"], ["e,f"]] });
-await call("wps_excel_create_chart", { dataRange: "A1:C3", chartType: "column_clustered", title: "T" });
+await call("wps_excel_create_chart", { range: "A1:C3", chartType: "column_clustered", title: "T" });
 
 const rangePng = resolvePath("test/.artifacts/excelcov-range.png");
 const chartPng = resolvePath("test/.artifacts/excelcov-chart.png");

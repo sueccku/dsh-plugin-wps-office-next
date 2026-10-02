@@ -502,7 +502,7 @@ export const insertSlidesFromFileDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      filePath: {
+      path: {
         type: 'string',
         description: '来源 PPT 文件的完整路径',
       },
@@ -519,15 +519,15 @@ export const insertSlidesFromFileDefinition: ToolDefinition = {
         description: '来源文件结束页码（可选，与slideStart配合）',
       },
     },
-    required: ['filePath'],
+    required: ['path'],
   },
 };
 
 export const insertSlidesFromFileHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { filePath, afterIndex, slideStart, slideEnd } = args as {
-    filePath: string;
+  const { path, afterIndex, slideStart, slideEnd } = args as {
+    path: string;
     afterIndex?: number;
     slideStart?: number;
     slideEnd?: number;
@@ -543,7 +543,7 @@ export const insertSlidesFromFileHandler: ToolHandler = async (
       source: string;
     }>(
       'insertSlidesFromFile',
-      { filePath, path: filePath, afterIndex, slideStart, slideEnd },
+      { path, afterIndex, slideStart, slideEnd },
       WpsAppType.PRESENTATION
     );
 
@@ -554,7 +554,7 @@ export const insertSlidesFromFileHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `已从来源文件导入 ${response.data.inserted} 页幻灯片（保留来源格式）！\n来源: ${filePath}\n插入位置: 第 ${response.data.afterIndex} 页之后\n当前演示文稿总页数: ${response.data.totalSlides}`,
+            text: `已从来源文件导入 ${response.data.inserted} 页幻灯片（保留来源格式）！\n来源: ${path}\n插入位置: 第 ${response.data.afterIndex} 页之后\n当前演示文稿总页数: ${response.data.totalSlides}`,
           },
         ],
       };

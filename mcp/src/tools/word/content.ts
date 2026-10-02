@@ -461,7 +461,7 @@ export const insertImageDefinition: ToolDefinition = {
   inputSchema: {
     type: 'object',
     properties: {
-      path: {
+      imagePath: {
         type: 'string',
         description: '图片文件路径',
       },
@@ -474,20 +474,20 @@ export const insertImageDefinition: ToolDefinition = {
         description: '图片高度（磅），可选',
       },
     },
-    required: ['path'],
+    required: ['imagePath'],
   },
 };
 
 export const insertImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { path, width, height } = args as {
-    path: string;
+  const { imagePath, width, height } = args as {
+    imagePath: string;
     width?: number;
     height?: number;
   };
 
-  if (!path || path.trim() === '') {
+  if (!imagePath || imagePath.trim() === '') {
     return {
       id: uuidv4(),
       success: false,
@@ -497,13 +497,13 @@ export const insertImageHandler: ToolHandler = async (
   }
 
   try {
-    // The bridge reads "path"; the path/filePath aliases were never read.
+    // The bridge reads "imagePath"; the imagePath/filePath aliases were never read.
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
     }>(
       'insertImage',
-      { path: path, width, height },
+      { imagePath: imagePath, width, height },
       WpsAppType.WRITER
     );
 
@@ -514,7 +514,7 @@ export const insertImageHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `图片插入成功！\n路径: ${path}${width ? `\n宽度: ${width}磅` : ''}${height ? `\n高度: ${height}磅` : ''}`,
+            text: `图片插入成功！\n路径: ${imagePath}${width ? `\n宽度: ${width}磅` : ''}${height ? `\n高度: ${height}磅` : ''}`,
           },
         ],
       };

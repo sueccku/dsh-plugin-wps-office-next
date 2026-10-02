@@ -22,20 +22,6 @@ export const paramAliases: Record<string, Record<string, string>> = {
     "animationType": "effect",
     "shapeIndex": "shapeName"
   },
-  "setBackgroundImage": {
-    "imagePath": "path",
-    "filePath": "path"
-  },
-  "insertPptImage": {
-    "imagePath": "path",
-    "filePath": "path"
-  },
-  "replacePptImage": {
-    "imagePath": "path"
-  },
-  "openPresentation": {
-    "filePath": "path"
-  },
   "alignShapes": {
     "shapeIndices": "names"
   },
@@ -50,15 +36,6 @@ export const paramAliases: Record<string, Record<string, string>> = {
   },
   "setPptDateTime": {
     "show": "visible"
-  },
-  "applyTransitionToAll": {
-    "effect": "transition"
-  },
-  "setSlideTransition": {
-    "transition": "effect"
-  },
-  "addPptHyperlink": {
-    "url": "address"
   },
   "insertPptChart": {
     "chartType": "type"

@@ -68,6 +68,7 @@ exports.setCellFormatDefinition = {
             horizontalAlignment: { type: 'string', description: '水平对齐方式（与 format.horizontalAlignment 等价）', enum: ['left', 'center', 'right'] },
             verticalAlignment: { type: 'string', description: '垂直对齐方式（与 format.verticalAlignment 等价）', enum: ['top', 'center', 'bottom'] },
             wrapText: { type: 'boolean', description: '是否自动换行（与 format.wrapText 等价）' },
+            numberFormat: { type: 'string', description: '数字格式串，如 0.00%、#,##0；与 wps_excel_set_number_format 同义（D10 起一并声明）' },
             sheet: {
                 type: 'string',
                 description: '工作表名称，不填则使用当前活动工作表',

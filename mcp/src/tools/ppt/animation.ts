@@ -326,7 +326,7 @@ export const setSlideTransitionDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      effect: {
+      transition: {
         type: 'string',
         description: '切换效果名称',
       },
@@ -339,16 +339,16 @@ export const setSlideTransitionDefinition: ToolDefinition = {
         description: '切换时播放的声音文件路径（可选）',
       },
     },
-    required: ['slideIndex', 'effect'],
+    required: ['slideIndex', 'transition'],
   },
 };
 
 export const setSlideTransitionHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, effect, duration, sound } = args as {
+  const { slideIndex, transition, duration, sound } = args as {
     slideIndex: number;
-    effect: string;
+    transition: string;
     duration?: number;
     sound?: string;
   };
@@ -361,7 +361,7 @@ export const setSlideTransitionHandler: ToolHandler = async (
       'setSlideTransition',
       {
         slideIndex,
-        effect,
+        transition,
         duration: duration || 1,
         sound,
       },
@@ -369,7 +369,7 @@ export const setSlideTransitionHandler: ToolHandler = async (
     );
 
     if (response.success) {
-      let output = `切换效果设置成功！\n幻灯片: 第 ${slideIndex} 页\n效果: ${effect}\n持续时间: ${duration || 1} 秒`;
+      let output = `切换效果设置成功！\n幻灯片: 第 ${slideIndex} 页\n效果: ${transition}\n持续时间: ${duration || 1} 秒`;
       if (sound) {
         output += `\n声音: ${sound}`;
       }

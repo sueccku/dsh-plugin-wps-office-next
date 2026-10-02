@@ -389,7 +389,7 @@ exports.insertImageDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            path: {
+            imagePath: {
                 type: 'string',
                 description: '图片文件路径',
             },
@@ -402,12 +402,12 @@ exports.insertImageDefinition = {
                 description: '图片高度（磅），可选',
             },
         },
-        required: ['path'],
+        required: ['imagePath'],
     },
 };
 const insertImageHandler = async (args) => {
-    const { path, width, height } = args;
-    if (!path || path.trim() === '') {
+    const { imagePath, width, height } = args;
+    if (!imagePath || imagePath.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
@@ -416,8 +416,8 @@ const insertImageHandler = async (args) => {
         };
     }
     try {
-        // The bridge reads "path"; the path/filePath aliases were never read.
-        const response = await wps_client_1.wpsClient.executeMethod('insertImage', { path: path, width, height }, wps_1.WpsAppType.WRITER);
+        // The bridge reads "imagePath"; the imagePath/filePath aliases were never read.
+        const response = await wps_client_1.wpsClient.executeMethod('insertImage', { imagePath: imagePath, width, height }, wps_1.WpsAppType.WRITER);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -425,7 +425,7 @@ const insertImageHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `图片插入成功！\n路径: ${path}${width ? `\n宽度: ${width}磅` : ''}${height ? `\n高度: ${height}磅` : ''}`,
+                        text: `图片插入成功！\n路径: ${imagePath}${width ? `\n宽度: ${width}磅` : ''}${height ? `\n高度: ${height}磅` : ''}`,
                     },
                 ],
             };

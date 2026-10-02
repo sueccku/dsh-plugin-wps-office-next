@@ -31,7 +31,7 @@
  },
  {
   "tool": "wps_common_save_as",
-  "signature": "common_save_as(path*, format?)",
+  "signature": "common_save_as(outputPath*, format?)",
   "effect": "lifecycle"
  },
  {
@@ -81,7 +81,7 @@
  },
  {
   "tool": "wps_excel_add_sparkline",
-  "signature": "excel_add_sparkline(dataRange*, location*, sparklineType?, markers?, sheet?)",
+  "signature": "excel_add_sparkline(range*, location*, sparklineType?, markers?, sheet?)",
   "effect": "write"
  },
  {
@@ -166,7 +166,7 @@
  },
  {
   "tool": "wps_excel_create_chart",
-  "signature": "excel_create_chart(dataRange*, chartType?, title?, position?, sheet?, showLegend?, showDataLabels?)",
+  "signature": "excel_create_chart(range*, chartType?, title?, position?, sheet?, showLegend?, showDataLabels?)",
   "effect": "lifecycle"
  },
  {
@@ -376,7 +376,7 @@
  },
  {
   "tool": "wps_excel_insert_excel_image",
-  "signature": "excel_insert_excel_image(path*, cell?, width?, height?, sheet?)",
+  "signature": "excel_insert_excel_image(imagePath*, cell?, width?, height?, sheet?)",
   "effect": "write"
  },
  {
@@ -481,7 +481,7 @@
  },
  {
   "tool": "wps_excel_set_cell_format",
-  "signature": "excel_set_cell_format(range*, format*, bold?, italic?, fontSize?, fontName?, fontColor?, bgColor?, underline?, strikethrough?, horizontalAlignment?, verticalAlignment?, wrapText?, sheet?)",
+  "signature": "excel_set_cell_format(range*, format*, bold?, italic?, fontSize?, fontName?, fontColor?, bgColor?, underline?, strikethrough?, horizontalAlignment?, verticalAlignment?, wrapText?, numberFormat?, sheet?)",
   "effect": "write"
  },
  {
@@ -641,7 +641,7 @@
  },
  {
   "tool": "wps_excel_update_chart",
-  "signature": "excel_update_chart(chartIndex?, chartName?, title?, chartType?, showLegend?, legendPosition?, showDataLabels?, dataRange?, colors?, sheet?)",
+  "signature": "excel_update_chart(chartIndex?, chartName?, title?, chartType?, showLegend?, legendPosition?, showDataLabels?, range?, colors?, sheet?)",
   "effect": "write"
  },
  {
@@ -671,7 +671,7 @@
  },
  {
   "tool": "wps_ppt_add_ppt_hyperlink",
-  "signature": "ppt_add_ppt_hyperlink(slideIndex*, shapeIndex*, address*)",
+  "signature": "ppt_add_ppt_hyperlink(slideIndex*, shapeIndex*, url*)",
   "effect": "write"
  },
  {
@@ -821,12 +821,12 @@
  },
  {
   "tool": "wps_ppt_insert_ppt_image",
-  "signature": "ppt_insert_ppt_image(slideIndex*, path*, left?, top?, width?, height?)",
+  "signature": "ppt_insert_ppt_image(slideIndex*, imagePath*, left?, top?, width?, height?)",
   "effect": "write"
  },
  {
   "tool": "wps_ppt_insert_slides_from_file",
-  "signature": "ppt_insert_slides_from_file(filePath*, afterIndex?, slideStart?, slideEnd?)",
+  "signature": "ppt_insert_slides_from_file(path*, afterIndex?, slideStart?, slideEnd?)",
   "effect": "write"
  },
  {
@@ -861,7 +861,7 @@
  },
  {
   "tool": "wps_ppt_replace_ppt_image",
-  "signature": "ppt_replace_ppt_image(slideIndex*, shapeIndex?, name?, filePath*)",
+  "signature": "ppt_replace_ppt_image(slideIndex*, shapeIndex?, name?, imagePath*)",
   "effect": "write"
  },
  {
@@ -891,7 +891,7 @@
  },
  {
   "tool": "wps_ppt_set_background_image",
-  "signature": "ppt_set_background_image(slideIndex*, path*)",
+  "signature": "ppt_set_background_image(slideIndex*, imagePath*)",
   "effect": "write"
  },
  {
@@ -996,7 +996,7 @@
  },
  {
   "tool": "wps_ppt_set_slide_transition",
-  "signature": "ppt_set_slide_transition(slideIndex*, effect*, duration?, sound?)",
+  "signature": "ppt_set_slide_transition(slideIndex*, transition*, duration?, sound?)",
   "effect": "write"
  },
  {
@@ -1211,7 +1211,7 @@
  },
  {
   "tool": "wps_word_insert_image",
-  "signature": "word_insert_image(path*, width?, height?)",
+  "signature": "word_insert_image(imagePath*, width?, height?)",
   "effect": "write"
  },
  {

@@ -267,7 +267,7 @@ exports.setSlideTransitionDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
-            effect: {
+            transition: {
                 type: 'string',
                 description: '切换效果名称',
             },
@@ -280,20 +280,20 @@ exports.setSlideTransitionDefinition = {
                 description: '切换时播放的声音文件路径（可选）',
             },
         },
-        required: ['slideIndex', 'effect'],
+        required: ['slideIndex', 'transition'],
     },
 };
 const setSlideTransitionHandler = async (args) => {
-    const { slideIndex, effect, duration, sound } = args;
+    const { slideIndex, transition, duration, sound } = args;
     try {
         const response = await wps_client_1.wpsClient.executeMethod('setSlideTransition', {
             slideIndex,
-            effect,
+            transition,
             duration: duration || 1,
             sound,
         }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
-            let output = `切换效果设置成功！\n幻灯片: 第 ${slideIndex} 页\n效果: ${effect}\n持续时间: ${duration || 1} 秒`;
+            let output = `切换效果设置成功！\n幻灯片: 第 ${slideIndex} 页\n效果: ${transition}\n持续时间: ${duration || 1} 秒`;
             if (sound) {
                 output += `\n声音: ${sound}`;
             }

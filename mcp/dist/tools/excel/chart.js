@@ -92,7 +92,7 @@ exports.createChartDefinition = {
     inputSchema: {
         type: 'object',
         properties: {
-            dataRange: {
+            range: {
                 type: 'string',
                 description: '数据范围，如 A1:C10，图表数据的来源',
             },
@@ -140,20 +140,20 @@ exports.createChartDefinition = {
                 description: '是否显示数据标签，默认false',
             },
         },
-        required: ['dataRange'],
+        required: ['range'],
     },
 };
 const createChartHandler = async (args) => {
-    const { dataRange, chartType = ChartType.COLUMN_CLUSTERED, title, position, sheet, showLegend = true, showDataLabels = false, } = args;
+    const { range, chartType = ChartType.COLUMN_CLUSTERED, title, position, sheet, showLegend = true, showDataLabels = false, } = args;
     // 校验数据范围格式
-    if (!dataRange || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(dataRange)) {
+    if (!range || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(range)) {
         return {
             id: (0, uuid_1.v4)(),
             success: false,
             content: [
                 {
                     type: 'text',
-                    text: `数据范围格式无效，应为类似 A1:C10 的格式，当前传入: ${dataRange}`,
+                    text: `数据范围格式无效，应为类似 A1:C10 的格式，当前传入: ${range}`,
                 },
             ],
             error: '数据范围格式无效',
@@ -178,7 +178,7 @@ const createChartHandler = async (args) => {
         // 获取WPS图表类型常量
         const wpsChartType = CHART_TYPE_MAP[chartType];
         const response = await wps_client_1.wpsClient.executeMethod('createChart', {
-            dataRange: dataRange,
+            range: range,
             chartType: wpsChartType,
             chartTypeName: chartType,
             title: title || '',
@@ -213,7 +213,7 @@ const createChartHandler = async (args) => {
                     text: `图表创建成功！
 图表名称: ${result.chartName || 'Chart'}
 图表索引: ${result.chartIndex || 1}
-数据范围: ${result.dataRange || dataRange}
+数据范围: ${result.range || range}
 图表类型: ${chartType}
 位置: 左${pos.left}px, 上${pos.top}px
 尺寸: ${pos.width}x${pos.height}px
@@ -283,7 +283,7 @@ exports.updateChartDefinition = {
                 type: 'boolean',
                 description: '是否显示数据标签',
             },
-            dataRange: {
+            range: {
                 type: 'string',
                 description: '更改数据源范围',
             },
@@ -303,7 +303,7 @@ exports.updateChartDefinition = {
     },
 };
 const updateChartHandler = async (args) => {
-    const { chartIndex, chartName, title, chartType, showLegend, legendPosition, showDataLabels, dataRange, colors, sheet, } = args;
+    const { chartIndex, chartName, title, chartType, showLegend, legendPosition, showDataLabels, range, colors, sheet, } = args;
     // 必须指定图表索引或名称
     if (chartIndex === undefined && !chartName) {
         return {
@@ -373,8 +373,8 @@ const updateChartHandler = async (args) => {
             updateParams.legendPosition = legendPosition;
         if (showDataLabels !== undefined)
             updateParams.showDataLabels = showDataLabels;
-        if (dataRange !== undefined)
-            updateParams.dataRange = dataRange;
+        if (range !== undefined)
+            updateParams.range = range;
         if (colors !== undefined)
             updateParams.colors = colors;
         const response = await wps_client_1.wpsClient.executeMethod('updateChart', updateParams, wps_1.WpsAppType.SPREADSHEET);
@@ -480,8 +480,6 @@ const exportChartAsImageHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('exportChartAsImage', {
             chartName,
             outputPath,
-            // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-            path: outputPath,
             format: filterName,
             sheet,
         }, wps_1.WpsAppType.SPREADSHEET);
@@ -604,8 +602,6 @@ const exportRangeAsImageHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('exportRangeAsImage', {
             range,
             outputPath,
-            // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-            path: outputPath,
             format: filterName,
             sheet,
         }, wps_1.WpsAppType.SPREADSHEET);

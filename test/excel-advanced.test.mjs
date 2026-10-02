@@ -62,17 +62,17 @@ const seekBadRes = await call('wps_excel_goal_seek', { sheet: SHEET, cell: 'B10'
 check('goal_seek without changingCell is rejected', !ok(seekBadRes), textOf(seekBadRes).slice(0, 60));
 
 // ---- 迷你图 ----
-const sparkRes = await call('wps_excel_add_sparkline', { sheet: SHEET, dataRange: 'C2:C7', location: 'E2:E7' });
+const sparkRes = await call('wps_excel_add_sparkline', { sheet: SHEET, range: 'C2:C7', location: 'E2:E7' });
 check('add_sparkline creates one group', ok(sparkRes) && textOf(sparkRes).includes('共 1 组'), textOf(sparkRes).slice(0, 110));
-const sparkColRes = await call('wps_excel_add_sparkline', { sheet: SHEET, dataRange: 'C2:C7', location: 'I2:I7', sparklineType: 'column', markers: true });
+const sparkColRes = await call('wps_excel_add_sparkline', { sheet: SHEET, range: 'C2:C7', location: 'I2:I7', sparklineType: 'column', markers: true });
 check('add_sparkline accepts the column type', ok(sparkColRes) && textOf(sparkColRes).includes('column'), textOf(sparkColRes).slice(0, 110));
-const sparkBadRes = await call('wps_excel_add_sparkline', { sheet: SHEET, dataRange: 'C2:C7', sparklineType: 'nope' });
+const sparkBadRes = await call('wps_excel_add_sparkline', { sheet: SHEET, range: 'C2:C7', sparklineType: 'nope' });
 check('add_sparkline without location is rejected', !ok(sparkBadRes), textOf(sparkBadRes).slice(0, 60));
 const sparkClearRes = await call('wps_excel_clear_sparkline', { sheet: SHEET, location: 'E2:E7' });
 check('clear_sparkline removes them', ok(sparkClearRes) && textOf(sparkClearRes).includes('剩余 0 组'), textOf(sparkClearRes).slice(0, 100));
 
 // ---- 图表：标题与删除 ----
-const chartRes = await viaCall('wps_excel_create_chart', { dataRange: 'A1:B7', chartType: 'column_clustered', title: '临时' });
+const chartRes = await viaCall('wps_excel_create_chart', { range: 'A1:B7', chartType: 'column_clustered', title: '临时' });
 check('chart created (existing tool)', ok(chartRes), textOf(chartRes).replace(/\n/g, ' | ').slice(0, 90));
 const labelsRes = await call('wps_excel_set_chart_labels', { sheet: SHEET, title: '月度销售', categoryAxisTitle: '地区', valueAxisTitle: '金额' });
 const labels = textOf(labelsRes);

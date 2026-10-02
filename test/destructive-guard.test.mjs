@@ -103,16 +103,16 @@ check("unlistListObject reports the table it dissolved", !!(ul.data && ul.data.i
 
 // clearSparkline
 await call("wps_excel_write_range", { range: "E1", data: [[1], [2], [3], [4]] });
-check("added a sparkline group", ok(await call("wps_excel_add_sparkline", { dataRange: "E1:E4", location: "F1:F4" })), "");
+check("added a sparkline group", ok(await call("wps_excel_add_sparkline", { range: "E1:E4", location: "F1:F4" })), "");
 const cs = await action("clearSparkline", { location: "F1:F4" });
 check("clearSparkline reports the group count it removed", !!(cs.data && cs.data.impact && cs.data.impact.count >= 1), JSON.stringify(cs.data && cs.data.impact));
-await call("wps_excel_add_sparkline", { dataRange: "E1:E4", location: "F1:F4" });
+await call("wps_excel_add_sparkline", { range: "E1:E4", location: "F1:F4" });
 const csTool = await call("wps_excel_clear_sparkline", { location: "F1:F4" });
 check("clear_sparkline summary names the group count", ok(csTool) && /迷你图/.test(text(csTool)), text(csTool).replace(/\s+/g, " ").slice(0, 95));
 
 // deleteChart
 await call("wps_excel_write_range", { range: "A1", data: NINE });
-const mkChart = await call("wps_excel_create_chart", { dataRange: "A1:C3", chartType: "column_clustered", title: "S3图" });
+const mkChart = await call("wps_excel_create_chart", { range: "A1:C3", chartType: "column_clustered", title: "S3图" });
 check("created a chart", ok(mkChart), text(mkChart).replace(/\s+/g, " ").slice(0, 70));
 const dch = await call("wps_excel_delete_chart", {});
 check("delete_chart summary names the chart", ok(dch) && /图表/.test(text(dch)), text(dch).replace(/\s+/g, " ").slice(0, 95));
@@ -167,13 +167,13 @@ const ran = await action("removeAnimation", { slideIndex: 1 });
 check("removeAnimation reports a numeric removed count", !!(ran.data && ran.data.impact && ran.data.impact.kind === "animation" && typeof ran.data.impact.count === "number"), JSON.stringify(ran.data && ran.data.impact));
 const imgPath = resolve("test/.artifacts/batch3.png");
 writeFileSync(imgPath, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
-const ins = await call("wps_ppt_insert_ppt_image", { slideIndex: 1, path: imgPath });
+const ins = await call("wps_ppt_insert_ppt_image", { slideIndex: 1, imagePath: imgPath });
 check("inserted a PPT image", ok(ins), text(ins).replace(/\s+/g, " ").slice(0, 60));
 const dil = await action("deletePptImage", { slideIndex: 1, imageIndex: 1 });
 check("deletePptImage reports the image name", !!(dil.data && dil.data.impact && String(dil.data.impact.name || "").length > 0), JSON.stringify(dil.data && dil.data.impact));
-const ins2 = await action("insertPptImage", { slideIndex: 1, path: imgPath });
+const ins2 = await action("insertPptImage", { slideIndex: 1, imagePath: imgPath });
 const picName = (ins2.data || {}).name;
-const rip = await action("replacePptImage", { slideIndex: 1, name: picName, path: imgPath });
+const rip = await action("replacePptImage", { slideIndex: 1, name: picName, imagePath: imgPath });
 check("replacePptImage reports the old image it replaced", !!(rip.data && rip.data.impact && /替换/.test(String(rip.data.impact.detail || ""))), JSON.stringify(rip.data && rip.data.impact));
 
 // Close everything this test opened.

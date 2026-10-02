@@ -58,7 +58,7 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 
 ## 3. 已定决策（不要再翻案）
 
-- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 69 / 38,713，FIXES 78 补声明扁平参数后）。
+- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 69 / 38,878，FIXES 78 补声明扁平参数后）。
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
 - **D4 废弃名处理**：18 个旧工具名**保留一个周期**作为 dispatch 别名；12 个 builtin 直接删除。
@@ -116,14 +116,14 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | --- | --- | --- |
 | 注册动作 | **267** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
 | 对外工具 | **69**（65 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
-| 广告面字节 | **38,713** / 上限 60,000 | `node scripts/verify.mjs` |
+| 广告面字节 | **38,878** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
 | 测试 | **914 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～78 号 | `docs/FIXES.md` |
+| FIXES | 1～79 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -297,7 +297,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～78 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～79 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

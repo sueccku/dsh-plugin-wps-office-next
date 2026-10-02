@@ -40,7 +40,7 @@ async function call(name, args, ms) {
 check("create_document", ok(await call("wps_word_create_document", {})), "");
 await call("wps_word_insert_text", { text: "第一段测试文本。\n第二段测试文本。", position: "start" });
 await call("wps_word_insert_bookmark", { name: "BM1" });
-const saved = await call("wps_common_save_as", { path: docPath });
+const saved = await call("wps_common_save_as", { outputPath: docPath });
 
 const MATRIX = [
   // Word
@@ -55,7 +55,7 @@ const MATRIX = [
   ["wps_word_set_page_setup", { orientation: "landscape" }, "any"],
   ["wps_word_insert_page_break", {}, "any"],
   ["wps_word_insert_section_break", { breakType: "nextPage" }, "any"],
-  ["wps_word_insert_image", { path: imgPath }, "any"],
+  ["wps_word_insert_image", { imagePath: imgPath }, "any"],
   ["wps_word_generate_toc", {}, "any"],
   ["wps_word_replace_bookmark_content", { name: "BM1", text: "书签内容" }, "any"],
   ["wps_word_replace_range", { startPos: 0, endPos: 2, text: "替换" }, "any"],

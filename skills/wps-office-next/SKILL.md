@@ -27,8 +27,8 @@ whenToUse: 用户要求读取、创建、编辑、排版、分析、导出 WPS �
 - **必填参数写错名**（例如用 rng 代替 range）会被 schema 校验挡下：`Missing required parameter: range`；
 - **可选参数写错名不会被发现**：调用照常执行、静默使用默认值，随后可能因为别的原因失败（例如在没有打开文稿时得到 no presentation is open），错误信息与拼错的名字毫无关系。
 
-所以：不确定参数名时先 wps_help {tool:"wps_ppt_set_animation"} 取完整 schema，再按 schema 里的名字调用，不要照搬其它工具集或旧示例的写法（比如 Word 的 insert_hyperlink 收 url，而 PPT 的 add_ppt_hyperlink 收 address；PPT 的 set_slide_transition 收
-effect，而 apply_transition_to_all 收 transition）。少数工具为兼容保留了两套拼写（例如插入图片同时接受 filePath 与 path），但**以 schema 为准**最稳妥。
+所以：不确定参数名时先 wps_help {tool:"wps_ppt_set_animation"} 取完整 schema，再按 schema 里的名字调用，不要照搬其它工具集或旧示例的写法。
+FIXES 79 起每个概念只有一个键（旧拼写**不再被接受**）：**输入文件 path / 输出目标 outputPath / 图片 imagePath / 幻灯片切换 transition / 链接 url / 区域 range**。同一概念在三个应用里键名一致，可以直接类推；不确定时仍以 schema 为准。
 
 ## 工具面
 
@@ -55,7 +55,7 @@ effect，而 apply_transition_to_all 收 transition）。少数工具为兼容�
 
 - **新建**：表格 `wps_excel_create_workbook`、文字 `wps_word_create_document`（在广告位）、演示 `wps_ppt_create_presentation`；表格与演示这两个不在广告位，用 wps_call 调用。要起草新内容就先新建，不要去找一个并不存在的文件打开。
 - **关闭不会弹模态框**：`wps_excel_close_workbook` / `wps_word_close_document` / `wps_ppt_close_presentation` 三个都不在广告位、用 wps_call 调，且都做了对话框保护。对**从未落盘**的文档，即使要求 save=true 也会改为不保存关闭，并在结果里返回 warning——此时要如实告诉用户文件没有写盘，必要时改用 save_as。
-- **wps_common_save_as 的路径键是 path**，另存为失败或未写盘时不要报告成功。
+- **wps_common_save_as 的路径键是 outputPath**（FIXES 79 起输出一律 outputPath），另存为失败或未写盘时不要报告成功。
 - **转换要指定应用**：wps_convert_to_pdf / wps_convert_format 支持 appType（excel/word/ppt）。不指定时按 Excel → Word → PPT 取第一个正在运行的文档——**Excel 常开着会让"把 Word 转成 PDF"导出工作簿**，所以转换前显式传 appType。指定了却没有对应文档会明确报错，不会退回别的应用。
 - openAfterExport=true 时导出后会自动打开文件，结果里回报 opened / failed。
 

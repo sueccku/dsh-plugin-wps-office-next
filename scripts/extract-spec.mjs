@@ -103,7 +103,7 @@ const FOLDED_INTO_ONE_ARG = new Set([
   // set_cell_format declares its fields twice: nested under `format` and flat (FIXES 78). The flat
   // half is merged into the single `format` argument, so it never reaches the bridge under its own
   // name - local to the handler, exactly like beautify's fields above.
-  ...[...[...new Set(['bold', 'italic', 'fontSize', 'fontName', 'fontColor', 'bgColor', 'underline', 'strikethrough', 'horizontalAlignment', 'verticalAlignment', 'wrapText'])].map((k) => 'wps_excel_set_cell_format.' + k)],
+  ...[...[...new Set(['bold', 'italic', 'fontSize', 'fontName', 'fontColor', 'bgColor', 'underline', 'strikethrough', 'horizontalAlignment', 'verticalAlignment', 'wrapText', 'numberFormat'])].map((k) => 'wps_excel_set_cell_format.' + k)],
 ]);
 
 const toolset = await import('../mcp/dist/server/toolset.js');

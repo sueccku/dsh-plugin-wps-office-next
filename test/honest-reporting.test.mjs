@@ -37,7 +37,7 @@ const abs = (n) => join(process.cwd(), DIR, n).replace(/\//g, '\\');
 // ---------- close(save=true) only reports saved after a real Save ------------------------------------
 const savedBook = abs('saved.xlsx');
 await call('wps_excel_create_workbook', {});
-const saveAs = await call('wps_common_save_as', { path: savedBook });
+const saveAs = await call('wps_common_save_as', { outputPath: savedBook });
 check('a workbook is on disk before the close test', !saveAs.isErr && existsSync(savedBook), saveAs.text.slice(0, 80));
 await call('wps_excel_write_range', { range: 'A1', data: [[1]] });
 const closedSaved = await call('wps_excel_close_workbook', { save: true });
@@ -75,7 +75,7 @@ const pptx = abs('source.pptx');
 const pdf = abs('source.pdf');
 await call('wps_ppt_create_presentation', {});
 await call('wps_ppt_add_slide', {});
-const pptSaveAs = await call('wps_common_save_as', { path: pptx });
+const pptSaveAs = await call('wps_common_save_as', { outputPath: pptx });
 check('the presentation is on disk before the export test', !pptSaveAs.isErr && existsSync(pptx), pptSaveAs.text.slice(0, 80));
 const beforeList = await call('wps_ppt_get_open_presentations', {});
 const pathBefore = (/路径: ([^ ]+.pptx)/.exec(beforeList.text) || [])[1];

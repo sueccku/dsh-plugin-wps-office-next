@@ -39,7 +39,7 @@ await viaAction("createWorkbook", {});
 await call("wps_excel_write_range", { range: "A1:B2", data: [["k", "v"], ["1", "2"]] });
 
 // save_as used to send path+outputPath and rely on one being read; the bridge reads path.
-const saved = await call("wps_common_save_as", { path: XLSX });
+const saved = await call("wps_common_save_as", { outputPath: XLSX });
 check("save_as accepts path", ok(saved), text(saved).replace(/\s+/g, " ").slice(0, 90));
 check("save_as actually wrote the file to the requested path", existsSync(XLSX), XLSX);
 

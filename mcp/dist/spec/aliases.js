@@ -24,20 +24,6 @@ exports.paramAliases = {
         "animationType": "effect",
         "shapeIndex": "shapeName"
     },
-    "setBackgroundImage": {
-        "imagePath": "path",
-        "filePath": "path"
-    },
-    "insertPptImage": {
-        "imagePath": "path",
-        "filePath": "path"
-    },
-    "replacePptImage": {
-        "imagePath": "path"
-    },
-    "openPresentation": {
-        "filePath": "path"
-    },
     "alignShapes": {
         "shapeIndices": "names"
     },
@@ -52,15 +38,6 @@ exports.paramAliases = {
     },
     "setPptDateTime": {
         "show": "visible"
-    },
-    "applyTransitionToAll": {
-        "effect": "transition"
-    },
-    "setSlideTransition": {
-        "transition": "effect"
-    },
-    "addPptHyperlink": {
-        "url": "address"
     },
     "insertPptChart": {
         "chartType": "type"

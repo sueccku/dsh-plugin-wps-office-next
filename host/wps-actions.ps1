@@ -1171,15 +1171,15 @@ $script:ActionParamKeys = @{
     'addFootnote' = @('text')
     'addListRow' = @('sheet', 'table', 'values')
     'addMasterElement' = @('color', 'element', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
-    'addPptHyperlink' = @('address', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress', 'url')
+    'addPptHyperlink' = @('presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress', 'url')
     'addShape' = @('fillColor', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'type', 'width')
     'addSlide' = @('content', 'layout', 'position', 'presentationName', 'title')
-    'addSparkline' = @('dataRange', 'location', 'markers', 'sheet', 'sparklineType')
+    'addSparkline' = @('location', 'markers', 'range', 'sheet', 'sparklineType')
     'addTableLines' = @('count', 'kind', 'position', 'table')
     'addTextBox' = @('fontName', 'fontSize', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'width')
     'alignShapes' = @('alignment', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
     'applyStyle' = @('range', 'styleName')
-    'applyTransitionToAll' = @('duration', 'effect', 'presentationName', 'transition')
+    'applyTransitionToAll' = @('duration', 'presentationName', 'transition')
     'autoFilter' = @('column', 'criteria', 'field', 'range', 'sheet')
     'autoFitAll' = @('range', 'sheet')
     'autoFitColumn' = @('column', 'range', 'sheet')
@@ -1202,7 +1202,7 @@ $script:ActionParamKeys = @{
     'copyFormat' = @('sheet', 'source', 'target')
     'copyRange' = @('destination', 'range', 'sheet', 'source')
     'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
-    'createChart' = @('chartType', 'chartTypeName', 'dataRange', 'left', 'position', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
+    'createChart' = @('chartType', 'chartTypeName', 'left', 'position', 'range', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
     'createDocument' = @()
     'createListObject' = @('hasHeaders', 'name', 'range', 'sheet', 'tableStyle')
     'createNamedRange' = @('name', 'range', 'sheet')
@@ -1230,9 +1230,9 @@ $script:ActionParamKeys = @{
     'enableTrackChanges' = @('enable')
     'endSlideShow' = @()
     'evaluateFormula' = @('formula')
-    'exportChartAsImage' = @('chartName', 'format', 'outputPath', 'path', 'sheet')
-    'exportRangeAsImage' = @('format', 'outputPath', 'path', 'range', 'sheet')
-    'exportSlideAsImage' = @('format', 'height', 'outputPath', 'path', 'presentationName', 'slideIndex', 'width')
+    'exportChartAsImage' = @('chartName', 'format', 'outputPath', 'sheet')
+    'exportRangeAsImage' = @('format', 'outputPath', 'range', 'sheet')
+    'exportSlideAsImage' = @('format', 'height', 'outputPath', 'presentationName', 'slideIndex', 'width')
     'fillSeries' = @('direction', 'range', 'sheet', 'sourceRange', 'startValue', 'step', 'targetRange', 'type')
     'findInDocument' = @('findText', 'matchCase', 'matchWholeWord', 'maxResults')
     'findInSheet' = @('matchCase', 'range', 'searchText', 'sheet')
@@ -1294,20 +1294,20 @@ $script:ActionParamKeys = @{
     'insertBookmark' = @('name')
     'insertColumns' = @('column', 'count', 'sheet', 'startColumn')
     'insertCrossReference' = @('referenceItem', 'referenceKind', 'referenceType')
-    'insertExcelImage' = @('cell', 'height', 'left', 'path', 'sheet', 'top', 'width')
+    'insertExcelImage' = @('cell', 'height', 'imagePath', 'left', 'sheet', 'top', 'width')
     'insertFooter' = @('alignment', 'includePageNumber', 'section', 'text')
     'insertHeader' = @('alignment', 'section', 'text')
-    'insertHyperlink' = @('address', 'displayText', 'text', 'url')
-    'insertImage' = @('filePath', 'height', 'path', 'scale', 'width')
+    'insertHyperlink' = @('displayText', 'text', 'url')
+    'insertImage' = @('height', 'imagePath', 'scale', 'width')
     'insertIndex' = @()
     'insertPageBreak' = @('type')
     'insertPageNumbers' = @('alignment', 'position', 'section', 'showFirstPage')
     'insertPptChart' = @('chartType', 'height', 'left', 'presentationName', 'slideIndex', 'title', 'top', 'type', 'width')
-    'insertPptImage' = @('filePath', 'height', 'imagePath', 'left', 'path', 'presentationName', 'slideIndex', 'top', 'width')
+    'insertPptImage' = @('height', 'imagePath', 'left', 'presentationName', 'slideIndex', 'top', 'width')
     'insertPptTable' = @('cols', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'top', 'width')
     'insertRows' = @('count', 'row', 'sheet', 'startRow')
     'insertSectionBreak' = @('breakType')
-    'insertSlidesFromFile' = @('afterIndex', 'filePath', 'path', 'presentationName', 'slideEnd', 'slideStart')
+    'insertSlidesFromFile' = @('afterIndex', 'path', 'presentationName', 'slideEnd', 'slideStart')
     'insertTable' = @('cols', 'data', 'rows')
     'insertText' = @('position', 'style', 'text')
     'lockCells' = @('locked', 'range', 'sheet')
@@ -1318,7 +1318,7 @@ $script:ActionParamKeys = @{
     'moveSlide' = @('from', 'fromIndex', 'presentationName', 'to', 'toIndex')
     'openDocument' = @('path')
     'openFile' = @('appType', 'path')
-    'openPresentation' = @('filePath', 'path')
+    'openPresentation' = @('path')
     'openWorkbook' = @('path', 'readOnly', 'updateLinks')
     'pasteRange' = @('destination', 'pasteType', 'sheet')
     'ping' = @()
@@ -1337,19 +1337,19 @@ $script:ActionParamKeys = @{
     'renameSheet' = @('name', 'newName', 'oldName', 'sheet')
     'replaceBookmarkContent' = @('name', 'text')
     'replaceInSheet' = @('matchCase', 'range', 'replaceText', 'searchText', 'sheet')
-    'replacePptImage' = @('filePath', 'imagePath', 'name', 'path', 'presentationName', 'shapeIndex', 'slideIndex')
+    'replacePptImage' = @('imagePath', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
     'replacePptText' = @('find', 'findText', 'presentationName', 'replace', 'replaceText')
     'replaceRange' = @('endPos', 'startPos', 'text')
     'resetPageBreaks' = @('sheet')
     'resizeListObject' = @('range', 'sheet', 'table')
     'save' = @()
-    'saveAs' = @('appType', 'format', 'path')
+    'saveAs' = @('appType', 'format', 'outputPath')
     'setAnimation' = @('delayIncrement', 'duration', 'effect', 'effectKind', 'presentationName', 'preset', 'shapeIndex', 'shapeName', 'slideIndex', 'trigger')
     'setAnimationOrder' = @('animationIndex', 'from', 'newOrder', 'presentationName', 'slideIndex', 'to')
     'setArrayFormula' = @('formula', 'range', 'sheet')
     'setBackgroundColor' = @('applyToAll', 'color', 'presentationName', 'slideIndex')
     'setBackgroundGradient' = @('color1', 'color2', 'gradient', 'presentationName', 'slideIndex')
-    'setBackgroundImage' = @('filePath', 'imagePath', 'path', 'presentationName', 'slideIndex')
+    'setBackgroundImage' = @('imagePath', 'presentationName', 'slideIndex')
     'setBorder' = @('borderStyle', 'color', 'position', 'range', 'sheet', 'style')
     'setCellStyle' = @('backgroundColor', 'bold', 'border', 'borderColor', 'fontColor', 'fontName', 'fontSize', 'horizontalAlignment', 'italic', 'range', 'sheet', 'style', 'verticalAlignment')
     'setCellValue' = @('col', 'row', 'sheet', 'value')
@@ -1359,7 +1359,7 @@ $script:ActionParamKeys = @{
     'setFont' = @('bold', 'color', 'fontName', 'fontSize', 'italic', 'range', 'underline')
     'setFontColor' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setFormula' = @('col', 'formula', 'range', 'row', 'sheet')
-    'setHyperlink' = @('address', 'cell', 'screenTip', 'sheet', 'subAddress', 'text', 'textToDisplay', 'url')
+    'setHyperlink' = @('cell', 'screenTip', 'sheet', 'subAddress', 'text', 'textToDisplay', 'url')
     'setImageStyle' = @('border', 'cropBottom', 'cropLeft', 'cropRight', 'cropTop', 'height', 'imageIndex', 'left', 'name', 'opacity', 'presentationName', 'rotation', 'shadow', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'top', 'width')
     'setLineSpacing' = @('lineSpacing', 'paragraphIndex')
     'setListObjectTotals' = @('column', 'function', 'sheet', 'show', 'table')
@@ -1396,7 +1396,7 @@ $script:ActionParamKeys = @{
     'setSlideSubtitle' = @('presentationName', 'slideIndex', 'subtitle')
     'setSlideTheme' = @('presentationName', 'theme')
     'setSlideTitle' = @('presentationName', 'slideIndex', 'title')
-    'setSlideTransition' = @('duration', 'effect', 'presentationName', 'slideIndex', 'sound', 'transition')
+    'setSlideTransition' = @('duration', 'presentationName', 'slideIndex', 'sound', 'transition')
     'setTableCell' = @('column', 'row', 'table', 'text')
     'setTableFormat' = @('autoFit', 'borders', 'headerShading', 'style', 'table')
     'setTextBoxStyle' = @('alignment', 'bold', 'color', 'fontName', 'fontSize', 'italic', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'textboxIndex')
@@ -1422,7 +1422,7 @@ $script:ActionParamKeys = @{
     'unlistListObject' = @('sheet', 'table')
     'unmergeCells' = @('range', 'sheet')
     'unprotectSheet' = @('password', 'sheet')
-    'updateChart' = @('chartIndex', 'chartName', 'chartType', 'colors', 'dataRange', 'legendPosition', 'sheet', 'showDataLabels', 'showLegend', 'title')
+    'updateChart' = @('chartIndex', 'chartName', 'chartType', 'colors', 'legendPosition', 'range', 'sheet', 'showDataLabels', 'showLegend', 'title')
     'updateListObject' = @('name', 'sheet', 'showAutoFilter', 'showHeaders', 'table', 'tableStyle')
     'updatePivotTable' = @('addColumnFields', 'addFilterFields', 'addRowFields', 'addValueFields', 'pivotTableCell', 'pivotTableName', 'refresh', 'removeColumnFields', 'removeFilterFields', 'removeRowFields', 'removeValueFields', 'sheet', 'updateValueFields')
     'wireCheck' = @()
@@ -1432,22 +1432,15 @@ $script:ActionParamKeys = @{
 # Public tool parameter name -> the key the action reads, applied before the check.
 $script:ActionParamAliases = @{
     'addAnimation' = @{ 'animationType' = 'effect'; 'shapeIndex' = 'shapeName' }
-    'addPptHyperlink' = @{ 'url' = 'address' }
     'alignShapes' = @{ 'shapeIndices' = 'names' }
-    'applyTransitionToAll' = @{ 'effect' = 'transition' }
     'distributeShapes' = @{ 'shapeIndices' = 'names' }
     'groupShapes' = @{ 'shapeIndices' = 'names' }
     'insertPptChart' = @{ 'chartType' = 'type' }
-    'insertPptImage' = @{ 'filePath' = 'path'; 'imagePath' = 'path' }
-    'openPresentation' = @{ 'filePath' = 'path' }
     'removeAnimation' = @{ 'animationIndex' = 'index' }
-    'replacePptImage' = @{ 'imagePath' = 'path' }
     'setAnimationOrder' = @{ 'animationIndex' = 'from'; 'newOrder' = 'to' }
-    'setBackgroundImage' = @{ 'filePath' = 'path'; 'imagePath' = 'path' }
     'setPptDateTime' = @{ 'show' = 'visible' }
     'setShapeZOrder' = @{ 'order' = 'zOrder' }
     'setSlideNumber' = @{ 'show' = 'visible' }
-    'setSlideTransition' = @{ 'transition' = 'effect' }
 }
 
 # Container parameters whose properties are merged onto the flat key set.
@@ -1625,7 +1618,7 @@ return }
     }
 
     "saveAs" {
-        $path = $p.path
+        $path = $p.outputPath
         if (-not $path) { Output-Json @{ success = $false; error = "Path required" }; return }
         $appType = if ($p.appType) { $p.appType } else { Get-AppTypeByExtension $path }
         if ($appType -eq 'excel') {
@@ -2719,7 +2712,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $range = $sheet.Range($p.dataRange)
+        $range = $sheet.Range($p.range)
         $chartType = $p.chartType
         if ($null -eq $chartType) {
             $chartTypes = @{ column = 51; column_clustered = 51; column_stacked = 52; bar = 57; bar_clustered = 57; line = 4; line_markers = 65; pie = 5; doughnut = -4120; area = 1; scatter = -4169; radar = -4151 }
@@ -2737,7 +2730,7 @@ return }
         if ($p.title) { $chartObj.Chart.HasTitle = $true; $chartObj.Chart.ChartTitle.Text = $p.title }
         if ($null -ne $p.showLegend) { $chartObj.Chart.HasLegend = [bool]$p.showLegend }
         if ($p.showDataLabels) { $chartObj.Chart.ApplyDataLabels() }
-        Output-Json @{ success = $true; data = @{ chartName = $chartObj.Name; chartIndex = $chartObj.Index; dataRange = $p.dataRange; chartType = $chartTypeName; position = @{ left = $left; top = $top; width = $width; height = $height } } }
+        Output-Json @{ success = $true; data = @{ chartName = $chartObj.Name; chartIndex = $chartObj.Index; dataRange = $p.range; chartType = $chartTypeName; position = @{ left = $left; top = $top; width = $width; height = $height } } }
     }
 
     "updateChart" {
@@ -2784,8 +2777,8 @@ return }
             }
             $updated += "showDataLabels"
         }
-        if ($p.dataRange) {
-            $chartObj.Chart.SetSourceData($sheet.Range($p.dataRange))
+        if ($p.range) {
+            $chartObj.Chart.SetSourceData($sheet.Range($p.range))
             $updated += "dataRange"
         }
         if ($p.colors -and $p.colors.Count -gt 0) {
@@ -2803,7 +2796,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
+        $outputPath = $p.outputPath
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; return }
         $chartName = $p.chartName
         if ([string]::IsNullOrEmpty($chartName)) { Output-Json @{ success = $false; error = "Missing chartName" }; return }
@@ -2819,7 +2812,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
+        $outputPath = $p.outputPath
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; return }
         if ([string]::IsNullOrEmpty($p.range)) { Output-Json @{ success = $false; error = "Missing range" }; return }
         $rawFormat = if ($p.format) { $p.format.ToString().ToUpper() } else { "PNG" }
@@ -3826,7 +3819,7 @@ return }
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
-        if (-not $p.dataRange) { Output-Json @{ success = $false; error = "dataRange required" }; return }
+        if (-not $p.range) { Output-Json @{ success = $false; error = "dataRange required" }; return }
         if (-not $p.location) { Output-Json @{ success = $false; error = "location required" }; return }
         # xlSparkLine=1 xlSparkColumn=2 xlSparkColumnStacked100=3（实测 1/2/3 都接受）
         $typeMap = @{ line = 1; column = 2; stacked = 3; winloss = 3 }
@@ -3834,13 +3827,13 @@ return }
         $sparkType = $typeMap[$typeName]
         if ($null -eq $sparkType) { Output-Json @{ success = $false; error = ("unknown sparklineType: " + $p.sparklineType) }; return }
         $target = $sheet.Range([string]$p.location)
-        try { $group = $target.SparklineGroups.Add($sparkType, [string]$p.dataRange) } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        try { $group = $target.SparklineGroups.Add($sparkType, [string]$p.range) } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
         if ($null -ne $p.markers -and [bool]$p.markers) {
             try { $group.Points.Markers.Visible = $true } catch { Add-WpsWarning ("markers failed: " + $_.Exception.Message) }
         }
         $count = 0
         try { $count = [int]$target.SparklineGroups.Count } catch { $count = 0 }
-        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; location = [string]$p.location; dataRange = [string]$p.dataRange; sparklineType = $typeName; groups = $count } }
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; location = [string]$p.location; dataRange = [string]$p.range; sparklineType = $typeName; groups = $count } }
     }
 
     "clearSparkline" {
@@ -5005,9 +4998,9 @@ return }
         $top = if ($null -ne $p.top) { $p.top } elseif ($null -ne $anchorTop) { $anchorTop } else { 100 }
         $width = if ($null -ne $p.width) { $p.width } else { -1 }
         $height = if ($null -ne $p.height) { $p.height } else { -1 }
-        if ($null -eq $p.path -or "$($p.path)" -eq "") { Output-Json @{ success = $false; error = "path is required to insert an image" }; return }
-        $imagePath = Resolve-InputFilePath $p.path
-        if ($null -eq $imagePath) { Output-Json @{ success = $false; error = (Format-WpsInputPathError $p.path 'image file') }; return }
+        if ($null -eq $p.imagePath -or "$($p.imagePath)" -eq "") { Output-Json @{ success = $false; error = "path is required to insert an image" }; return }
+        $imagePath = Resolve-InputFilePath $p.imagePath
+        if ($null -eq $imagePath) { Output-Json @{ success = $false; error = (Format-WpsInputPathError $p.imagePath 'image file') }; return }
         $pic = $sheet.Shapes.AddPicture($imagePath, $false, $true, $left, $top, $width, $height)
         Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $imagePath; left = $left; top = $top } }
     }
@@ -5018,7 +5011,7 @@ return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.cell)
         # The tool schema spells these url/text; accept both spellings so neither layer is dropped.
-        $address = if ($p.address) { $p.address } elseif ($p.url) { $p.url } else { "" }
+        $address = "$($p.url)"
         $subAddress = if ($p.subAddress) { $p.subAddress } else { "" }
         $screenTip = if ($p.screenTip) { $p.screenTip } else { "" }
         $textToDisplay = if ($p.textToDisplay) { $p.textToDisplay } elseif ($p.text) { $p.text } else { "" }
@@ -5450,7 +5443,7 @@ return }
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = Get-ActiveWordDocument $word
         $range = Get-MainTextRange $word $doc
-        $url = if ($p.url) { $p.url } else { $p.address }
+        $url = "$($p.url)"
         $text = if ($p.text) { $p.text } elseif ($p.displayText) { $p.displayText } else { $url }
         if ($range.Text -and $range.Text.Trim() -ne "") {
             $doc.Hyperlinks.Add($range, $url)
@@ -5718,7 +5711,7 @@ return }
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = Get-ActiveWordDocument $word
-        $path = if ($p.path) { $p.path } else { $p.filePath }
+        $path = $p.imagePath
         if (-not $path) { Output-Json @{ success = $false; error = "path required" }; return }
         $range = $word.Selection.Range
         $shape = $doc.InlineShapes.AddPicture($path, $false, $true, $range)
@@ -5911,7 +5904,7 @@ return }
         # 从另一个 PPT 文件把整页幻灯片插入当前演示文稿，保留来源格式（跨PPT整合）
         # 源文件校验放在取 WPS 实例之前：加密源一旦进了 InsertFromFile 就是 300 秒的模态框
         # 等待，而且这条路径失败了也不该先拉起 WPS（FIXES 69）。
-        $src = if ($p.filePath) { $p.filePath } elseif ($p.path) { $p.path } else { $null }
+        $src = $p.path
         if (-not $src) { Output-Json @{ success = $false; error = "filePath required" }; return }
         if (-not (Test-Path $src)) { Output-Json @{ success = $false; error = "source file not found: $src" }; return }
         if (Test-WpsOoxmlEncrypted $src) { Output-Json @{ success = $false; error = (Format-WpsOpenError $src 'ppt' ('文件已加密（打开密码）：' + $src)) }; return }
@@ -6341,8 +6334,8 @@ return }
         $top = if ($p.top) { $p.top } else { 100 }
         $width = if ($null -ne $p.width) { $p.width } else { -1 }
         $height = if ($null -ne $p.height) { $p.height } else { -1 }
-        $pic = $slide.Shapes.AddPicture($p.path, $false, $true, $left, $top, $width, $height)
-        Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $p.path } }
+        $pic = $slide.Shapes.AddPicture($p.imagePath, $false, $true, $left, $top, $width, $height)
+        Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $p.imagePath } }
     }
 
     "deletePptImage" {
@@ -6372,7 +6365,7 @@ return }
         $slide = $pres.Slides.Item($slideIndex)
         $sel = if ($p.name) { $p.name } else { $p.shapeIndex }
         if ($null -eq $sel) { Output-Json @{ success = $false; error = "shapeIndex or name required" }; return }
-        $newPath = if ($p.path) { $p.path } elseif ($p.filePath) { $p.filePath } else { $null }
+        $newPath = $p.imagePath
         if (-not $newPath) { Output-Json @{ success = $false; error = "path required" }; return }
         if (-not (Test-Path $newPath)) { Output-Json @{ success = $false; error = "image not found: $newPath" }; return }
         $old = $slide.Shapes.Item($sel)
@@ -6449,7 +6442,7 @@ return }
         $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
         if ($slideIndex -lt 1 -or $slideIndex -gt $pres.Slides.Count) { Output-Json @{ success = $false; error = "slideIndex $slideIndex out of range (1..$($pres.Slides.Count)) in '$($pres.Name)'" }; return }
         $slide = $pres.Slides.Item($slideIndex)
-        $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
+        $outputPath = $p.outputPath
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; return }
         # 确保父目录存在
         $dir = Split-Path -Parent $outputPath
@@ -6737,8 +6730,8 @@ return }
         $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
         if (-not (Test-WpsSlideIndex $pres $slideIndex)) { Output-Json @{ success = $false; error = "slideIndex is out of range" }; return }
         $slide = $pres.Slides.Item($slideIndex)
-        $effect = Get-PptEntryEffect $p.effect
-        if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown transition '" + $p.effect + "'; use none/cut/fade/dissolve/push/wipe/split/reveal/cover/curtains or a PpEntryEffect number") }; return }
+        $effect = Get-PptEntryEffect $p.transition
+        if ($null -eq $effect) { Output-Json @{ success = $false; error = ("unknown transition '" + $p.transition + "'; use none/cut/fade/dissolve/push/wipe/split/reveal/cover/curtains or a PpEntryEffect number") }; return }
         $slide.SlideShowTransition.EntryEffect = $effect
         if ($null -ne $p.duration) { $slide.SlideShowTransition.Duration = [single]$p.duration }
         if ($null -ne $p.sound -and "$($p.sound)" -ne "") {
@@ -6746,7 +6739,7 @@ return }
             if ($null -eq $soundPath) { Output-Json @{ success = $false; error = (Format-WpsInputPathError $p.sound 'sound file') }; return }
             $slide.SlideShowTransition.SoundEffect.ImportFromFile($soundPath)
         }
-        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; effect = $p.effect; entryEffect = $effect; duration = $p.duration } }
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; effect = $p.transition; entryEffect = $effect; duration = $p.duration } }
     }
 
     "setSlideBackground" {
@@ -6999,8 +6992,8 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
         $slide.FollowMasterBackground = $false
-        $slide.Background.Fill.UserPicture($p.path)
-        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; path = $p.path } }
+        $slide.Background.Fill.UserPicture($p.imagePath)
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; path = $p.imagePath } }
     }
 
     "addPptHyperlink" {
@@ -7012,9 +7005,9 @@ return }
         $slide = $pres.Slides.Item($slideIndex)
         $shape = $slide.Shapes.Item($(if ($p.shapeName) { $p.shapeName } else { $p.shapeIndex }))
         $actionSettings = $shape.ActionSettings.Item(1)
-        $actionSettings.Hyperlink.Address = if ($p.address) { $p.address } else { "" }
+        $actionSettings.Hyperlink.Address = "$($p.url)"
         if ($p.subAddress) { $actionSettings.Hyperlink.SubAddress = $p.subAddress }
-        Output-Json @{ success = $true; data = @{ shapeName = $shape.Name; address = $p.address } }
+        Output-Json @{ success = $true; data = @{ shapeName = $shape.Name; address = $p.url } }
     }
 
     "removePptHyperlink" {
@@ -7381,5 +7374,6 @@ return }
         Output-Json @{ success = $false; error = "Unknown action: $Action" }
     }
 }
+
 
 }

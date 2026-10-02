@@ -162,27 +162,27 @@ exports.goalSeekHandler = goalSeekHandler;
 /** 迷你图 */
 exports.addSparklineDefinition = {
     name: 'wps_excel_add_sparkline',
-    description: '在单元格区域里加迷你图（单元格内的微型图表）：dataRange 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。使用场景：在表格旁边一行一个小趋势图，不占地方。',
+    description: '在单元格区域里加迷你图（单元格内的微型图表）：range 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。使用场景：在表格旁边一行一个小趋势图，不占地方。',
     category: tools_1.ToolCategory.SPREADSHEET,
     inputSchema: {
         type: 'object',
         properties: {
-            dataRange: { type: 'string', description: '数据区域，如 B2:B5（每个单元格一条迷你图时按列给）' },
-            location: { type: 'string', description: '放置位置，如 C2:C5；形状要与 dataRange 一致' },
+            range: { type: 'string', description: '数据区域，如 B2:B5（每个单元格一条迷你图时按列给）' },
+            location: { type: 'string', description: '放置位置，如 C2:C5；形状要与 range 一致' },
             sparklineType: { type: 'string', enum: ['line', 'column', 'winloss'], description: '迷你图类型，默认 line' },
             markers: { type: 'boolean', description: '是否标出数据点（折线图）' },
             sheet: sheetParam,
         },
-        required: ['dataRange', 'location'],
+        required: ['range', 'location'],
     },
 };
 const addSparklineHandler = async (args) => {
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('addSparkline', { sheet: args.sheet, dataRange: args.dataRange, location: args.location, sparklineType: args.sparklineType, markers: args.markers }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('addSparkline', { sheet: args.sheet, range: args.range, location: args.location, sparklineType: args.sparklineType, markers: args.markers }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success)
             return advancedFail('添加迷你图失败', response.error);
         const d = response.data || {};
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已在 ' + (d.location || String(args.location)) + ' 添加 ' + (d.sparklineType || 'line') + ' 迷你图（数据 ' + (d.dataRange || String(args.dataRange)) + '，共 ' + String(d.groups ?? 0) + ' 组）' }] };
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: '已在 ' + (d.location || String(args.location)) + ' 添加 ' + (d.sparklineType || 'line') + ' 迷你图（数据 ' + (d.range || String(args.range)) + '，共 ' + String(d.groups ?? 0) + ' 组）' }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

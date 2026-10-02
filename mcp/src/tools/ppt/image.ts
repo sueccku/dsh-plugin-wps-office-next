@@ -45,7 +45,7 @@ export const insertPptImageDefinition: ToolDefinition = {
         type: 'number',
         description: '幻灯片页码（从1开始）',
       },
-      path: {
+      imagePath: {
         type: 'string',
         description: '图片文件路径',
       },
@@ -66,16 +66,16 @@ export const insertPptImageDefinition: ToolDefinition = {
         description: '高度（磅），可选，不指定则按原始比例',
       },
     },
-    required: ['slideIndex', 'path'],
+    required: ['slideIndex', 'imagePath'],
   },
 };
 
 export const insertPptImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, path, left, top, width, height } = args as {
+  const { slideIndex, imagePath, left, top, width, height } = args as {
     slideIndex: number;
-    path: string;
+    imagePath: string;
     left?: number;
     top?: number;
     width?: number;
@@ -83,19 +83,19 @@ export const insertPptImageHandler: ToolHandler = async (
   };
 
   try {
-    // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
+    // 桥读的就是 imagePath（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
       imageIndex?: number;
     }>(
       'insertPptImage',
-      { slideIndex, path, left, top, width, height },
+      { slideIndex, imagePath, left, top, width, height },
       WpsAppType.PRESENTATION
     );
 
     if (response.success) {
-      let text = `图片插入成功！\n幻灯片: 第 ${slideIndex} 页\n文件: ${path}`;
+      let text = `图片插入成功！\n幻灯片: 第 ${slideIndex} 页\n文件: ${imagePath}`;
       if (left !== undefined && top !== undefined) text += `\n位置: (${left}, ${top})`;
       if (width !== undefined) text += `\n宽度: ${width}`;
       if (height !== undefined) text += `\n高度: ${height}`;
@@ -399,8 +399,6 @@ export const exportSlideAsImageHandler: ToolHandler = async (
       {
         slideIndex,
         outputPath,
-        // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-        path: outputPath,
         format: filterName,
         width: finalWidth,
         height: finalHeight,
@@ -470,23 +468,23 @@ export const replacePptImageDefinition: ToolDefinition = {
         type: 'string',
         description: '要替换的图片形状名称（与 shapeIndex 二选一）',
       },
-      filePath: {
+      imagePath: {
         type: 'string',
         description: '新图片文件的完整路径',
       },
     },
-    required: ['slideIndex', 'filePath'],
+    required: ['slideIndex', 'imagePath'],
   },
 };
 
 export const replacePptImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, name, filePath } = args as {
+  const { slideIndex, shapeIndex, name, imagePath } = args as {
     slideIndex: number;
     shapeIndex?: number;
     name?: string;
-    filePath: string;
+    imagePath: string;
   };
 
   try {
@@ -501,7 +499,7 @@ export const replacePptImageHandler: ToolHandler = async (
       impact?: RangeImpact;
     }>(
       'replacePptImage',
-      { slideIndex, shapeIndex, name, filePath, path: filePath, imagePath: filePath },
+      { slideIndex, shapeIndex, name, imagePath },
       WpsAppType.PRESENTATION
     );
 
@@ -512,7 +510,7 @@ export const replacePptImageHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${filePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}${impactText(response.data.impact)}`,
+            text: `图片已原位替换（位置尺寸不变）！\n幻灯片: 第 ${slideIndex} 页\n新图: ${imagePath}\n位置: (${Math.round(response.data.left)}, ${Math.round(response.data.top)})  尺寸: ${Math.round(response.data.width)} x ${Math.round(response.data.height)}${impactText(response.data.impact)}`,
           },
         ],
       };

@@ -91,7 +91,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "path": {
+    "outputPath": {
      "type": "string",
      "description": "目标文件完整路径，包含文件名和扩展名"
     },
@@ -101,7 +101,7 @@
     }
    },
    "required": [
-    "path"
+    "outputPath"
    ]
   }
  },
@@ -291,17 +291,17 @@
  },
  {
   "name": "wps_excel_add_sparkline",
-  "description": "在单元格区域里加迷你图（单元格内的微型图表）：dataRange 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。使用场景：在表格旁边一行一个小趋势图，不占地方。",
+  "description": "在单元格区域里加迷你图（单元格内的微型图表）：range 是数据，location 是放图的位置，两者形状要一致（如 B2:B5 → C2:C5）。使用场景：在表格旁边一行一个小趋势图，不占地方。",
   "inputSchema": {
    "type": "object",
    "properties": {
-    "dataRange": {
+    "range": {
      "type": "string",
      "description": "数据区域，如 B2:B5（每个单元格一条迷你图时按列给）"
     },
     "location": {
      "type": "string",
-     "description": "放置位置，如 C2:C5；形状要与 dataRange 一致"
+     "description": "放置位置，如 C2:C5；形状要与 range 一致"
     },
     "sparklineType": {
      "type": "string",
@@ -322,7 +322,7 @@
     }
    },
    "required": [
-    "dataRange",
+    "range",
     "location"
    ]
   }
@@ -724,7 +724,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "dataRange": {
+    "range": {
      "type": "string",
      "description": "数据范围，如 A1:C10，图表数据的来源"
     },
@@ -784,7 +784,7 @@
     }
    },
    "required": [
-    "dataRange"
+    "range"
    ]
   }
  },
@@ -1742,7 +1742,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "path": {
+    "imagePath": {
      "type": "string",
      "description": "图片文件路径"
     },
@@ -1764,7 +1764,7 @@
     }
    },
    "required": [
-    "path"
+    "imagePath"
    ]
   }
  },
@@ -2330,6 +2330,10 @@
     "wrapText": {
      "type": "boolean",
      "description": "是否自动换行（与 format.wrapText 等价）"
+    },
+    "numberFormat": {
+     "type": "string",
+     "description": "数字格式串，如 0.00%、#,##0；与 wps_excel_set_number_format 同义（D10 起一并声明）"
     },
     "sheet": {
      "type": "string",
@@ -3255,7 +3259,7 @@
      "type": "boolean",
      "description": "是否显示数据标签"
     },
-    "dataRange": {
+    "range": {
      "type": "string",
      "description": "更改数据源范围"
     },
@@ -3563,7 +3567,7 @@
      "type": "number",
      "description": "形状索引（从1开始）"
     },
-    "address": {
+    "url": {
      "type": "string",
      "description": "超链接地址，如 \"https://example.com\" 或 \"mailto:test@example.com\""
     }
@@ -3571,7 +3575,7 @@
    "required": [
     "slideIndex",
     "shapeIndex",
-    "address"
+    "url"
    ]
   }
  },
@@ -4249,7 +4253,7 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "path": {
+    "imagePath": {
      "type": "string",
      "description": "图片文件路径"
     },
@@ -4272,7 +4276,7 @@
    },
    "required": [
     "slideIndex",
-    "path"
+    "imagePath"
    ]
   }
  },
@@ -4282,7 +4286,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "filePath": {
+    "path": {
      "type": "string",
      "description": "来源 PPT 文件的完整路径"
     },
@@ -4300,7 +4304,7 @@
     }
    },
    "required": [
-    "filePath"
+    "path"
    ]
   }
  },
@@ -4451,14 +4455,14 @@
      "type": "string",
      "description": "要替换的图片形状名称（与 shapeIndex 二选一）"
     },
-    "filePath": {
+    "imagePath": {
      "type": "string",
      "description": "新图片文件的完整路径"
     }
    },
    "required": [
     "slideIndex",
-    "filePath"
+    "imagePath"
    ]
   }
  },
@@ -4579,14 +4583,14 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "path": {
+    "imagePath": {
      "type": "string",
      "description": "图片文件的完整路径"
     }
    },
    "required": [
     "slideIndex",
-    "path"
+    "imagePath"
    ]
   }
  },
@@ -5241,7 +5245,7 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
-    "effect": {
+    "transition": {
      "type": "string",
      "description": "切换效果名称"
     },
@@ -5256,7 +5260,7 @@
    },
    "required": [
     "slideIndex",
-    "effect"
+    "transition"
    ]
   }
  },
@@ -6063,7 +6067,7 @@
   "inputSchema": {
    "type": "object",
    "properties": {
-    "path": {
+    "imagePath": {
      "type": "string",
      "description": "图片文件路径"
     },
@@ -6077,7 +6081,7 @@
     }
    },
    "required": [
-    "path"
+    "imagePath"
    ]
   }
  },

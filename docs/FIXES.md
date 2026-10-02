@@ -2241,6 +2241,43 @@ handler 里那句「The schema declares the format fields twice」是空话。
 
 **验收**：`spec-reproduction` 15 项（`unresolved=0`、生成与实测字节长度一致）；`verify` 23 项
 （`tools<=100 actual=69`、`schemaBytes<=60000 actual=38713`）；真机 `cell-format` 16/16、`ppt-coverage` 53/53。
+### 79. 桥键统一：一个概念一个键（D11–D15）
+
+**决策**：D11-A 语义分组、D12-B 统一 `transition`、D13-A 统一 `url`、D14-A 只收真同义、D15-B 旧键本轮直接删。
+
+**改法**：桥的 action 体改成只读规范键（`$p.<key>`）。`$script:ActionParamKeys` 是生成器从 action 体静态提取的，
+所以键表自动跟着变；`mcp/src/spec/aliases.ts` 里对应的兼容条目删除（D15-B），再重新生成 host。
+
+| 概念 | 规范键 | 收编的 action |
+| --- | --- | --- |
+| 输入文件 | `path` | openFile / openWorkbook / openDocument / openPresentation / insertSlidesFromFile |
+| 输出目标 | `outputPath` | saveAs / convertToPDF / convertFormat / exportChartAsImage / exportRangeAsImage / exportSlideAsImage |
+| 图片 | `imagePath` | insertExcelImage / insertImage / insertPptImage / replacePptImage / setBackgroundImage（两个 background 本来就是）|
+| 幻灯片切换 | `transition` | setSlideTransition / applyTransitionToAll |
+| 链接 | `url` | setHyperlink / insertHyperlink / addPptHyperlink |
+| 区域 | `range` | createChart / updateChart / addSparkline（`dataRange` 不再接受）|
+
+**一处按语义收窄（如实记录）**：`setAnimation` 保留 `effect` —— 动画不是幻灯片切换。D12-B 的「统一 transition」
+落在两个真正的过渡 action 上；把动画的入参也叫 `transition` 会让语义变错。
+
+**按 D14-A 保留的**：`row` / `startRow`、`col` / `column` / `startColumn`、`sourceRange` / `targetRange` 这些是
+**不同概念**（单行 vs 起始行、源 vs 目标），不是同义拼写，不动。
+
+**工具侧**：12 个工具的 schema + handler 跟着改名（**99 处 / 10 个文件**）：`wps_common_save_as.path → outputPath`、
+三个图表/迷你图工具的 `dataRange → range`、五个图片工具的 `path`/`filePath → imagePath`、
+`insert_slides_from_file.filePath → path`、`set_slide_transition.effect → transition`、
+`add_ppt_hyperlink.address → url`。两处 handler 原本同时发规范键与旧别名（改名后成了重复键，`tsc` 直接报错），
+顺手去重。
+
+**测试与文档**：25 处测试实参（含矩阵行）改到新键；一次性引号感知检查扫过 **652 个实参对象**，0 漏网。
+另有两处**直接调 action** 的测试（`action("replacePptImage", { path })`）不在这类检查的覆盖面里 —— 真机
+`destructive-guard` 因此红了一次，抓到后一并改成 `imagePath`，并把检查扩到 `action()` / `viaAction()` / `comHost.invoke()`
+三种直接调用形态（现在 0 漏网）。
+4 处技能文档更新，并在 `wps-office-next` 里新增一条约定：**输入 path / 输出 outputPath / 图片 imagePath /
+切换 transition / 链接 url / 区域 range**，旧拼写不再被接受。
+
+**验收**：`spec-reproduction` 15 项（`unresolved=0`、别名债 0）；`verify` 23 项；host 键表每个概念只剩一个键；
+真机回归见本轮记录。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

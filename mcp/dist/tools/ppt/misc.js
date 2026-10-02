@@ -228,18 +228,18 @@ exports.addPptHyperlinkDefinition = {
                 type: 'number',
                 description: '形状索引（从1开始）',
             },
-            address: {
+            url: {
                 type: 'string',
                 description: '超链接地址，如 "https://example.com" 或 "mailto:test@example.com"',
             },
         },
-        required: ['slideIndex', 'shapeIndex', 'address'],
+        required: ['slideIndex', 'shapeIndex', 'url'],
     },
 };
 const addPptHyperlinkHandler = async (args) => {
-    const { slideIndex, shapeIndex, address } = args;
+    const { slideIndex, shapeIndex, url } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('addPptHyperlink', { slideIndex, shapeIndex, address }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('addPptHyperlink', { slideIndex, shapeIndex, url }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -247,7 +247,7 @@ const addPptHyperlinkHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `超链接添加成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n链接: ${address}`,
+                        text: `超链接添加成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n链接: ${url}`,
                     },
                 ],
             };
