@@ -2,6 +2,15 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.5.2（模型能发现 set_cell_format 的扁平参数）
+
+- `wps_excel_set_cell_format` 的扁平写法（`bold` / `fontSize` / `fontColor` / `bgColor` / `horizontalAlignment` …）
+  现在**声明在 schema 里**。处理器一直支持、测试也一直断言，但模型看不到就等于不存在 —— 这一版补上，与嵌套的
+  `format.*` 等价，两种写法都可以（FIXES 78）。
+- 广告面字节 37,573 → **38,713**（上限 60,000），工具数不变（69）。
+- 顺带修好生成器 `scripts/extract-spec.mjs` 里一处**从未被触发的死引用**（`CONTAINER_PARAMS`）—— 参数分类一旦
+  落到那一行就会让整个生成器崩掉；并清掉 P1-4 遗留的 9 条旧名映射表（名字已在 v0.5.1 对齐）。
+- 两处测试矩阵把 `filePath` 写成 `path`（期望值宽松，所以写错也一直「通过」），已修正；现在它们报的是真正的原因。
 ## 0.5.1（参数命名对齐：公开名 = 桥键，ALIAS_DEBT 归零）
 
 > 破坏性变更一处：**59 处工具参数改名**（例如 `filePath` → `path`、`app_type` → `appType`）。桥侧仍然接受
