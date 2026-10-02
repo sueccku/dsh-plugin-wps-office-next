@@ -89,19 +89,9 @@ const LOCAL_PARAMS = new Set([
   'wps_word_get_document_text.end',
 ]);
 
-// Parameters that reach the bridge under a genuinely different name (a synonym, not a case shift).
-// These are the P1-4 rename targets: align the two names, then delete these entries.
-const SYNONYMS = {
-  'wps_common_save_as.filePath': 'path',
-  'wps_excel_insert_excel_image.filePath': 'path',
-  'wps_excel_open_workbook.filePath': 'path',
-  'wps_word_insert_image.imagePath': 'path',
-  'wps_word_open_document.filePath': 'path',
-  'wps_word_set_page_setup.marginTop': 'topMargin',
-  'wps_word_set_page_setup.marginBottom': 'bottomMargin',
-  'wps_word_set_page_setup.marginLeft': 'leftMargin',
-  'wps_word_set_page_setup.marginRight': 'rightMargin',
-};
+// P1-4 used to keep a SYNONYMS table here for parameters that reached the bridge under a genuinely
+// different name. FIXES 77 aligned every public name with its bridge key (ALIAS_DEBT = 0), so the
+// table is gone: a parameter that the handler sends is now detected at the sent-key lookup above.
 
 // Schema parameters the handler packs into a single value that the bridge reads as one key:
 // wps_ppt_beautify folds color_scheme/font/beautify_all into its "style" argument. They never reach
@@ -110,6 +100,10 @@ const FOLDED_INTO_ONE_ARG = new Set([
   'wps_ppt_beautify.color_scheme',
   'wps_ppt_beautify.font',
   'wps_ppt_beautify.beautify_all',
+  // set_cell_format declares its fields twice: nested under `format` and flat (FIXES 78). The flat
+  // half is merged into the single `format` argument, so it never reaches the bridge under its own
+  // name - local to the handler, exactly like beautify's fields above.
+  ...[...[...new Set(['bold', 'italic', 'fontSize', 'fontName', 'fontColor', 'bgColor', 'underline', 'strikethrough', 'horizontalAlignment', 'verticalAlignment', 'wrapText'])].map((k) => 'wps_excel_set_cell_format.' + k)],
 ]);
 
 const toolset = await import('../mcp/dist/server/toolset.js');
@@ -190,10 +184,9 @@ for (const tool of used) {
       continue;
     }
     if (LOCAL_PARAMS.has(tool.name + '.' + name) || FOLDED_INTO_ONE_ARG.has(tool.name + '.' + name)) { spec.kind = 'local'; continue; }
-    const synonym = SYNONYMS[tool.name + '.' + name];
-    if (synonym) { bridgeAliases[name] = synonym; continue; }
-    const container = CONTAINER_PARAMS[tool.name + '.' + name];
-    if (container) { spec.kind = 'container'; spec.container = container; continue; }
+    // A per-parameter container override used to be looked up here, but the table it read from is
+    // not defined in this script (the reference only surfaced once a parameter actually reached
+    // this line). The action-level table below is the maintained source, so that is what we use.
     const containers = action ? actionContainers.get(action) : null;
     if (containers && containers.length === 1) { spec.kind = 'container'; spec.container = containers[0]; continue; }
     spec.kind = 'unresolved';

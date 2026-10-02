@@ -27,7 +27,8 @@ whenToUse: 用户要求读取、创建、编辑、排版、分析、导出 WPS �
 - **必填参数写错名**（例如用 rng 代替 range）会被 schema 校验挡下：`Missing required parameter: range`；
 - **可选参数写错名不会被发现**：调用照常执行、静默使用默认值，随后可能因为别的原因失败（例如在没有打开文稿时得到 no presentation is open），错误信息与拼错的名字毫无关系。
 
-所以：不确定参数名时先 wps_help {tool:"wps_ppt_set_animation"} 取完整 schema，再按 schema 里的名字调用，不要照搬其它工具集或旧示例的写法（比如 Word 的 insert_image 收 imagePath，而 PPT 的 insert_ppt_image 收 path；ppt 的 set_slide_transition 收 effect，而 apply_transition_to_all 收 transition）。少数工具为兼容保留了两套拼写（例如插入图片同时接受 filePath 与 path），但**以 schema 为准**最稳妥。
+所以：不确定参数名时先 wps_help {tool:"wps_ppt_set_animation"} 取完整 schema，再按 schema 里的名字调用，不要照搬其它工具集或旧示例的写法（比如 Word 的 insert_hyperlink 收 url，而 PPT 的 add_ppt_hyperlink 收 address；PPT 的 set_slide_transition 收
+effect，而 apply_transition_to_all 收 transition）。少数工具为兼容保留了两套拼写（例如插入图片同时接受 filePath 与 path），但**以 schema 为准**最稳妥。
 
 ## 工具面
 

@@ -2651,6 +2651,71 @@ export const operations: OperationSpec[] = [
         },
         "required": true
       },
+      "bold": {
+        "type": "boolean",
+        "description": "是否粗体（与 format.bold 等价）",
+        "kind": "local"
+      },
+      "italic": {
+        "type": "boolean",
+        "description": "是否斜体（与 format.italic 等价）",
+        "kind": "local"
+      },
+      "fontSize": {
+        "type": "number",
+        "description": "字号大小（与 format.fontSize 等价）",
+        "kind": "local"
+      },
+      "fontName": {
+        "type": "string",
+        "description": "字体名称，如 微软雅黑、Arial（与 format.fontName 等价）",
+        "kind": "local"
+      },
+      "fontColor": {
+        "type": "string",
+        "description": "字体颜色，十六进制如 #FF0000（与 format.fontColor 等价）",
+        "kind": "local"
+      },
+      "bgColor": {
+        "type": "string",
+        "description": "背景颜色，十六进制如 #FFFF00（与 format.bgColor 等价）",
+        "kind": "local"
+      },
+      "underline": {
+        "type": "boolean",
+        "description": "是否下划线（与 format.underline 等价）",
+        "kind": "local"
+      },
+      "strikethrough": {
+        "type": "boolean",
+        "description": "是否删除线（与 format.strikethrough 等价）",
+        "kind": "local"
+      },
+      "horizontalAlignment": {
+        "type": "string",
+        "description": "水平对齐方式（与 format.horizontalAlignment 等价）",
+        "enum": [
+          "left",
+          "center",
+          "right"
+        ],
+        "kind": "local"
+      },
+      "verticalAlignment": {
+        "type": "string",
+        "description": "垂直对齐方式（与 format.verticalAlignment 等价）",
+        "enum": [
+          "top",
+          "center",
+          "bottom"
+        ],
+        "kind": "local"
+      },
+      "wrapText": {
+        "type": "boolean",
+        "description": "是否自动换行（与 format.wrapText 等价）",
+        "kind": "local"
+      },
       "sheet": {
         "type": "string",
         "description": "工作表名称，不填则使用当前活动工作表"
@@ -5367,7 +5432,7 @@ export const operations: OperationSpec[] = [
                 },
                 "weight": {
                   "type": "number",
-                  "description": "边框��细（磅）"
+                  "description": "边框粗细（磅）"
                 }
               }
             },

@@ -2215,6 +2215,32 @@ matrix-any-only 77)`；`spec-reproduction` 13 → **15 项**（新增三条分�
 
 **验收**：`spec-reproduction` 的断言改成 **硬 0**（`every parameter name equals the bridge key`，`0 parameter(s) still differ only by name`）；`arg-shape-guard` 6 项；`gen-tool-surface` 报 `tools with aliases=0`；真机回归 10 个受影响套件全绿 —— merged-tools 19、ppt-contract-fixes 56、ppt-coverage 53、excel-contract-fixes 35、find-replace 14、file-ops 11、open-safety 21、word-common-coverage 26、destructive-guard 45、cell-format 16。
 
+### 78. 补声明 set_cell_format 的扁平参数 + 两处死代码与陈旧断言（D8 = A）
+
+**问题**：`wps_excel_set_cell_format` 的 handler 一直把扁平键（`bold` / `fontSize` / `fontColor` …）与嵌套的
+`format` 对象合并，测试也在断言扁平写法可用，但 **schema 从来没声明过它们** —— 对模型来说这些能力等于不存在。
+handler 里那句「The schema declares the format fields twice」是空话。
+
+**做法（D8 = A）**：把与嵌套 `format.*` 等价的 **11 个扁平属性**补进 `inputSchema.properties`（描述里注明与
+`format.*` 等价），handler 注释改成与事实一致。广告面预算 **37,573 → 38,713 字节**（上限 60,000）。
+
+**顺带修掉的两处死代码 / 陈旧断言**（这次改动把它们逼了出来）**：**
+
+- `scripts/extract-spec.mjs` 引用了**从未定义**的 `CONTAINER_PARAMS`：以前没有参数会走到那一行，所以从没炸过；
+  新增的扁平参数第一次让参数落到那里 → `ReferenceError`，生成器整个停摆。那张 per-param 覆盖表早已被 action 级
+  的 `actionContainers` 取代，删掉这行死代码。
+- 同一脚本的 `SYNONYMS` 表还留着 P1-4 的 9 条旧名映射（`filePath`→`path` …）：名字已在 FIXES 77 对齐，
+  这张表不再有人命中，删掉。
+- 11 个扁平参数登记进 `FOLDED_INTO_ONE_ARG`（它们被折进单个 `format` 实参，与 `ppt_beautify` 的字段同类），
+  `unresolved` 保持 0。
+
+**另外**：`test/ppt-coverage.test.mjs` 有两行矩阵参数写错 —— `wps_ppt_replace_ppt_image` 与
+`wps_ppt_insert_slides_from_file` 都收 `filePath`，矩阵却传 `path`；因为期望是 `any` / `error`，**写错也照样「通过」**。
+已改成正确键（现在 `insert_slides_from_file` 报的是真正的原因：`source file not found`）。顺手写了一个只跑一次的
+引号感知检查，扫过 **652 个实参对象**（含矩阵行）确认再无漏网。
+
+**验收**：`spec-reproduction` 15 项（`unresolved=0`、生成与实测字节长度一致）；`verify` 23 项
+（`tools<=100 actual=69`、`schemaBytes<=60000 actual=38713`）；真机 `cell-format` 16/16、`ppt-coverage` 53/53。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

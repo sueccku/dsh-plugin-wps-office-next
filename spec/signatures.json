@@ -481,7 +481,7 @@
  },
  {
   "tool": "wps_excel_set_cell_format",
-  "signature": "excel_set_cell_format(range*, format*, sheet?)",
+  "signature": "excel_set_cell_format(range*, format*, bold?, italic?, fontSize?, fontName?, fontColor?, bgColor?, underline?, strikethrough?, horizontalAlignment?, verticalAlignment?, wrapText?, sheet?)",
   "effect": "write"
  },
  {

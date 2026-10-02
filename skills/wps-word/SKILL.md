@@ -23,7 +23,7 @@ wps_word_apply_style、wps_word_create_document、wps_word_find_replace、wps_wo
 - find_replace：findText 必填；**不传 replaceText 就是纯查找**——只统计命中次数、不改动文档。传了 replaceText 才会替换，replaceAll=false 时只替换第一处。
 - insert_header / insert_footer 用 {text, section}，section 从 1 开始；节号不存在会明确报错。
 - set_page_setup 的页边距单位是**磅**（整数，0-1584），键名是 marginTop / marginBottom / marginLeft / marginRight，orientation 取 portrait / landscape。成功后会回报实际生效值。
-- insert_image 用 imagePath（不是 path）。
+- insert_image 用 path（FIXES 77 起与桥键一致；旧名 imagePath 桥侧仍接受，但以 schema 为准）。
 - set_line_spacing 用 lineSpacing（倍数）；set_paragraph 可同时设 alignment 与 lineSpacing。
 - 从零起草（不是编辑现有文档）时先 `wps_word_create_document`，它会回报新文档名，再 insert_text 写内容，最后 wps_common_save_as 落盘。
 - 关闭文档用 `wps_word_close_document`（save 默认 true）；它不在广告位，用 `wps_call {tool:"wps_word_close_document", args:{save:false}}`。对从未落盘的文档会自动改为不保存关闭并回报 warning，不会弹保存对话框。

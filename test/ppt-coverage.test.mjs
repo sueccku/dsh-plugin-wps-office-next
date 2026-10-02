@@ -90,7 +90,7 @@ const MATRIX = [
   // table
   ["wps_ppt_set_table_cell", { slideIndex: 1, tableIndex: 1, row: 1, col: 1, text: "X" }, "ok"],
   // images
-  ["wps_ppt_replace_ppt_image", { slideIndex: 1, path: imgPath }, "any"],
+  ["wps_ppt_replace_ppt_image", { slideIndex: 1, filePath: imgPath }, "any"],
   // charts
   ["wps_ppt_set_ppt_chart_data", { slideIndex: 1, chartIndex: 1, data: { categories: ["A", "B"], series: [{ name: "S", values: [1, 2] }] } }, "any"],
   ["wps_ppt_set_ppt_chart_style", { slideIndex: 1, chartIndex: 1, style: "style1" }, "any"],
@@ -109,7 +109,7 @@ const MATRIX = [
   ["wps_ppt_add_master_element", { element: "slideNumber" }, "any"],
   ["wps_ppt_beautify", {}, "any"],
   ["wps_ppt_export_slide_as_image", { slideIndex: 1, outputPath: exportPath }, "any"],
-  ["wps_ppt_insert_slides_from_file", { path: resolvePath("test/.artifacts/nope.pptx") }, "error"],
+  ["wps_ppt_insert_slides_from_file", { filePath: resolvePath("test/.artifacts/nope.pptx") }, "error"],
   ["wps_ppt_open_presentation", { path: resolvePath("test/.artifacts/nope.pptx") }, "error"],
   // destructive last
   ["wps_ppt_delete_shape", { slideIndex: 1, shapeIndex: 1 }, "any"],
