@@ -2,6 +2,35 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.5.4（能结束放映、能设圆角 · 长动作超时修正 · DSH 0.2.0 兼容核验）
+
+### 补上的两个能力（FIXES 80）
+
+- **新工具 `wps_ppt_end_slide_show`**：以前能开始放映却没有工具能结束 —— 放映一旦开始就占满屏幕，只能让用户自己按 Esc。
+- **`wps_ppt_set_shape_style` 增加 `roundness`**：圆角半径；写入后会**读回**，结果里回报实际生效值（读不回或不一致会告警）。
+- 顺带删掉 4 个重复/死代码 action（`openFile` / `unfreezePanes` / `replaceInSheet` / `setShapeRoundness`），
+  未工具化账本 **7 → 2**（剩下两个已被 `getOpenPresentations` / `getOpenWorkbooks` 的 active 标记覆盖）。
+
+### 修掉一个静默降级（FIXES 81）
+
+- `LONG_ACTIONS` 里有三个名字不是真实 action（`beautify` / `recalculate` / `proofreadBasic`）：写错不报错，
+  只会让那个动作退回 **60s 默认超时** —— `calculateSheet` 这类慢操作会被杀成「状态未知」。已改成真实名字，
+  并加静态门禁：**每个长动作名都必须是真实桥 action**（写错 CI 直接红）。
+
+### DeepSeek Harness 0.2.0-rc.2 兼容性核验（FIXES 83）
+
+- 逐面核验：包清单 `dsh.bundle.patch`、patch 操作 `insert`、MCP 客户端九个配置键、`toolCallTimeoutMs`（无上限截断，
+  330s 有效）、技能注册 API、CLI 用法、`DSH_PERMISSION_MODE` / `DSH_TOOLS_MODE`、会话日志 v4；**无需改接线**。
+- 真机验收：全新 profile 安装 **14/14**、一键 e2e **29/29**（83 次工具调用 / 3 次技能加载）。
+- README 注明与 DSH 自带离线 office 技能（LibreOffice）的共存关系：一个改你眼前的 WPS 窗口，一个是离线读写文件。
+
+### 文档（FIXES 82）
+
+- 33 份文档全量审计：修掉过期数字、已删除的死名字（模型面向的技能示例也在内）、失效链接与不存在的文件引用；
+  机器扫描剩余项全部是有标注的历史引用。
+
+**破坏性变更**：4 个 action 被删除（均为重复品或死代码，仓库内无测试与脚本调用）。
+数字：注册工具 **268**、广告面 **69 / 38,878 字节**、桥 action **263**、测试 **918 项 / 46 文件**。
 ## 0.5.3（桥键统一：一个概念一个键 + set_cell_format 的 numberFormat）
 
 > 破坏性变更两处：① 参数键统一，**旧拼写不再被接受**（`filePath` / `dataRange` / `address` / `transition` 等）；

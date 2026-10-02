@@ -47,9 +47,9 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 分支 / HEAD | `main` / `v0.4.0-2-g468d542`（v0.4.0 之后 2 个提交，以 `git describe --tags` 为准）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0`、`v0.5.0`、`v0.5.1`、`v0.5.2`、`v0.5.3` |
-| Releases | v0.5.3（Latest，2026-10-02）、v0.5.2、v0.5.1、v0.5.0、v0.4.0、v0.3.0、v0.2.1、v0.2.0——正文均为正常 UTF-8 |
-| 包 | `dsh-plugin-wps-office-next@0.5.3`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0`、`v0.5.0`、`v0.5.1`、`v0.5.2`、`v0.5.3`、`v0.5.4` |
+| Releases | v0.5.4（Latest，2026-10-02）、v0.5.3、v0.5.2、v0.5.1、v0.5.0、v0.4.0、v0.3.0、v0.2.1、v0.2.0——正文均为正常 UTF-8 |
+| 包 | `dsh-plugin-wps-office-next@0.5.4`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
 **工作区**：干净（`docs/HANDOFF.md` 本身已随仓库跟踪）。临时 profile `wpsdoc2` / `wpse2e` 已删除。
@@ -123,7 +123,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～80 号 | `docs/FIXES.md` |
+| FIXES | 1～83 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -175,8 +175,8 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 `getActiveWorkbook`，两者的信息已由 `getOpenPresentations` / `getOpenWorkbooks` 的 `active` 标记覆盖，属对称性缺口
 （Word 的 `getActiveDocument` 是工具化的），**故意留着**。
 
-> **未发布状态**：`main` 上有 FIXES 79（桥键统一，随 v0.5.3 发布）、80（补缺口 + 清账本）、81（长动作名单修正）——
-> 其中 80 / 81 **尚未发版**，按 D18/D19 的决定先攒着。npm 发布已暂停（D18 = B，用户手动终止）。
+> **发布状态**：FIXES 79 随 v0.5.3；**FIXES 80–83 随 v0.5.4（2026-10-02）发布**（补两个缺口、清账本、长动作名单修正、
+> DSH 0.2.0-rc.2 兼容核验、文档审计）。npm 发布仍暂停（D18 = B）。
 
 计划之外、审计出来的可选工作（文档同步是其中 P0 项，本轮已做）：
 
@@ -190,7 +190,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 
 **发版**：S3–S9、审计 P2、进程残留治理（FIXES 65/66）与 P3 已作为 **v0.4.0（2026-09-19）** 打包发布；
 **v0.5.0（2026-10-02，FIXES 68–76）** 同样走完整流程：升 `package.json` / lockfile、写 CHANGELOG、
-更新 README 安装 pin（`#v0.5.0`）、tag + Release，并跑了一键 e2e **29/29**。**v0.5.1（2026-10-02）** 只做参数命名对齐、**v0.5.2** 补声明 `set_cell_format` 的扁平参数、**v0.5.3** 统一桥键（旧拼写不再接受），都走完整流程（pin 分别到 `#v0.5.1`、`#v0.5.2`、`#v0.5.3`）。
+更新 README 安装 pin（`#v0.5.0`）、tag + Release，并跑了一键 e2e **29/29**。**v0.5.1（2026-10-02）** 只做参数命名对齐、**v0.5.2** 补声明 `set_cell_format` 的扁平参数、**v0.5.3** 统一桥键（旧拼写不再接受）、**v0.5.4** 补两个缺口 + 修长动作超时名单 + DSH 0.2.0 兼容核验 + 文档审计，都走完整流程（pin 分别到 `#v0.5.1` … `#v0.5.4`）。
 
 **顺手可清**：无（`docs/PROGRESS.md` 已同步到 918 项 / 46 文件）。
 
@@ -315,7 +315,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～80 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～83 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |
