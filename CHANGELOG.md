@@ -2,6 +2,57 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.6.1（修掉 0.6.0 的致命打包缺陷：`mcp/package.json` 漏发）
+
+> **0.6.0 在 npm 上是坏的，请直接装 0.6.1。** 症状是 MCP server 起不来、所有 WPS 工具全不可用。
+
+- **根因**：`mcp/dist` 是 **CommonJS** 编译产物，`mcp/` 目录里那份 `package.json`（`"type": "commonjs"` 的隐含来源）
+  是它的**模块边界声明** —— 有了它，Node 才不把 `dist/*.js` 当成 ESM。0.6.0 把 `files` 从整个 `mcp` 目录改成
+  `mcp/dist` + `mcp/scripts` 时，把这个文件漏在了包外，于是 `mcp/dist/index.js` 继承了根 `package.json` 的
+  `"type": "module"`，一启动就抛：
+
+  ```
+  ReferenceError: exports is not defined in ES module scope
+  This file is being treated as an ES module because it has a '.js' file extension and
+  '.../node_modules/dsh-plugin-wps-office-next/package.json' contains "type": "module".
+  ```
+
+- **修复**：`files` 加回 `mcp/package.json`（288 个文件）。**验证方式也换了**：不再只看文件在不在，而是
+  **真的把 MCP server 拉起来做一次 JSON-RPC 握手**并调用 `wps_status` —— 握手成功、广告 69 个工具、
+  `connected: true`（真实 WPS 12.1.0.28488）才算过。这条已写进 `docs/release-checklist.md` §3。
+- 这一版还包含 0.6.0 的全部内容：npm 上架、载荷从 76.64 MB 瘦到 3.03 MB、`publishConfig.registry`、
+  `os`/`cpu` 挪到顶层。
+
+**破坏性变更**：无（工具名、参数、行为、技能文档均未变）。
+
+数字：注册工具 **268**、广告面 **69 / 38,878 字节**、桥 action **263**、包内 **288 文件 / 3.03 MB**。
+
+## 0.6.0（发布到 npm：载荷从 76.6 MB 瘦到 3.0 MB）— **npm 上的这一版是坏的，请用 0.6.1**
+
+> ⚠️ **这一版已发布但不可用**：MCP server 无法启动（`exports is not defined in ES module scope`），
+> 所有 WPS 工具均不可调用。原因与修复见上面的 0.6.1。GitHub 标签 `v0.6.0` 同样是坏的。
+
+> 功能面与 0.5.4 **完全一致**（注册工具 268、广告面 69、桥 action 263 都没动）。这一版只改分发方式。
+
+- **上架 npm**：包名 `dsh-plugin-wps-office-next`，安装可以只写包名，不必再依赖 GitHub 可达性：
+
+  ```powershell
+  dsh plugin --profile <profile> add dsh-plugin-wps-office-next
+  ```
+
+- **打包载荷修正**：`files` 之前写的是整个 `mcp` 目录，于是 `mcp/node_modules`（jest / ts-node / typescript 这些
+  开发依赖，共 329 个顶层目录）连同 `mcp/src` 一起被打进包里 —— tarball **16.08 MB**、**10,280 个文件**、解开
+  **76.64 MB**。改成显式列出 `mcp/dist` 与 `mcp/scripts` 之后是 **287 个文件 / 3.03 MB**（解开），tarball 约 0.6 MB。
+  运行不受影响：`mcp/dist` 的依赖（`@modelcontextprotocol/sdk` / `uuid` / `winston`）由根 `package.json` 声明，
+  安装时照常解析（已在临时目录实测：删掉包内 `mcp/node_modules` 后仍能解析成功、`doctor` 仍打印 `DOCTOR OK`）。
+- **`publishConfig.registry`**：固定为 `https://registry.npmjs.org/`，这样本机 `.npmrc` 指向镜像源时
+  `npm publish` 也不会发错地方。仓库里不存任何凭证。
+- 发布流程与检查单见 [docs/release-checklist.md](docs/release-checklist.md)。
+
+**破坏性变更**：无（工具名、参数、行为、技能文档均未变）。
+
+数字：注册工具 **268**、广告面 **69 / 38,878 字节**、桥 action **263**、测试 **918 项 / 46 文件**。
+
 ## 0.5.4（能结束放映、能设圆角 · 长动作超时修正 · DSH 0.2.0 兼容核验）
 
 ### 补上的两个能力（FIXES 80）

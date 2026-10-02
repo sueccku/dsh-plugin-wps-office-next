@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）
 
 > 用途：把当前工作、进展、现状与下一步整理成**自包含**的一页，让一个**全新对话**无需回看历史即可接手。
-> 核实时间：2026-09-16（v0.3.0 发布后重核；本文所有数字均从仓库/命令实测，非记忆）。
+> 核实时间：2026-10-02（v0.6.0 打包前重核；本文所有数字均从仓库/命令实测，非记忆）。
 > 本文是工作文档，不随包发布（`docs/` 不在 `package.json` 的 `files` 白名单内）。
 
 ---
@@ -49,10 +49,12 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0`、`v0.5.0`、`v0.5.1`、`v0.5.2`、`v0.5.3`、`v0.5.4` |
 | Releases | v0.5.4（Latest，2026-10-02）、v0.5.3、v0.5.2、v0.5.1、v0.5.0、v0.4.0、v0.3.0、v0.2.1、v0.2.0——正文均为正常 UTF-8 |
-| 包 | `dsh-plugin-wps-office-next@0.5.4`，依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 包 | `dsh-plugin-wps-office-next@0.6.0`（npm 首发版本，**尚未发布**），依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
-**工作区**：干净（`docs/HANDOFF.md` 本身已随仓库跟踪）。临时 profile `wpsdoc2` / `wpse2e` 已删除。
+**工作区**：v0.6.0 发布准备改动**未提交**（`package.json` / `package-lock.json` / `mcp/package.json` /
+`mcp/package-lock.json` / `CHANGELOG.md` / `README.md` / `docs/HANDOFF.md` / 新增 `docs/release-checklist.md`）。
+临时 profile `wpsdoc2` / `wpse2e` 已删除；一次性收包验证目录在 **`D:\dsh\_pubcheck`**（gitignored 之外，别提交）。
 
 ---
 
@@ -62,7 +64,7 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
 - **D4 废弃名处理**：18 个旧工具名**保留一个周期**作为 dispatch 别名；12 个 builtin 直接删除。
-- **环境边界**：仅 Windows + COM；最低 **WPS 12.1 x64**；仅 GitHub 发布；文档中文。
+- **环境边界**：仅 Windows + COM；最低 **WPS 12.1 x64**；文档中文。（「仅 GitHub 发布」已由 2026-10-02 的发行决策取代，见下）
 - **S1 落地决策（新增，实测依据见 FIXES 52）**：打开加密文件一律传**非空哨兵密码**
   （`$script:WpsNoPassword`，在桥头部）——空串等于「没给密码」，弹框照旧、会话照旧卡死。
 - **S1 边界决策（新增）**：**超时后不自动关闭 WPS**。计划原本要求杀整个 WPS 进程树，实测
@@ -75,10 +77,47 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 
 - **废弃名清理**：v0.5.0 里**清掉** 18 个废弃工具名与 `ALIAS_DEBT`（P1-4 目标 0），作为一次明确的
   breaking 变更处理，技能文档与 README 同步。这一条**推翻**上面 D4 的「保留一个周期」——窗口已过。
-- **npm 发行**：**准备**发布链路（打包、`npm pack` / dry-run、发布检查单），但**暂不真正发布**；
-  真正发布的时机另行拍板（因此 §2 的「仅 GitHub 发布」暂时仍然生效）。
+- **npm 发行（已被 2026-10-02 取代）**：当时只**准备**发布链路，**暂不真正发布**（D18 = B）。
 - **真机整轮回归**：**不作为发版前必跑项**；`scripts/run-tests.ps1` 保持「需要时手动跑」。
 - **广告预算**：见更新后的 D1（100 / 60,000，FIXES 68）。
+
+### 2026-10-02 发行决策（用户拍板，**推翻上一条的「暂不真正发布」**）
+
+- **D18 由 B 改为 A**：**开始对外发布 npm 包**（registry.npmjs.org，公开包），GitHub 标签作为备用渠道，
+  两条渠道内容一致。首发版本 **0.6.0**（D3-A）。
+- **D2-A 打包载荷**：`files` 由整个 `mcp` 目录改为**显式子路径** `mcp/dist` + `mcp/scripts`。
+  原因：`files` 一写目录名，`.npmignore` 完全失效（已用仿真包实测），于是 `mcp/node_modules`（jest /
+  ts-node / typescript 等 329 个顶层目录）被打进包：**10,280 文件 / 16.08 MB tarball / 解开 76.64 MB**。
+  改后 **287 文件 / 约 0.6 MB / 解开 3.03 MB**。**不动**其他内容（`mcp/src`、`mcp/package.json`、
+  `scripts/`、`LICENSES/` 都照旧发）——这是 D2 的 A 选项，不是最小集。
+- **D4-B 源与凭证**：`publishConfig.registry = https://registry.npmjs.org/` **入库**（这样本机 `.npmrc`
+  指向 npmmirror 时也不会发错地方）；**凭证绝不入库**。本机 `.npmrc` 目前**没有任何 npm 凭证**，
+  `npm whoami`（含 npmjs）都是 `ENEEDAUTH`。
+- **D5-A 只维护文档检查单**：新增 `docs/release-checklist.md`（手动流程）。**没有** `prepublishOnly`、
+  **没有**发布用 CI 工作流——以后要加，得重新拍板。
+- **运行时依赖的落点**（实测，是本决策的依据）：`mcp/dist` 的 bare import 只有
+  `@modelcontextprotocol/sdk` / `uuid` / `winston`（外加三个 node 内建），三者都由**根** `package.json`
+  声明、且与 `mcp/node_modules` 里的版本一致；在临时目录实测「删掉包内 `mcp/node_modules` 后仍解析成功、
+  `doctor` 仍打印 `DOCTOR OK`」。所以删掉那 73.6 MB 不影响运行。
+- **D6-A：`os` / `cpu` 挪到 package.json 顶层**（2026-10-02 用户拍板）。原来写在 `engines` 里，npm 静默忽略
+  （`os`/`cpu` 只有顶层才生效）。挪动后两边都实测过：
+  ① 非 Windows 平台会被 npm 拦下（这正是目的）；
+  ② 本机 `dsh plugin add <tarball>` **照常装成功**（pnpm 1.1s、exit 0、`dump-config` 两个 id 都在、
+  装出来的副本 287 文件 / 3.03 MB、`doctor` 打印 `DOCTOR OK`）—— 即平台约束不会挡住正常安装路径；
+  ③ 根 `package-lock.json` 的 `packages[""]` 已同步镜像这两个字段，保持 lockfile 与 package.json 一致。
+- **发布状态：已上架（2026-10-02 18:26 北京时间 / 10:26 UTC）**。用户走 npm 的浏览器授权（路线 1）完成 OTP，
+  `dsh-plugin-wps-office-next@0.6.0` 已在 registry.npmjs.org 上，`dist-tags.latest = 0.6.0`、maintainer `sueccku`、
+  `fileCount = 287`、`unpackedSize = 3,177,016`、integrity `sha512-rKZKMg/…Z5cuKUyCiPPnQ==`
+  —— **与本地 dry-run 打印的 shasum/integrity 完全一致**，发出去的就是核对过的那个产物。
+- **发布后验收（已做）**：全新隔离 profile `wpsnpmver` + 空 npm 缓存，`dsh plugin add dsh-plugin-wps-office-next`
+  从 registry 拉取 → 2.5 秒、exit 0 → profile manifest 记成 `"dsh-plugin-wps-office-next": "^0.6.0"` 且
+  `dsh.profile.bundles` 自动包含 → `--dump-config` 两个 id 都在 → 装出来的副本 **287 文件 / 3.03 MB**、
+  `os=win32 cpu=x64`、无 `mcp/node_modules` → 从副本跑 `doctor` 打印 **`DOCTOR OK`**。验收 profile 已删除。
+- **pnpm 的一个提示（记录备查）**：新包触发 pnpm 的 `minimumReleaseAge` 保护，它自动往
+  `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude` 加了一行 `dsh-plugin-wps-office-next@0.6.0`；
+  安装照常成功，不是错误。
+- **后来都做完了**：`desktop` profile 已由用户自行升级到 `0.6.1` 并重启 DSH；真机调用也已通过**真实 MCP 工具**
+  验证（见下一条）。
 
 ---
 
@@ -167,6 +206,58 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 ---
 
+## 7.5 发布事故与教训（FIXES 84，2026-10-02）
+
+**事故**：`0.6.0` 发到 npm 后，用户装进 `desktop` profile，**所有 WPS 工具全不可用**。MCP server 一启动就崩：
+
+```
+ReferenceError: exports is not defined in ES module scope
+This file is being treated as an ES module because it has a '.js' file extension and
+'.../node_modules/dsh-plugin-wps-office-next/package.json' contains "type": "module".
+```
+
+**根因**：`mcp/dist` 是 **CommonJS** 编译产物，`mcp/package.json`（现显式写着 `"type": "commonjs"`）是它的
+模块边界。D2-A 把 `files` 从整个 `mcp` 目录改成 `mcp/dist` + `mcp/scripts` 时，把这个文件漏在了包外 ——
+旧写法 `files: ["mcp"]` 是**顺带**把它带上的，改窄之后这个隐含依赖就断了。
+
+**为什么没抓住（这条最值钱）**：发布前的验证只证明了三件事 —— 依赖能从顶层解析、从装出来的副本跑
+`doctor.mjs` 打印 `DOCTOR OK`、「删掉包内 `mcp/node_modules` 也能解析」。**三件事全是真的**，但它们都不是
+「server 真的能启动」。少的是一个**执行入口**上的断言；文件清单类的检查永远抓不到运行期缺件。
+
+**修复与加固**
+
+- `files` 加回 `mcp/package.json`（包内 288 文件）；`mcp/package.json` 显式写 `"type": "commonjs"`，
+  让这份边界声明不再是隐含的。
+- 新增 **`scripts/verify-package.mjs`**：`npm pack` → 装进临时目录 → **真的把 MCP server 拉起来**做一次
+  JSON-RPC 握手 → 断言 `tools/list` 广告 **69** 个工具、`wps_status` 在列。**不需要 WPS**。
+  这个脚本先在临时目录里**复现了 0.6.0 的崩溃**，再用同样的方式确认修复 —— 已写进
+  `docs/release-checklist.md` §3.1 作为**发布前必跑**。
+- 版本推进到 **0.6.1**；`CHANGELOG.md` 的 0.6.0 条目被打上「这一版是坏的」标记。
+- 另加 **`scripts/probe-installed.mjs`**：对**已安装的副本**做同样的握手并真调一次 `wps_status`（需要 WPS），
+  用于发布后与排错时分辨「包坏了」还是「环境没起 WPS」。
+
+**0.6.1 的验收（2026-10-02 13:1x）**
+
+- registry：`dist-tags.latest = 0.6.1`，integrity `sha512-jcztFCKPkhTpSPEPmnFcWNQeShNA707cy911D0uBoy26QROIEPoop2M7YdrL/0yOfPoimGbZUJ0v7fUued3T2A==`
+  —— 与本地 dry-run 打印的**逐字符一致**；`fileCount = 289`、`unpackedSize = 3,187,511`。
+- 全新隔离 profile 从 registry 装：4.2 秒、exit 0；装出来 **289 文件**、`mcp/package.json` 在、`type = commonjs`；
+  `--dump-config` 两个 id 都在；握手 `serverInfo = {name: wps-office-mcp, version: 0.6.1}`、**广告 69 个工具**、
+  `wps_status → connected: true`（真实 WPS 12.1.0.28488，latency 710ms）。验收 profile 已删除。
+- **坏掉的 0.6.0 已撤销（2026-10-02 14:53 UTC，用户手动在交互终端完成）**。三次换 token 的尝试都失败，
+  原因已实测并记进 `docs/release-checklist.md` §0：Granular **没勾** Bypass → `EOTP`；Granular **勾了** Bypass →
+  npm 直接 `403`（*Granular access tokens that bypass two-factor authentication may not perform this action*）；
+  且授权 URL 与发起命令的**进程**绑定，非交互终端里 npm 不等待、直接退出。
+  **结论**：`unpublish` / `deprecate` 只能由人在交互终端跑。现在 registry 上**只剩 `0.6.1`**（`latest`）。
+- **真实用户路径已验收（最终确认）**：`desktop` profile 已是 `0.6.1`（289 文件、`mcp/package.json` 在、
+  `type = commonjs`），用户重启 DSH 后，**通过真实 MCP 工具调用** `wps_status` 返回
+  `connected: true` / `advertisedTools: 69` / `registeredTools: 268` / `latencyMs: 695`（WPS 12.1.0.28488）。
+  至此这条线闭环：包 → registry → 用户 profile → 模型真正调到工具。
+
+**办法**：凡是改动「包内文件集合」的发布，验证必须落到**执行入口**（启动、握手、再跑一条真实调用），
+只看文件清单与依赖解析不够。
+
+---
+
 ## 8. 待办（下一步）
 
 **加固计划 S1–S9 已全部完成，S3 余量（破坏性动作确认框实测）也已收尾**：S3 25/25、S4 覆盖率 267/267（当时）、
@@ -176,7 +267,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 （Word 的 `getActiveDocument` 是工具化的），**故意留着**。
 
 > **发布状态**：FIXES 79 随 v0.5.3；**FIXES 80–83 随 v0.5.4（2026-10-02）发布**（补两个缺口、清账本、长动作名单修正、
-> DSH 0.2.0-rc.2 兼容核验、文档审计）。npm 发布仍暂停（D18 = B）。
+> DSH 0.2.0-rc.2 兼容核验、文档审计）。**npm 发布已改判为进行中（D18 = A，见 §3），首发版本 0.6.0，准备已完成、尚未执行 `npm publish`。**
 
 计划之外、审计出来的可选工作（文档同步是其中 P0 项，本轮已做）：
 

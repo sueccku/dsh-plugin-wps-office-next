@@ -4,6 +4,7 @@
 ![advertised tools](https://img.shields.io/badge/advertised%20tools-69%20%2F%20268-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)
+[![npm](https://img.shields.io/badge/npm-dsh--plugin--wps--office--next-CB3837)](https://www.npmjs.com/package/dsh-plugin-wps-office-next)
 
 让 DSH 替你动手操作 **WPS 表格 / 文字 / 演示**。你用中文把要求说清楚，它去改数据、排格式、画图、导出，最后把文件存好。
 
@@ -81,7 +82,7 @@
 
 ```text
 请帮我在本机安装 DeepSeek Harness 插件 dsh-plugin-wps-office-next
-（仓库：github.com/sueccku/dsh-plugin-wps-office-next）。
+（npm 包名就是这个；仓库：github.com/sueccku/dsh-plugin-wps-office-next）。
 
 用途：装上之后，我可以用中文让你操作本机的 WPS 表格 / 文字 / 演示
 （读写数据、排版、做图表、转 PDF 等）。
@@ -90,11 +91,11 @@
 
 1. 环境检查：本插件只支持 64 位 Windows 10/11 + WPS Office 12.1+（64 位）；
    还需要 Node.js ≥ 22.19 和 pnpm。不满足的项目直接告诉我，不要硬装。
-2. 判断我当前正在使用的 DSH profile（我从浏览器/桌面界面使用 DSH，通常是 web）。
-3. 执行安装（把 <profile> 换成上一步判断出的名字）：
-   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.5.4
-   如果报 ERR_PNPM_GIT_RESOLVE_FAILED 或连不上 github.com，改用这个地址重试：
-   dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.5.4
+2. 判断我当前正在使用的 DSH profile（把 <profile> 换成它的名字）。
+3. 执行安装：
+   dsh plugin --profile <profile> add dsh-plugin-wps-office-next
+   如果报 ERR_PNPM_FETCH_404 或装不上，改用 GitHub 标签重试：
+   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.6.0
 4. 用下面这条命令确认接线成功（输出里应出现 wps-office-next-plugin 与 mcp-wps-office-next）：
    dsh --profile <profile> --dump-config | Select-String wps
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
@@ -170,7 +171,7 @@ elseif ($cl -match 'bin[.]js"?\s+(\S+)') { $profile = $Matches[1] }
 $profile
 ```
 
-- 常见结果：`web`（浏览器 / 桌面界面，最常见）、`headless`（命令行跑一次性任务）。
+- 常见结果：`desktop`（桌面客户端）、`web`（浏览器界面）、`headless`（命令行跑一次性任务）。
 - 读不到时：若 `$env:DSH_WEB_URL` 有值，基本可以判定是 `web`。
 - 仍不确定：看 `$env:DSH_HOME\profiles` 下有哪些目录，或者直接问用户「你平时是怎么启动 DSH 的」。
 - `dsh plugin` 会把不存在的 profile 自动初始化，所以**装错 profile 不会报错，只会"装完没反应"**，宁可多问用户一句。
@@ -178,14 +179,21 @@ $profile
 ### 3. 执行安装
 
 ```powershell
-dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.5.4
+dsh plugin --profile <profile> add dsh-plugin-wps-office-next
 ```
 
+- **首选 npm**（包名 `dsh-plugin-wps-office-next`，发布于 registry.npmjs.org）。`dsh plugin add` 接受纯包名、本地绝对路径、Git 地址和 tarball 四种写法，纯包名走的是 npm registry，不依赖 github.com 的可达性。
 - 包内已经带了预构建产物，**没有任何构建步骤**，正常不需要额外处理，也不会出现「构建脚本被拦截」的问题。
-- 报 `ERR_PNPM_GIT_RESOLVE_FAILED`、`could not connect to server`、连接超时等，是这台机器访问 github.com 不稳定，改用 GitHub 打包地址重试（已实测可行）：
+- 报 `ERR_PNPM_FETCH_404`（包名/版本取不到，或该机器改了 registry）或网络不通时，改用 GitHub 标签重试（标签就是发布版本，内容与 npm 包一致）：
 
   ```powershell
-  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.5.4
+  dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.6.0
+  ```
+
+- 报 `ERR_PNPM_GIT_RESOLVE_FAILED`、`could not connect to server`、连接超时等，是这台机器访问 github.com 不稳定。此时优先回到上面那条 npm 命令；确实要走 GitHub 又连不上时，可用打包地址（已实测可行）：
+
+  ```powershell
+  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.6.0
   ```
 
 - **注意 dsh 事后那句「构建脚本被拦截 / allowBuilds」提示**：本包没有任何 `prepare` 脚本，也没装 `esbuild` 之类的原生依赖，所以**永远不需要**改 `allowBuilds`。dsh 在 pnpm 失败时会补上这句通用提示，照着改只会白费功夫——**先看真正的错误**：如果是 `ERR_PNPM_GIT_RESOLVE_FAILED` / `Failed to connect to github.com`，用上面的 codeload 地址重试即可（这一条已实测：4.1 秒装好）。
@@ -350,8 +358,12 @@ node scripts\gen-skill-tools.mjs
 npm run lint
 node scripts\verify.mjs
 node scripts\param-contract.mjs
+node scripts\verify-package.mjs       # 打包产物冒烟：装一遍 + 启动 MCP server 握手（不需要 WPS）
 
 # 5) 需要本机 WPS 的部分
+#    逐文件跑测试前先清掉插件自己发布的两个环境变量 —— 这个终端若是从「已装本插件」的
+#    DSH 会话里起的，它们会指向 profile 里那份副本，让 plugin.test.mjs 报一处假失败：
+#    $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
 node test\xxx.test.mjs                 # 逐文件跑
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1  # 整轮 + 回收无头 WPS 孤儿
 node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫生断言）
@@ -406,6 +418,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | [docs/FIXES.md](docs/FIXES.md) | 修复记录，每条都带可复跑的验证方法与实测数字 |
 | [docs/tool-roadmap.md](docs/tool-roadmap.md) | 工具面路线图：能力审计、缺口 / 冗余清单、分阶段任务表 |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | 分阶段进度与当前状态 |
+| [docs/release-checklist.md](docs/release-checklist.md) | npm 发布检查单：发布前门禁、打包对账、收包验证、发布后验收 |
 | [docs/param-contract.md](docs/param-contract.md) | 工具 / action 参数契约对账（生成物） |
 | [baseline/known-defects.md](baseline/known-defects.md) | 早期基线缺陷清单与逐条状态 |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 来源与许可处理 |
@@ -426,6 +439,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | 加载项 | 全部删除，零依赖 |
 | 构建产物 | 预构建产物入库，安装后开箱可用 |
 | 文档语言 | 中文 |
+| 分发渠道 | npm（`dsh-plugin-wps-office-next`）+ GitHub 标签；两条渠道内容一致 |
 | 提交身份 | sueccku |
 
 </details>
