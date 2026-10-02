@@ -702,6 +702,7 @@
   "shapeIndex",
   "slideIndex"
  ],
+ "endSlideShow": [],
  "exportSlideAsImage": [
   "format",
   "height",
@@ -876,6 +877,7 @@
   "lineColor",
   "lineWidth",
   "name",
+  "roundness",
   "shapeIndex",
   "slideIndex"
  ],

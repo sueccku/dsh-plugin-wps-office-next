@@ -4639,6 +4639,17 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_ppt_end_slide_show",
+        "action": "endSlideShow",
+        "app": "ppt",
+        "summary": "结束正在进行的幻灯片放映。\n\n没有放映在跑时不会报错（幂等）。放映一旦开始会占满屏幕，补上这个工具让会话能自己收尾。\n\n使用场景：\n- \"结束放映\"\n- \"退出演示\"\n- \"把放映关掉\"",
+        "params": {},
+        "effect": "write",
+        "advertised": false,
+        "required": [],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_ppt_export_slide_as_image",
         "action": "exportSlideAsImage",
         "app": "ppt",
@@ -4987,7 +4998,7 @@ exports.operations = [
             },
             "height": {
                 "type": "number",
-                "description": "高度（磅），可选，不指定则按原始比例"
+                "description": "高度（磅），可选，不指定则按原���比例"
             }
         },
         "effect": "write",
@@ -5784,6 +5795,10 @@ exports.operations = [
             "lineWidth": {
                 "type": "number",
                 "description": "边框粗细（磅）"
+            },
+            "roundness": {
+                "type": "number",
+                "description": "圆角半径（0-0.5，越大越圆；仅圆角矩形这类带调整柄的形状支持，其它形状会明确报错）"
             }
         },
         "effect": "write",

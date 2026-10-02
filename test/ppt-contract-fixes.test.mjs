@@ -164,6 +164,14 @@ if (picture) {
 // start_slide_show must reject a bad slide without launching a show
 check("start_slide_show rejects an out-of-range slide", !ok(await call("wps_ppt_start_slide_show", { fromSlide: 99 })), "");
 
+// FIXES 80：桥里两个「有 action 没工具」的真缺口补上 —— 结束放映，以及折进 set_shape_style 的圆角半径。
+check("end_slide_show is idempotent when nothing is running", ok(await call("wps_ppt_end_slide_show", {})), "");
+const rr = await viaAction("addShape", { slideIndex: 2, type: 5, left: 60, top: 60, width: 140, height: 70 });
+check("rounded rectangle created for the roundness check", ok(rr), text(rr).replace(/\s+/g, " ").slice(0, 60));
+const rrName = payload(rr).data?.name;
+check("set_shape_style applies roundness to a rounded rectangle", ok(await call("wps_ppt_set_shape_style", { slideIndex: 2, name: rrName, roundness: 0.4 })), "");
+const rrBack = await call("wps_ppt_set_shape_style", { slideIndex: 2, name: rrName, roundness: 0.4 });
+check("roundness round-trips on a rounded rectangle", ok(rrBack) && /实际圆角半径/.test(text(rrBack)), text(rrBack).replace(/\s+/g, " ").slice(0, 90));
 // teardown
 for (const [method, appType] of [["closeWorkbook", "et"], ["closeDocument", "wps"], ["closePresentation", "wpp"]]) {
   for (let i = 0; i < 6; i++) {

@@ -702,12 +702,16 @@ exports.setShapeStyleDefinition = {
                 type: 'number',
                 description: '边框粗细（磅）',
             },
+            roundness: {
+                type: 'number',
+                description: '圆角半径（0-0.5，越大越圆；仅圆角矩形这类带调整柄的形状支持，其它形状会明确报错）',
+            },
         },
         required: [],
     },
 };
 const setShapeStyleHandler = async (args) => {
-    const { slideIndex, name, shapeIndex, fillColor, lineColor, lineWidth } = args;
+    const { slideIndex, name, shapeIndex, fillColor, lineColor, lineWidth, roundness } = args;
     try {
         const response = await wps_client_1.wpsClient.executeMethod('setShapeStyle', {
             slideIndex: slideIndex || 1,
@@ -716,6 +720,7 @@ const setShapeStyleHandler = async (args) => {
             fillColor,
             lineColor,
             lineWidth,
+            roundness,
         }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             let output = `形状样式设置成功！\n形状: ${response.data.name}`;
@@ -725,6 +730,11 @@ const setShapeStyleHandler = async (args) => {
                 output += `\n边框色: ${lineColor}`;
             if (lineWidth)
                 output += `\n边框粗细: ${lineWidth}pt`;
+            if (roundness !== undefined)
+                output += `\n圆角半径: ${roundness}`;
+            if (response.data.roundness !== undefined && response.data.roundness !== null) {
+                output += `\n实际圆角半径: ${response.data.roundness}`;
+            }
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,

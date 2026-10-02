@@ -101,13 +101,15 @@ for (const m of keysSeg.matchAll(/^\s*'([A-Za-z][A-Za-z0-9_]*)'\s*=\s*@\(([^)]*)
 //                    aligned them all (FIXES 77), so this is now a hard 0: a new tool must name its
 //                    parameters exactly the way the bridge reads them.
 //   UNTOOLED_ACTIONS bridge actions no operation drives yet: the P2 backlog of capability that
-//                    already exists but has no tool.
+//                    already exists but has no tool. FIXES 80 清到 2：getActivePresentation /
+//                    getActiveWorkbook —— 它们的返回其实已由 getOpenPresentations / getOpenWorkbooks
+//                    的 active 标记覆盖，留作对称性缺口（Word 的 getActiveDocument 是工具化的）。
 const spec = require(resolve('mcp/dist/spec/operations.js'));
 // P4 的合并带走了三处改名参数（59 降到 59 以下），FIXES 77 把剩下的全部对齐到桥键，到此归零。
 const ALIAS_DEBT = 0;
 // P2 tooled 10 of the 21, and P3-1 tooled the four Word gaps, so the ratchet moves down with them:
 // 21 -> 11 -> 7. What is left is deliberate (duplicate implementations) or belongs to P4.
-const UNTOOLED_ACTIONS = 7;
+const UNTOOLED_ACTIONS = 2;
 // Actions the spec declares as "parameters cannot be read statically"; the generator refuses to
 // skip anything that is not declared here, so this is a ledger rather than an allowance.
 const NO_KEY_TABLE = Object.keys(require(resolve('mcp/dist/spec/aliases.js')).dynamicParamActions);
@@ -145,7 +147,7 @@ for (const op of spec.operations) {
 check('every parameter has a declared destination', unresolved === 0, unresolved + ' unresolved; ' + localParams + " local to the handler, " + containerParams + ' flattened by a container');
 check('every bridge parameter lands on a key the bridge reads', keyMismatch.length === 0, keyMismatch.length ? keyMismatch.slice(0, 6).join(', ') : aliased + ' of them differ only by name');
 check('every parameter name equals the bridge key (P1-4 target reached)', aliased === 0, aliased + ' parameter(s) still differ only by name');
-check('untooled-action backlog did not grow (P2 target: down to 0)', untooled.length <= UNTOOLED_ACTIONS, untooled.length + ' of ' + UNTOOLED_ACTIONS + ' recorded (pivot cache, openFile/replaceInSheet/unfreezePanes duplicates, getActivePresentation, endSlideShow, ...)');
+check('untooled-action backlog did not grow (P2 target: down to 0)', untooled.length <= UNTOOLED_ACTIONS, untooled.length + ' of ' + UNTOOLED_ACTIONS + ' recorded (getActivePresentation / getActiveWorkbook - both covered by the open* list tools and their active flag)');
 
 // The bridge-side compatibility table is declared in the spec (mcp/src/spec/aliases.ts) and emitted as
 // spec/param-aliases.json; the per-tool analysis view lives in operations.ts. They describe the same

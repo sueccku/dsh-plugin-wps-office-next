@@ -3,7 +3,7 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 演示工具（76）
+## WPS 演示工具（77）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -78,6 +78,7 @@
 | wps_ppt_find_ppt_text | wps_call | 在演示文稿中搜索指定文本。 |
 | wps_ppt_replace_ppt_text | wps_call | 在演示文稿中查找并替换文本。 |
 | wps_ppt_start_slide_show | wps_call | 开始幻灯片放映。 |
+| wps_ppt_end_slide_show | wps_call | 结束正在进行的幻灯片放映。 |
 | wps_ppt_set_table_format | 直达 | 设置表格的外观与样式。 |
 | wps_ppt_insert_table | 直达 | 在幻灯片中插入表格。 |
 | wps_ppt_set_table_cell | wps_call | 设置PPT表格中指定单元格的文本内容。 |

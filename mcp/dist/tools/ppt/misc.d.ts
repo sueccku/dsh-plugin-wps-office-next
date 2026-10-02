@@ -63,6 +63,12 @@ export declare const replacePptTextHandler: ToolHandler;
 export declare const startSlideShowDefinition: ToolDefinition;
 export declare const startSlideShowHandler: ToolHandler;
 /**
+ * 结束放映
+ * 关闭正在进行的幻灯片放映窗口（没有放映在跑时不报错，幂等）
+ */
+export declare const endSlideShowDefinition: ToolDefinition;
+export declare const endSlideShowHandler: ToolHandler;
+/**
  * 导出所有杂项Tools
  */
 export declare const miscTools: RegisteredTool[];

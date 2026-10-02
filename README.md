@@ -1,7 +1,7 @@
 # dsh-plugin-wps-office-next
 
 [![ci](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml/badge.svg)](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml)
-![advertised tools](https://img.shields.io/badge/advertised%20tools-69%20%2F%20267-blue)
+![advertised tools](https://img.shields.io/badge/advertised%20tools-69%20%2F%20268-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
@@ -100,7 +100,7 @@
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
    插件是在 DSH 启动时加载的，必须重启才会生效。
 6. 我重启回来后，先提醒我启动 WPS 并打开一个表格/文档，然后调用 wps_status，
-   确认返回 connected: true（此时 advertisedTools 应为 69，registeredTools 应为 267）。
+   确认返回 connected: true（此时 advertisedTools 应为 69，registeredTools 应为 268）。
 
 安装、排错与卸载的完整说明见 README 的「给 AI 的安装指引」一节：
 https://github.com/sueccku/dsh-plugin-wps-office-next#给-ai-的安装指引
@@ -214,7 +214,7 @@ dsh --profile <profile> --dump-config | Select-String wps
    ```
    connected: true
    advertisedTools: 69
-   registeredTools: 267
+   registeredTools: 268
    ```
 
 第一次调用可能慢约 1 秒（COM 宿主冷启动），之后 1–2 毫秒，属于正常。
@@ -266,7 +266,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 ## 它是怎么做的
 
 <details>
-<summary><b>工具面：注册 267 个，每次请求只广告 69 个</b></summary>
+<summary><b>工具面：注册 268 个，每次请求只广告 69 个</b></summary>
 
 一次请求塞几百个工具会浪费上下文。本插件把 `tools/list` 收敛为三档，由环境变量 `WPS_OFFICE_TOOLSET` 切换（默认 `standard`）：
 
@@ -274,9 +274,9 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 |---|---|---|---|---|
 | minimal | 4 | 1,348 | 385 | 仅 4 个门面工具 |
 | **standard（默认）** | **69** | **38,878** | **≈11,100** | 门面 + 65 个精选工具 |
-| full | 267 | 153,777 | 43,936 | 全量，保留完整描述 |
+| full | 268 | 155,488 | 44,425 | 全量，保留完整描述 |
 
-注册目录 **267** 个工具：Excel 118 / Word 59 / PPT 76 / 通用 14（含门面）。
+注册目录 **268** 个工具：Excel 118 / Word 59 / PPT 77 / 通用 14（含门面）。
 
 **未广告的工具完全可用**，两条路都能走：按全名直接调用，或先查后调。
 
@@ -303,7 +303,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | wps_common_get_app_info | 1858ms | 2ms |
 | 读 8000 格区域 | 8000 次 COM 往返 | 15–37ms（一次 Range.Value2 加二维编组） |
 
-宿主首次调用约 1.0s（进程启动 + 267 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
+宿主首次调用约 1.0s（进程启动 + 263 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
 
 </details>
 
@@ -357,7 +357,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：**914 项测试（46 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 15 项**全绿；广告面 69 工具 / 38,878 字节（内部预算上限 100 / 60,000）；桥 action 267，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
+当前数字：**918 项测试（46 个文件，多数需要真实 WPS）+ verify 23 项 + spec 复现 15 项**全绿；广告面 69 工具 / 38,878 字节（内部预算上限 100 / 60,000）；桥 action 263，与注册表三方一致；参数契约 256 对，四类静默失效均为 0。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账，以及十个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
@@ -376,7 +376,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | mcp/src/spec | **操作规格（唯一真源）**：工具名 ↔ 桥 action ↔ 参数/类型/必填/效果 |
 | spec/ | 由 spec 生成的产物（入库、CI 漂移检查） |
 | mcp/dist | 预构建产物（已入库，安装即用） |
-| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：267 个 COM action |
+| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：263 个 COM action |
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
 | scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口 |

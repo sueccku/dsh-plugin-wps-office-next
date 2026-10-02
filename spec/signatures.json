@@ -750,6 +750,11 @@
   "effect": "write"
  },
  {
+  "tool": "wps_ppt_end_slide_show",
+  "signature": "ppt_end_slide_show()",
+  "effect": "write"
+ },
+ {
   "tool": "wps_ppt_export_slide_as_image",
   "signature": "ppt_export_slide_as_image(slideIndex*, outputPath*, format?, width?, height?)",
   "effect": "export"
@@ -936,7 +941,7 @@
  },
  {
   "tool": "wps_ppt_set_shape_style",
-  "signature": "ppt_set_shape_style(slideIndex?, name?, shapeIndex?, fillColor?, lineColor?, lineWidth?)",
+  "signature": "ppt_set_shape_style(slideIndex?, name?, shapeIndex?, fillColor?, lineColor?, lineWidth?, roundness?)",
   "effect": "write"
  },
  {

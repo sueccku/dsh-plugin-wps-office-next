@@ -844,6 +844,10 @@ export const setShapeStyleDefinition: ToolDefinition = {
         type: 'number',
         description: '边框粗细（磅）',
       },
+      roundness: {
+        type: 'number',
+        description: '圆角半径（0-0.5，越大越圆；仅圆角矩形这类带调整柄的形状支持，其它形状会明确报错）',
+      },
     },
     required: [],
   },
@@ -852,13 +856,14 @@ export const setShapeStyleDefinition: ToolDefinition = {
 export const setShapeStyleHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, name, shapeIndex, fillColor, lineColor, lineWidth } = args as {
+  const { slideIndex, name, shapeIndex, fillColor, lineColor, lineWidth, roundness } = args as {
     slideIndex?: number;
     name?: string;
     shapeIndex?: number;
     fillColor?: string;
     lineColor?: string;
     lineWidth?: number;
+    roundness?: number;
   };
 
   try {
@@ -866,6 +871,7 @@ export const setShapeStyleHandler: ToolHandler = async (
       success: boolean;
       message: string;
       name: string;
+      roundness?: number | null;
     }>(
       'setShapeStyle',
       {
@@ -875,6 +881,7 @@ export const setShapeStyleHandler: ToolHandler = async (
         fillColor,
         lineColor,
         lineWidth,
+        roundness,
       },
       WpsAppType.PRESENTATION
     );
@@ -884,6 +891,10 @@ export const setShapeStyleHandler: ToolHandler = async (
       if (fillColor) output += `\n填充色: ${fillColor}`;
       if (lineColor) output += `\n边框色: ${lineColor}`;
       if (lineWidth) output += `\n边框粗细: ${lineWidth}pt`;
+      if (roundness !== undefined) output += `\n圆角半径: ${roundness}`;
+      if (response.data.roundness !== undefined && response.data.roundness !== null) {
+        output += `\n实际圆角半径: ${response.data.roundness}`;
+      }
 
       return {
         id: uuidv4(),

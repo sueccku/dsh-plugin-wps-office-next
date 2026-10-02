@@ -1317,7 +1317,6 @@ $script:ActionParamKeys = @{
     'moveSheet' = @('name', 'oldName', 'position', 'sheet')
     'moveSlide' = @('from', 'fromIndex', 'presentationName', 'to', 'toIndex')
     'openDocument' = @('path')
-    'openFile' = @('appType', 'path')
     'openPresentation' = @('path')
     'openWorkbook' = @('path', 'readOnly', 'updateLinks')
     'pasteRange' = @('destination', 'pasteType', 'sheet')
@@ -1336,7 +1335,6 @@ $script:ActionParamKeys = @{
     'removeSlideTransition' = @('presentationName', 'slideIndex')
     'renameSheet' = @('name', 'newName', 'oldName', 'sheet')
     'replaceBookmarkContent' = @('name', 'text')
-    'replaceInSheet' = @('matchCase', 'range', 'replaceText', 'searchText', 'sheet')
     'replacePptImage' = @('imagePath', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
     'replacePptText' = @('find', 'findText', 'presentationName', 'replace', 'replaceText')
     'replaceRange' = @('endPos', 'startPos', 'text')
@@ -1379,8 +1377,7 @@ $script:ActionParamKeys = @{
     'setShapeEffect' = @('borderColor', 'borderEnabled', 'borderStyle', 'borderWidth', 'gradientColor1', 'gradientColor2', 'name', 'presentationName', 'shadowBlur', 'shadowColor', 'shadowEnabled', 'shadowOffsetX', 'shadowOffsetY', 'shadowTransparency', 'shapeIndex', 'slideIndex', 'transparency')
     'setShapeFill' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setShapePosition' = @('height', 'left', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'top', 'width')
-    'setShapeRoundness' = @('name', 'presentationName', 'roundness', 'shapeIndex', 'slideIndex')
-    'setShapeStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'shapeIndex', 'slideIndex')
+    'setShapeStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'roundness', 'shapeIndex', 'slideIndex')
     'setShapeText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
     'setShapeZOrder' = @('name', 'order', 'presentationName', 'shapeIndex', 'slideIndex', 'zOrder')
     'setSheetAppearance' = @('sheet', 'tabColor', 'visible')
@@ -1417,7 +1414,6 @@ $script:ActionParamKeys = @{
     'switchWorkbook' = @('index', 'name')
     'textToColumns' = @('delimiter', 'range', 'sheet')
     'transpose' = @('destination', 'destinationCell', 'sheet', 'source', 'sourceRange', 'targetCell')
-    'unfreezePanes' = @()
     'unifyFont' = @('fontName', 'includeBody', 'includeTitle', 'presentationName', 'slideIndex')
     'unlistListObject' = @('sheet', 'table')
     'unmergeCells' = @('range', 'sheet')
@@ -1654,49 +1650,6 @@ return }
                 else { $ppt.ActivePresentation.SaveAs($path) }
             } finally { Restore-WpsAlerts $ppt $prevAlerts }
             Output-Json @{ success = $true; data = @{ path = $path; appType = "ppt" } }
-return }
-        Output-Json @{ success = $false; error = "Unknown app type" }
-    }
-
-    "openFile" {
-        $path = $p.path
-        if (-not $path) { Output-Json @{ success = $false; error = "Path required" }; return }
-        $appType = if ($p.appType) { $p.appType } else { Get-AppTypeByExtension $path }
-        # 打开前先做文件头预检，且放在 Get-WpsApp 之前：加密 OOXML 一旦进了 .Open() 就只剩
-        # 模态框一条路，而预检失败了也不该先拉起 WPS（FIXES 69）。
-        if (Test-WpsOoxmlEncrypted $path) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path $appType ('文件已加密（打开密码）：' + $path)) }; return }
-        if ($appType -eq 'excel') {
-            $excel = Get-WpsExcel
-            if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-            $prevAlerts = Set-WpsAlertsSuppressed $excel 'excel'
-            $wb = $null
-            $openError = $null
-            try { $wb = Open-ExcelWorkbook $excel $path $null $false } catch { $openError = $_.Exception.Message }
-            Restore-WpsAlerts $excel $prevAlerts
-            if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path 'excel' $openError) }; return }
-            Output-Json @{ success = $true; data = @{ path = $path; appType = "excel"; name = $wb.Name } }
-return }
-        if ($appType -eq 'word') {
-            $word = Get-WpsWord
-            if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-            $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
-            $opened = $null
-            $openError = $null
-            try { $opened = Open-WordDocument $word $path } catch { $openError = $_.Exception.Message }
-            Restore-WpsAlerts $word $prevAlerts
-            if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path 'word' $openError) }; return }
-            Output-Json @{ success = $true; data = @{ path = $path; appType = "word"; name = $opened.Name } }
-return }
-        if ($appType -eq 'ppt') {
-            $ppt = Get-WpsPpt
-            if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-            $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
-            $opened = $null
-            $openError = $null
-            try { $opened = Open-PptPresentation $ppt $path } catch { $openError = $_.Exception.Message }
-            Restore-WpsAlerts $ppt $prevAlerts
-            if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $path 'ppt' $openError) }; return }
-            Output-Json @{ success = $true; data = @{ path = $path; appType = "ppt"; name = $opened.Name } }
 return }
         Output-Json @{ success = $false; error = "Unknown app type" }
     }
@@ -3322,13 +3275,6 @@ return }
         Output-Json @{ success = $true; data = @{ frozen = $true; cell = $cellRef; message = "窗格已冻结" } }
     }
 
-    "unfreezePanes" {
-        $excel = Get-WpsExcel
-        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $excel.ActiveWindow.FreezePanes = $false
-        Output-Json @{ success = $true; data = @{ message = "窗格冻结已取消" } }
-    }
-
 # ==================== Excel 表（ListObject）====================
     # P2-2 的新 COM 代码。WPS 对 ListObject 支持完整（建表/总计行/结构化引用/Resize/Unlist 都实测可用），
     # 桥里此前一条都没有。"table" 既接受表名（表1 / Sales）也接受该表所在的 1 基序号。
@@ -4685,18 +4631,6 @@ return }
             }
         }
         Output-Json @{ success = $true; data = @{ searchText = $needle; results = $results; count = $results.Count } }
-    }
-
-    "replaceInSheet" {
-        $excel = Get-WpsExcel
-        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
-        $sheet = Get-WorksheetByParam $excel $p
-        $searchRange = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
-        $lookAt = if ($p.matchCase) { 1 } else { 2 }
-        # Signature is deliberately identical to the findReplaceExcel call site: PowerShell caches a COM
-        # member's binder after its first use, so every Range.Replace call must look the same.
-        $replaced = $searchRange.Replace([string]$p.searchText, [string]$p.replaceText, [int]$lookAt, 1, $false, $false)
-        Output-Json @{ success = $true; data = @{ searchText = $p.searchText; replaceText = $p.replaceText; success = $replaced } }
     }
 
     "copyRange" {
@@ -6284,6 +6218,19 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
         $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
+        $appliedRoundness = $null
+        if ($null -ne $p.roundness) {
+            if ($shape.Adjustments.Count -lt 1) { Output-Json @{ success = $false; error = "this shape exposes no adjustment handle, so roundness cannot be applied" }; return }
+            $shape.Adjustments.Item(1) = $p.roundness
+            # 读回：圆角是形状的调整手柄，文本框这类形状也「有」手柄但改了通常看不出效果，
+            # 所以不假装校验通过，而是把读回值报出去、不一致就告警（FIXES 80）。
+            try { $appliedRoundness = [double]$shape.Adjustments.Item(1) } catch { $appliedRoundness = $null }
+            if ($null -eq $appliedRoundness) {
+                Add-WpsWarning "圆角半径已写入，但读不回来（这个形状可能不支持圆角）"
+            } elseif ([math]::Abs($appliedRoundness - [double]$p.roundness) -gt 0.001) {
+                Add-WpsWarning ("圆角半径写进去了但读回不一致（请求 " + $p.roundness + "，读回 " + $appliedRoundness + "）")
+            }
+        }
         if ($p.fillColor) {
             $fillColor = Convert-HexColorToRgbInt([string]$p.fillColor)
             if ($null -ne $fillColor) { $shape.Fill.ForeColor.RGB = $fillColor }
@@ -6293,7 +6240,7 @@ return }
             if ($null -ne $lineColor) { $shape.Line.ForeColor.RGB = $lineColor }
         }
         if ($p.lineWidth) { $shape.Line.Weight = $p.lineWidth }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
+        Output-Json @{ success = $true; data = @{ name = $shape.Name; roundness = $appliedRoundness } }
     }
 
     "setShapeText" {
@@ -6576,18 +6523,6 @@ return }
 
 
 
-
-    "setShapeRoundness" {
-        $ppt = Get-WpsPpt
-        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
-        $pres = Get-TargetPres $ppt $p
-        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
-        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
-        $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
-        if ($null -ne $p.roundness) { $shape.Adjustments.Item(1) = $p.roundness }
-        Output-Json @{ success = $true; data = @{ name = $shape.Name } }
-    }
 
 
     "alignShapes" {
@@ -7374,6 +7309,7 @@ return }
         Output-Json @{ success = $false; error = "Unknown action: $Action" }
     }
 }
+
 
 
 }

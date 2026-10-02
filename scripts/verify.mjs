@@ -20,7 +20,7 @@ const BUDGET = { maxTools: 100, maxSchemaBytes: 60000 };
 // Snapshot of how many actions the bridge dispatches. Ad-hoc source edits have silently dropped a
 // whole case before (a patch script swallowed "slide.unifyFont"), and nothing noticed because every
 // remaining action still worked. Update this number deliberately when adding or removing an action.
-const EXPECTED_ACTIONS = 267;
+const EXPECTED_ACTIONS = 263;
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";

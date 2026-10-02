@@ -19,7 +19,7 @@
  * - wps_ppt_start_slide_show: 开始放映
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.miscTools = exports.startSlideShowHandler = exports.startSlideShowDefinition = exports.replacePptTextHandler = exports.replacePptTextDefinition = exports.findPptTextHandler = exports.findPptTextDefinition = exports.removePptHyperlinkHandler = exports.removePptHyperlinkDefinition = exports.addPptHyperlinkHandler = exports.addPptHyperlinkDefinition = exports.addMasterElementHandler = exports.addMasterElementDefinition = exports.setMasterBackgroundHandler = exports.setMasterBackgroundDefinition = exports.getSlideMasterHandler = exports.getSlideMasterDefinition = void 0;
+exports.miscTools = exports.endSlideShowHandler = exports.endSlideShowDefinition = exports.startSlideShowHandler = exports.startSlideShowDefinition = exports.replacePptTextHandler = exports.replacePptTextDefinition = exports.findPptTextHandler = exports.findPptTextDefinition = exports.removePptHyperlinkHandler = exports.removePptHyperlinkDefinition = exports.addPptHyperlinkHandler = exports.addPptHyperlinkDefinition = exports.addMasterElementHandler = exports.addMasterElementDefinition = exports.setMasterBackgroundHandler = exports.setMasterBackgroundDefinition = exports.getSlideMasterHandler = exports.getSlideMasterDefinition = void 0;
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
@@ -541,6 +541,55 @@ const startSlideShowHandler = async (args) => {
 };
 exports.startSlideShowHandler = startSlideShowHandler;
 /**
+ * 结束放映
+ * 关闭正在进行的幻灯片放映窗口（没有放映在跑时不报错，幂等）
+ */
+exports.endSlideShowDefinition = {
+    name: 'wps_ppt_end_slide_show',
+    description: `结束正在进行的幻灯片放映。
+
+没有放映在跑时不会报错（幂等）。放映一旦开始会占满屏幕，补上这个工具让会话能自己收尾。
+
+使用场景：
+- "结束放映"
+- "退出演示"
+- "把放映关掉"`,
+    category: tools_1.ToolCategory.PRESENTATION,
+    inputSchema: {
+        type: 'object',
+        properties: {},
+        required: [],
+    },
+};
+const endSlideShowHandler = async (_args) => {
+    try {
+        const response = await wps_client_1.wpsClient.executeMethod('endSlideShow', {}, wps_1.WpsAppType.PRESENTATION);
+        if (response.success) {
+            return {
+                id: (0, uuid_1.v4)(),
+                success: true,
+                content: [{ type: 'text', text: '幻灯片放映已结束。' }],
+            };
+        }
+        return {
+            id: (0, uuid_1.v4)(),
+            success: false,
+            content: [{ type: 'text', text: `结束放映失败: ${response.error}` }],
+            error: response.error,
+        };
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return {
+            id: (0, uuid_1.v4)(),
+            success: false,
+            content: [{ type: 'text', text: `结束放映出错: ${errMsg}` }],
+            error: errMsg,
+        };
+    }
+};
+exports.endSlideShowHandler = endSlideShowHandler;
+/**
  * 导出所有杂项Tools
  */
 exports.miscTools = [
@@ -557,6 +606,7 @@ exports.miscTools = [
     { definition: exports.replacePptTextDefinition, handler: exports.replacePptTextHandler },
     // 放映操作
     { definition: exports.startSlideShowDefinition, handler: exports.startSlideShowHandler },
+    { definition: exports.endSlideShowDefinition, handler: exports.endSlideShowHandler },
 ];
 exports.default = exports.miscTools;
 //# sourceMappingURL=misc.js.map

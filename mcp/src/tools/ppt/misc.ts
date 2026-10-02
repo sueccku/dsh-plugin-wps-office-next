@@ -658,6 +658,64 @@ export const startSlideShowHandler: ToolHandler = async (
 };
 
 /**
+ * 结束放映
+ * 关闭正在进行的幻灯片放映窗口（没有放映在跑时不报错，幂等）
+ */
+export const endSlideShowDefinition: ToolDefinition = {
+  name: 'wps_ppt_end_slide_show',
+  description: `结束正在进行的幻灯片放映。
+
+没有放映在跑时不会报错（幂等）。放映一旦开始会占满屏幕，补上这个工具让会话能自己收尾。
+
+使用场景：
+- "结束放映"
+- "退出演示"
+- "把放映关掉"`,
+  category: ToolCategory.PRESENTATION,
+  inputSchema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+};
+
+export const endSlideShowHandler: ToolHandler = async (
+  _args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      message?: string;
+    }>(
+      'endSlideShow',
+      {},
+      WpsAppType.PRESENTATION
+    );
+
+    if (response.success) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [{ type: 'text', text: '幻灯片放映已结束。' }],
+      };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `结束放映失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `结束放映出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+/**
  * 导出所有杂项Tools
  */
 export const miscTools: RegisteredTool[] = [
@@ -674,6 +732,7 @@ export const miscTools: RegisteredTool[] = [
   { definition: replacePptTextDefinition, handler: replacePptTextHandler },
   // 放映操作
   { definition: startSlideShowDefinition, handler: startSlideShowHandler },
+  { definition: endSlideShowDefinition, handler: endSlideShowHandler },
 ];
 
 export default miscTools;

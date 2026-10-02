@@ -9,7 +9,7 @@ whenToUse: 任务针对演示文稿、幻灯片、形状、文本框、动画、
 ## 直接广告的工具
 
 <!-- GENERATED:advertised:start -->
-直接广告的 14 个演示工具（其余 62 个用 wps_call，清单见同目录 reference.md）：
+直接广告的 14 个演示工具（其余 63 个用 wps_call，清单见同目录 reference.md）：
 
 wps_ppt_add_slide、wps_ppt_add_textbox、wps_ppt_export_slide_as_image、wps_ppt_get_shapes、wps_ppt_get_slide_count、wps_ppt_get_slide_info、wps_ppt_insert_ppt_image、wps_ppt_insert_table、wps_ppt_open_presentation、wps_ppt_set_shape_fill、wps_ppt_set_shape_text、wps_ppt_set_slide_content、wps_ppt_set_slide_title、wps_ppt_set_table_format
 

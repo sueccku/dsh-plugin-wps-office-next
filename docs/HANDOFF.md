@@ -86,7 +86,7 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 
 三层，桥是唯一真源：
 
-1. `mcp/scripts/wps-com.ps1` —— **桥，真源**（267 个动作分派；纯 CRLF、**无 BOM**）。
+1. `mcp/scripts/wps-com.ps1` —— **桥，真源**（263 个动作分派；纯 CRLF、**无 BOM**）。
 2. `host/wps-actions.ps1` —— **生成物**（`scripts/build-host-actions.ps1`），**UTF-8 BOM**，
    目标是与重新生成的结果字节一致。
 3. `mcp/src/` —— TS 工具面（MCP server）。
@@ -114,16 +114,16 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 
 | 指标 | 值 | 权威来源 |
 | --- | --- | --- |
-| 注册动作 | **267** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
+| 注册动作 | **263** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
 | 对外工具 | **69**（65 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
 | 广告面字节 | **38,878** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **914 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
+| 测试 | **918 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～79 号 | `docs/FIXES.md` |
+| FIXES | 1～80 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -187,7 +187,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 **v0.5.0（2026-10-02，FIXES 68–76）** 同样走完整流程：升 `package.json` / lockfile、写 CHANGELOG、
 更新 README 安装 pin（`#v0.5.0`）、tag + Release，并跑了一键 e2e **29/29**。**v0.5.1（2026-10-02）** 只做参数命名对齐、**v0.5.2** 补声明 `set_cell_format` 的扁平参数、**v0.5.3** 统一桥键（旧拼写不再接受），都走完整流程（pin 分别到 `#v0.5.1`、`#v0.5.2`、`#v0.5.3`）。
 
-**顺手可清**：无（`docs/PROGRESS.md` 已同步到 914 项 / 46 文件）。
+**顺手可清**：无（`docs/PROGRESS.md` 已同步到 918 项 / 46 文件）。
 
 ---
 
@@ -225,7 +225,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 - **不要用 `Get-Content -Raw` + `Set-Content -Encoding UTF8` 改含中文的 UTF-8 无 BOM 文件**
   （`.mjs` / 桥源码）：PS 5.1 会按 ANSI 读入、写成乱码，本轮把一个测试文件的 `密码|加密` 正则毁过一次。
   要么用编辑工具，要么 `[System.IO.File]::ReadAllText/WriteAllText` 并显式指定编码。
-- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（7126 行、77 函数）；改完要重新生成 host 并对账。
+- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（7064 行、77 函数）；改完要重新生成 host 并对账。
 - PS 逗号优先级高于 `+`：`$m[$a + $r, $b + $c]` 会被解析错，必须加括号。
 - `return $range` 会把多格 Range 展开成数组——要写 `return ,$range`。
 - `Worksheet.Scenarios` 是 PSMethod（`$s.Scenarios()`）。
@@ -265,7 +265,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 
 | 路径 | 作用 |
 | --- | --- |
-| `mcp/scripts/wps-com.ps1` | **桥，真源**（267 个动作分派、77 函数、7126 行、纯 CRLF 无 BOM） |
+| `mcp/scripts/wps-com.ps1` | **桥，真源**（263 个动作分派、77 函数、7064 行、纯 CRLF 无 BOM） |
 | `host/wps-actions.ps1` | 生成物（字节一致证明目标，UTF-8 BOM） |
 | `host/wps-com-host.ps1` | 常驻 STA 宿主：**单实例租约 + 心跳 + 陈旧接管**（手写，非生成，必须有 BOM） |
 | `mcp/src/client/com-host.ts` | 宿主客户端：`timeoutFor` + suspect 短超时 + 陈旧子进程守卫 + 等旧宿主退出 |
@@ -284,7 +284,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `scripts/lib/coverage-tiers.mjs` | **覆盖率口径唯一实现**（FIXES 74）：bespoke / matrixOk / matrixAny / notDriven 四层，CLI 与 CI 共用 |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | 46 个文件、914 断言；账本在 `spec-reproduction.test.mjs` |
+| `test/*.test.mjs` | 46 个文件、918 断言；账本在 `spec-reproduction.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
@@ -297,7 +297,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～79 号修复记录（**新 bug 继续追加编号**） |
+| `docs/FIXES.md` | 1～80 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

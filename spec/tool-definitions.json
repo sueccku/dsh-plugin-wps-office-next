@@ -3977,6 +3977,15 @@
   }
  },
  {
+  "name": "wps_ppt_end_slide_show",
+  "description": "结束正在进行的幻灯片放映。\n\n没有放映在跑时不会报错（幂等）。放映一旦开始会占满屏幕，补上这个工具让会话能自己收尾。\n\n使用场景：\n- \"结束放映\"\n- \"退出演示\"\n- \"把放映关掉\"",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": []
+  }
+ },
+ {
   "name": "wps_ppt_export_slide_as_image",
   "description": "将指定幻灯片导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS PowerPoint 原生接口 Slide.Export(FileName, FilterName, ScaleWidth, ScaleHeight)，\n实现 1:1 像素级还原，避免通过 PDF 中转再转图片造成的版式/字体/形状失真问题。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把第3页 PPT 导出成 PNG 给我\"\n- \"导出整个演示文稿每一页为 1920x1080 的 JPG\"\n- \"把封面页保存为高清图片用于网页\"\n\n注意：\n- outputPath 必须是绝对路径\n- macOS 上建议输出到 ~/Downloads 或用户可写目录，避免沙箱权限拒绝\n- 不指定 width/height 时使用 1280x720（16:9 默认尺寸）",
   "inputSchema": {
@@ -4271,7 +4280,7 @@
     },
     "height": {
      "type": "number",
-     "description": "高度（磅），可选，不指定则按原始比例"
+     "description": "高度（磅），可选，不指定则按原���比例"
     }
    },
    "required": [
@@ -4962,6 +4971,10 @@
     "lineWidth": {
      "type": "number",
      "description": "边框粗细（磅）"
+    },
+    "roundness": {
+     "type": "number",
+     "description": "圆角半径（0-0.5，越大越圆；仅圆角矩形这类带调整柄的形状支持，其它形状会明确报错）"
     }
    },
    "required": []

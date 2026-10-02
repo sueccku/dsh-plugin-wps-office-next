@@ -245,6 +245,8 @@ export {
   replacePptTextHandler,
   startSlideShowDefinition,
   startSlideShowHandler,
+  endSlideShowDefinition,
+  endSlideShowHandler,
 } from './misc';
 
 

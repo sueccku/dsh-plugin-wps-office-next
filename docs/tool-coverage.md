@@ -11,12 +11,12 @@
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Excel | 118 | 92 | 3 | 23 | 26 |
 | Word | 59 | 42 | 2 | 15 | 21 |
-| PPT | 76 | 27 | 17 | 32 | 14 |
+| PPT | 77 | 29 | 16 | 32 | 14 |
 | 通用 | 7 | 3 | 0 | 4 | 2 |
 | 转换 | 2 | 1 | 0 | 1 | 2 |
 | 逃生舱 | 1 | 1 | 0 | 0 | 0 |
 | 其他 | 4 | 4 | 0 | 0 | 4 |
-| **合计** | **267** | **170** | **22** | **75** | **69** |
+| **合计** | **268** | **172** | **21** | **75** | **69** |
 
 ## 矩阵
 
@@ -173,6 +173,7 @@
 | `wps_ppt_delete_textbox` | PPT | `deleteTextBox` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_distribute_shapes` | PPT | `distributeShapes` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_duplicate_shape` | PPT | `duplicateShape` |  | matrix ok | ppt-coverage.test.mjs |
+| `wps_ppt_end_slide_show` | PPT | `endSlideShow` |  | bespoke | ppt-contract-fixes.test.mjs |
 | `wps_ppt_export_slide_as_image` | PPT | `exportSlideAsImage` | ✅ | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_find_ppt_text` | PPT | `findPptText` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_get_animations` | PPT | `getAnimations` |  | matrix ok | ppt-coverage.test.mjs |
@@ -210,7 +211,7 @@
 | `wps_ppt_set_shape_effect` | PPT | `setShapeEffect` |  | bespoke | ppt-contract-fixes.test.mjs, ppt-slimming.test.mjs |
 | `wps_ppt_set_shape_fill` | PPT | `setShapeFill` | ✅ | bespoke | ppt-contract-fixes.test.mjs |
 | `wps_ppt_set_shape_position` | PPT | `setShapePosition` |  | matrix ok | ppt-coverage.test.mjs |
-| `wps_ppt_set_shape_style` | PPT | `setShapeStyle` |  | matrix ok | ppt-coverage.test.mjs |
+| `wps_ppt_set_shape_style` | PPT | `setShapeStyle` |  | bespoke | ppt-contract-fixes.test.mjs, ppt-coverage.test.mjs |
 | `wps_ppt_set_shape_text` | PPT | `setShapeText` | ✅ | bespoke | ppt-contract-fixes.test.mjs |
 | `wps_ppt_set_shape_z_order` | PPT | `setShapeZOrder` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_set_slide_background` | PPT | `setSlideBackground` |  | bespoke | arg-shape-guard.test.mjs, merged-tools.test.mjs, ppt-contract-fixes.test.mjs |
@@ -294,7 +295,7 @@
 
 ## 没有任何测试点到（未驱动，0）
 
-无——267 个工具都至少被一个测试或 e2e 在代码里点到（注释不算）。
+无——268 个工具都至少被一个测试或 e2e 在代码里点到（注释不算）。
 
 ## 解析不出桥 action 的工具（10）
 

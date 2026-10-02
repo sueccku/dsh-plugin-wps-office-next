@@ -2278,6 +2278,34 @@ handler 里那句「The schema declares the format fields twice」是空话。
 
 **验收**：`spec-reproduction` 15 项（`unresolved=0`、别名债 0）；`verify` 23 项；host 键表每个概念只剩一个键；
 真机回归见本轮记录。
+### 80. 账本清到 2：删 4 个重复/死代码 + 补 2 个真缺口（D17 = A）
+
+**背景**：`UNTOOLED_ACTIONS` 记着 7 个「桥里有 action、没有工具」的项。逐条查清后分三类：4 个是重复品/
+死代码，1 个是被覆盖但对称性缺口，2 个是真缺口（详见本轮报告与 D17 的选项）。
+
+**删除 4 个 action（267 → 263）**
+
+- `openFile`：通用打开；三个 app 专用的 open 都已工具化，通用版没有额外语义（加密预检三处各自都有）。
+- `unfreezePanes`：`freezePanes` 已接受 `freeze=false`，工具 `wps_excel_freeze_panes` 直接覆盖。
+- `replaceInSheet`：全桥只出现 1 次（它自己），没有任何 action 调用它 —— 死代码；`findReplaceExcel` 自己做替换。
+- `setShapeRoundness`：能力没丢，折进 `setShapeStyle`（见下）。
+
+**补 2 个真缺口**
+
+- `endSlideShow` → 新工具 `wps_ppt_end_slide_show`（无参数、幂等）。以前能开始放映却没有工具能结束，
+  放映一旦开始就占满屏幕，只能让用户自己按 Esc。
+- `setShapeRoundness` → 并入 `wps_ppt_set_shape_style` 的 `roundness` 参数（与 fillColor / lineColor /
+  lineWidth 同一个工具，少一个 action 少一个工具）。
+
+**一处按真机事实修正（值得记）**：最初写的守卫是「`Adjustments.Count < 1` 就拒绝」，真机一试发现**文本框也有
+调整手柄**、WPS 照单全收（改了看不出效果）。所以不假装校验，改成**写入后读回**：读回值随结果返回
+（`roundness`），读不回或与请求不一致就走警告通道如实告警（复用 FIXES 73 的机制）。测试断言的是**读回值**
+（`实际圆角半径`），不是请求值。
+
+**验收**：`UNTOOLED_ACTIONS` 7 → **2**（只剩 `getActivePresentation` / `getActiveWorkbook`，两者已由
+`getOpenPresentations` / `getOpenWorkbooks` 的 active 标记覆盖，留作对称性缺口）；`EXPECTED_ACTIONS` 267 → **263**
+（verify 的 source / generated / expected 三方一致）；注册工具 267 → **268**；真机 `ppt-contract-fixes` **60/60**
+（含 4 项新断言）。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。
