@@ -198,13 +198,18 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 
 ## 9. 环境与验证命令
 
-- 本机 DSH **已经是桌面版打包运行时**（FIXES 76）：`%LOCALAPPDATA%\Programs\DeepSeek Harness\` 下的
+- **本机 DSH 版本：`0.2.0-rc.2`**（文档旧值 `0.1.5-rc.1` 已过时）。兼容性已逐面核验 + 真机验收（FIXES 83）：
+  `accept-install` 14/14、`e2e` 29/29；契约自查用本版新增的 `dsh --profile <name> --dump-config-schema`。
+  升级 DSH 后重跑这两条即可复验；若失败，先看 `dsh plugin add` 的报错与 `--dump-config` 里两个接线 id 是否还在。
+- 本机 DSH **是桌面版打包运行时**（FIXES 76）：`%LOCALAPPDATA%\Programs\DeepSeek Harness\` 下的
   `DeepSeek Harness.exe` + `resources\app.asar\dsh\...\dsh-desktop-host\lib\cli.js`（用 `ELECTRON_RUN_AS_NODE=1` 启动）；
   旧的 npm 全局安装 `%APPDATA%\npm\node_modules\@deepseek-ai\dsh\lib\bin.js` **已不存在**。
   `scripts/e2e.mjs` 两种装法都认（`resolveDshLauncher()`），找不到时用 `--dsh-bin <lib/bin.js>` 显式指定。
   `DSH_HOME = C:\Users\qwer\.dsh`。
 - GUI：本会话通过 `http://127.0.0.1:19387` 交互（端口以实际启动为准，不要照抄旧值）；profile `headless` 是模板。
-  临时 profile（`wpsdoc2` / `wpse2e*`）用完要 `dsh plugin --profile <name> remove …` 再删目录。
+  临时 profile（`wpsdoc2` / `wpse2e*`）用完要 `dsh plugin --profile <name> remove dsh-plugin-wps-office-next`
+  **（必须带包名，不带会报 `ERR_PNPM_MUST_REMOVE_SOMETHING`）**，再删 profile 目录。`node scripts/e2e.mjs --clean`
+  只清产物、不动 profile。
 - 会话日志：`~/.dsh/sessions/<编码的工作目录>/session-<id>/session.v<N>.jsonl.zstd`（**v4**，e2e 需要它做行为断言）。
 - 真机 e2e（需要 WPS）：
   ```powershell

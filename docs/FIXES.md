@@ -2352,6 +2352,39 @@ FIXES 73 已经修好这件事，文档没跟上。改成事实描述（所有�
 **有意保留为历史的**（已在文中标注或本身就是日志）：`CHANGELOG.md`、`docs/FIXES.md`、`docs/PROGRESS.md`、
 `docs/tool-roadmap.md` 的 P0 审计快照、`docs/stabilization-plan.md`、`docs/CONTRACT-excel.md`（已标「P1 审计历史快照」）、
 `THIRD_PARTY_NOTICES.md` 的 mac 传输说明。
+### 83. 对 DeepSeek Harness 0.2.0-rc.2 的兼容性核验
+
+**背景**：项目文档里记的本机 DSH 是 `0.1.5-rc.1`，实际已经是 **`0.2.0-rc.2`**（桌面打包运行时）。
+插件依赖 DSH 的四个面：包清单 `dsh.bundle.patch`、`cordis.patch.yml` 的 patch 操作、`dsh-mcp-client` 的配置键、
+`ctx.skills.register` 的技能注册。逐面核验（不是「看着没报错」）。
+
+**静态核验（直接读 asar 里的实现与 `--dump-config-schema`）**
+
+| 面 | 结论 |
+| --- | --- |
+| 包清单 | `dsh.bundle` / `cordis.patch` 仍被 `dsh-plugin-manager` 读取；`$defs.entry` 只强制 `name`，我们的 `id`+`name` 合法 |
+| patch 操作 | `insert` 在 0.2.0 的 `$defs.patch` 里是一等操作（schema 里明确约束）；`--dump-config-schema` 是本版新增的自查能力 |
+| MCP 客户端配置键 | `serverName` / `transport` / `command` / `args` / `cwd` / `env` / `toolCallTimeoutMs` / `failOnStartupError` / `stdio` **全部仍在** |
+| 技能注册 | `register()` 的注释明确「省略 `invocation` / `provider` 会取默认值」；`validateRuntimeSkill` 只要求合法 `name` + 非空 `description` |
+| CLI | `--profile` / `--from-default-profile` / `--dump-config` / `plugin --profile X add|remove` 全部保留（新增 `--dump-config-schema`、`--patch`） |
+| 环境变量 | `DSH_PERMISSION_MODE`、`DSH_TOOLS_MODE` 仍被默认 profile 读取（它们写在 profile 配置的 `!!js` 表达式里，不在编译产物中） |
+| 会话日志 | 0.2.0 自带 `dsh-session-format-v3-to-v4` 迁移；写的仍是 `session.v4.jsonl.zstd`（FIXES 76 已适配） |
+
+**行为核验（真机）**
+
+- `node scripts/accept-install.mjs`：**14/14 通过** —— `plugin add` 成功、`dump-config` 认出 `wps-office-next-plugin` +
+  `mcp-wps-office-next`、装出的副本自带 `plugin.js` / `cordis.patch.yml` / `mcp/dist/index.js` / `host/*.ps1` / `skills/`、
+  从副本里跑 `doctor` OK、`plugin remove` 成功、临时 profile 清干净。
+- `node scripts/e2e.mjs --setup`：**E2E OK 29/29（88 秒）** —— 真实 headless 任务 83 次 `wps_*` 调用 / 3 次技能加载，
+  独立 COM 复验产物全对，跑完无残留、无缺陷标记、模型没有自己写 COM；会话日志按 v4 正确解析。
+
+**结论**：插件与 DSH 0.2.0-rc.2 **兼容**，无需改接线。文档里的 DSH 版本记录已更新（HANDOFF §9），README 的
+「环境要求」本就不锁版本（只要求 `dsh --version` 能跑）。
+
+**共存提醒（产品面，非缺陷）**：0.2.0 起 DSH 自带离线 office 技能（`office-docx` / `office-xlsx` / `office-pptx`，
+底层 `libreoffice-kit`）以及 `dsh-office-to-pdf`。它们与本插件**不冲突**（技能名不重名），但解决路径不同：
+内置技能是「离线读写文件」，本插件是「操作正在运行的 WPS 窗口」。用户同时装了两者时，模型可能选内置那条路 ——
+需要在提示词里点名「用 WPS 打开/操作」时更稳。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。
