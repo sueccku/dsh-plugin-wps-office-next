@@ -400,6 +400,18 @@ function Get-TargetPres($ppt, $p) {
     return $ppt.ActivePresentation
 }
 
+# 解析目标文档：Word 侧此前没有共用解析点（FIXES 64 的 C7 残留），56 处动作各自取 ActiveDocument，
+# 多文档同时打开时既不会提醒、也说不清落在哪一份上。与 Excel / PPT 一致：先提醒，再返回活动文档。
+function Get-ActiveWordDocument($word) {
+    if ($null -eq $word) { return $null }
+    $openCount = 0
+    try { $openCount = [int]$word.Documents.Count } catch { }
+    if ($openCount -gt 1) {
+        Add-WpsAmbiguousTargetWarning $null ('检测到 ' + $openCount + ' 个打开的文档，本次未指定目标，操作会作用在当前活动文档上；多文档时建议先关掉多余的，或改用带 name 的工具。')
+    }
+    return $word.ActiveDocument
+}
+
 # 在一个 TextFrame 内查找替换：先精确匹配(保留原换行)；多行 find 未命中时，把 \r\n/\r/\v 与 \n 规范化后再匹配并写回。返回是否发生替换。
 function Replace-FrameText($frame, [string]$findText, [string]$replaceText) {
     try {
@@ -1594,7 +1606,7 @@ return }
 return }
         $word = Get-WpsWord
         if ($null -ne $word -and $null -ne $word.ActiveDocument) {
-            $doc = $word.ActiveDocument
+            $doc = Get-ActiveWordDocument $word
             if (-not (Test-WpsHasDiskPath $doc)) { Output-Json @{ success = $false; error = "这个文档还没有保存过，调用「保存」会弹出「另存为」对话框把会话卡住；请先用 wps_common_save_as 指定路径。" }; return }
             $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
             try { $doc.Save() } finally { Restore-WpsAlerts $word $prevAlerts }
@@ -1750,7 +1762,7 @@ return }
 return }
         $word = if ($wantWord) { Get-WpsWord } else { $null }
         if ($null -ne $word -and $null -ne $word.ActiveDocument) {
-            $doc = $word.ActiveDocument
+            $doc = Get-ActiveWordDocument $word
             $sourcePath = $doc.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, 'pdf') }
             $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
@@ -1797,7 +1809,7 @@ return }
 return }
         $word = if ($wantWord) { Get-WpsWord } else { $null }
         if ($null -ne $word -and $null -ne $word.ActiveDocument) {
-            $doc = $word.ActiveDocument
+            $doc = Get-ActiveWordDocument $word
             $sourcePath = $doc.FullName
             $outputPath = if ($p.outputPath) { $p.outputPath } else { [System.IO.Path]::ChangeExtension($sourcePath, $targetFormat) }
             $format = Get-WordSaveFormat $targetFormat
@@ -3906,7 +3918,7 @@ return }
     "getDocumentTables" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $tables = @()
         for ($i = 1; $i -le $doc.Tables.Count; $i++) {
@@ -3924,7 +3936,7 @@ return }
     "getTableData" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
@@ -3951,7 +3963,7 @@ return }
     "setTableCell" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
         if ($null -eq $p.row -or $null -eq $p.column) { Output-Json @{ success = $false; error = "row and column required" }; return }
@@ -3968,7 +3980,7 @@ return }
     "addTableLines" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
         $kind = if ($p.kind) { "$($p.kind)".ToLower() } else { "row" }
@@ -3995,7 +4007,7 @@ return }
     "deleteTableLine" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
         $kind = if ($p.kind) { "$($p.kind)".ToLower() } else { "row" }
@@ -4021,7 +4033,7 @@ return }
     "mergeTableCells" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
         # 逐个显式检查：ConvertFrom-Json 得到的是 PSObject，用变量拼属性名在这里不可靠（生成器也会把它判成动态键）。
@@ -4039,7 +4051,7 @@ return }
     "splitTableCell" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
         $t = $doc.Tables.Item($index)
@@ -4055,7 +4067,7 @@ return }
     "setTableFormat" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
         $t = $doc.Tables.Item($index)
@@ -4085,7 +4097,7 @@ return }
     "convertTableToText" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $index = if ($null -ne $p.table) { [int]$p.table } else { 1 }
         if ($index -lt 1 -or $index -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
         # ConvertToText 的 Separator 要一个字符串（或分隔常量），不是字符数组。
@@ -4110,7 +4122,7 @@ return }
     "insertPageNumbers" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $sectionIndex = if ($null -ne $p.section) { [int]$p.section } else { 1 }
         if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) { Output-Json @{ success = $false; error = "section out of range" }; return }
@@ -4137,7 +4149,7 @@ return }
     "setColumns" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $sectionIndex = if ($null -ne $p.section) { [int]$p.section } else { 1 }
         if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) { Output-Json @{ success = $false; error = "section out of range" }; return }
@@ -4162,7 +4174,7 @@ return }
     "getRevisions" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $tracking = $false
         try { $tracking = [bool]$doc.TrackRevisions } catch { $tracking = $false }
@@ -4184,7 +4196,7 @@ return }
     "acceptRevisions" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $applied = 0
         try {
@@ -4207,7 +4219,7 @@ return }
     "rejectRevisions" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $applied = 0
         try {
@@ -4230,7 +4242,7 @@ return }
     "deleteComment" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $deleted = 0
         $preview = @()
@@ -4263,7 +4275,7 @@ return }
     "getContentControls" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $controls = @()
         $total = 0
@@ -4282,7 +4294,7 @@ return }
     "addContentControl" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         # wdContentControlRichText=0 plainText=1 checkBox=2 comboBox=3 dropDownList=4 datePicker=5 picture=7
         $typeMap = @{ richText = 0; plainText = 1; checkBox = 2; comboBox = 3; dropDownList = 4; datePicker = 5; picture = 7 }
@@ -4307,7 +4319,7 @@ return }
     "addFootnote" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if (-not $p.text) { Output-Json @{ success = $false; error = "text required" }; return }
         $range = Get-MainTextRange $word $doc
@@ -4318,7 +4330,7 @@ return }
     "addEndnote" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if (-not $p.text) { Output-Json @{ success = $false; error = "text required" }; return }
         $range = Get-MainTextRange $word $doc
@@ -4329,7 +4341,7 @@ return }
     "getNotes" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $footnotes = @()
         $footnoteCount = 0
@@ -4354,7 +4366,7 @@ return }
     "insertIndex" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $target = $doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
         try { $doc.Indexes.Add($target, $null, $true) | Out-Null } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
@@ -4366,7 +4378,7 @@ return }
     "insertCrossReference" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         # 参数直接对应 Word 的 Range.InsertCrossReference(ReferenceType, ReferenceKind, ReferenceItem)：
         # 这两个枚举在 WPS 上没有可靠的友好映射，所以照实透传，不做猜测性翻译。
@@ -4386,7 +4398,7 @@ return }
     "mailMerge" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if (-not $p.dataFile) { Output-Json @{ success = $false; error = "dataFile required" }; return }
         $path = Resolve-InputFilePath $p.dataFile
@@ -4407,7 +4419,7 @@ return }
             $doc.MailMerge.Execute()
         } catch {
             Output-Json @{ success = $false; error = $_.Exception.Message }; return }
-        $merged = $word.ActiveDocument
+        $merged = Get-ActiveWordDocument $word
         $name = ""
         try { $name = [string]$merged.Name } catch { $name = "" }
         $preview = ""
@@ -5115,7 +5127,7 @@ return }
     "getActiveDocument" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         Output-Json @{ success = $true; data = @{
             name = $doc.Name; path = $doc.FullName
@@ -5129,7 +5141,7 @@ return }
     "generateTOC" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $position = if ($p.position) { $p.position } else { "start" }
         $levels = if ($p.levels) { [int]$p.levels } else { 3 }
@@ -5142,7 +5154,7 @@ return }
     "getDocumentText" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $text = $doc.Content.Text
         if ($text.Length -gt 10000) { $text = $text.Substring(0, 10000) + "...(truncated)" }
@@ -5220,7 +5232,7 @@ return }
     "insertText" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $position = if ($p.position) { $p.position } else { "cursor" }
         switch ($position) {
@@ -5237,7 +5249,7 @@ return }
     "setFont" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $range = if ($p.range -eq "all") { $doc.Content } else { $word.Selection.Range }
         if ($p.fontName) { $range.Font.Name = $p.fontName }
         if ($p.fontSize) { $range.Font.Size = $p.fontSize }
@@ -5256,7 +5268,7 @@ return }
     "findReplace" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $findText = if ($null -ne $p.findText) { [string]$p.findText } else { [string]$p.find }
         $hasReplaceText = ($null -ne $p.replaceText) -or ($null -ne $p.replace)
         $replaceText = if ($null -ne $p.replaceText) { [string]$p.replaceText } else { [string]$p.replace }
@@ -5289,7 +5301,7 @@ return }
     "insertTable" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $rows = if ($p.rows) { [int]$p.rows } else { 3 }
         $cols = if ($p.cols) { [int]$p.cols } else { 3 }
         $range = $word.Selection.Range
@@ -5308,7 +5320,7 @@ return }
     "setParagraph" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $range = if ($p.range -eq "all") { $doc.Content } else { $word.Selection.Range }
         $para = $range.ParagraphFormat
@@ -5333,7 +5345,7 @@ return }
     "setPageSetup" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $ps = $doc.PageSetup
         # The tool schema documents points, so the values are used as points (they used to be
@@ -5382,7 +5394,7 @@ return }
     "insertPageBreak" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $breakType = if ($p.type) { $p.type } else { "page" }
         $breakTypeMap = @{ page = 7; column = 8; section = 2; sectionContinuous = 3 }
         $bt = $breakTypeMap[$breakType]
@@ -5394,7 +5406,7 @@ return }
     "insertHeader" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $sectionNo = if ($null -ne $p.section) { [int]$p.section } else { 1 }
         if ($sectionNo -lt 1 -or $sectionNo -gt $doc.Sections.Count) {
             Output-Json @{ success = $false; error = ("section " + $sectionNo + " does not exist; the document has " + $doc.Sections.Count) }
@@ -5412,7 +5424,7 @@ return }
     "insertFooter" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $sectionNo = if ($null -ne $p.section) { [int]$p.section } else { 1 }
         if ($sectionNo -lt 1 -or $sectionNo -gt $doc.Sections.Count) {
             Output-Json @{ success = $false; error = ("section " + $sectionNo + " does not exist; the document has " + $doc.Sections.Count) }
@@ -5435,7 +5447,7 @@ return }
     "insertHyperlink" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $range = Get-MainTextRange $word $doc
         $url = if ($p.url) { $p.url } else { $p.address }
         $text = if ($p.text) { $p.text } elseif ($p.displayText) { $p.displayText } else { $url }
@@ -5451,7 +5463,7 @@ return }
     "insertBookmark" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if (-not $p.name) { Output-Json @{ success = $false; error = "name required" }; return }
         $range = $word.Selection.Range
         $doc.Bookmarks.Add($p.name, $range)
@@ -5461,7 +5473,7 @@ return }
     "getBookmarks" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $bookmarks = @()
         for ($i = 1; $i -le $doc.Bookmarks.Count; $i++) {
             $bm = $doc.Bookmarks.Item($i)
@@ -5473,7 +5485,7 @@ return }
     "getDocumentParagraphs" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $startIdx = if ($null -ne $p.startParagraph) { [int]$p.startParagraph } else { 1 }
         $endIdx = if ($null -ne $p.endParagraph) { [int]$p.endParagraph } else { [Math]::Min($doc.Paragraphs.Count, $startIdx + 49) }
@@ -5494,7 +5506,7 @@ return }
     "findInDocument" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if (-not $p.findText) { Output-Json @{ success = $false; error = "findText required" }; return }
         $matchCase = if ($null -ne $p.matchCase) { [bool]$p.matchCase } else { $false }
@@ -5530,7 +5542,7 @@ return }
     "smartFillField" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if (-not $p.keyword) { Output-Json @{ success = $false; error = "keyword required" }; return }
         if ($null -eq $p.value) { Output-Json @{ success = $false; error = "value required（空字符串将清除该字段内容）" }; return }
@@ -5652,7 +5664,7 @@ return }
     "replaceBookmarkContent" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if (-not $p.name) { Output-Json @{ success = $false; error = "name required" }; return }
         if ($null -eq $p.text) { Output-Json @{ success = $false; error = "text required" }; return }
@@ -5673,7 +5685,7 @@ return }
     "addComment" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $text = if ($p.text) { $p.text } else { $p.comment }
         if (-not $text) { Output-Json @{ success = $false; error = "text required" }; return }
         $range = $word.Selection.Range
@@ -5684,7 +5696,7 @@ return }
     "getComments" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $comments = @()
         for ($i = 1; $i -le $doc.Comments.Count; $i++) {
             $c = $doc.Comments.Item($i)
@@ -5696,7 +5708,7 @@ return }
     "getDocumentStats" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $stats = @{ name = $doc.Name; path = $doc.FullName; pages = $doc.ComputeStatistics(2); words = $doc.ComputeStatistics(0); characters = $doc.ComputeStatistics(3); paragraphs = $doc.ComputeStatistics(4); lines = $doc.ComputeStatistics(1) }
         Output-Json @{ success = $true; data = $stats }
     }
@@ -5704,7 +5716,7 @@ return }
     "insertImage" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         $path = if ($p.path) { $p.path } else { $p.filePath }
         if (-not $path) { Output-Json @{ success = $false; error = "path required" }; return }
         $range = $word.Selection.Range
@@ -5718,7 +5730,7 @@ return }
     "applyStyle" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if ($p.range -and $null -ne $p.range.start -and $null -ne $p.range.end) {
             $range = $doc.Range([int]$p.range.start, [int]$p.range.end)
@@ -5733,7 +5745,7 @@ return }
     "enableTrackChanges" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $enable = if ($null -ne $p.enable) { [bool]$p.enable } else { $true }
         $doc.TrackRevisions = $enable
@@ -5743,7 +5755,7 @@ return }
     "getTrackChangesStatus" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $revisionCount = 0
         try { $revisionCount = $doc.Revisions.Count } catch { Add-WpsWarning $_.Exception.Message }
@@ -5753,7 +5765,7 @@ return }
     "replaceRange" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         if ($null -eq $p.startPos -or $null -eq $p.endPos) { Output-Json @{ success = $false; error = "startPos and endPos required" }; return }
         if ($null -eq $p.text) { Output-Json @{ success = $false; error = "text required" }; return }
@@ -7176,7 +7188,7 @@ return }
     "setLineSpacing" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $multiple = [double]$p.lineSpacing
         if ($multiple -le 0) { Output-Json @{ success = $false; error = "lineSpacing must be greater than 0" }; return }
@@ -7311,7 +7323,7 @@ return }
     "insertSectionBreak" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
-        $doc = $word.ActiveDocument
+        $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
         $breakMap = @{ nextPage = 2; continuous = 3; evenPage = 4; oddPage = 5 }
         $requested = 'nextPage'

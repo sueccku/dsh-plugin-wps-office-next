@@ -19,6 +19,7 @@ import { log, logRequest, logResponse } from '../utils/logger';
 import { errorUtils } from '../utils/error';
 import { comHost } from './com-host';
 import { appendFileSync } from 'node:fs';
+import { collectToolWarnings } from '../utils/tool-warnings';
 
 // ==================== PPT 目标文稿锁定（避免多文稿打开时 ActivePresentation 漂移）====================
 // 通过 wps_ppt_set_active_target 设置后，所有 PRESENTATION 类调用（executeMethod 带 WpsAppType.PRESENTATION）
@@ -76,6 +77,10 @@ export class WpsClient {
 
     try {
       const result = await execWpsAction(action, params) as WpsApiResponse<T>;
+      // 桥侧把 warnings 同时挂在结果根与 data 上；这里收进本次工具调用的作用域，
+      // 由 tool-registry 统一附回结果文本（FIXES 73）。失败的结果也收：部分成功同样要说清。
+      collectToolWarnings(result?.warnings);
+      collectToolWarnings((result?.data as { warnings?: unknown } | undefined)?.warnings);
       const duration = Date.now() - startTime;
       logResponse(action, result.success, duration);
       traceCall(action, params, result.success === true);

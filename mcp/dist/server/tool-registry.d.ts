@@ -57,6 +57,11 @@ export declare class ToolRegistry {
      */
     callTool(request: ToolCallRequest): Promise<ToolCallResult>;
     /**
+     * 把「尽力而为的失败」附在结果文本后面。第一方 handler 会丢掉桥侧的 warnings，这里统一补上；
+     * 已经出现在文本里的（wps_call / wps_execute_method / wps_batch 的原样透传）不重复追加（FIXES 73）。
+     */
+    private attachWarnings;
+    /**
      * 验证参数 - 检查必填参数是否都有
      */
     private validateArguments;

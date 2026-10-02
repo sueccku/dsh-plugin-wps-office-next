@@ -2046,6 +2046,38 @@ ACL 拒绝写在**打开阶段**就弹出「无法打开文件」模态框（实
 **没做的两条（如实记录）**：① 文件被别的程序占用时的探测 —— 三种做法都不安全（WPS 自己就持有句柄，
 独占探测会误伤「重新打开已经打开的文件」）；② 不可达网络盘的预检 —— `Test-Path` 本身就会阻塞，没有
 便宜的带超时探测。两条都属「打开路径」风险，已在 README 的已知限制里点名。
+### 73. warnings 真正到模型：一处收集、一处回传（含 Word 侧共用解析点）
+
+**问题**：桥侧 `Add-WpsWarning` / `Add-WpsAmbiguousTargetWarning` 收集的提示，宿主会同时挂在结果根与
+`data.warnings` 上；但**只有原样透传的三条面**（`wps_call` / `wps_execute_method` / `wps_batch` 单项）能
+看到 —— 第一方 handler 各自取字段、自建 data，`mcp/src` 里 `warnings` 的出现次数是 **0**。于是 C7 目标
+歧义警告、best-effort 失败提示在约 260 个工具上等于不存在，而 README 却写着「结果里的 warnings 要扫一眼」。
+
+**做法（一处收集、一处回传，不碰 200+ handler）**
+
+- 新增 `mcp/src/utils/tool-warnings.ts`：用 `AsyncLocalStorage` 把收集器绑定到单次 `tools/call`；
+  `runWithWarningCollector()` 开作用域，`collectToolWarnings()` 往里收。
+- `wps-client.invokeAction` 是所有调用的必经之路：拿到响应就把**根**与 `data.warnings` 收进去（失败的
+  结果也收 —— 部分成功同样要说清）。
+- `tool-registry.callTool` 是所有结果的唯一出口：把收集到的提示附在结果文本后面（`注意（N 条…）`）；
+  **已经在文本里的不重复追加**，所以 `wps_execute_method` 那种原样透传不会被写两遍。
+
+**顺手补上 C7 的最后一处解析点**：Word 侧此前**没有共用解析点**（FIXES 64 记录在 `baseline/known-defects.md`），
+56 处动作直接取 `$word.ActiveDocument`，多文档同时打开时既不提醒、也说不清落在哪一份上。新增
+`Get-ActiveWordDocument`（措辞与 Excel / PPT 的解析点一致），把 56 处赋值一次性改道；单文档时不打扰。
+
+**核实过的两条「其实不是问题」**（审计时列在 C7 残留里）：
+
+- `copySheet` 已经在用 `Resolve-Worksheet -RequireName`（共用解析点），本来就会警告 / 拒绝；
+- `transpose` 的「目标表」其实是同一个解析出来的表上的目标格，没有第二个表可指认。
+
+**验收**：新增 `test/warning-channel.test.mjs` **12 项**（真实 WPS）：两个工作簿 → `read_range`（第一方）
+带出「检测到 2 个打开的工作簿」+ `注意（1 条`；`write_range` 同样；`wps_call` 包第一方工具恰好出现一次；
+`wps_execute_method` 的原样 JSON 不被重复追加；显式指定 sheet 后干净；两个文档 → `wps_word_get_document_text`
+带出 Word 侧警告；外加两条静态断言（客户端收集、注册表附回）。
+
+**仍未覆盖**：warnings 只附在**文本**上，没有做成结构化字段（有些 handler 的结果里根本没有 `data`）；
+batch 单项结果按 2000 字符截断时，附在末尾的警告可能被切掉。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

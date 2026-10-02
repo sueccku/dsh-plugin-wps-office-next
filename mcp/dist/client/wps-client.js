@@ -14,6 +14,7 @@ const logger_1 = require("../utils/logger");
 const error_1 = require("../utils/error");
 const com_host_1 = require("./com-host");
 const node_fs_1 = require("node:fs");
+const tool_warnings_1 = require("../utils/tool-warnings");
 // ==================== PPT 目标文稿锁定（避免多文稿打开时 ActivePresentation 漂移）====================
 // 通过 wps_ppt_set_active_target 设置后，所有 PRESENTATION 类调用（executeMethod 带 WpsAppType.PRESENTATION）
 // 自动注入 presentationName，由 wps-com.ps1 的 Get-TargetPres 精确定位目标文稿；单次调用显式传 presentationName 可覆盖。
@@ -66,6 +67,10 @@ class WpsClient {
         (0, logger_1.logRequest)(action, params);
         try {
             const result = await execWpsAction(action, params);
+            // 桥侧把 warnings 同时挂在结果根与 data 上；这里收进本次工具调用的作用域，
+            // 由 tool-registry 统一附回结果文本（FIXES 73）。失败的结果也收：部分成功同样要说清。
+            (0, tool_warnings_1.collectToolWarnings)(result?.warnings);
+            (0, tool_warnings_1.collectToolWarnings)(result?.data?.warnings);
             const duration = Date.now() - startTime;
             (0, logger_1.logResponse)(action, result.success, duration);
             traceCall(action, params, result.success === true);

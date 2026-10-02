@@ -17,6 +17,7 @@ const ALLOWLIST = {
     "if ($kind -ne 'excel') { try { $active.Visible = $true } catch { } }": { count: 1, reason: "Get-WpsApp: make a reused non-Excel instance visible; harmless if it refuses" },
     "if ($kind -ne 'excel') { try { $created.Visible = $true } catch { } }": { count: 1, reason: "Get-WpsApp: same, for the freshly created instance" },
     "} catch { }": { count: 10, reason: "function-level fallback: Get-WpsApp / Get-RangeAddressSafe / Get-ListObjectAddress / Get-WpsRangeImpact / Get-WpsAppRealVersion fall back to a default when the read fails, the FIXES 66 ownership record (Save-WpsOwnedApps / Clear-WpsOwnedApps) plus the per-kind reclaim quit are best effort, and Format-WpsInputPathError skips path normalisation when it throws" },
+    "try { $openCount = [int]$word.Documents.Count } catch { }": { count: 1, reason: "Get-ActiveWordDocument: count open documents to warn about an ambiguous active target; skip the warning if the count cannot be read" },
     "try { $app.Quit(); $closed += $kind } catch { }": { count: 1, reason: "Close-WpsAppsStartedByUs: a failed Quit only means one instance is not released" },
     "try { $app.DisplayAlerts = $prev } catch { }": { count: 1, reason: "Restore-WpsAlerts: a failed restore degrades to silence, the action result is already in hand" },
     "try { return [int]$range.Application.WorksheetFunction.CountA($range) } catch { }": { count: 1, reason: "Get-WpsRangeNonEmpty: preferred count path; falls through on failure" },

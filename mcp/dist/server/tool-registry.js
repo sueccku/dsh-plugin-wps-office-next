@@ -13,6 +13,7 @@ exports.RegisterTool = RegisterTool;
 const uuid_1 = require("uuid");
 const tools_1 = require("../types/tools");
 const logger_1 = require("../utils/logger");
+const tool_warnings_1 = require("../utils/tool-warnings");
 const error_1 = require("../utils/error");
 const logger = (0, logger_1.createChildLogger)('ToolRegistry');
 /**
@@ -129,12 +130,13 @@ class ToolRegistry {
         try {
             // 验证参数
             this.validateArguments(tool.definition, args);
-            // 执行handler
-            const result = await tool.handler(args);
+            // 执行handler，同时收集桥侧留下的 warnings
+            const { value: result, warnings } = await (0, tool_warnings_1.runWithWarningCollector)(() => tool.handler(args));
+            const withWarnings = this.attachWarnings(result, warnings);
             const duration = Date.now() - startTime;
-            logger.info(`Tool executed: ${name}`, { id, duration, success: result.success });
+            logger.info(`Tool executed: ${name}`, { id, duration, success: result.success, warnings: warnings.length });
             return {
-                ...result,
+                ...withWarnings,
                 id,
             };
         }
@@ -158,6 +160,26 @@ class ToolRegistry {
                 error: execError.message,
             };
         }
+    }
+    /**
+     * 把「尽力而为的失败」附在结果文本后面。第一方 handler 会丢掉桥侧的 warnings，这里统一补上；
+     * 已经出现在文本里的（wps_call / wps_execute_method / wps_batch 的原样透传）不重复追加（FIXES 73）。
+     */
+    attachWarnings(result, warnings) {
+        if (!warnings.length)
+            return result;
+        const missing = warnings.filter((w) => !result.content.some((block) => block.type === 'text' && typeof block.text === 'string' && block.text.includes(w)));
+        if (!missing.length)
+            return result;
+        const note = '\n\n注意（' + missing.length + ' 条，主操作已完成，但其中某些步骤没有成功）：\n' +
+            missing.map((w) => '- ' + w).join('\n');
+        if (!result.content.length) {
+            return { ...result, content: [{ type: 'text', text: note.trim() }] };
+        }
+        return {
+            ...result,
+            content: result.content.map((block, index) => index === 0 && block.type === 'text' ? { ...block, text: (block.text ?? '') + note } : block),
+        };
     }
     /**
      * 验证参数 - 检查必填参数是否都有

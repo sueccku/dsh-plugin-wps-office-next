@@ -1,0 +1,1 @@
+{"version":3,"file":"tool-warnings.d.ts","sourceRoot":"","sources":["../../src/utils/tool-warnings.ts"],"names":[],"mappings":"AAWA,6CAA6C;AAC7C,wBAAsB,uBAAuB,CAAC,CAAC,EAC7C,EAAE,EAAE,MAAM,OAAO,CAAC,CAAC,CAAC,GACnB,OAAO,CAAC;IAAE,KAAK,EAAE,CAAC,CAAC;IAAC,QAAQ,EAAE,MAAM,EAAE,CAAA;CAAE,CAAC,CAK3C;AAED,uDAAuD;AACvD,wBAAgB,mBAAmB,CAAC,KAAK,EAAE,OAAO,GAAG,IAAI,CAMxD"}

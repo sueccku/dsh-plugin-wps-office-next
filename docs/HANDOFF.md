@@ -119,11 +119,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **37,573** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 153,777 字节 | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **914 断言 / 45 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
+| 测试 | **926 断言 / 46 个测试文件** | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 59`、`UNTOOLED_ACTIONS = 7` | `test/spec-reproduction.test.mjs` |
 | 参数契约 | 256 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～72 号 | `docs/FIXES.md` |
+| FIXES | 1～73 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT 76 / 通用 14。
 
@@ -281,7 +281,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `scripts/lint-alerts.mjs` | **弹框守卫门禁**（FIXES 70）：可能弹框的调用必须关 `DisplayAlerts` 并还原，且不许绕过两个共用助手 |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | 45 个文件、914 断言；账本在 `spec-reproduction.test.mjs` |
+| `test/*.test.mjs` | 46 个文件、926 断言；账本在 `spec-reproduction.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
@@ -293,7 +293,8 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 | `test/alerts-gate.test.mjs` | FIXES 70：弹窗守卫门禁自己的断言（**不需要 WPS**，已进 CI） |
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
-| `docs/FIXES.md` | 1～72 号修复记录（**新 bug 继续追加编号**） |
+| `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
+| `docs/FIXES.md` | 1～73 号修复记录（**新 bug 继续追加编号**） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

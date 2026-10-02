@@ -52,6 +52,8 @@ export interface WpsApiResponse<T = unknown> {
   error?: string;
   /** 错误码 */
   errorCode?: number;
+  /** 桥侧收集的「尽力而为的失败」提示：第一方 handler 不该自己拼，由注册表统一附回结果（FIXES 73） */
+  warnings?: string[];
 }
 
 /**
