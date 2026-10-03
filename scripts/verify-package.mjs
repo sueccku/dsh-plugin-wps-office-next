@@ -29,8 +29,17 @@ function check(name, ok, detail) {
 /** Resolve (or build) the plugin root that should be smoke-tested. */
 function resolvePluginRoot() {
   if (rootArg >= 0 && argv[rootArg + 1]) return argv[rootArg + 1];
-  // shell: true because npm on Windows is a .cmd shim; --no-deprecation keeps DEP0190 out of the output.
-  const npmOpts = { cwd: ROOT, encoding: 'utf8', shell: true, env: { ...process.env, NODE_OPTIONS: '--no-deprecation' } };
+  // npm must run with a *clean* child environment: when this script is started through "npm run", npm exports its own
+  // npm_config_* / npm_lifecycle_* variables into the environment, the nested npm inherits them, and the install aborts
+  // in a couple hundred ms (observed: exit 1, 222ms, nothing installed, then "Cannot find module .../mcp/dist/index.js").
+  // Direct invocation - how docs/release-checklist.md §3.1 used to call it - never exposed that. Stripping them is what
+  // makes this script safe to run from an npm script, i.e. from CI (FIXES 85).
+  const childEnv = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => !/^npm_(config|lifecycle|package)_/i.test(k)),
+  );
+  childEnv.NODE_OPTIONS = '--no-deprecation'; // keeps DEP0190 out of the output
+  // shell: true because npm on Windows is a .cmd shim.
+  const npmOpts = { cwd: ROOT, encoding: 'utf8', shell: true, env: childEnv };
   const packed = spawnSync('npm', ['pack', '--dry-run', '--json'], npmOpts);
   if (packed.status !== 0) { console.log('FAIL npm pack --dry-run'); console.log(packed.stderr); process.exit(1); }
   const manifest = JSON.parse(packed.stdout)[0];

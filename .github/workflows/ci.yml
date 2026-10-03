@@ -80,6 +80,12 @@ jobs:
       - name: Committed contract report must match
         run: git diff --exit-code -- docs/param-contract.md
 
+      # FIXES 84: 0.6.0 shipped without mcp/package.json (the CommonJS boundary of mcp/dist) and the published
+      # server could not even start. File-list checks cannot see that class of defect, so the packaged tarball is
+      # installed here for real and the MCP server is started for a JSON-RPC handshake. No WPS needed (~12-60s).
+      - name: Packaged tarball installs and the MCP server boots (FIXES 84 gate)
+        run: npm run verify:package
+
       - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger, argument shape guard, encrypted-file preflight, removed aliases, modal-dialog gate)
         run: |
           node test/plugin.test.mjs

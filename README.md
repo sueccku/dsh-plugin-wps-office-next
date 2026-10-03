@@ -358,8 +358,8 @@ node scripts\gen-skill-tools.mjs
 npm run lint
 node scripts\verify.mjs
 node scripts\param-contract.mjs
-node scripts\verify-package.mjs       # 打包产物冒烟：装一遍 + 启动 MCP server 握手（不需要 WPS）
-#    ↑ 这一条**不在 CI 里**（只在发布检查单里强制）；改动 package.json 的 files 时**必须**跑
+npm run verify:package                 # 打包产物冒烟：装一遍 + 启动 MCP server 握手（不需要 WPS）
+#    ↑ CI 也会跑（FIXES 84 的门禁）；改动 package.json 的 files 时**必须**本地跑一次
 
 # 5) 需要本机 WPS 的部分
 #    逐文件跑测试前先清掉插件自己发布的两个环境变量 —— 这个终端若是从「已装本插件」的

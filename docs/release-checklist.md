@@ -90,7 +90,7 @@ node scripts\gen-tool-coverage.mjs;    git diff --exit-code -- docs/tool-coverag
 npm run lint
 node scripts\verify.mjs --static
 node scripts\param-contract.mjs;       git diff --exit-code -- docs\param-contract.md
-node scripts\verify-package.mjs        # 打包产物运行期冒烟：装一遍 + 启动 MCP server 握手（必跑，见 §3.1）
+npm run verify:package                 # 打包产物运行期冒烟：装一遍 + 启动 MCP server 握手（必跑，见 §3.1；CI 也跑）
 # 逐文件跑测试前先清掉插件自己发布的两个环境变量，否则 plugin.test.mjs 会假失败：
 # $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
 ```
@@ -111,7 +111,11 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 }
 ```
 
-**期望值（0.6.1 实测）**：`files=288  packed≈600KB  unpacked≈3.03MB`（`entryCount` 会报 289，多出来的是 npm 强制包含的 `package.json`）。
+**期望值**（**2026-10-03 当场实测**）：`files=290 / entryCount=290  packed≈580KB  unpacked≈3.04MB`。
+
+> 这行数字**会随仓库增长漂移**（0.6.1 发布时是 288 + `entryCount` 289、3.03MB；现在源码与脚本变多，已是 290 / 3.04MB）。
+> 所以它只是**量具的读数**，不是断言：真正的断言在 §3.1 的 `verify-package.mjs` 里（包内必需文件 + server 真的能起来）。
+> 每次发布照上面那条命令**重新量一次**，顺手把这一行更新掉，别照抄本文的历史数字。
 
 必须出现、且一个都不能少：
 
@@ -151,8 +155,14 @@ $b = [System.IO.File]::ReadAllBytes('mcp\scripts\wps-com.ps1')
 ### 3.1 一条命令：`node scripts\verify-package.mjs`（**发布前必跑**）
 
 它自己完成 `npm pack` → 装进临时目录 → **真的把 MCP server 拉起来做一次 JSON-RPC 握手** → 断言 `tools/list`
-广告 69 个工具、`wps_status` 在列。**不需要 WPS**，全程只碰临时目录。10 个断言全绿会打印
-`PACKAGE RUNTIME OK`。
+广告 69 个工具、`wps_status` 在列。**不需要 WPS**，全程只碰临时目录。**11 个断言**全绿会打印
+`PACKAGE RUNTIME OK`（2026-10-03 实测：12.4 秒、11/11）。
+
+> **CI 也会跑它**（2026-10-03 起，D6-B）：`.github/workflows/ci.yml` 里新增 gate `npm run verify:package`——
+> 所以这一关不再依赖「人记得跑」。本地仍建议在**改动 `package.json` 的 `files` 时**手动跑一次。
+>
+> **务必照上面这条命令（经 `npm run`）跑**，别改成 `node scripts\verify-package.mjs`：两者的环境不同，
+> 这个脚本曾在「直接调用全绿、经 `npm run` 必挂」的差异下藏了一个真缺陷（FIXES 85 —— 现已修，但仍按 CI 的命令验）。
 
 > **为什么加这一关（FIXES 84）**：0.6.0 发布时只核对了「文件在不在」，而漏发的 `mcp/package.json` 是个
 > **运行期**缺件 —— 文件清单检查永远抓不到它，唯一能抓住的办法就是把 server 真的启动一次。

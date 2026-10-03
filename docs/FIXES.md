@@ -2427,7 +2427,38 @@ This file is being treated as an ES module because it has a '.js' file extension
 - 本轮复核：`node scripts/verify.mjs --static` **19 项全绿**、`node scripts/doctor.mjs` 打印 **DOCTOR OK**。
 
 **办法**：凡改动「包内文件集合」的发布，验证必须落到**执行入口**（进程能启动 → 协议握手 → 再跑一条真实调用）；
-只看文件清单与依赖解析不够。`verify-package.mjs` 现在还**只在检查单里**、没进 CI（要进 CI 需单独拍板）。
+只看文件清单与依赖解析不够。
+
+## 85. 进 CI 的那一刻就现形：`verify-package` 在 `npm run` 下必挂（已修）
+
+**背景**：把 FIXES 84 的 `verify-package.mjs` 接进 CI（`npm run verify:package`，本轮 D6-B）后，**第一次本地验证就红了**。
+
+**症状**：`npm run verify:package` → `exit 1`、`PACKAGE RUNTIME FAILED (7/8)`，服务端找不到入口：
+
+```
+Error: Cannot find module '...\consumer\node_modules\dsh-plugin-wps-office-next\mcp\dist\index.js'
+```
+
+**关键**：**同一个脚本直接 `node scripts/verify-package.mjs` 是 11/11 全绿**。也就是说，成败取决于**怎么被调用**——
+检查单里人一直手敲直接调用，所以这个缺陷从来没露过面。
+
+**根因**：`npm run` 会往环境里注入 `npm_config_*` / `npm_lifecycle_*` / `npm_package_*`；脚本内部又用 `spawnSync('npm', …)`
+自己 `pack` + `install`，**子 npm 继承了这一串变量**，`npm install` 于是秒退，tarball 根本没装进去。
+
+**判据（决定性的一个实验）**：给干净环境**只加一个** `npm_config_loglevel=not-a-level` 再直接跑脚本 ——
+
+| 环境 | 结果 |
+| --- | --- |
+| 干净 | exit 0、**4749 ms**、11/11 |
+| `npm_config_loglevel=silent` | exit 0、4776 ms、11/11（合法值：无害） |
+| `npm_config_loglevel=not-a-level` | **exit 1、222 ms**、什么都没装 |
+
+**修法**：`npmOpts.env` 改成**剥掉 `npm_(config|lifecycle|package)_*` 的子环境**，再显式设 `NODE_OPTIONS=--no-deprecation`。
+修后三种跑法全绿：`npm run verify:package` / 直接调用 / **被污染环境**（后者本身就是回归断言）。
+
+**教训（与 FIXES 84 同类，但换了件衣服）**：84 是「文件清单检查 ≠ 执行入口检查」；85 是
+**「直接跑 ≠ 经 npm 跑」——环境的继承也会让同一个脚本表现不同**。凡是新接进自动化（CI、npm script、任务运行器）的脚本，
+第一次都要**用自动化的那条命令**验一遍，而不是用手敲的那条。
 
 ## 验证
 

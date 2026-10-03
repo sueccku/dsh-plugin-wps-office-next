@@ -127,6 +127,45 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 
 ---
 
+### 3.5 决策登记表（**跨会话的单一账本**，D12-A）
+
+> **为什么要这张表**：决策散落在 CHANGELOG / FIXES / release-checklist / 本文件各处，很值钱但捞不出来。
+> 以后**新决策写进这里**，并注明它在别处落在哪个版本/FIXES 号上。
+>
+> **编号消歧**：历史发布用过 D1–D18（0.6.0 那次），**本轮又用了 D5–D12** —— 所以同一个号在不同轮次含义不同；
+> 引用时一律写「**哪一轮**的哪个号」或带上 FIXES/版本号，别只写「D5」。
+
+| 轮次 | # | 问题 | 结论 | 落地 |
+| --- | --- | --- | --- | --- |
+| 加固期 | D1 | 广告预算上限 | ≤ 100 工具 / ≤ 60,000 字节 | FIXES 68 |
+| 加固期 | D2 | Word 长尾做不做减法 | 全都要 | P3 |
+| 加固期 | D3 | PPT 收敛范围 | 删媒体/SmartArt/讲义/3D/美化族，留版式/主题/尺寸/母版/节 | P4 |
+| 加固期 | D4 | 18 个废弃工具名 | 保留一个周期 —— **已被 v0.5.0 线决策推翻**（清掉，ALIAS_DEBT 归零） | FIXES 77 |
+| 0.5.x | D7 | 参数命名策略 | A：公开名对齐桥键，59 处全改 | FIXES 77 |
+| 0.5.x | D8 | `set_cell_format` 扁平参数 | A：补进 schema（11 个扁平属性） | FIXES 78 |
+| 0.5.x | D11–D15 | 桥键统一（一个概念一个键） | A / B / A / A / B：语义分组、统一 `transition`、统一 `url`、只收真同义、旧键本轮直接删 | FIXES 79 |
+| 0.5.x | D17 | 未工具化 action 账本 | A：删 4 个重复/死代码 + 补 2 个真缺口（7 → 2） | FIXES 80 |
+| 0.6.0 | D2 / D3 / D4 / D5 | 打包载荷 / 首发版本 / 源与凭证 / 流程 | A / A / B / A：`files` 改显式子路径、首发 0.6.0、`publishConfig.registry` 入库且凭证不入库、只维护文档检查单（无 `prepublishOnly`、无发布 CI） | [release-checklist.md](release-checklist.md) 开头 |
+| 0.6.0 | D18 | 对外发布 | 由 B（只准备不发布）**改为 A**（上架 npm；首发 0.6.0 坏、0.6.1 修好） | FIXES 84 |
+| **本轮**<br>2026-10-03 | **D1** | 下一步做哪一件 | **A 工程/文档收尾**（B 进 CI、C 广告面重平衡、D 弱覆盖补测、E 产品扩张 均未启动） | 提交 `471b48d` |
+| **本轮** | **D5** | 这 3 个文档改动怎么处理 | **A**：只提交明确路径并推 `origin/main` | `471b48d` |
+| **本轮** | **D6** | `verify-package` 是否进 CI | **B**：加 `npm run verify:package` + CI gate（实测 12.4 秒、11/11、不需要 WPS）——**接进去的第一分钟就抓到 FIXES 85** | CI `verify:package` gate |
+| **本轮** | **D13** | `npm run` 下脚本必挂怎么办 | **A**（自动，无需另拍板）：既然是 D6-B 的门禁自身不可用，就修到可用——剥掉 npm 注入的环境再跑子 npm；直接调用 / `npm run` / 污染环境三种跑法全绿 | FIXES 85 |
+| **本轮** | **D7** | 检查单的包体积期望值 | **A**：当场重测（`290 / 290 / 580KB / 3.04MB`）+ 注明会漂移 | release-checklist §2 |
+| **本轮** | **D8** | `param-contract` 长时挂起 | **A**：先定性 —— 重跑正常（**秒级完成、257 对、A/B/C/D 全 0**），**未能复现**；挂起原因未定 | 见「挂起」栏 |
+| **本轮** | **D9** | 75 个工具只有最弱断言（`any`） | **挂起**：先记着不做，**下一轮由我提醒**；再做时在 A（按域补真场景测试）/ B（只补最易错 5–8 个）之间选 | 未开工 |
+| **本轮** | **D10** | 历史阶段数字（816/842/856） | **B**：保留原样，只加「当时的读数」标注（不改历史） | `docs/PROGRESS.md` 10 处 |
+| **本轮** | **D11** | 与 DSH 自带离线 office 技能的边界 | **A**：只保留文档提醒，**不**改技能提示词（FIXES 82 已有共存提醒） | 无需改动 |
+| **本轮** | **D12** | 决策记录放哪 | **A**：写进本文件这一节（`docs/` 入库、跨会话可见） | 本节 |
+
+**挂起项（明确不做、但要记得）**
+
+| # | 内容 | 唤醒条件 |
+| --- | --- | --- |
+| D9（本轮） | 96 个工具没有专门测试、其中 **75 个只断言「没挂住」**（按 [tool-coverage.md](tool-coverage.md)：PPT 77 个里 32 个、Excel 118 个里 23 个、Word 59 个里 15 个） | **下一轮我主动提醒**；或某次真机回归在这些路径上红了 |
+| D8 残余 | `param-contract` 那次 2 小时挂起**未复现、未定性**（只读脚本，正常几秒） | 再出现一次时抓现场（别用 `Select-Object -Last N` 包住输出，会看不到进度） |
+| D1-C/D/E（本轮） | 广告面重平衡 / 弱覆盖补测 / 产品扩张 | 分别需要：真实用法数据（**已在 §8 沉淀**）/ D9 排期 / 明确的目标客户与场景 |
+
 ## 4. 架构与契约管线（顺序不能错）
 
 三层，桥是唯一真源：
@@ -168,7 +207,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～84 号 | `docs/FIXES.md` |
+| FIXES | 1～85 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
@@ -450,7 +489,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～84 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故） |
+| `docs/FIXES.md` | 1～85 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |
