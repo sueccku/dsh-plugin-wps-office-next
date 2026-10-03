@@ -4900,7 +4900,7 @@ exports.operations = [
         "tool": "wps_ppt_group_shapes",
         "action": "groupShapes",
         "app": "ppt",
-        "summary": "将幻灯片中的多个形状组合为一个组。\n\n使用场景：\n- \"把这几个形状组合在一起\"\n- \"将第1、2、3个形状编组\"",
+        "summary": "将幻灯片中的多个形状组合为一个组。\n\n使用场景：\n- \"把这几个形状组合在一起\"\n- \"将第1、2���3个形状编组\"",
         "params": {
             "slideIndex": {
                 "type": "number",
@@ -4994,7 +4994,7 @@ exports.operations = [
             },
             "width": {
                 "type": "number",
-                "description": "宽度（磅），���选，不指定则按原始比例"
+                "description": "宽度（磅），可选，不指定则按原始比例"
             },
             "height": {
                 "type": "number",
@@ -6545,20 +6545,24 @@ exports.operations = [
             },
             "range": {
                 "type": "object",
-                "description": "指定范围，不填则应用到当前选中区域",
+                "description": "指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。",
                 "schema": {
                     "type": "object",
-                    "description": "指定范围，不填则应用到当前选中区域",
+                    "description": "指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。",
                     "properties": {
                         "start": {
                             "type": "number",
-                            "description": "起始位置（字符索引）"
+                            "description": "起始位置（字符索引，0 基）"
                         },
                         "end": {
                             "type": "number",
-                            "description": "结束位置（字符索引）"
+                            "description": "结束位置（字符索引，不含）"
                         }
-                    }
+                    },
+                    "required": [
+                        "start",
+                        "end"
+                    ]
                 }
             }
         },
@@ -6869,7 +6873,7 @@ exports.operations = [
         "tool": "wps_word_get_paragraphs",
         "action": "getDocumentParagraphs",
         "app": "word",
-        "summary": "获取Word文档的段落结构信息，返回每段的文本、样式和字符位置。\n\n使用场景：\n- \"了解文档的结构\"\n- \"查看文档有哪些段落\"\n- \"帮我看看模板里有哪些需要填写的位置\"\n- 在填写模板前，先读取文档结构以识别填写位置\n\n返回信息包括：段落索引、文本内容、样式名称、字符起止位置。\n支持分页获取（startParagraph/endParagraph），默认返回前50段。",
+        "summary": "获取Word文档的段落结构信息，返回每段的文本、样式和字符位置。\n\n使用场景：\n- \"了解文档的结构\"\n- \"查看文档有哪些段落\"\n- \"帮我看看模板里有哪些需要填写的位置\"\n- 在填写模板前，先读取文档结构以识别填写位置\n\n返回信息包括：段落索引、文本内容、样式名称，以及每段的**字符起止坐标**（@start-end，0 基、end 不含）。\n坐标可以直接喂给 wps_word_set_font / wps_word_apply_style 的 range:{start,end}，用来\"只给这一段加粗\"。\n支持分页获取（startParagraph/endParagraph），默认返回前50段。",
         "params": {
             "startParagraph": {
                 "type": "number",
@@ -7232,8 +7236,7 @@ exports.operations = [
             },
             "new_paragraph": {
                 "type": "boolean",
-                "description": "插入后是否新起一段，默认false",
-                "kind": "local"
+                "description": "插入后是否新起一段，默认false"
             }
         },
         "effect": "write",
@@ -7411,6 +7414,10 @@ exports.operations = [
                 "type": "string",
                 "description": "替换后的文本内容",
                 "required": true
+            },
+            "confirm": {
+                "type": "boolean",
+                "description": "确认批量删除。当这次替换会删掉超过 1 个段落标记（即跨段删除）时必须显式传 true，否则会被拒绝——这是为了防止一次范围算错就抹掉整段内容。单段内的替换不需要它。"
             }
         },
         "effect": "write",
@@ -7480,12 +7487,26 @@ exports.operations = [
                 "description": "字体颜色，支持颜色名称(red/blue/green)或十六进制(#FF0000)"
             },
             "range": {
-                "type": "string",
-                "description": "应用范围，可选值: \"selection\"(当前选中), \"all\"(全文)。默认selection",
-                "enum": [
-                    "selection",
-                    "all"
-                ]
+                "type": "object",
+                "description": "作用范围（0 基字符偏移，end 不含）。用 wps_word_get_paragraphs 拿每段的 start/end 再传进来，例如 {start: 12, end: 40} 只给这一段加粗。传 \"all\" 表示全文；不传表示当前选中内容（没有选中时是空范围，什么都不会变）",
+                "schema": {
+                    "type": "object",
+                    "description": "作用范围（0 基字符偏移，end 不含）。用 wps_word_get_paragraphs 拿每段的 start/end 再传进来，例如 {start: 12, end: 40} 只给这一段加粗。传 \"all\" 表示全文；不传表示当前选中内容（没有选中时是空范围，什么都不会变）",
+                    "properties": {
+                        "start": {
+                            "type": "number",
+                            "description": "起始字符位置（0 基）"
+                        },
+                        "end": {
+                            "type": "number",
+                            "description": "结束字符位置（不含）"
+                        }
+                    },
+                    "required": [
+                        "start",
+                        "end"
+                    ]
+                }
             }
         },
         "effect": "write",

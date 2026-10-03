@@ -46,17 +46,19 @@ exports.applyStyleDefinition = {
             },
             range: {
                 type: 'object',
-                description: '指定范围，不填则应用到当前选中区域',
+                description: '指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。' +
+                    '注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。',
                 properties: {
                     start: {
                         type: 'number',
-                        description: '起始位置（字符索引）',
+                        description: '起始位置（字符索引，0 基）',
                     },
                     end: {
                         type: 'number',
-                        description: '结束位置（字符索引）',
+                        description: '结束位置（字符索引，不含）',
                     },
                 },
+                required: ['start', 'end'],
             },
         },
         required: ['styleName'],
@@ -67,15 +69,27 @@ const applyStyleHandler = async (args) => {
     try {
         const response = await wps_client_1.wpsClient.executeMethod('applyStyle', { styleName: styleName, range }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
+            const d = response.data;
+            const paragraphs = Array.isArray(d.affectedParagraphs) ? d.affectedParagraphs : [];
+            const lines = [
+                '样式应用成功！',
+                `样式: ${styleName}`,
+                // affectedText 现在是赋值**之前**的快照（以前是赋值之后读的，范围已被 Word 扩张，所以那个值是错的）
+                `影响的文本: ${d.affectedText}`,
+            ];
+            if (paragraphs.length) {
+                lines.push(`影响的段落: 第 ${paragraphs.join('、')} 段`);
+            }
+            if (typeof d.range?.start === 'number' && typeof d.range?.end === 'number') {
+                lines.push(`实际作用范围: ${d.range.start}-${d.range.end}`);
+            }
+            if (paragraphs.length > 1) {
+                lines.push(`注意：段落样式作用于与范围相交的整段，本次连带影响了 ${paragraphs.length} 个段落。范围只能决定从哪一段开始。`);
+            }
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `样式应用成功！\n样式: ${styleName}\n影响的文本: ${response.data.affectedText}`,
-                    },
-                ],
+                content: [{ type: 'text', text: lines.join('\n') }],
             };
         }
         else {
@@ -138,9 +152,14 @@ exports.setFontDefinition = {
                 description: '字体颜色，支持颜色名称(red/blue/green)或十六进制(#FF0000)',
             },
             range: {
-                type: 'string',
-                description: '应用范围，可选值: "selection"(当前选中), "all"(全文)。默认selection',
-                enum: ['selection', 'all'],
+                type: 'object',
+                description: '作用范围（0 基字符偏移，end 不含）。用 wps_word_get_paragraphs 拿每段的 start/end 再传进来，' +
+                    '例如 {start: 12, end: 40} 只给这一段加粗。传 "all" 表示全文；不传表示当前选中内容（没有选中时是空范围，什么都不会变）',
+                properties: {
+                    start: { type: 'number', description: '起始字符位置（0 基）' },
+                    end: { type: 'number', description: '结束字符位置（不含）' },
+                },
+                required: ['start', 'end'],
             },
         },
         required: [],
@@ -159,6 +178,10 @@ const setFontHandler = async (args) => {
         };
     }
     try {
+        // 范围显式解析：对象直接透传（桥会做边界校验），"all" 表示全文，未指定则由桥用当前选区。
+        // 旧版这里恒发 range: range || 'selection'，而桥是 if ... -eq "all" else 选区 —— "selection" 永远落进 else，
+        // 于是"设了但没生效"（FIXES 86 的 B1）。现在没有任何隐式兜底。
+        const resolvedRange = range === 'all' ? 'all' : range && typeof range === 'object' ? range : undefined;
         const response = await wps_client_1.wpsClient.executeMethod('setFont', {
             fontName: fontName,
             fontSize: fontSize,
@@ -166,10 +189,11 @@ const setFontHandler = async (args) => {
             italic,
             underline,
             color,
-            range: range || 'selection',
+            range: resolvedRange,
         }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const settings = response.data.settings;
+            const info = response.data.range;
             let settingStr = '';
             if (settings.fontName)
                 settingStr += `字体: ${settings.fontName}\n`;
@@ -181,13 +205,20 @@ const setFontHandler = async (args) => {
                 settingStr += `斜体: ${settings.italic ? '是' : '否'}\n`;
             if (settings.color)
                 settingStr += `颜色: ${settings.color}\n`;
+            // 如实回报**实际作用范围**：范围为空时上面那些"是"其实什么也没改（桥会同时发 warning）。
+            const scopeStr = info
+                ? `作用范围: ${info.start}-${info.end}（${info.resolve === 'characterRange' ? '指定字符范围' : info.resolve === 'all' ? '全文' : '当前选区'}），${info.characters} 个字符\n`
+                : '';
+            const emptyHint = info && info.characters === 0
+                ? '\n注意：作用范围里没有任何字符，格式没有实际落点。请用 range:{start,end} 指定文字范围（先用 wps_word_get_paragraphs 取坐标），或先在文档里选中内容。'
+                : '';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
                 content: [
                     {
                         type: 'text',
-                        text: `字体格式设置成功！\n${settingStr}`,
+                        text: `字体格式设置成功！\n${settingStr}${scopeStr}${emptyHint}`,
                     },
                 ],
             };

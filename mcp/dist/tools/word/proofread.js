@@ -151,12 +151,17 @@ exports.replaceRangeDefinition = {
                 type: 'string',
                 description: '替换后的文本内容',
             },
+            confirm: {
+                type: 'boolean',
+                description: '确认批量删除。当这次替换会删掉超过 1 个段落标记（即跨段删除）时必须显式传 true，否则会被拒绝——' +
+                    '这是为了防止一次范围算错就抹掉整段内容。单段内的替换不需要它。',
+            },
         },
         required: ['startPos', 'endPos', 'text'],
     },
 };
 const replaceRangeHandler = async (args) => {
-    const { startPos, endPos, text } = args;
+    const { startPos, endPos, text, confirm } = args;
     if (startPos === undefined || endPos === undefined) {
         return {
             id: (0, uuid_1.v4)(),
@@ -198,18 +203,24 @@ const replaceRangeHandler = async (args) => {
         };
     }
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('replaceRange', { startPos: startPos, endPos: endPos, text }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('replaceRange', { startPos: startPos, endPos: endPos, text, confirm: confirm === true }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const d = response.data;
+            // 回报**真实落点**：endPos 由桥在写完后回读，可能因换行/段落标记与请求值不同，
+            // 调用方据此就能判断自己算的范围对不对（FIXES 86 的诊断要求）。
+            const lines = [
+                '替换成功！',
+                `原文: "${d.originalText}"`,
+                `修改为: "${d.newText}"`,
+                `位置: ${d.startPos}-${d.endPos}${typeof d.requestedEndPos === 'number' && d.requestedEndPos !== d.endPos ? `（请求结束位置 ${d.requestedEndPos}）` : ''}`,
+            ];
+            if (typeof d.deletedParagraphs === 'number' && d.deletedParagraphs > 1) {
+                lines.push(`已确认的批量删除: ${d.deletedParagraphs} 个段落标记`);
+            }
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `替换成功！\n原文: "${d.originalText}"\n修改为: "${d.newText}"\n位置: ${d.startPos}-${d.endPos}`,
-                    },
-                ],
+                content: [{ type: 'text', text: lines.join('\n') }],
             };
         }
         return {

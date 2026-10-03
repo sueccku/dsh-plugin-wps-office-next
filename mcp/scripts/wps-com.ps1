@@ -402,6 +402,21 @@ function Get-TargetPres($ppt, $p) {
 
 # 解析目标文档：Word 侧此前没有共用解析点（FIXES 64 的 C7 残留），56 处动作各自取 ActiveDocument，
 # 多文档同时打开时既不会提醒、也说不清落在哪一份上。与 Excel / PPT 一致：先提醒，再返回活动文档。
+# FIXES 86：定位一段文本所在的段落号。段落索引不能拿插入前的坐标去数 —— 新建段落时那个 \v 会把后面
+# 的内容整体后移一位，插入点于是落到上一段的末尾（实测报成"第 1 段"）。这里按**文档顺序**在 Content.Text
+# 里找那段文本，数它前面有几个段落标记。找不到就回 0（调用方据此省略该字段，不假装知道）。
+function Find-WordParagraphOfText($doc, [string]$text) {
+    if (-not $text) { return 0 }
+    try {
+        $full = [string]$doc.Content.Text
+        $idx = $full.IndexOf($text)
+        if ($idx -lt 0) { return 0 }
+        $para = 1
+        foreach ($ch in $full.Substring(0, $idx).ToCharArray()) { if ($ch -eq [char]13 -or $ch -eq [char]11) { $para++ } }
+        return $para
+    } catch { return 0 }
+}
+
 function Get-ActiveWordDocument($word) {
     if ($null -eq $word) { return $null }
     $openCount = 0
@@ -4907,22 +4922,80 @@ switch ($Action) {
         $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         $position = if ($p.position) { $p.position } else { "cursor" }
+        # FIXES 86：样式必须落在**刚插入的文本**上。以前这里对 $word.Selection.Range 设样式 —— 那是插入前的
+        # 光标位置，于是 position:"end" 插入的标题被套到了用户光标所在的段落上（报告里 4 次全落错段）。
+        $paragraphsBefore = [int]$doc.Paragraphs.Count
+        # 新起一段的做法（实测三种写法后的结论）：**在文本之前**插段落标记，再插文本；这样文本独立成段。
+        # InsertParagraphAfter 会把标记追加到段末 → 文本仍留在原段、后面多出一个空段（正是报告的观感）。
+        # 插入结果：$nl 变成从"新段落标记"到文本末尾的范围，正是样式该作用的地方。
         switch ($position) {
-            "start" { $range = $doc.Range(0, 0); $range.InsertBefore($p.text) }
-            "end" { $range = $doc.Range($doc.Content.End - 1, $doc.Content.End - 1); $range.InsertAfter($p.text) }
-            default { $word.Selection.TypeText($p.text) }
+            "start" {
+                $anchor = $doc.Range(0, 0)
+                if ($p.new_paragraph) { $anchor.InsertBefore([string][char]13 + $p.text) } else { $anchor.InsertBefore($p.text) }
+                $range = $anchor
+            }
+            "end" {
+                $anchor = $doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
+                # InsertAfter 会把范围扩到包含新内容；段落标记写在文本前面，文本才会落到新段落里。
+                if ($p.new_paragraph) { $anchor.InsertAfter([string][char]13 + $p.text) } else { $anchor.InsertAfter($p.text) }
+                $range = $anchor
+            }
+            default {
+                $range = $word.Selection.Range
+                $range.Text = $p.text
+            }
         }
+        $paragraphsAfter = [int]$doc.Paragraphs.Count
+        $allowParagraphLoss = ($position -ne "end")
+        $paragraphAdded = ($paragraphsAfter -gt $paragraphsBefore) -or ($allowParagraphLoss -and $p.new_paragraph)
+        if ($p.new_paragraph -and $paragraphsAfter -le $paragraphsBefore -and -not $allowParagraphLoss) {
+            Add-WpsWarning ("请求了新起一段，但段落数没有增加（$paragraphsBefore → $paragraphsAfter）：文本可能被并进了上一段。")
+        }
+        $insertStart = [int]$range.Start
+        $insertEnd = [int]$range.End
         if ($p.style) {
-            try { $word.Selection.Range.Style = $p.style } catch { Add-WpsWarning $_.Exception.Message }
+            try { $range.Style = $p.style } catch { Add-WpsWarning ("样式 '$($p.style)' 未生效：" + $_.Exception.Message) }
         }
-        Output-Json @{ success = $true; data = @{ position = $position; textLength = $p.text.Length } }
+        # 段落索引要在**插入完成之后**再算，而且不能拿 $insertStart 去数：
+        # 新建段落时插入的那个 \v 会把后续内容整体后移一位，$insertStart 就落到了上一段的末尾（实测报成"第 1 段"）。
+        # 可靠做法：把当前各段文本按 \v 拼起来，按**文档顺序**找刚插入的文本在第几段。
+        $affectedParagraph = Find-WordParagraphOfText $doc ([string]$p.text)
+        $data = @{ position = $position; textLength = $p.text.Length; insertStart = $insertStart; insertEnd = $insertEnd; newParagraph = $paragraphAdded; paragraphsBefore = $paragraphsBefore; paragraphsAfter = $paragraphsAfter }
+        if ($p.style) { $data.style = $p.style }
+        if ($affectedParagraph -gt 0) { $data.affectedParagraph = $affectedParagraph }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "setFont" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
         $doc = Get-ActiveWordDocument $word
-        $range = if ($p.range -eq "all") { $doc.Content } else { $word.Selection.Range }
+        # FIXES 86（D15-A）：range 现在接受 {start,end}（0 基字符偏移，end 不含）或 "all"；省略 = 当前选区。
+        # 旧写法只有一个二选一判断（$p.range -eq "all" 否则选区），"按字符范围设字体"这条刚需路径根本不存在。
+        $resolvedRange = "selection"
+        if ($null -ne $p.range -and $null -ne $p.range.start -and $null -ne $p.range.end) {
+            $rs = [int]$p.range.start
+            $re = [int]$p.range.end
+            $contentEnd = [int]$doc.Content.End
+            if ($rs -lt 0 -or $re -lt 0 -or $rs -gt $re) {
+                Output-Json @{ success = $false; error = "字符范围不合法：start=$rs、end=$re（要求 0 ≤ start ≤ end）。（动作：setFont）下一步：用 getParagraphs 的 start/end 取真实坐标。" }
+                exit
+            }
+            if ($re -gt $contentEnd) {
+                Output-Json @{ success = $false; error = "字符范围超出文档：请求 [$rs, $re)，文档长度 $contentEnd。（动作：setFont）下一步：用 getParagraphs 的 start/end 取真实坐标；要改到文末就传 end=$contentEnd。" }
+                exit
+            }
+            $range = $doc.Range($rs, $re)
+            $resolvedRange = "characterRange"
+        } elseif ($p.range -eq "all") {
+            $range = $doc.Content
+            $resolvedRange = "all"
+        } else {
+            $range = $word.Selection.Range
+        }
+        $rangeStart = [int]$range.Start
+        $rangeEnd = [int]$range.End
+        $rangeText = "$($range.Text)"
         if ($p.fontName) { $range.Font.Name = $p.fontName }
         if ($p.fontSize) { $range.Font.Size = $p.fontSize }
         if ($null -ne $p.bold) { $range.Font.Bold = $p.bold }
@@ -4934,7 +5007,26 @@ switch ($Action) {
             if ($null -eq $colorValue) { $colorValue = Convert-HexColorToRgbInt([string]$p.color) }
             if ($null -ne $colorValue) { $range.Font.Color = $colorValue }
         }
-        Output-Json @{ success = $true; data = @{ settings = @{ fontName = $p.fontName; fontSize = $p.fontSize; bold = $p.bold; italic = $p.italic; underline = $p.underline; color = $p.color } } }
+        # FIXES 86（D16-A）：写入后读回。范围是空的（光标折叠、没有选中内容）时设字体是纯 no-op，
+        # 以前照样回 success —— 调用方以为改好了，磁盘上却什么都没变。读回对不上就走 warning 通道如实说。
+        $readBack = @{}
+        try {
+            $readBack.fontName = "$($range.Font.Name)"
+            $readBack.fontSize = $range.Font.Size
+            $readBack.bold = $range.Font.Bold
+        } catch { }
+        if ($rangeText.Length -eq 0) {
+            Add-WpsWarning ("目标范围是空的（$rangeStart-$rangeEnd，没有字符），字体设置不会产生任何效果：请先用 range:{start,end} 指定文字范围，或先在文档里选中内容。")
+        } else {
+            if ($p.fontName -and $readBack.fontName -and $readBack.fontName -ne [string]$p.fontName) {
+                Add-WpsWarning ("字体名没有生效：请求 '$($p.fontName)'，读回 '$($readBack.fontName)'。")
+            }
+            if ($p.fontSize -and $readBack.fontSize -and [double]$readBack.fontSize -ne [double]$p.fontSize) {
+                Add-WpsWarning ("字号没有生效：请求 $($p.fontSize)，读回 $($readBack.fontSize)。")
+            }
+        }
+        $data = @{ settings = @{ fontName = $p.fontName; fontSize = $p.fontSize; bold = $p.bold; italic = $p.italic; underline = $p.underline; color = $p.color }; range = @{ start = $rangeStart; end = $rangeEnd; resolve = $resolvedRange; characters = $rangeText.Length }; readBack = $readBack }
+        Output-Json @{ success = $true; data = $data }
     }
 
     "findReplace" {
@@ -5410,12 +5502,41 @@ switch ($Action) {
         $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         if ($p.range -and $null -ne $p.range.start -and $null -ne $p.range.end) {
-            $range = $doc.Range([int]$p.range.start, [int]$p.range.end)
+            $rs = [int]$p.range.start
+            $re = [int]$p.range.end
+            $contentEnd = [int]$doc.Content.End
+            if ($rs -lt 0 -or $re -lt 0 -or $rs -gt $re) {
+                Output-Json @{ success = $false; error = "字符范围不合法：start=$rs、end=$re（要求 0 ≤ start ≤ end）。（动作：applyStyle）下一步：用 getParagraphs 的 start/end 取真实坐标。" }
+                exit
+            }
+            if ($re -gt $contentEnd) {
+                Output-Json @{ success = $false; error = "字符范围超出文档：请求 [$rs, $re)，文档长度 $contentEnd。（动作：applyStyle）下一步：用 getParagraphs 的 start/end 取真实坐标。" }
+                exit
+            }
+            $range = $doc.Range($rs, $re)
         } else {
             $range = $word.Selection.Range
         }
+        # FIXES 86（D18-C）：段落样式会作用于与范围**相交**的整段，所以实际被染色的段落可能不止一段。
+        # 以前只回 $range.Text，而那段文本是在赋值**之后**读的（范围已被 Word 扩张），诊断信息本身就是错的。
+        # 现在：快照在赋值前取，并回报真实被影响的段落索引。
+        $snapshotText = "$($range.Text)"
+        $rangeStart = [int]$range.Start
+        $rangeEnd = [int]$range.End
         $range.Style = $p.styleName
-        Output-Json @{ success = $true; data = @{ affectedText = $range.Text } }
+        $affectedParagraphs = @()
+        try {
+            $paraCount = [int]$doc.Paragraphs.Count
+            for ($i = 1; $i -le $paraCount; $i++) {
+                $pr = $doc.Paragraphs.Item($i).Range
+                if ($pr.Start -lt $rangeEnd -and $pr.End -gt $rangeStart) { $affectedParagraphs += $i }
+            }
+        } catch { Add-WpsWarning ("受影响段落统计失败：" + $_.Exception.Message) }
+        if ($affectedParagraphs.Count -gt 1) {
+            Add-WpsWarning ("段落样式 '$($p.styleName)' 作用于与范围相交的整段，本次影响了 $($affectedParagraphs.Count) 个段落（第 " + ($affectedParagraphs -join '、') + " 段）。范围只能决定从哪一段开始，不能只染段内一部分。")
+        }
+        $data = @{ affectedText = $snapshotText.TrimEnd([char[]]@([char]13, [char]10)); range = @{ start = $rangeStart; end = $rangeEnd; requestedStart = $(if ($p.range) { [int]$p.range.start } else { $null }); requestedEnd = $(if ($p.range) { [int]$p.range.end } else { $null }) }; affectedParagraphs = $affectedParagraphs; affectedParagraphCount = $affectedParagraphs.Count }
+        Output-Json @{ success = $true; data = $data }
     }
 
     # ==================== Word: Proofreading ====================
@@ -5446,12 +5567,37 @@ switch ($Action) {
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         if ($null -eq $p.startPos -or $null -eq $p.endPos) { Output-Json @{ success = $false; error = "startPos and endPos required" }; exit }
         if ($null -eq $p.text) { Output-Json @{ success = $false; error = "text required" }; exit }
+        $startPos = [int]$p.startPos
+        $endPos = [int]$p.endPos
+        $contentEnd = [int]$doc.Content.End
+        # FIXES 86：以前这里不校验边界。$doc.Range(3, 900) 在 17 字符的文档上会被 Word 静默钳制到
+        # Content.End，于是"越界"变成"删掉从 startPos 到文末的一切"，还返回 success —— 用户内容就这么没了。
+        if ($startPos -lt 0 -or $endPos -lt 0 -or $startPos -gt $endPos) {
+            Output-Json @{ success = $false; error = "字符范围不合法：startPos=$startPos、endPos=$endPos（要求 0 ≤ startPos ≤ endPos）。（动作：replaceRange）下一步：先用 getParagraphs（或 getDocumentText）确认目标范围再重试。" }
+            exit
+        }
+        if ($endPos -gt $contentEnd) {
+            Output-Json @{ success = $false; error = "字符范围超出文档：请求 [$startPos, $endPos)，文档长度 $contentEnd。（动作：replaceRange）下一步：用 getParagraphs 的 start/end 取真实坐标；要改到文末就传 endPos=$contentEnd。" }
+            exit
+        }
         try {
-            $range = $doc.Range([int]$p.startPos, [int]$p.endPos)
+            $range = $doc.Range($startPos, $endPos)
             $originalText = $range.Text
+            # 删除的范围在写之前算：写完之后 COM 的 Range 对象是陈旧的。
+            $deletedText = $originalText.TrimEnd([char[]]@([char]13, [char]10, [char]11))
+            # 段落标记在 Range.Text 里是 \v（实测 WPS 12.1：'AAA\vBBB' 而不是 'AAA\rBBB'），也可能出现 \r —— 两个都数。
+            $paragraphBreaks = 0
+            foreach ($ch in $originalText.ToCharArray()) { if ($ch -eq [char]13 -or $ch -eq [char]11) { $paragraphBreaks++ } }
+            # 一次抹掉整段以上的内容是不可逆的破坏，必须由调用方显式确认（FIXES 86）。
+            if ($paragraphBreaks -gt 1 -and -not [bool]$p.confirm) {
+                Output-Json @{ success = $false; error = "这次替换会删除 $paragraphBreaks 个段落标记（约 $($deletedText.Length) 个字符），属于批量删除。（动作：replaceRange）下一步：先 getParagraphs 核对范围，确认无误后带上 confirm=true 重试。" }
+                exit
+            }
             $range.Text = $p.text
             $actualEndPos = $range.End
-            Output-Json @{ success = $true; data = @{ startPos = [int]$p.startPos; originalEndPos = [int]$p.endPos; endPos = $actualEndPos; originalText = $originalText.TrimEnd("`r`n"); newText = $p.text } }
+            $data = @{ startPos = $startPos; requestedEndPos = $endPos; endPos = $actualEndPos; originalText = $deletedText; deletedParagraphs = $paragraphBreaks; newText = $p.text }
+            if ($paragraphBreaks -gt 1) { $data.confirmed = $true }
+            Output-Json @{ success = $true; data = $data }
         } catch {
             Output-Json @{ success = $false; error = "Failed to replace range: $($_.Exception.Message)" }
         }

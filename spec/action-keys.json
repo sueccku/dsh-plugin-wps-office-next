@@ -1113,6 +1113,7 @@
   "rows"
  ],
  "insertText": [
+  "new_paragraph",
   "position",
   "style",
   "text"
@@ -1139,6 +1140,7 @@
   "text"
  ],
  "replaceRange": [
+  "confirm",
   "endPos",
   "startPos",
   "text"

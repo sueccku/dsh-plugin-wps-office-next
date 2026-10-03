@@ -1281,7 +1281,7 @@
  },
  {
   "tool": "wps_word_replace_range",
-  "signature": "word_replace_range(startPos*, endPos*, text*)",
+  "signature": "word_replace_range(startPos*, endPos*, text*, confirm?)",
   "effect": "write"
  },
  {

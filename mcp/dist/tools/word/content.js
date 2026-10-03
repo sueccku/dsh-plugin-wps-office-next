@@ -73,25 +73,35 @@ const insertTextHandler = async (args) => {
         };
     }
     try {
-        // 处理换行符，如果需要新段落
-        const finalText = new_paragraph ? text + '\n' : text;
+        // FIXES 86：这里以前用 text + '\n' 冒充"新起一段"，而桥又把 new_paragraph 从白名单里丢掉 ——
+        // 结果是"文本并进上一段 + 多出一个空段"，且没有任何提示。现在把开关如实传给桥，由桥用
+        // InsertParagraphAfter 产生真正的段落标记，样式也只施加在刚插入的文本上。
         const response = await wps_client_1.wpsClient.executeMethod('insertText', {
-            text: finalText,
+            text,
             position: position || 'cursor',
             style,
+            new_paragraph: new_paragraph === true,
         }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const positionText = position === 'start' ? '文档开头' :
                 position === 'end' ? '文档结尾' : '光标位置';
+            const d = response.data;
+            const lines = [`文本插入成功！\n位置: ${positionText}\n字符数: ${d.textLength}`];
+            if (typeof d.insertStart === 'number' && typeof d.insertEnd === 'number') {
+                // 落点坐标是刚插入文本的真实字符范围，调用方据此可以继续用 range:{start,end} 精确改格式。
+                lines.push(`插入范围: ${d.insertStart}-${d.insertEnd}`);
+            }
+            if (typeof d.affectedParagraph === 'number')
+                lines.push(`所在段落: 第 ${d.affectedParagraph} 段`);
+            if (style)
+                lines.push(`应用样式: ${style}${typeof d.affectedParagraph === 'number' ? `（作用在第 ${d.affectedParagraph} 段）` : ''}`);
+            if (new_paragraph === true) {
+                lines.push(d.newParagraph ? '已新起一段' : '注意：请求了新起一段但桥未确认，段落可能没有分开');
+            }
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [
-                    {
-                        type: 'text',
-                        text: `文本插入成功！\n位置: ${positionText}\n字符数: ${response.data.textLength}${style ? `\n应用样式: ${style}` : ''}`,
-                    },
-                ],
+                content: [{ type: 'text', text: lines.join('\n') }],
             };
         }
         else {
@@ -555,7 +565,8 @@ exports.getParagraphsDefinition = {
 - "帮我看看模板里有哪些需要填写的位置"
 - 在填写模板前，先读取文档结构以识别填写位置
 
-返回信息包括：段落索引、文本内容、样式名称、字符起止位置。
+返回信息包括：段落索引、文本内容、样式名称，以及每段的**字符起止坐标**（@start-end，0 基、end 不含）。
+坐标可以直接喂给 wps_word_set_font / wps_word_apply_style 的 range:{start,end}，用来"只给这一段加粗"。
 支持分页获取（startParagraph/endParagraph），默认返回前50段。`,
     category: tools_1.ToolCategory.DOCUMENT,
     inputSchema: {
@@ -578,7 +589,11 @@ const getParagraphsHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('getDocumentParagraphs', execParams, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const { paragraphs, totalCount, returnedCount } = response.data;
-            const lines = paragraphs.map((p) => `[${p.index}] (${p.style}) ${p.text}`);
+            // text 超过 200 字符时桥会截断，此时 end - start > 文本长度：标注一下，别让调用方以为坐标错了。
+            const lines = paragraphs.map((p) => {
+                const truncated = typeof p.start === 'number' && typeof p.end === 'number' && p.end - p.start > p.text.length + 1;
+                return `[${p.index}] (${p.style}) ${p.text}  @${p.start}-${p.end}${truncated ? '（文本已截断，坐标仍为整段）' : ''}`;
+            });
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
