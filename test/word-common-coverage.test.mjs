@@ -47,18 +47,23 @@ const MATRIX = [
   ["wps_word_get_paragraphs", {}, "any"],
   ["wps_word_get_track_changes_status", {}, "ok"],
   ["wps_word_find_in_document", { findText: "测试" }, "any"],
-  ["wps_word_apply_style", { styleName: "Heading 1", range: "all" }, "any"],
-  ["wps_word_set_font", { fontName: "微软雅黑", fontSize: 12, range: "all" }, "any"],
+  // range 现在只接受 {start,end}（0 基、end 不含）或 "all"。这里用显式坐标而不是 "all"：
+  // 顺带验证"按字符范围施加格式"这条路径真的работает（FIXES 86 之前它根本不存在）。
+  // 样式名必须用中文 WPS 里真实存在的：实测 "Heading 1" 会 E_FAIL（模板里没有这个英文名），
+  // 而工具描述里恰恰把 "Heading 1" 当作示例 —— 这一条按真实可用的名字写。
+  ["wps_word_apply_style", { styleName: "标题 1", range: { start: 0, end: 4 } }, "ok"],
+  ["wps_word_set_font", { fontName: "微软雅黑", fontSize: 12, range: { start: 0, end: 4 } }, "ok"],
   ["wps_word_set_text_color", { color: "#FF0000" }, "any"],
   ["wps_word_set_line_spacing", { lineSpacing: 1.5 }, "ok"],
   ["wps_word_set_paragraph", { alignment: "center" }, "any"],
   ["wps_word_set_page_setup", { orientation: "landscape" }, "any"],
-  ["wps_word_insert_page_break", {}, "any"],
+  ["wps_word_insert_page_break", {}, "ok"],
   ["wps_word_insert_section_break", { breakType: "nextPage" }, "any"],
   ["wps_word_insert_image", { imagePath: imgPath }, "any"],
   ["wps_word_generate_toc", {}, "any"],
   ["wps_word_replace_bookmark_content", { name: "BM1", text: "书签内容" }, "any"],
-  ["wps_word_replace_range", { startPos: 0, endPos: 2, text: "替换" }, "any"],
+  // 破坏性动作：单段内的替换必须真的成功（FIXES 86 起不校验边界的那版会把越界范围静默钳制到文末）。
+  ["wps_word_replace_range", { startPos: 0, endPos: 2, text: "替换" }, "ok"],
   ["wps_word_smart_fill_field", { keyword: "甲方", value: "某公司" }, "any"],
   ["wps_word_switch_document", { name: "wordcov.docx" }, "any"],
   ["wps_word_proofread_basic", { text: "这是一段需要校对的中文文本。" }, "any"],

@@ -2460,6 +2460,99 @@ Error: Cannot find module '...\consumer\node_modules\dsh-plugin-wps-office-next\
 **「直接跑 ≠ 经 npm 跑」——环境的继承也会让同一个脚本表现不同**。凡是新接进自动化（CI、npm script、任务运行器）的脚本，
 第一次都要**用自动化的那条命令**验一遍，而不是用手敲的那条。
 
+## 86. 用户报告：Word 的「按范围施加格式」整条路径缺失，且多处假成功把用户文档改坏（已修）
+
+**来源**：2026-10-03 一份真实任务报告（用户用它把当天新闻写进已打开的 `今日新闻.docx`：32 段、797 字符）。
+任务内容最终正确，但**排版目标没达成**、过程中**两次把用户文档改坏**（标题被清空、正文被删空后代之重建）。
+报告中 10 条问题我逐条复核：**8 条真机复现**，2 条是能力缺失（同样确认），另有 2 处措辞需修正（见文末）。
+
+**共同特征**：返回 `success: true`，但要么什么都没做、要么做在了别的地方——调用方（LLM）无从察觉，只能反复试错，
+最后用最危险的手段（整段删除重建）收场。这就是「假成功」的代价。
+
+### 修了什么
+
+| # | 现象（复现） | 根因 | 修法 |
+| --- | --- | --- | --- |
+| B1 | 光标折叠时 `set_font {bold:true, range:"selection"}` 回「加粗: 是」，**逐字符读回 17 个字符全 `bold=0`** | 工具 schema 的 `range` 只有 `enum:['selection','all']`，且恒发 `range \|\| 'selection'`；桥是 `if ($p.range -eq "all") … else 选区`，于是 `"selection"` 永远落进 else | `range` 改成 `{start,end}`（0 基、end 不含）或 `"all"`；**删掉所有隐式兜底**（D15-A：不留兼容）；桥写入后**读回**并回报真实作用范围，空范围给 warning（D16-A） |
+| B2 | `insert_text {position:"end", style:"标题 3"}` 后样式落在**第 1 段**（用户光标处），不是新插入的文本 | 对 `$word.Selection.Range` 设样式——那是插入**之前**的光标位置 | 改对`$range`（InsertBefore/InsertAfter 会把范围扩到包含新内容）设样式 |
+| B3 | `new_paragraph:true` 不产生真段落：文本并进上一段、后面多一个空段 | ① TS 层用 `text + '\n'` 冒充段落；② host 键表根本没有 `new_paragraph`（`'insertText' = @('position','style','text')`），参数被丢弃 | 参数进桥键表；**在文本之前**插段落标记（`InsertParagraphAfter` 实测会留下空段，已弃用） |
+| B4 | `apply_style` 给 `range:{3,4}` 却把**第 1 段**整段染色（off-by-one 落在 `end-1`/`end`/`end+2` 各处） | 段落样式作用于与范围**相交**的整段——这是 Word 的语义，不是 bug，但调用方无从得知 | 保持语义，但**回报真实受影响的段落索引**；连带染了多段时给 warning（D18-C） |
+| B5 | `find_replace` 不移动选区 → 「查找→定位→施格式」整条路径失效 | 桥里 `Content.Find` 之后从不 `Selection.SetRange`（全桥 grep 为 0） | 由 B1/B6 的坐标能力解决：不再需要"先选中再改格式"，直接用 `get_paragraphs` 的坐标 |
+| B6 | 没有「按范围设字体」这条刚需路径 | 同 B1 | 即 B1 的修法（本次任务的**唯一刚需**：只给 10 行标题加粗） |
+| B7 | 诊断信息本身是错的：`affectedText` 读的是赋值**之后**的范围（已被 Word 扩张） | `$range.Style = …` 之后才读 `$range.Text` | 改成赋值**之前**取快照 |
+| B10 | **数据破坏**：17 字符的文档传 `{startPos:3, endPos:900}`，返回「替换成功」，实际把 `[3,17)` 全删了 | 桥不校验边界，`$doc.Range(3,900)` 被 Word 静默钳制到 `Content.End` | 越界**报错**并回报文档长度与 `endPos` 建议值；**删掉超过 1 个段落标记必须显式 `confirm: true`**，否则拒绝（D14-A） |
+| B9 | Word 侧没有读选区/光标坐标的动作 | 桥的 `getSelection` 第一行就是 `Get-WpsExcel`（Excel 专用） | 不再需要：`get_paragraphs` 现在把**每段的字符起止坐标**打给调用方（桥早就在算 `start`/`end`，是 TS 层打印时丢掉了） |
+| B8 | 参数被静默忽略、无 warning | 与 B3 同源 | 键表已补；歧义/空范围/样式未生效等情形走既有 warnings 通道（FIXES 73） |
+
+### 修的过程中新发现的两条（都已修）
+
+- **段落标记是 `\v` 不是 `\r`**：WPS 12.1 的 `Range.Text` 里段落之间是垂直制表符（实测 `'AAA\vBBB'`）。
+  我第一版按 `\r` 数段落标记，于是「跨段删除要 confirm」这道闸门**根本不会触发**——是回归测试把它抓出来的。
+- **段落索引不能拿插入前的坐标去算**：新建段落时那个 `\v` 会把后面内容整体后移一位，插入点于是落到上一段末尾
+  （实测报成"第 1 段"）。改成按**文档顺序**在 `Content.Text` 里定位刚插入的文本。
+
+### 关于报告的两处措辞修正（结论不变）
+
+- **B3**：报告说"文本被并进上一段末尾，没有产生新段落"。实际是**文本并进上一段 + 多出一个空段**——
+  `\n` 确实到了 Word（字符数把那个换行算进去了），是"分段位置错了"，不是"完全没分段"。
+- **B7**：报告说 `affectedText` 读的是"实时范围"。准确说：读的是**被 Word 扩张之后**的范围文本，所以看到的是整段而非请求的那几个字符。
+
+### 验收
+
+- 新增 `test/word-range-format.test.mjs`：**31 项**，逐条钉住上面每一条（含用**裸 COM 逐字符读回** `Font.Bold` 验证"真的只有请求的 3 个字符变粗"、验证拒绝后文档**字节数未变**、验证确认后才真的删）。
+- `test/word-common-coverage.test.mjs`：报告点名的弱断言升级——`apply_style` / `set_font` / `replace_range` / `insert_page_break`
+  从 `"any"`（只验没挂住）升到 `"ok"`（必须真成功）。**用户报告里的假成功正是被这类断言放行的。**
+- 桥侧 keys：`insertText` 增 `new_paragraph`、`replaceRange` 增 `confirm`；`setFont`/`applyStyle` 的 `range` 走容器展开。
+- `verify --static` 19 项、`param-contract` 257 对（A/B/C/D 全 0）、`lint` 0 违规；
+  Word 侧 6 个测试文件 **141 项全绿**。
+
+### 遗留（不在本次范围，已记录）
+
+- **英文样式名不可用**：工具描述里把 `Heading 1` 当示例，但中文 WPS 的模板里没有这个名字，`apply_style {styleName:"Heading 1"}`
+  实测 `E_FAIL`；`标题 1` 才成功。这不是本次改动引入的，但会让模型照着 schema 试错——见「遗留与未决」。
+- **`find_replace` 仍不移动选区**（B5 未按"加 selectFound 参数"实现）：坐标路径已经能替代它，是否需要另议。
+- **`range:"all"` 现在只被 `set_font` 接受**（`apply_style` 的 range 是对象，传字符串会被形状守卫拒），
+  技能文档已按事实写；要不要让两个工具语义完全对齐，属未决。
+
+## 87. 测试跑的是上一个发布版：环境变量把 profile 里的旧副本塞给了测试（已修）
+
+**怎么发现的**：加完 FIXES 86 的闸门后跑新回归测试，报
+`unknown parameter(s) for 'replaceRange': confirm | accepted: endPos, startPos, text` ——
+**仓库里的键表明明已经有 `confirm`**。打印宿主命令行才看清：
+
+```
+powershell … -File C:\Users\qwer\.dsh\profiles\desktop\node_modules\dsh-plugin-wps-office-next\host\wps-com-host.ps1
+```
+
+测试驱动的是**已安装的 0.6.1 副本**，不是仓库里的代码。
+
+**根因**：`plugin.js` 在加载时会把 `WPS_OFFICE_MCP_ENTRY` / `WPS_OFFICE_HOST_SCRIPT` 写进**进程环境**（设计如此，
+用户免配置）。从「已装本插件」的 DSH 会话里起的终端继承这两个变量，于是
+`com-host.ts` 的 `process.env.WPS_OFFICE_HOST_SCRIPT || <仓库副本>` 取到了 profile 里那份。
+宿主启动时**只读一次** `wps-actions.ps1` 的键表，所以它一直沿用旧版白名单——**改桥 = 改了个寂寞**，
+测试红得让人以为是自己的代码坏了。README 里让人手敲两行清理，忘了就中招；
+`scripts/run-tests.ps1` 原本没有清。
+
+**修法（两版，第一版是错的）**：
+
+1. 我起初写的是「开跑前 `Remove-Item Env:…` 把两个变量删掉」。整轮回归立刻抓到反例：`plugin.test.mjs` 断言的
+   正是「`plugin.js` 发布出来的 MCP 入口 == 包内入口」，而它 import 的 `plugin.js` 用 `process.env[…] || 包内路径`
+   兜底 —— 环境里那份副本的路径会让它**假红**。**「清理」不如「钉住」**：要让测试确定性地说"跑的就是仓库代码"，
+   而不是依赖某个变量恰好不存在。
+2. 最终做法：在 `run-tests.ps1` 的循环里，**每个测试文件 spawn 之前**把两个变量显式指向仓库内路径
+   （`mcp/dist/index.js` + `host/wps-com-host.ps1`），一处管住全部 47 个文件。
+
+**过程中的一个环境坑（值得记）**：把赋值放在脚本头部时，改完反复验证都显示「没生效」——子进程仍看到副本路径。
+排查到后面才发现我改的脚本内容没有真的被执行：**PowerShell 缓存了这份 `.ps1` 的旧内容**（文件被 git stash / 直接
+覆写改过，文件系统通知没刷新；`-File` 启动时读的是缓存里的版本）。判据很硬：只要让文件**内容长度变化**，
+行为立刻跟着变。放在循环里之后稳定生效。**以后改 `scripts/*.ps1` 后行为"没变化"，先怀疑这一点，别硬猜代码逻辑。**
+
+**为什么值得单记一条**：这与 FIXES 84（文件清单 ≠ 执行入口）、85（直接跑 ≠ 经 npm 跑）是同一条线的第三次：
+**「你以为你在测的东西」和「实际被测的东西」根本不是一回事**。三次都发生在发布/自动化边界上。
+
+**验收**：修前 `word-common-coverage` 因旧宿主红 1–3 条；修后 `run-tests.ps1 -Filter "word-*"` 六个文件
+**141 项全绿**，其中新回归文件 31 项由 runner 驱动通过。
+
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

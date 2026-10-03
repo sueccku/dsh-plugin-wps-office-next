@@ -14,6 +14,14 @@ $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
+# 每个测试文件都必须驱动**仓库里的**宿主与 MCP 入口。从「已装本插件」的 DSH 会话里起终端时，plugin.js 会把
+# WPS_OFFICE_MCP_ENTRY / WPS_OFFICE_HOST_SCRIPT 指到 profile 里那份副本，测试于是测了**上一个发布版**——
+# 实测表现是宿主沿用旧参数白名单（unknown parameter confirm），红得让人以为是自己刚改的代码坏了。
+# 光删掉这两个变量不够（plugin.test.mjs 断言的正是「plugin.js 发布的入口 == 包内入口」，副本路径会让它假红），
+# 所以在**每个测试文件 spawn 之前**显式把它们指向仓库内路径（见下面的循环）。这样 47 个文件都确定性地跑仓库代码（FIXES 87）。
+$env:WPS_OFFICE_MCP_ENTRY = [System.IO.Path]::Combine($root, 'mcp', 'dist', 'index.js')
+$env:WPS_OFFICE_HOST_SCRIPT = [System.IO.Path]::Combine($root, 'host', 'wps-com-host.ps1')
+
 function Get-Orphans {
     Get-Process wps,et,wpp -ErrorAction SilentlyContinue |
         Where-Object { [string]$_.MainWindowTitle -eq '' }
@@ -28,6 +36,8 @@ $files = Get-ChildItem (Join-Path $root 'test') -Filter '*.test.mjs' | Sort-Obje
 if ($Filter) { $files = $files | Where-Object { $_.Name -like $Filter } }
 $totalPass = 0; $totalFail = 0; $reaped = 0; $badFiles = @()
 foreach ($f in $files) {
+    $env:WPS_OFFICE_MCP_ENTRY = [System.IO.Path]::Combine($root, 'mcp', 'dist', 'index.js')
+    $env:WPS_OFFICE_HOST_SCRIPT = [System.IO.Path]::Combine($root, 'host', 'wps-com-host.ps1')
     $out = & node $f.FullName 2>&1 | Out-String
     $p = ([regex]::Matches($out, '(?m)^PASS ')).Count
     $x = ([regex]::Matches($out, '(?m)^FAIL ')).Count

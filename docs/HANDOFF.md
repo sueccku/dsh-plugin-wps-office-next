@@ -157,12 +157,20 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | **本轮** | **D10** | 历史阶段数字（816/842/856） | **B**：保留原样，只加「当时的读数」标注（不改历史） | `docs/PROGRESS.md` 10 处 |
 | **本轮** | **D11** | 与 DSH 自带离线 office 技能的边界 | **A**：只保留文档提醒，**不**改技能提示词（FIXES 82 已有共存提醒） | 无需改动 |
 | **本轮** | **D12** | 决策记录放哪 | **A**：写进本文件这一节（`docs/` 入库、跨会话可见） | 本节 |
+| **本轮** | **D14** | `replace_range` 越界（**数据破坏**） | **A**：越界**报错**（不静默钳制）+ 删超过 1 个段落标记需显式 `confirm` | FIXES 86 |
+| **本轮** | **D15** | Word 没有「按范围设字体」 | **A 且不留兼容**：`range` 只收 `{start,end}` 或 `"all"`，旧的 `"selection"` 字符串彻底移除 | FIXES 86 |
+| **本轮** | **D16** | 「假成功」怎么治 | **A**：格式类动作**写入后读回**，对不上/空范围走 warnings，不改 success 语义 | FIXES 86 |
+| **本轮** | **D17** | `insert_text` 的 style 与 `new_paragraph` | **A**：style 落到刚插入的范围；`new_paragraph` 进键表并用真段落标记 | FIXES 86 |
+| **本轮** | **D18** | 诊断与自验 | **C**：`affectedText` 改前置快照 + 回报受影响段落 + `get_paragraphs` 给字符坐标 | FIXES 86 |
+| **本轮** | **D19** | 回归测试与弱断言 | **B**：新增 31 项回归；报告点名的 4 条从 `any` 升到 `ok` | FIXES 86 |
+| **本轮** | **D20** | 交付节奏 | **B**：**攒批**，不单独发 0.6.2（数据破坏已在野，此选择是知情的） | 待发版 |
+| **本轮** | **D21** | D9 挂起项 | **A**：**转正**——`any` 弱断言放行过真实的假成功，优先按域推进 | 进行中 |
 
 **挂起项（明确不做、但要记得）**
 
-| # | 内容 | 唤醒条件 |
+| # | 内容 | 状态 / 唤醒条件 |
 | --- | --- | --- |
-| D9（本轮） | 96 个工具没有专门测试、其中 **75 个只断言「没挂住」**（按 [tool-coverage.md](tool-coverage.md)：PPT 77 个里 32 个、Excel 118 个里 23 个、Word 59 个里 15 个） | **下一轮我主动提醒**；或某次真机回归在这些路径上红了 |
+| D9（本轮） | 96 个工具没有专门测试、其中 **75 个只断言「没挂住」**（[tool-coverage.md](tool-coverage.md)：PPT 77 里 32、Excel 118 里 23、Word 59 里 15） | **已转正（D21-A）**：用户报告证明 `any` 放行过真实的假成功（`wps_word_replace_range` 越界删数据）。本轮已把 4 条升级为 `ok`，剩下按域分批做 |
 | D8 残余 | `param-contract` 那次 2 小时挂起**未复现、未定性**（只读脚本，正常几秒） | 再出现一次时抓现场（别用 `Select-Object -Last N` 包住输出，会看不到进度） |
 | D1-C/D/E（本轮） | 广告面重平衡 / 弱覆盖补测 / 产品扩张 | 分别需要：真实用法数据（**已在 §8 沉淀**）/ D9 排期 / 明确的目标客户与场景 |
 
@@ -203,11 +211,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **38,878** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 155,613 字节（268 工具，≈44,461 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **928 断言 / 46 个测试文件**（口径见下方注） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
+| 测试 | **949 断言 / 47 个测试文件**（口径见下方注） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～85 号 | `docs/FIXES.md` |
+| FIXES | 1～87 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
@@ -243,7 +251,9 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 4. **测试覆盖缺口**（以下三个数字是 S4 当时的口径）：267 个工具里**只有 159 个被测试点名**（PPT 最弱，76 中仅 26）。
    历史上 **7 个「从来没工作过」的缺陷（FIXES 38 / 39 / 43，按正文逐条数共 7 处）全部落在无测试覆盖的路径上**。
    **S4 已完成**：覆盖率 **267/267**（当时；现在 **268/268**，ratchet 进 `spec-reproduction`，只许涨），`scripts/smoke-tools.mjs`
-   出矩阵并可 `--live` 只读冒烟；剩余是把 PPT（25/76）等未覆盖工具补上场景测试（FIXES 56）。
+   出矩阵并可 `--live` 只读冒烟。**当前（2026-10-03）**：268 个工具里 **175 个有专门测试、22 个矩阵 ok/error、71 个只剩最弱断言（`any`）**
+（PPT 77 里 32、Excel 118 里 23、Word 59 里 11）。弱断言不是"没测"，但**只验"没挂住"、不验对错**——
+用户报告（FIXES 86）证明这类断言放行过真实的假成功与数据破坏，所以 **D21-A 已把它转正为优先项**，按域分批升级。
 5. **静默失败**：空 catch 走账本（**S5 已完成**，FIXES 59）：桥 34 + 宿主 6 全部登记，新增即红（`test/silent-catch.test.mjs`）。
 6. **恢复路径原有的两个缺陷已修**（由本轮新测试抓出）：陈旧子进程的 `exit` 会反杀新宿主；
    `ready` 帧误清 `suspect` 标志。二者都在 `mcp/src/client/com-host.ts`。
@@ -389,6 +399,15 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - **宿主的单实例租约文件**：`%USERPROFILE%\.wps-office-mcp\com-host.json`
   （`hostPid` / `clientPid` / `心跳` / `phase` / `lastAction`）——售后排查「谁占着 WPS、卡在哪个动作」看它。
 - 一次性 COM 探针放在 `test/.artifacts/`（**gitignored**，不会被提交）。
+- **FIXES 87：`scripts/run-tests.ps1` 在**每个测试文件 spawn 之前**把 `WPS_OFFICE_MCP_ENTRY` / `WPS_OFFICE_HOST_SCRIPT` 指向仓库内路径**。
+  从「已装本插件」的会话里起终端时，`plugin.js` 会把这两个变量指向 profile 里那份副本，测试于是测**上一个发布版**
+  （症状：宿主沿用旧键表，报 `unknown parameter confirm` 之类，红得像是自己刚改的代码坏了）。
+  **只删变量不够**：`plugin.test.mjs` 断言「`plugin.js` 发布的入口 == 包内入口」，副本路径会让它假红 —— 要"钉住"，不要"清理"。
+  单独手跑某个 `test/*.test.mjs` 时，自己把这两个变量指向仓库内路径（`$env:WPS_OFFICE_HOST_SCRIPT = "$PWD\host\wps-com-host.ps1"`）。
+- **改完 `scripts/*.ps1` 若行为"没变化"，先怀疑 PowerShell 的脚本缓存**（FIXES 87 实测踩过）：文件被 `git stash` 或直接覆写改过时，
+  `-File` 启动可能仍读缓存里的旧内容 —— 判据是"内容长度一变行为就跟着变"。让文件内容长度发生变化（或改文件名）即可稳定绕过。
+- **`test/confirm-dialog.test.mjs` 在本机会稳定红一条**（2026-10-03 实测）：它等 Excel 的确认框（`Qt*` 窗口），本机不弹，
+  于是 `no modal confirmation dialog appeared` 失败。**已用 `git stash` 在改动之前复跑确认：同样红** —— 环境相关，不是某次改动引入的。
 - **别在「正在用 WPS 的 DSH 会话」里跑全套**（2026-10-03 实测）：宿主的单实例租约正好把测试挡在门外 ——
   `test/host-lease.test.mjs`（10/18）与 `test/encrypted-preflight.test.mjs`（3 项）会打印**中文「另一个 DSH 会话正在控制 WPS」**而失败。
   这是**环境冲突，不是代码缺陷**（租约保护正常工作）。要拿到可信读数，就在没有活跃 WPS 宿主的终端里跑 `scripts/run-tests.ps1`，
@@ -476,7 +495,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 | `test/silent-catch.test.mjs` | S5：空 `catch { }` 必须登记理由，账本式（桥 34 + 宿主 6） |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | 46 个文件、928 断言（口径见 §5）；账本在 `spec-reproduction.test.mjs` |
+| `test/*.test.mjs` | 47 个文件、949 断言（口径见 §5）；账本在 `spec-reproduction.test.mjs`；FIXES 86 的回归在 `word-range-format.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
@@ -489,7 +508,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～85 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂） |
+| `docs/FIXES.md` | 1～87 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂、86 = 用户报告的 Word 假成功/数据破坏、87 = 测试跑的是旧副本） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

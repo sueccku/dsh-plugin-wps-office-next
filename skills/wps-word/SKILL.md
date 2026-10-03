@@ -34,12 +34,17 @@ wps_word_apply_style、wps_word_create_document、wps_word_find_replace、wps_wo
 1. 先确定编辑目标：改现有文档用 wps_word_get_active_document 确认，再 get_document_text 或 get_paragraphs 读现状；从零起草用 wps_word_create_document 新建。
 2. 建立大纲：先定位标题文本，用 apply_style 应用带空格的样式名（标题 1、标题 2），最后 generate_toc 生成目录。
 3. 模板填写优先用 smart_fill_field，不要用 find_replace 替换字段名，后者会删掉关键字并破坏格式。
-4. 改完用 get_paragraphs 或 get_document_text 复验，必要时 set_page_setup 回报的值也一并核对，再 wps_common_save。
-5. 收尾：要归档到新路径用 wps_common_save_as；要关掉文档用 wps_word_close_document，别把没保存的文档留在用户机器上。
+4. 要给某一段/某几行单独改格式：先 `get_paragraphs` 读每段的 `@start-end` 坐标，再把该坐标喂给 `set_font` 的 `range:{start,end}`（只改字体）或 `apply_style` 的 `range:{start,end}`（改段落样式）。坐标是 0 基、`end` 不含。
+5. 改完用 get_paragraphs 或 get_document_text 复验，必要时 set_page_setup 回报的值也一并核对，再 wps_common_save。
+6. 收尾：要归档到新路径用 wps_common_save_as；要关掉文档用 wps_word_close_document，别把没保存的文档留在用户机器上。
 
 ## 已知坑
 
-- set_font 传 range 为 all 会连同标题字体一起改掉；正确顺序是先把标题应用样式，再统一正文字体，最后重新 apply_style 恢复标题。
+- **`range` 是「谁能被改」的唯一开关**（FIXES 86 起）：`set_font` 只接受 `range:{start,end}` 或 `all`，不传就是当前选区 —— **光标折叠时是空范围，什么都不会发生**（工具会如实回报"0 个字符"并给 warning，别再把它当成成功）。
+- set_font 传 range 为 all 会连同标题字体一起改掉；正确顺序是先用坐标给标题行单独设字体或样式，再统一正文字体。
+- **字符范围 vs 段落样式**：字体（加粗/字号/颜色）能精确落在字符范围上；`apply_style` 是**段落样式**，会作用于与范围**相交的整段**——范围只能决定"从哪一段开始"。它会回报真实受影响的段落，连带染了多段时也有 warning，看到就说明范围算偏了。
+- **段落标记是 `\v` 不是 `\r`**：读 `get_document_text` 时段落之间显示为 `\v`；按换行符切分段落时两个都要算。
 - 样式名带空格，例如 标题 1，不是 标题1。
 - 纯查找与替换是两个行为；用 find_replace 做"检查是否出现"时不要顺手传空的 replace_text，否则会被当成替换。
 - 不要向用户承诺可以撤销：COM 改动不一定进撤销栈，重要文档先保存副本。
+- **破坏性范围替换**：`wps_word_replace_range` 越界会**直接报错**（不再静默删到文末）；一次删掉超过 1 个段落标记必须显式传 `confirm: true`，否则拒绝执行。真要用它删正文之前，先 `get_paragraphs` 核对坐标，或考虑改用更安全的工具。
