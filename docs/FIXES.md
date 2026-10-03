@@ -2385,6 +2385,50 @@ FIXES 73 已经修好这件事，文档没跟上。改成事实描述（所有�
 底层 `libreoffice-kit`）以及 `dsh-office-to-pdf`。它们与本插件**不冲突**（技能名不重名），但解决路径不同：
 内置技能是「离线读写文件」，本插件是「操作正在运行的 WPS 窗口」。用户同时装了两者时，模型可能选内置那条路 ——
 需要在提示词里点名「用 WPS 打开/操作」时更稳。
+
+## 84. 0.6.0 的发布事故：包内模块边界漏发，MCP server 起不来（已修，随 0.6.1）
+
+**事故**：`0.6.0` 发到 npm 后，用户把它装进 `desktop` profile，**所有 WPS 工具全不可用**。MCP server 一启动就崩：
+
+```
+ReferenceError: exports is not defined in ES module scope
+This file is being treated as an ES module because it has a '.js' file extension and
+'.../node_modules/dsh-plugin-wps-office-next/package.json' contains "type": "module".
+```
+
+**根因**：`mcp/dist` 是 **CommonJS** 编译产物，`mcp/package.json`（现显式写着 `"type": "commonjs"`）是它的**模块边界声明**。
+0.6.0 把 `files` 从整个 `mcp` 目录收窄成 `mcp/dist` + `mcp/scripts` 时（D2-A），把这个文件漏在了包外 ——
+旧写法是**顺带**把它带上的，改窄之后这层隐含依赖就断了。
+
+**为什么没抓住（这条最值钱）**：发布前只证明了三件事 —— 依赖能从顶层解析、从装出来的副本跑 `doctor.mjs` 打印
+`DOCTOR OK`、「删掉包内 `mcp/node_modules` 也能解析」。**三件事全是真的**，但它们都不是「server 真的能启动」。
+少的是**执行入口上的断言**；文件清单类的检查永远抓不到运行期缺件。
+
+**修复与加固**
+
+- `package.json` 的 `files` 加回 `mcp/package.json`；`mcp/package.json` 显式写 `"type": "commonjs"`，
+  让这层边界声明不再是隐含的。
+- 新增 **`scripts/verify-package.mjs`**：`npm pack` → 装进临时目录 → **真的把 MCP server 拉起来**做一次 JSON-RPC 握手 →
+  断言 `tools/list` 广告 **69** 个工具、`wps_status` 在列。**不需要 WPS**。它先在临时目录里**复现了 0.6.0 的崩溃**，
+  再用同样的方式确认修复；已写进 `docs/release-checklist.md` §3.1 作为**发布前必跑**。
+- 新增 **`scripts/probe-installed.mjs`**：对**已安装的副本**做同样的握手并真调一次 `wps_status`（需要 WPS），
+  用于发布后与排错时分辨「包坏了」还是「环境没起 WPS」。
+- 版本推进到 **0.6.1**；`CHANGELOG.md` 的 0.6.0 条目被打上「这一版是坏的」标记（记录保留，不删）。
+
+**验收（2026-10-03 复核，均为命令实测）**
+
+- registry：`npm view dsh-plugin-wps-office-next versions` → **只返回 `["0.6.1"]`**；`dist-tags.latest = 0.6.1`；
+  `fileCount = 289`、`unpackedSize = 3,187,511`、`integrity = sha512-jcztFCKPkhTpSPEPmnFcWNQeShNA707cy911D0uBoy26QROIEPoop2M7YdrL/0yOfPoimGbZUJ0v7fUued3T2A==`
+  —— 与本地 dry-run 打印的逐字符一致；坏掉的 0.6.0 已撤销（2026-10-02 14:53 UTC，用户手动 `npm unpublish`）。
+- 全新隔离 profile 从 registry 装：4.2 秒、exit 0；`--dump-config` 两个 id 都在；握手 `serverInfo = {name: wps-office-mcp, version: 0.6.1}`、
+  广告 69 个工具、`wps_status → connected: true`（真实 WPS 12.1.0.28488）。
+- **真实用户路径闭环**：`desktop` profile 已是 0.6.1，用户重启 DSH 后**通过真实 MCP 工具**调用 `wps_status` 返回
+  `connected: true` / `advertisedTools: 69` / `registeredTools: 268`（WPS 12.1.0.28488）。
+- 本轮复核：`node scripts/verify.mjs --static` **19 项全绿**、`node scripts/doctor.mjs` 打印 **DOCTOR OK**。
+
+**办法**：凡改动「包内文件集合」的发布，验证必须落到**执行入口**（进程能启动 → 协议握手 → 再跑一条真实调用）；
+只看文件清单与依赖解析不够。`verify-package.mjs` 现在还**只在检查单里**、没进 CI（要进 CI 需单独拍板）。
+
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。
@@ -2432,7 +2476,8 @@ FIXES 73 已经修好这件事，文档没跟上。改成事实描述（所有�
 | test/install-selfcheck.test.mjs | 6 | S8/S9：doctor 版本/架构/接线自检（不需要 WPS） |
 | test/confirm-dialog.test.mjs | 6 | S3 余量：破坏性动作的确认框实测（窗口监视器；真实 WPS） |
 
-合计 **816 项**（37 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁。**本表是截至 FIXES 63 的快照**；之后新增与变化的文件见 `docs/HANDOFF.md` §5（现为 928 项 / 46 文件、预算 100 / 60,000）。
+合计 **816 项**（37 个测试文件），加 `node scripts/verify.mjs` **23 项**门禁。**本表是截至 FIXES 63 的历史快照，不是当前值**；
+当前为 **928 项 / 46 文件**（FIXES 81 那轮的运行时读数，口径见 `docs/HANDOFF.md` §5）、预算 100 / 60,000。
 
 另有 node scripts/param-contract.mjs：零副作用地把 256 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
