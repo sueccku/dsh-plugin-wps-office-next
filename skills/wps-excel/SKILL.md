@@ -9,9 +9,9 @@ whenToUse: 任务针对表格、工作簿、单元格区域、公式、图表、
 ## 直接广告的工具
 
 <!-- GENERATED:advertised:start -->
-直接广告的 26 个表格工具（其余 92 个用 wps_call，清单见同目录 reference.md）：
+直接广告的 38 个表格工具（其余 80 个用 wps_call，清单见同目录 reference.md）：
 
-wps_excel_add_list_row、wps_excel_auto_fit、wps_excel_calculate、wps_excel_clear_formats、wps_excel_clear_pivot_table、wps_excel_copy_format、wps_excel_create_chart、wps_excel_create_list_object、wps_excel_create_pivot_table、wps_excel_find_in_sheet、wps_excel_find_replace、wps_excel_get_list_objects、wps_excel_get_named_ranges、wps_excel_get_open_workbooks、wps_excel_get_sheet_info、wps_excel_get_sheet_list、wps_excel_get_sheet_settings、wps_excel_goal_seek、wps_excel_open_workbook、wps_excel_read_range、wps_excel_set_cell_format、wps_excel_set_chart_labels、wps_excel_set_formula、wps_excel_set_number_format、wps_excel_set_sheet_page_setup、wps_excel_write_range
+wps_excel_add_list_row、wps_excel_auto_fit、wps_excel_calculate、wps_excel_clear_formats、wps_excel_clear_pivot_table、wps_excel_close_workbook、wps_excel_copy_format、wps_excel_create_chart、wps_excel_create_list_object、wps_excel_create_pivot_table、wps_excel_create_sheet、wps_excel_export_chart_as_image、wps_excel_export_range_as_image、wps_excel_find_in_sheet、wps_excel_find_replace、wps_excel_get_cell_info、wps_excel_get_conditional_formats、wps_excel_get_list_objects、wps_excel_get_named_ranges、wps_excel_get_open_workbooks、wps_excel_get_sheet_info、wps_excel_get_sheet_list、wps_excel_get_sheet_settings、wps_excel_goal_seek、wps_excel_open_workbook、wps_excel_read_range、wps_excel_set_cell_format、wps_excel_set_chart_labels、wps_excel_set_conditional_format、wps_excel_set_formula、wps_excel_set_number_format、wps_excel_set_sheet_header_footer、wps_excel_set_sheet_page_setup、wps_excel_set_sheet_print_titles、wps_excel_sort_range、wps_excel_switch_sheet、wps_excel_switch_workbook、wps_excel_write_range
 
 通用工具（4 个，三个应用共用）：wps_common_save、wps_common_save_as、wps_convert_format、wps_convert_to_pdf
 <!-- GENERATED:advertised:end -->
@@ -21,7 +21,7 @@ wps_excel_add_list_row、wps_excel_auto_fit、wps_excel_calculate、wps_excel_cl
 ## 参数约定
 
 - 单元格定位用 {sheet, row, col}，行列都从 1 开始。
-- 区域用 A1 记法字符串，如 A1:C10；**sheet 参数在几乎所有工具上都已生效**，不传时才用当前活动工作表。要操作非活动工作表就显式传 sheet。多工作簿同时打开时不传 sheet 会落在「活动工作表」上（跟着窗口焦点走），桥会在结果的 `warnings` 里提醒——请养成显式传 sheet 的习惯。
+- 区域用 A1 记法字符串，如 A1:C10；**sheet 参数在几乎所有工具上都已生效**，不传时才用当前活动工作表。要操作非活动工作表就显式传 sheet。多工作簿同时打开时不传 sheet 会落在「活动工作表」上（跟着窗口焦点走），桥会在结果的 `warnings` 里提醒——请养成显式传 sheet 的习惯。**注意少数动作的目的地不参与这套解析**：`copySheet` 复制到的是活动工作簿、`transpose` 写入的是活动工作表，多工作簿打开时请先点名目标（或先 `switch_workbook`），否则可能落到你正在看的那个窗口上（FIXES 90 记录为已知限制）。
 - read_range 的 include_header 为 true 时把首行当表头返回。
 - 批量写入用 wps_excel_write_range，数据是二维数组，从起始单元格向右下填充。
 - 常用工具的参数名（写错会被参数校验拒绝，不再静默忽略）：

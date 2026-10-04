@@ -6,7 +6,9 @@
  *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P1 状态。
  */
 /** 参数在桥里被读取时的类型；用于生成 JSON Schema 与文档。 */
-export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'array2d';
+export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'array2d' | readonly ParamScalarType[];
+/** 单值类型名（ParamType 的元素）。 */
+export type ParamScalarType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'array2d';
 /** 一个参数的规格。字段名即桥读取的键（公开名 = 桥名，见 P1-4）。 */
 /**
  * 参数的去向。历史代码里一个 schema 参数并不一定等于桥键：

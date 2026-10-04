@@ -33,7 +33,7 @@ FIXES 79 起每个概念只有一个键（旧拼写**不再被接受**）：**�
 ## 工具面
 
 <!-- GENERATED:advertised:start -->
-默认 standard 档直接广告 **69** 个工具（门面 4 / 通用 4 / 表格 26 / 文字 21 / 演示 14），其余 199 个工具仍然完全可用：
+默认 standard 档直接广告 **84** 个工具（门面 4 / 通用 4 / 表格 38 / 文字 24 / 演示 14），其余 184 个工具仍然完全可用：
 <!-- GENERATED:advertised:end -->
 
 - 直接广告的工具见各应用技能与同目录 reference.md。
@@ -53,8 +53,8 @@ FIXES 79 起每个概念只有一个键（旧拼写**不再被接受**）：**�
 
 ## 保存、关闭与转换
 
-- **新建**：表格 `wps_excel_create_workbook`、文字 `wps_word_create_document`（在广告位）、演示 `wps_ppt_create_presentation`；表格与演示这两个不在广告位，用 wps_call 调用。要起草新内容就先新建，不要去找一个并不存在的文件打开。
-- **关闭不会弹模态框**：`wps_excel_close_workbook` / `wps_word_close_document` / `wps_ppt_close_presentation` 三个都不在广告位、用 wps_call 调，且都做了对话框保护。对**从未落盘**的文档，即使要求 save=true 也会改为不保存关闭，并在结果里返回 warning——此时要如实告诉用户文件没有写盘，必要时改用 save_as。
+- **新建**：表格 `wps_excel_create_workbook`、文字 `wps_word_create_document`、演示 `wps_ppt_create_presentation`；文字那个在广告位，表格与演示这两个仍不在广告位，用 wps_call 调用。要起草新内容就先新建，不要去找一个并不存在的文件打开。
+- **关闭不会弹模态框**：`wps_excel_close_workbook` / `wps_word_close_document` 已在广告位（FIXES 90 起，它们分别被真实调用过 36 / 15 次），`wps_ppt_close_presentation` 仍在隐藏尾里、用 wps_call 调；三个都做了对话框保护。对**从未落盘**的文档，即使要求 save=true 也会改为不保存关闭，并在结果里返回 warning——此时要如实告诉用户文件没有写盘，必要时改用 save_as。
 - **wps_common_save_as 的路径键是 outputPath**（FIXES 79 起输出一律 outputPath），另存为失败或未写盘时不要报告成功。
 - **转换要指定应用**：wps_convert_to_pdf / wps_convert_format 支持 appType（excel/word/ppt）。不指定时按 Excel → Word → PPT 取第一个正在运行的文档——**Excel 常开着会让"把 Word 转成 PDF"导出工作簿**，所以转换前显式传 appType。指定了却没有对应文档会明确报错，不会退回别的应用。
 - openAfterExport=true 时导出后会自动打开文件，结果里回报 opened / failed。

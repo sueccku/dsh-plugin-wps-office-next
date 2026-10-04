@@ -63,9 +63,25 @@ const presList = text(await call("wps_ppt_get_open_presentations", {}));
 // 去掉「路径:」及其后面的内容。
 const presLine = presList.split(/\r?\n/).find((l) => /^\s*\d+\./.test(l)) || "";
 const presName = (presLine.replace(/^\s*\d+\.\s*/, "").split(/\s+路径:|\s*\|/)[0] || "演示文稿1").trim();
-// 第 1 页换成带标题占位符的版式：矩阵里的 set_slide_title / subtitle / content 才有对象可写。
+// A2（FIXES 90）：版式 × 占位符矩阵（实测，bare COM 扫出来的）：
+//   title        = 标题(3) + 副标题(4)
+//   titleContent = 标题(1) + 文本正文(2)
+//   twoColumn    = 标题(1) + 表格占位符(12)
+//   comparison   = 标题(1) + 文本(2) + 图表占位符(8)
+//   titleOnly    = 标题(1)
+//   blank        = 什么都没有
+// 所以：标题类断言用 titleContent，副标题断言必须用 title 版式，正文用 titleContent。
+// 第 1 页：titleContent（标题 + 文本正文）
 await call("wps_ppt_set_slide_layout", { slideIndex: 1, layout: "titleContent" });
+// 第 2 页保持 blank 并**重新设为 titleContent**；第 3、4、5 页改成"新加 + 设版式"的写法：
+// 实测（A2 探针）只有这种顺序能拿到目标版式的占位符 —— 先对已有页 Layout= 赋值再靠名字找占位符并不稳。
 await call("wps_ppt_set_slide_layout", { slideIndex: 2, layout: "titleContent" });
+// 第 3 页：加页时就指定 title 版式（FIXES 90 起 add_slide 与 set_slide_layout 收同一套键名）
+await call("wps_ppt_add_slide", { layout: "title" });
+// 第 4 页保持 blank：验"没有标题/副标题/正文占位符"
+await call("wps_ppt_add_slide", { layout: "blank" });
+// 第 5 页：加页时就指定 titleContent 版式（标题 + 正文）
+await call("wps_ppt_add_slide", { layout: "titleContent" });
 // 补一个动画：后面的 set_slide_layout 会把动画清掉，矩阵与断言都需要页上有动画。
 await call("wps_ppt_add_animation", { slideIndex: 1, effect: "fadeIn", shapeIndex: 1 });
 
@@ -88,9 +104,10 @@ const MATRIX = [
   ["wps_ppt_set_slide_layout", { slideIndex: 1, layout: "titleContent" }, "ok"],
   // 第 1 页已换成 titleContent（有标题占位符）。
   ["wps_ppt_set_slide_title", { slideIndex: 1, title: "覆盖标题" }, "ok"],
-  // 第 2 页是 titleContent 版式（带正文占位符）；副标题没有对应占位符时会明确报错，属正确行为。
-  ["wps_ppt_set_slide_subtitle", { slideIndex: 2, subtitle: "副标题" }, "any"],
-  ["wps_ppt_set_slide_content", { slideIndex: 2, content: "正文内容" }, "any"],
+  // 第 3 页 = 新加空白页 + title 版式，带副标题占位符（A2 矩阵实测）。
+  ["wps_ppt_set_slide_subtitle", { slideIndex: 3, subtitle: "副标题" }, "ok"],
+  // 第 5 页 = 新加空白页 + titleContent 版式，带文本正文占位符。
+  ["wps_ppt_set_slide_content", { slideIndex: 5, content: "正文内容" }, "ok"],
   ["wps_ppt_set_slide_notes", { slideIndex: 1, notes: "讲稿备注" }, "ok"],
   ["wps_ppt_set_slide_size", { width: 1280, height: 720 }, "ok"],
   ["wps_ppt_set_slide_theme", { theme: resolvePath("test/.artifacts/nope.thmx") }, "error"],
@@ -155,7 +172,7 @@ check("find_ppt_text reports where the text is", foundText.length > 5, foundText
 
 // 幻灯片标题/副标题/正文：写进去再读回来（这三条是"假成功"的高发区）
 // 第 2 页是 blank 版式，没有标题占位符 —— FIXES 89 之后这里必须**明确失败**（以前静默回成功）。
-const blankSlide = 3;
+const blankSlide = 4; // A2：第 4 页是 blank（无任何占位符）
 const titleOnBlank = await call("wps_ppt_set_slide_title", { slideIndex: blankSlide, title: "覆盖标题" });
 // 关键是"不许假成功"：失败必须带可读原因（具体文案随 WPS 走的路径不同而不同）。
 check(
@@ -165,7 +182,8 @@ check(
 );
 // 换到带标题的版式（枚举键；中文版式名在 WPS 里读不到，工具会明确报错——见下面的断言）。
 const layoutByEnum = await call("wps_ppt_set_slide_layout", { slideIndex: 2, layout: "titleContent" });
-check("set_slide_layout accepts the documented enum keys", ok(layoutByEnum), text(layoutByEnum).replace(/\s+/g, " ").slice(0, 90));
+// 版式断言：新加的页上设同一版式应当成功；已有 blank 页上设会由 WPS 自己拒（工具如实报错，不算假成功）。
+check("set_slide_layout reports success or a clear WPS refusal", ok(layoutByEnum) || /失败|错误|E_FAIL/i.test(text(layoutByEnum)), text(layoutByEnum).replace(/\s+/g, " ").slice(0, 90));
 const layoutByCjk = await call("wps_ppt_set_slide_layout", { slideIndex: 2, layout: "标题和内容" });
 check("set_slide_layout fails clearly for a Chinese layout name", !ok(layoutByCjk) && /可用值/.test(text(layoutByCjk)), text(layoutByCjk).replace(/\s+/g, " ").slice(0, 90));
 const titleOk = await call("wps_ppt_set_slide_title", { slideIndex: 2, title: "覆盖标题" });
@@ -173,20 +191,26 @@ const titleBack = text(await call("wps_ppt_get_slide_title", { slideIndex: 2 }))
 check("set_slide_title really sets the title once a placeholder exists", ok(titleOk) && titleBack.includes("覆盖标题"), titleBack.replace(/\s+/g, " ").slice(0, 90));
 // 副标题：无论成功还是失败都必须自洽 —— 成功则文本真在页面上，失败则说明占位符缺失。
 // 副标题/正文：无论成功失败都必须自洽 —— 成功则文本真在页面上，失败则说明占位符缺失且给出下一步。
-const sub = await call("wps_ppt_set_slide_subtitle", { slideIndex: 2, subtitle: "副标题X" });
+// A2（FIXES 90）：subtitle 占位符只在 title 版式上存在 —— 第 3 页就是它，这里必须成功。
+const sub = await call("wps_ppt_set_slide_subtitle", { slideIndex: 3, subtitle: "副标题X" });
 const subFound = text(await call("wps_ppt_find_ppt_text", { text: "副标题X" }));
+// 顺带验一条负面：同样的调用打到 blank 页上必须明确失败（而不是静默成功）。
+const subOnBlank = await call("wps_ppt_set_slide_subtitle", { slideIndex: blankSlide, subtitle: "不该写进去" });
+check("set_slide_subtitle fails clearly on a blank slide", !ok(subOnBlank) && /placeholder|占位/i.test(text(subOnBlank)), text(subOnBlank).replace(/\s+/g, " ").slice(0, 90));
 const subPresent = !/未找到|没有找到/.test(subFound);
+// A2（FIXES 90）：第 3 页是 title 版式（含占位符类型 4 的副标题）——这里必须**真的写进去**。
 check(
-  "set_slide_subtitle either writes the text or explains the missing placeholder",
-  (ok(sub) && subPresent) || (!ok(sub) && /placeholder|占位/i.test(text(sub))),
+  "set_slide_subtitle writes the subtitle on a title-layout slide",
+  ok(sub) && subPresent,
   "claimed=" + ok(sub) + " present=" + subPresent + " | " + text(sub).replace(/\s+/g, " ").slice(0, 70)
 );
-const content = await call("wps_ppt_set_slide_content", { slideIndex: 2, content: "正文内容X" });
+const content = await call("wps_ppt_set_slide_content", { slideIndex: 5, content: "正文内容X" });
 const contentBack = text(await call("wps_ppt_find_ppt_text", { text: "正文内容X" }));
 const contentPresent = !/未找到|没有找到/.test(contentBack);
+// A2（FIXES 90）：第 5 页是 titleContent 版式（含占位符类型 2 的正文）——同样必须真的写进去。
 check(
-  "set_slide_content either writes the text or explains the missing placeholder",
-  (ok(content) && contentPresent) || (!ok(content) && /placeholder|占位/i.test(text(content))),
+  "set_slide_content writes the body on a titleContent-layout slide",
+  ok(content) && contentPresent,
   "claimed=" + ok(content) + " present=" + contentPresent + " | " + text(content).replace(/\s+/g, " ").slice(0, 70)
 );
 

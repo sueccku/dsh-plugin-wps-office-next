@@ -10,7 +10,8 @@
  * Tool参数的JSON Schema类型定义
  */
 export interface ToolParameterSchema {
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  // 允许数组形式（JSON Schema 合法）：例如 range: ['object','string'] —— 对象坐标或 "all"。
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | Array<'string' | 'number' | 'boolean' | 'object' | 'array'>;
   description?: string;
   enum?: string[];
   items?: ToolParameterSchema;

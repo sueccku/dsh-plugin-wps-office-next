@@ -33,12 +33,32 @@ KPI 卡片、时间线、流程图等「高层场景封装」已不再作为工�
 - 背景：set_slide_background / set_master_background 接受 background 对象，形如 {type:"solid",color:"#FF0000"}、{type:"gradient",colors:["#1a1a2e","#0f3460"]}、{type:"image",imagePath:"..."}。缺色或未知类型会明确报错。
 - 幻灯片页码只支持显示/隐藏（show），没有起始编号参数。
 
+## 版式与占位符（实测矩阵，FIXES 90）
+
+`add_slide` 与 `set_slide_layout` **收同一套键名**。占位符不是"哪个版式都有"——下面是真机扫出来的对应关系：
+
+| layout 键 | 母版版式 | 页上的占位符（ppPlaceholderType） |
+| --- | --- | --- |
+| `title` | 标题页 | 标题(3) + **副标题(4)** |
+| `titleContent` | 标题和内容 | 标题(1) + **正文(2)** |
+| `twoColumn` | 两栏内容 | 标题(1) + 表格占位符(12) |
+| `comparison` | 比较 | 标题(1) + 正文(2) + 图表占位符(8) |
+| `titleOnly` | 仅标题 | 标题(1) |
+| `blank` | 空白 | 无 |
+
+- `set_slide_title` 需要标题占位符（`title` / `titleContent` / `titleOnly` / `twoColumn` / `comparison` 都有）；
+  在 `blank` 页上它会**明确报错**，不会再静默回成功（那一页改用 `add_textbox`）。
+- `set_slide_subtitle` 只在 **`title`** 版式上可用，`set_slide_content` 只在带正文占位符的版式（如 `titleContent`）上可用；
+  用错版式会得到带"下一步"的明确失败。**先定版式、再填内容**，不要先填内容再换版式。
+- **换版式不是万能药**：对已有的空白页执行 `set_slide_layout` 时，WPS 自己可能直接拒（`E_FAIL`）。
+  要某个版式，最稳的是 `add_slide` 时就指定 `layout`；需要改已有页时，失败信息里会说明。
 ## 常用流程
 
 1. wps_ppt_get_slide_count 与 get_slide_info 确认文稿与页码。
 2. 多份演示文稿同时打开时，**显式传 presentationName** 指定目标文稿；不传时动作会落在「活动文稿」上（跟着窗口焦点走），桥会在结果的 `warnings` 里提醒。`set_active_target`（通过 wps_call）也能改全局焦点，但它是全局状态，优先用参数。
 3. **新建文稿后先 add_slide**：WPS 的 Presentations.Add() 返回 null，且新建文稿通常是 0 页；此时 get_slide_count 可能仍报 0，不要据此判断文稿为空。
-4. 加页用 add_slide，然后 set_slide_title 与 set_slide_content 填内容。
+4. 加页用 add_slide，**加页时就给 layout**（见上面矩阵），然后 set_slide_title 与 set_slide_content 填内容；
+   副标题要先加 `layout:"title"` 的页，正文要先加 `layout:"titleContent"` 的页。
 5. 需要精细排版时先 get_shapes 取形状索引，再对具体形状操作。
 6. 导出前先 wps_common_save，导出用 export_slide_as_image（绝对路径）。
 

@@ -16,25 +16,25 @@
 | wps_excel_write_range | 直达 | 向Excel指定范围写入数据。 |
 | wps_excel_clean_data | wps_call | 数据清洗工具，支持多种清洗操作的组合。 |
 | wps_excel_remove_duplicates | wps_call | 删除指定范围内的重复行。 |
-| wps_excel_sort_range | wps_call | 对Excel选定区域按指定列排序。 |
+| wps_excel_sort_range | 直达 | 对Excel选定区域按指定列排序。 |
 | wps_excel_find_replace | 直达 | 在Excel中查找并替换内容。 |
 | wps_excel_add_comment | wps_call | 给单元格添加批注。 |
 | wps_excel_protect_sheet | wps_call | 保护或取消保护工作表。 |
-| wps_excel_set_conditional_format | wps_call | 设置条件格式。 |
+| wps_excel_set_conditional_format | 直达 | 设置条件格式。 |
 | wps_excel_protect_workbook | wps_call | 保护或取消保护工作簿，防止结构被修改（如添加/删除工作表）。 |
 | wps_excel_set_zoom | wps_call | 设置当前工作表的缩放比例（10-400%）。 |
 | wps_excel_create_pivot_table | 直达 | 创建Excel透视表，用于数据汇总和分析。 |
 | wps_excel_update_pivot_table | wps_call | 更新已有透视表的配置，包括添加/移除字段、修改聚合方式等。 |
 | wps_excel_create_chart | 直达 | 在Excel中创建图表。 |
 | wps_excel_update_chart | wps_call | 更新Excel图表的属性，包括标题、颜色、图例、数据标签等。 |
-| wps_excel_export_chart_as_image | wps_call | 将工作表中指定的图表导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。 |
-| wps_excel_export_range_as_image | wps_call | 将工作表中指定区域导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。 |
-| wps_excel_create_sheet | wps_call | 在当前工作簿中创建新的工作表。 |
+| wps_excel_export_chart_as_image | 直达 | 将工作表中指定的图表导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。 |
+| wps_excel_export_range_as_image | 直达 | 将工作表中指定区域导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。 |
+| wps_excel_create_sheet | 直达 | 在当前工作簿中创建新的工作表。 |
 | wps_excel_delete_sheet | wps_call | 删除当前工作簿中的指定工作表。 |
 | wps_excel_rename_sheet | wps_call | 重命名当前工作簿中的指定工作表。 |
 | wps_excel_copy_sheet | wps_call | 复制当前工作簿中的指定工作表。 |
 | wps_excel_get_sheet_list | 直达 | 获取当前工作簿的所有工作表列表，包含名称、索引和是否为活动工作表。 |
-| wps_excel_switch_sheet | wps_call | 切换到指定的工作表，使其成为活动工作表。 |
+| wps_excel_switch_sheet | 直达 | 切换到指定的工作表，使其成为活动工作表。 |
 | wps_excel_move_sheet | wps_call | 移动指定工作表到新的位置。 |
 | wps_excel_get_selection | wps_call | 获取当前Excel中选中区域的信息，包括范围地址、行列数等。 |
 | wps_excel_freeze_panes | wps_call | 冻结/取消冻结窗格。 |
@@ -52,13 +52,13 @@
 | wps_excel_set_data_validation | wps_call | 设置Excel单元格的数据验证规则，如下拉列表、数值范围、日期范围等。 |
 | wps_excel_open_workbook | 直达 | 打开指定路径的Excel工作簿文件。 |
 | wps_excel_get_open_workbooks | 直达 | 获取当前所有已打开的Excel工作簿列表。 |
-| wps_excel_switch_workbook | wps_call | 切换到指定名称的Excel工作簿。 |
-| wps_excel_close_workbook | wps_call | 关闭指定的Excel工作簿，可选是否保存。 |
+| wps_excel_switch_workbook | 直达 | 切换到指定名称的Excel工作簿。 |
+| wps_excel_close_workbook | 直达 | 关闭指定的Excel工作簿，可选是否保存。 |
 | wps_excel_create_workbook | wps_call | 新建一个空白Excel工作簿。 |
 | wps_excel_get_cell_value | wps_call | 获取Excel指定单元格的值。 |
 | wps_excel_set_cell_value | wps_call | 设置Excel指定单元格的值。 |
 | wps_excel_get_formula | wps_call | 获取Excel指定单元格的公式。 |
-| wps_excel_get_cell_info | wps_call | 获取单元格的详细信息（值、公式、格式等）。 |
+| wps_excel_get_cell_info | 直达 | 获取单元格的详细信息（值、公式、格式等）。 |
 | wps_excel_clear_range | wps_call | 清除指定范围的内容、格式或全部。 |
 | wps_excel_auto_filter | wps_call | 对Excel指定范围应用自动筛选。 |
 | wps_excel_copy_range | wps_call | 复制Excel指定范围到目标位置。 |
@@ -92,7 +92,7 @@
 | wps_excel_delete_named_range | wps_call | 删除指定的命名范围（只删名字，不动单元格内容）。 |
 | wps_excel_copy_format | 直达 | 把一块区域的格式复制到另一块区域（只复制格式，不改数值与公式）。 |
 | wps_excel_clear_formats | 直达 | 清除区域的格式（字体、颜色、边框、数字格式），单元格内容保留。 |
-| wps_excel_get_conditional_formats | wps_call | 列出区域上生效的条件格式规则（序号 + 类型），用于先看清楚再改。 |
+| wps_excel_get_conditional_formats | 直达 | 列出区域上生效的条件格式规则（序号 + 类型），用于先看清楚再改。 |
 | wps_excel_remove_conditional_format | wps_call | 删除区域上的条件格式规则。 |
 | wps_excel_get_data_validations | wps_call | 读取区域上的数据验证规则（类型、来源公式、提示语）。 |
 | wps_excel_remove_data_validation | wps_call | 删除区域上的数据验证规则（下拉框、输入限制）。 |
@@ -110,8 +110,8 @@
 | wps_excel_unlist_list_object | wps_call | 把表转回普通区域（数据与格式保留）：结构化引用、筛选按钮与表对象都会消失。 |
 | wps_excel_get_sheet_settings | 直达 | 读一张工作表的页面设置、打印设置、页眉页脚与外观：方向、纸张、页边距（磅）、缩放或按页适配、是否居中、打印区域与打印标题、页眉页脚、可见性、标签色、手动分页符数量。 |
 | wps_excel_set_sheet_page_setup | 直达 | 设置工作表的页面：方向、纸张、页边距、缩放、是否居中、是否打印网格线与行列标题。 |
-| wps_excel_set_sheet_print_titles | wps_call | 设置打印时每页重复的行/列（打印标题）：如行 $1:$1 让表头每页都出现，列 $A:$A 让第一列每页都出现。 |
-| wps_excel_set_sheet_header_footer | wps_call | 设置打印页眉页脚。 |
+| wps_excel_set_sheet_print_titles | 直达 | 设置打印时每页重复的行/列（打印标题）：如行 $1:$1 让表头每页都出现，列 $A:$A 让第一列每页都出现。 |
+| wps_excel_set_sheet_header_footer | 直达 | 设置打印页眉页脚。 |
 | wps_excel_set_sheet_appearance | wps_call | 设置工作表的可见性与标签色：可见 / 隐藏 / 深度隐藏（veryHidden，用户界面上无法取消隐藏），以及标签颜色（十六进制如 #FF9900）。 |
 | wps_excel_set_outline_levels | wps_call | 控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇 |
 | wps_excel_reset_page_breaks | wps_call | 清除工作表上的手动分页符，恢复按内容自动分页。 |

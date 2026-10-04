@@ -48,6 +48,21 @@ exports.STANDARD_TOOLS = [
     'wps_excel_goal_seek',
     'wps_excel_clear_pivot_table',
     'wps_excel_set_chart_labels',
+    // FIXES 90（D1-C 重平衡）：下面是真实调用数据里最常被 wps_help + wps_call 两步绕进来的工具
+    // （742 次调用统计：close_workbook 36 次、create_sheet 16 次、export_chart_as_image 17 次、
+    //  get_conditional_formats 15 次…）。把它们提到广告面，省掉"查一次 + 调一次"的往返与猜名失败。
+    'wps_excel_close_workbook',
+    'wps_excel_create_sheet',
+    'wps_excel_switch_sheet',
+    'wps_excel_switch_workbook',
+    'wps_excel_export_chart_as_image',
+    'wps_excel_export_range_as_image',
+    'wps_excel_get_conditional_formats',
+    'wps_excel_set_conditional_format',
+    'wps_excel_set_sheet_header_footer',
+    'wps_excel_set_sheet_print_titles',
+    'wps_excel_get_cell_info',
+    'wps_excel_sort_range',
     // Word
     'wps_word_get_active_document',
     'wps_word_get_document_text',
@@ -70,6 +85,11 @@ exports.STANDARD_TOOLS = [
     'wps_word_get_revisions',
     'wps_word_mail_merge',
     'wps_word_get_notes',
+    // FIXES 90：Word 侧同样缺"收尾"与"多文档"这两个高频动作（get_open_documents 19 次、close_document 15 次、
+    // switch_document 2 次）。广告面以前只有 open/create，没有 close —— 生命周期不对称。
+    'wps_word_get_open_documents',
+    'wps_word_close_document',
+    'wps_word_switch_document',
     // Presentation
     'wps_ppt_get_slide_count',
     'wps_ppt_get_slide_info',

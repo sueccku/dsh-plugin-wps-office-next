@@ -5063,8 +5063,23 @@ switch ($Action) {
         # Count first, so the result reports how much the document actually had to match.
         $count = Get-WordMatchCount $doc $findText $matchCase $matchWholeWord
 
+        # FIXES 90（A6）：以前查找**从不移动光标**，于是"查找→定位→对命中处施加格式"这条最常规的走法在本桥里
+        # 走不通（调用方只能读全文自己猜坐标）。selectFound=true 时把选区定位到第一处命中，行为显式、可选。
+        $selectFound = $null -ne $p.selectFound -and [bool]$p.selectFound
+        $selectedAt = $null
+        if ($selectFound) {
+            try {
+                $sel = $doc.Content.Find
+                $sel.ClearFormatting()
+                $found = $sel.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, "", 0)
+                if ($found) { $word.Selection.SetRange($sel.Parent.Start, $sel.Parent.End); $selectedAt = @{ start = $sel.Parent.Start; end = $sel.Parent.End } }
+            } catch { Add-WpsWarning ("定位到命中处失败：" + $_.Exception.Message) }
+        }
+
         if (-not $isReplace) {
-            Output-Json @{ success = $true; data = @{ count = $count; replaced = $false; found = $count; find = $findText; replaceMode = $false } }
+            $data = @{ count = $count; replaced = $false; found = $count; find = $findText; replaceMode = $false }
+            if ($selectFound) { $data.selected = $selectedAt }
+            Output-Json @{ success = $true; data = $data }
             exit
         }
 
@@ -5076,6 +5091,14 @@ switch ($Action) {
         $replaceType = if ($replaceAll) { 2 } else { 1 }
         $result = $find.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, $replaceText, $replaceType)
         $replacedCount = if ($replaceAll) { $count } else { if ($result) { 1 } else { 0 } }
+        if ($selectFound) {
+            try {
+                $sel2 = $doc.Content.Find
+                $sel2.ClearFormatting()
+                $found2 = $sel2.Execute($replaceText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, "", 0)
+                if ($found2) { $word.Selection.SetRange($sel2.Parent.Start, $sel2.Parent.End); $selectedAt = @{ start = $sel2.Parent.Start; end = $sel2.Parent.End } }
+            } catch { Add-WpsWarning ("定位到替换结果失败：" + $_.Exception.Message) }
+        }
         Output-Json @{ success = $true; data = @{ count = $replacedCount; replaced = [bool]$result; found = $count; find = $findText; replace = $replaceText; replaceMode = $true } }
     }
 
@@ -5516,7 +5539,10 @@ switch ($Action) {
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
         $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
-        if ($p.range -and $null -ne $p.range.start -and $null -ne $p.range.end) {
+        # FIXES 90（A6）：range 与 set_font 语义对齐 —— 都接受 {start,end} 或 "all"；省略则用当前选区。
+        if ($p.range -eq "all") {
+            $range = $doc.Content
+        } elseif ($p.range -and $null -ne $p.range.start -and $null -ne $p.range.end) {
             $rs = [int]$p.range.start
             $re = [int]$p.range.end
             $contentEnd = [int]$doc.Content.End
@@ -5900,10 +5926,22 @@ switch ($Action) {
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
         $pres = Get-TargetPres $ppt $p
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; exit }
-        $layouts = @{ title = 1; title_content = 2; blank = 12; two_column = 3; comparison = 34 }
-        $layoutKey = if ($p.layout) { $p.layout } else { "title_content" }
+        # FIXES 90（A2）：这里以前只认 snake_case（title_content / two_column / comparison），而 setSlideLayout
+        # 认的是 camelCase（titleContent / twoColumn…）——同一个概念两套键，模型按一处写就会在另一处静默落到默认版式。
+        # 现在两种拼写都收（并保留 title/blank）。ppLayout 常量：title=1、titleContent=2、twoColumn=3、comparison=34、blank=12。
+        $layouts = @{
+            title = 1; titleOnly = 11
+            titleContent = 2; title_content = 2
+            twoColumn = 3; two_column = 3
+            comparison = 34
+            blank = 12
+        }
+        $layoutKey = if ($p.layout) { [string]$p.layout } else { "titleContent" }
         $layoutType = $layouts[$layoutKey]
-        if ($null -eq $layoutType) { $layoutType = 2 }
+        if ($null -eq $layoutType) {
+            Output-Json @{ success = $false; error = ("不认识的版式：'" + $layoutKey + "'。可用值：" + (($layouts.Keys | Sort-Object -Unique) -join " / ") + "。（动作：addSlide）下一步：改用上面的键，或先加 blank 页再 setSlideLayout。" ) }
+            exit
+        }
         $position = if ($p.position) { $p.position } else { $pres.Slides.Count + 1 }
         $slide = $pres.Slides.Add($position, $layoutType)
         if ($p.title -and $slide.Shapes.HasTitle) { $slide.Shapes.Title.TextFrame.TextRange.Text = $p.title }
@@ -6061,13 +6099,15 @@ switch ($Action) {
             $shape = $slide.Shapes.Item($i)
             $placeholderType = $null
             try { $placeholderType = $shape.PlaceholderFormat.Type } catch { Add-WpsWarning $_.Exception.Message }
-            if ($placeholderType -eq 2) {
+            # FIXES 90（A2）：副标题占位符的 ppPlaceholderType 是 **4**（ppPlaceholderSubtitle）；2 是正文。
+            # 以前判的是 2，于是"标题页"上明明有副标题占位符也永远报 Subtitle placeholder not found。
+            if ($placeholderType -eq 4) {
                 $shape.TextFrame.TextRange.Text = if ($p.subtitle) { $p.subtitle } else { "" }
-                Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; subtitle = $p.subtitle } }
+                Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; subtitle = $p.subtitle; placeholderType = $placeholderType } }
                 return
             }
         }
-        Output-Json @{ success = $false; error = "Subtitle placeholder not found" }
+        Output-Json @{ success = $false; error = "Subtitle placeholder not found：这一页的版式没有副标题占位符（副标题只在 title 版式上，占位符类型 4）。（动作：setSlideSubtitle）下一步：先用 wps_ppt_add_slide 传 layout=title 加一页，或改用 set_slide_content。" }
     }
 
     "setSlideContent" {
@@ -6081,13 +6121,16 @@ switch ($Action) {
             $shape = $slide.Shapes.Item($i)
             $placeholderType = $null
             try { $placeholderType = $shape.PlaceholderFormat.Type } catch { Add-WpsWarning $_.Exception.Message }
-            if ($placeholderType -eq 7) {
+            # FIXES 90（A2）：正文占位符的 ppPlaceholderType 是 **2**（ppPlaceholderBody）；7 根本不是占位符类型。
+            # 以前判 7，于是"标题和内容"版式上也永远报 Content placeholder not found。
+            # 另外：单个占位符里的换行/多段用 `r 分隔，这里按调用方给的原样写入。
+            if ($placeholderType -eq 2 -or $placeholderType -eq 7) {
                 $shape.TextFrame.TextRange.Text = if ($p.content) { $p.content } else { "" }
-                Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex } }
+                Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; placeholderType = $placeholderType } }
                 return
             }
         }
-        Output-Json @{ success = $false; error = "Content placeholder not found" }
+        Output-Json @{ success = $false; error = "Content placeholder not found：这一页的版式没有正文占位符（正文占位符类型 2，在 titleContent 版式上）。（动作：setSlideContent）下一步：先用 wps_ppt_add_slide 传 layout=titleContent 加一页，或改用 set_textbox_text。" }
     }
 
     "addShape" {

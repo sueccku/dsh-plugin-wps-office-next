@@ -195,18 +195,16 @@ export const beautifyHandler: ToolHandler = async (
   };
 
   try {
+    // 注意：这里的泛型要保持紧凑 —— scripts/extract-spec.mjs 用 /(?:executeMethod|invokeAction)(?:<[\s\S]{0,300}?>)?\(\s*'action'/
+    // 静态抽取动作名，泛型超过 300 字符就会**静默失配**，整个工具会从 bridge 降级成 opaque
+    // （FIXES 90 就踩过：加了几行注释后 beautify 变成 action:null、不再进广告面）。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
       slideIndex: number | string;
-      // 桥实际回的是 { style, count }（FIXES 89：以前这里声明 operations，运行时就是 undefined）
-      count?: number;
+      count?: number; // 桥回的是 { style, count }（FIXES 89：以前声明 operations，运行时是 undefined）
       style?: string;
-      operations?: Array<{
-        operation: string;
-        count: number;
-        details?: string;
-      }>;
+      operations?: Array<{ operation: string; count: number; details?: string }>;
     }>(
       'beautifySlide',
       {

@@ -1,7 +1,7 @@
 # dsh-plugin-wps-office-next
 
 [![ci](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml/badge.svg)](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml)
-![advertised tools](https://img.shields.io/badge/advertised%20tools-69%20%2F%20268-blue)
+![advertised tools](https://img.shields.io/badge/advertised%20tools-84%20%2F%20268-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![npm](https://img.shields.io/badge/npm-dsh--plugin--wps--office--next-CB3837)](https://www.npmjs.com/package/dsh-plugin-wps-office-next)
@@ -275,15 +275,15 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 ## 它是怎么做的
 
 <details>
-<summary><b>工具面：注册 268 个，每次请求只广告 69 个</b></summary>
+<summary><b>工具面：注册 268 个，每次请求只广告 84 个</b></summary>
 
 一次请求塞几百个工具会浪费上下文。本插件把 `tools/list` 收敛为三档，由环境变量 `WPS_OFFICE_TOOLSET` 切换（默认 `standard`）：
 
 | 档位 | 工具数 | schema 字节 | 约 tokens | 内容 |
 |---|---|---|---|---|
-| minimal | 4 | 1,348 | 385 | 仅 4 个门面工具 |
-| **standard（默认）** | **69** | **38,878** | **≈11,100** | 门面 + 65 个精选工具 |
-| full | 268 | 155,613 | 44,461 | 全量，保留完整描述 |
+| minimal | 4 | 1,353 | 387 | 仅 4 个门面工具 |
+| **standard（默认）** | **84** | **46,867** | **≈13,391** | 门面 + 80 个精选工具 |
+| full | 268 | 157,854 | 45,101 | 全量，保留完整描述 |
 
 注册目录 **268** 个工具：Excel 118 / Word 59 / PPT 77 / 通用 14（含门面）。
 
@@ -371,7 +371,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1072 项 / 48 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 69 工具 / 38,878 字节（内部预算上限 100 / 60,000）；注册工具 268、桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
+当前数字：测试 **1076 项 / 48 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 84 工具 / 46,867 字节（内部预算上限 100 / 60,000）；注册工具 268、桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十一个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `deprecated`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
@@ -435,7 +435,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | 目标环境 | WPS 12.1+ x64 |
 | 形态 | 单一 npm 包 = DSH bundle + 自带 MCP server + 自带 COM host + 全部 skills |
 | MCP serverName | wps-office-next |
-| 默认工具面 | standard 档 69 个工具；预算上限 100 工具 / 60,000 字节 |
+| 默认工具面 | standard 档 84 个工具；预算上限 100 工具 / 60,000 字节 |
 | 传输层 | 常驻 PowerShell STA 宿主 + stdin/stdout JSON 行 |
 | 加载项 | 全部删除，零依赖 |
 | 构建产物 | 预构建产物入库，安装后开箱可用 |

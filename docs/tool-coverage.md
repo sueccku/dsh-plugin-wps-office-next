@@ -9,14 +9,14 @@
 
 | 应用 | 工具数 | 有专门测试 | 仅矩阵 ok/error | 仅矩阵 any | 广告面 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Excel | 118 | 112 | 6 | 0 | 26 |
-| Word | 59 | 56 | 3 | 0 | 21 |
+| Excel | 118 | 112 | 6 | 0 | 38 |
+| Word | 59 | 56 | 3 | 0 | 24 |
 | PPT | 77 | 55 | 22 | 0 | 14 |
 | 通用 | 7 | 7 | 0 | 0 | 2 |
 | 转换 | 2 | 2 | 0 | 0 | 2 |
 | 逃生舱 | 1 | 1 | 0 | 0 | 0 |
 | 其他 | 4 | 4 | 0 | 0 | 4 |
-| **合计** | **268** | **237** | **31** | **0** | **69** |
+| **合计** | **268** | **237** | **31** | **0** | **84** |
 
 ## 矩阵
 
@@ -49,7 +49,7 @@
 | `wps_excel_clear_pivot_table` | Excel | `clearPivotTable` | ✅ | bespoke | excel-advanced.test.mjs |
 | `wps_excel_clear_range` | Excel | `clearRange` |  | bespoke | destructive-guard.test.mjs |
 | `wps_excel_clear_sparkline` | Excel | `clearSparkline` |  | bespoke | destructive-guard.test.mjs, excel-advanced.test.mjs |
-| `wps_excel_close_workbook` | Excel | `closeWorkbook` |  | bespoke | close-safety.test.mjs, excel-advanced.test.mjs, excel-list-object.test.mjs, +7 |
+| `wps_excel_close_workbook` | Excel | `closeWorkbook` | ✅ | bespoke | close-safety.test.mjs, excel-advanced.test.mjs, excel-list-object.test.mjs, +7 |
 | `wps_excel_consolidate` | Excel | `consolidate` |  | bespoke | excel-missing-halves-2.test.mjs |
 | `wps_excel_copy_format` | Excel | `copyFormat` | ✅ | bespoke | excel-missing-halves-2.test.mjs |
 | `wps_excel_copy_range` | Excel | `copyRange` |  | bespoke | excel-contract-fixes.test.mjs |
@@ -57,7 +57,7 @@
 | `wps_excel_create_chart` | Excel | `createChart` | ✅ | bespoke | destructive-guard.test.mjs, excel-advanced.test.mjs, excel-coverage.test.mjs |
 | `wps_excel_create_list_object` | Excel | `createListObject` | ✅ | bespoke | destructive-guard.test.mjs, excel-list-object.test.mjs |
 | `wps_excel_create_pivot_table` | Excel | `createPivotTable` | ✅ | bespoke | excel-advanced.test.mjs, excel-coverage.test.mjs |
-| `wps_excel_create_sheet` | Excel | `createSheet` |  | bespoke | destructive-guard.test.mjs, excel-missing-halves-2.test.mjs, excel-page-setup.test.mjs, +1 |
+| `wps_excel_create_sheet` | Excel | `createSheet` | ✅ | bespoke | destructive-guard.test.mjs, excel-missing-halves-2.test.mjs, excel-page-setup.test.mjs, +1 |
 | `wps_excel_create_workbook` | Excel | `createWorkbook` |  | bespoke | close-safety.test.mjs, excel-advanced.test.mjs, excel-coverage.test.mjs, +8 |
 | `wps_excel_delete_cell_comment` | Excel | `deleteCellComment` |  | matrix ok | excel-coverage.test.mjs |
 | `wps_excel_delete_chart` | Excel | `deleteChart` |  | bespoke | destructive-guard.test.mjs, excel-advanced.test.mjs |
@@ -68,17 +68,17 @@
 | `wps_excel_delete_sheet` | Excel | `deleteSheet` |  | bespoke | destructive-guard.test.mjs, sheet-ops.test.mjs |
 | `wps_excel_diagnose_formula` | Excel | `diagnoseFormula` |  | bespoke | excel-coverage.test.mjs |
 | `wps_excel_evaluate_formula` | Excel | — |  | matrix ok | excel-coverage.test.mjs |
-| `wps_excel_export_chart_as_image` | Excel | `exportChartAsImage` |  | matrix ok | excel-coverage.test.mjs |
-| `wps_excel_export_range_as_image` | Excel | `exportRangeAsImage` |  | matrix ok | excel-coverage.test.mjs |
+| `wps_excel_export_chart_as_image` | Excel | `exportChartAsImage` | ✅ | matrix ok | excel-coverage.test.mjs |
+| `wps_excel_export_range_as_image` | Excel | `exportRangeAsImage` | ✅ | matrix ok | excel-coverage.test.mjs |
 | `wps_excel_fill_series` | Excel | `fillSeries` |  | bespoke | excel-contract-fixes.test.mjs, merged-tools.test.mjs |
 | `wps_excel_find_in_sheet` | Excel | `findInSheet` | ✅ | bespoke | excel-missing-halves.test.mjs, range-limits.test.mjs |
 | `wps_excel_find_replace` | Excel | `findReplaceExcel` | ✅ | bespoke | find-replace.test.mjs |
 | `wps_excel_freeze_panes` | Excel | `freezePanes` |  | bespoke | excel-contract-fixes.test.mjs |
 | `wps_excel_generate_formula` | Excel | `getContext` |  | bespoke | excel-coverage.test.mjs |
 | `wps_excel_get_cell_comments` | Excel | `getCellComments` |  | bespoke | excel-coverage.test.mjs |
-| `wps_excel_get_cell_info` | Excel | `getCellInfo` |  | bespoke | excel-missing-halves-2.test.mjs |
+| `wps_excel_get_cell_info` | Excel | `getCellInfo` | ✅ | bespoke | excel-missing-halves-2.test.mjs |
 | `wps_excel_get_cell_value` | Excel | `getCellValue` |  | bespoke | excel-coverage.test.mjs |
-| `wps_excel_get_conditional_formats` | Excel | `getConditionalFormats` |  | bespoke | excel-missing-halves-2.test.mjs |
+| `wps_excel_get_conditional_formats` | Excel | `getConditionalFormats` | ✅ | bespoke | excel-missing-halves-2.test.mjs |
 | `wps_excel_get_data_validations` | Excel | `getDataValidations` |  | bespoke | excel-missing-halves-2.test.mjs |
 | `wps_excel_get_formula` | Excel | `getFormula` |  | bespoke | excel-list-object.test.mjs, excel-page-setup.test.mjs |
 | `wps_excel_get_formula_audit` | Excel | `getFormulaAudit` |  | bespoke | excel-page-setup.test.mjs |
@@ -122,7 +122,7 @@
 | `wps_excel_set_cell_value` | Excel | `setCellValue` |  | bespoke | arg-shape-guard.test.mjs, excel-coverage.test.mjs |
 | `wps_excel_set_chart_labels` | Excel | `setChartLabels` | ✅ | bespoke | excel-advanced.test.mjs |
 | `wps_excel_set_column_width` | Excel | `setColumnWidth` |  | bespoke | excel-coverage.test.mjs |
-| `wps_excel_set_conditional_format` | Excel | `addConditionalFormat` |  | bespoke | destructive-guard.test.mjs, excel-contract-fixes.test.mjs, excel-missing-halves-2.test.mjs |
+| `wps_excel_set_conditional_format` | Excel | `addConditionalFormat` | ✅ | bespoke | destructive-guard.test.mjs, excel-contract-fixes.test.mjs, excel-missing-halves-2.test.mjs |
 | `wps_excel_set_data_validation` | Excel | `addDataValidation` |  | bespoke | destructive-guard.test.mjs, excel-contract-fixes.test.mjs, excel-missing-halves-2.test.mjs |
 | `wps_excel_set_formula` | Excel | `setFormula` | ✅ | bespoke | excel-advanced.test.mjs, excel-page-setup.test.mjs, word-lifecycle.test.mjs |
 | `wps_excel_set_hyperlink` | Excel | `setHyperlink` |  | bespoke | excel-contract-fixes.test.mjs |
@@ -133,17 +133,17 @@
 | `wps_excel_set_print_area` | Excel | — |  | bespoke | excel-coverage.test.mjs |
 | `wps_excel_set_row_height` | Excel | `setRowHeight` |  | bespoke | excel-coverage.test.mjs |
 | `wps_excel_set_sheet_appearance` | Excel | `setSheetAppearance` |  | bespoke | excel-page-setup.test.mjs |
-| `wps_excel_set_sheet_header_footer` | Excel | `setSheetHeaderFooter` |  | bespoke | excel-page-setup.test.mjs |
+| `wps_excel_set_sheet_header_footer` | Excel | `setSheetHeaderFooter` | ✅ | bespoke | excel-page-setup.test.mjs |
 | `wps_excel_set_sheet_page_setup` | Excel | `setSheetPageSetup` | ✅ | bespoke | excel-page-setup.test.mjs |
-| `wps_excel_set_sheet_print_titles` | Excel | `setSheetPrintTitles` |  | bespoke | excel-page-setup.test.mjs |
+| `wps_excel_set_sheet_print_titles` | Excel | `setSheetPrintTitles` | ✅ | bespoke | excel-page-setup.test.mjs |
 | `wps_excel_set_wrap_text` | Excel | `wrapText` |  | bespoke | excel-missing-halves.test.mjs |
 | `wps_excel_set_zoom` | Excel | `setZoom` |  | bespoke | deprecated.test.mjs |
 | `wps_excel_show_columns` | Excel | `showColumns` |  | bespoke | excel-contract-fixes.test.mjs |
 | `wps_excel_show_rows` | Excel | `showRows` |  | bespoke | excel-contract-fixes.test.mjs |
-| `wps_excel_sort_range` | Excel | `sortRange` |  | bespoke | excel-contract-fixes.test.mjs |
+| `wps_excel_sort_range` | Excel | `sortRange` | ✅ | bespoke | excel-contract-fixes.test.mjs |
 | `wps_excel_subtotal` | Excel | `subtotal` |  | bespoke | excel-missing-halves-2.test.mjs |
-| `wps_excel_switch_sheet` | Excel | `switchSheet` |  | bespoke | destructive-guard.test.mjs, excel-missing-halves-2.test.mjs, sheet-ops.test.mjs |
-| `wps_excel_switch_workbook` | Excel | `switchWorkbook` |  | bespoke | excel-coverage.test.mjs |
+| `wps_excel_switch_sheet` | Excel | `switchSheet` | ✅ | bespoke | destructive-guard.test.mjs, excel-missing-halves-2.test.mjs, sheet-ops.test.mjs |
+| `wps_excel_switch_workbook` | Excel | `switchWorkbook` | ✅ | bespoke | excel-coverage.test.mjs |
 | `wps_excel_text_to_columns` | Excel | — |  | bespoke | excel-coverage.test.mjs |
 | `wps_excel_transpose` | Excel | `transpose` |  | bespoke | excel-contract-fixes.test.mjs |
 | `wps_excel_unlist_list_object` | Excel | `unlistListObject` |  | bespoke | excel-list-object.test.mjs |
@@ -163,7 +163,7 @@
 | `wps_ppt_add_textbox` | PPT | `addTextBox` | ✅ | bespoke | destructive-guard.test.mjs, merged-tools.test.mjs, ppt-contract-fixes.test.mjs, +1 |
 | `wps_ppt_align_shapes` | PPT | `alignShapes` |  | bespoke | merged-tools.test.mjs |
 | `wps_ppt_apply_transition_to_all` | PPT | `applyTransitionToAll` |  | bespoke | ppt-contract-fixes.test.mjs |
-| `wps_ppt_beautify` | PPT | `beautifySlide` |  | matrix ok | ppt-coverage.test.mjs |
+| `wps_ppt_beautify` | PPT | — |  | matrix ok | ppt-coverage.test.mjs |
 | `wps_ppt_close_presentation` | PPT | `closePresentation` |  | bespoke | close-safety.test.mjs, honest-reporting.test.mjs, ppt-slimming.test.mjs |
 | `wps_ppt_copy_slide` | PPT | `duplicateSlide` |  | bespoke | merged-tools.test.mjs, ppt-contract-fixes.test.mjs |
 | `wps_ppt_create_presentation` | PPT | `createPresentation` |  | bespoke | close-safety.test.mjs, destructive-guard.test.mjs, honest-reporting.test.mjs, +4 |
@@ -239,14 +239,14 @@
 | `wps_word_add_footnote` | Word | `addFootnote` |  | bespoke | word-longtail.test.mjs |
 | `wps_word_add_table_lines` | Word | `addTableLines` |  | bespoke | word-deep.test.mjs |
 | `wps_word_apply_style` | Word | `applyStyle` | ✅ | bespoke | word-common-coverage.test.mjs, word-range-format.test.mjs |
-| `wps_word_close_document` | Word | `closeDocument` |  | bespoke | warning-channel.test.mjs, word-deep.test.mjs, word-lifecycle.test.mjs, +3 |
+| `wps_word_close_document` | Word | `closeDocument` | ✅ | bespoke | warning-channel.test.mjs, word-deep.test.mjs, word-lifecycle.test.mjs, +3 |
 | `wps_word_convert_table_to_text` | Word | `convertTableToText` |  | bespoke | word-deep.test.mjs |
 | `wps_word_create_document` | Word | `createDocument` | ✅ | bespoke | destructive-guard.test.mjs, orphan-reclaim.test.mjs, warning-channel.test.mjs, +7 |
 | `wps_word_delete_comment` | Word | `deleteComment` |  | bespoke | word-produce.test.mjs |
 | `wps_word_delete_table_line` | Word | `deleteTableLine` |  | bespoke | destructive-guard.test.mjs, word-deep.test.mjs |
 | `wps_word_enable_track_changes` | Word | `enableTrackChanges` |  | bespoke | word-produce.test.mjs |
 | `wps_word_find_in_document` | Word | `findInDocument` |  | bespoke | word-common-coverage.test.mjs |
-| `wps_word_find_replace` | Word | `findReplace` | ✅ | bespoke | find-replace.test.mjs |
+| `wps_word_find_replace` | Word | `findReplace` | ✅ | bespoke | find-replace.test.mjs, word-range-format.test.mjs |
 | `wps_word_generate_toc` | Word | `generateTOC` | ✅ | bespoke | word-common-coverage.test.mjs |
 | `wps_word_get_active_document` | Word | `getActiveDocument` | ✅ | bespoke | word-lifecycle.test.mjs |
 | `wps_word_get_bookmarks` | Word | `getBookmarks` |  | bespoke | word-deep.test.mjs |
@@ -255,7 +255,7 @@
 | `wps_word_get_document_stats` | Word | `getDocumentStats` | ✅ | bespoke | word-deep.test.mjs |
 | `wps_word_get_document_text` | Word | `getDocumentText` | ✅ | bespoke | excel-contract-fixes.test.mjs, find-replace.test.mjs, warning-channel.test.mjs |
 | `wps_word_get_notes` | Word | `getNotes` | ✅ | bespoke | word-longtail.test.mjs |
-| `wps_word_get_open_documents` | Word | `getOpenDocuments` |  | bespoke | warning-channel.test.mjs, word-deep.test.mjs, word-lifecycle.test.mjs, +4 |
+| `wps_word_get_open_documents` | Word | `getOpenDocuments` | ✅ | bespoke | warning-channel.test.mjs, word-deep.test.mjs, word-lifecycle.test.mjs, +4 |
 | `wps_word_get_paragraphs` | Word | `getDocumentParagraphs` | ✅ | bespoke | word-common-coverage.test.mjs, word-range-format.test.mjs |
 | `wps_word_get_revisions` | Word | `getRevisions` | ✅ | bespoke | word-produce.test.mjs |
 | `wps_word_get_table_data` | Word | `getTableData` | ✅ | bespoke | word-deep.test.mjs |
@@ -291,13 +291,13 @@
 | `wps_word_set_text_color` | Word | `setTextColor` |  | bespoke | word-common-coverage.test.mjs |
 | `wps_word_smart_fill_field` | Word | `smartFillField` | ✅ | bespoke | word-common-coverage.test.mjs |
 | `wps_word_split_table_cell` | Word | `splitTableCell` |  | bespoke | word-deep.test.mjs |
-| `wps_word_switch_document` | Word | `switchDocument` |  | bespoke | word-common-coverage.test.mjs |
+| `wps_word_switch_document` | Word | `switchDocument` | ✅ | bespoke | word-common-coverage.test.mjs |
 
 ## 没有任何测试点到（未驱动，0）
 
 无——268 个工具都至少被一个测试或 e2e 在代码里点到（注释不算）。
 
-## 解析不出桥 action 的工具（10）
+## 解析不出桥 action 的工具（11）
 
 - `wps_batch`
 - `wps_call`
@@ -306,6 +306,7 @@
 - `wps_excel_text_to_columns`
 - `wps_execute_method`
 - `wps_help`
+- `wps_ppt_beautify`
 - `wps_status`
 - `wps_word_proofread_basic`
 - `wps_word_set_paragraph`

@@ -25,11 +25,11 @@
 | wps_word_find_in_document | wps_call | 在Word文档中查找文本并返回位置信息，不执行替换操作。 |
 | wps_word_smart_fill_field | 直达 | 智能填写Word模板中的字段。 |
 | wps_word_replace_bookmark_content | wps_call | 替换Word文档中书签的内容。 |
-| wps_word_get_open_documents | wps_call | 获取当前WPS Writer中所有已打开的文档列表。 |
-| wps_word_switch_document | wps_call | 切换到指定名称的文档。 |
+| wps_word_get_open_documents | 直达 | 获取当前WPS Writer中所有已打开的文档列表。 |
+| wps_word_switch_document | 直达 | 切换到指定名称的文档。 |
 | wps_word_open_document | 直达 | 打开指定路径的Word文档。 |
 | wps_word_create_document | 直达 | 新建一个空白 Word 文档（不是打开已有文件）。 |
-| wps_word_close_document | wps_call | 关闭 Word 文档，可选是否保存。 |
+| wps_word_close_document | 直达 | 关闭 Word 文档，可选是否保存。 |
 | wps_word_get_document_text | 直达 | 获取当前Word文档的文本内容。 |
 | wps_word_insert_header | wps_call | 设置页眉内容。 |
 | wps_word_insert_footer | wps_call | 设置页脚内容。 |

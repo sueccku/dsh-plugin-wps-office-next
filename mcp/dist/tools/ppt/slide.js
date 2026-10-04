@@ -163,6 +163,9 @@ exports.beautifyDefinition = {
 const beautifyHandler = async (args) => {
     const { slideIndex, color_scheme, font, beautify_all } = args;
     try {
+        // 注意：这里的泛型要保持紧凑 —— scripts/extract-spec.mjs 用 /(?:executeMethod|invokeAction)(?:<[\s\S]{0,300}?>)?\(\s*'action'/
+        // 静态抽取动作名，泛型超过 300 字符就会**静默失配**，整个工具会从 bridge 降级成 opaque
+        // （FIXES 90 就踩过：加了几行注释后 beautify 变成 action:null、不再进广告面）。
         const response = await wps_client_1.wpsClient.executeMethod('beautifySlide', {
             slideIndex: beautify_all ? 'all' : slideIndex,
             style: {

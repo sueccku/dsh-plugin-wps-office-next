@@ -193,6 +193,12 @@ export const findReplaceDefinition: ToolDefinition = {
         type: 'boolean',
         description: '是否全字匹配，默认false',
       },
+      selectFound: {
+        type: 'boolean',
+        description:
+          '是否把光标/选区定位到命中处，默认 false（不动用户的光标）。传 true 后可以接着用 wps_word_set_font / ' +
+          'wps_word_apply_style 直接作用于刚找到的那处文本，不必自己算字符坐标。结果里会回报定位到的 start/end。',
+      },
     },
     required: ['findText'],
   },
@@ -201,12 +207,13 @@ export const findReplaceDefinition: ToolDefinition = {
 export const findReplaceHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { findText, replaceText, replaceAll, matchCase, matchWholeWord } = args as {
+  const { findText, replaceText, replaceAll, matchCase, matchWholeWord, selectFound } = args as {
     findText: string;
     replaceText?: string;
     replaceAll?: boolean;
     matchCase?: boolean;
     matchWholeWord?: boolean;
+    selectFound?: boolean;
   };
 
   if (!findText || findText.trim() === '') {
@@ -228,6 +235,7 @@ export const findReplaceHandler: ToolHandler = async (
       replaced?: boolean;
       find?: string;
       replace?: string;
+      selected?: { start: number; end: number } | null;
     }>(
       'findReplace',
       {
@@ -239,6 +247,7 @@ export const findReplaceHandler: ToolHandler = async (
         matchCase: matchCase || false,
         matchWholeWord: matchWholeWord || false,
         replaceMode: isReplaceMode,
+        selectFound: selectFound === true,
       },
       WpsAppType.WRITER
     );
@@ -262,13 +271,19 @@ export const findReplaceHandler: ToolHandler = async (
           };
         }
         const replaced = typeof found === 'number' ? `共 ${found} 处` : '已执行替换';
+        const selNote =
+          selectFound !== true
+            ? ''
+            : result.selected
+              ? `\n已定位到替换结果: ${result.selected.start}-${result.selected.end}`
+              : '\n注意：请求了定位但没找到可定位的位置';
         return {
           id: uuidv4(),
           success: true,
           content: [
             {
               type: 'text',
-              text: `替换完成！\n查找: "${findText}"\n替换为: "${replaceText}"\n${replaced}`,
+              text: `替换完成！\n查找: "${findText}"\n替换为: "${replaceText}"\n${replaced}${selNote}`,
             },
           ],
         };

@@ -2641,7 +2641,95 @@ powershell … -File C:\Users\qwer\.dsh\profiles\desktop\node_modules\dsh-plugin
   行为本身是诚实的（明确报 placeholder not found），但"哪个版式带哪些占位符"还没测清楚。
 - `set_font_color` 与 `set_slide_title` 在"形状/页确实没有目标"时走的是 WPS 的 E_FAIL 路径（有可读三段式），
   没有进一步收敛到更精确的文案。
+## 90. A1 广告面重平衡 + A2 版式矩阵 + A6 语义对齐；又修 5 个真缺陷
+
+**来源**：遗留清单里用户点名做的四项（A1 / A6 / A2 / B1）。A1 与 A6 是登记表 D1-C 的转正，
+A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
+
+### A1 广告面重平衡（D1-C）
+
+用真实调用数据（742 次工具调用、其中 `wps_call` 151 次）找出"最常被两步绕进来的隐藏工具"，
+把其中 15 个提到 `STANDARD_TOOLS`：
+
+| 工具 | 真实调用次数 |
+| --- | --- |
+| `excel_close_workbook` | 36 |
+| `word_get_open_documents` | 19 |
+| `excel_export_chart_as_image` | 17 |
+| `excel_create_sheet` | 16 |
+| `word_close_document` | 15 |
+| `excel_get_conditional_formats` | 15 |
+| `excel_set_conditional_format` | 7 |
+| `excel_set_sheet_header_footer` / `excel_set_sheet_print_titles` | 6 / 6 |
+| `excel_switch_workbook` / `excel_switch_sheet` / `excel_get_cell_info` | 4 / 3 / 3 |
+| `excel_export_range_as_image` / `excel_sort_range` / `word_switch_document` | 3 / 2 / 2 |
+
+- 广告面 **69 → 84**，schema **38,878 → 46,867 字节**（预算上限 100 / 60,000），约 **+2,300 tokens**。
+- **一件没做**：没有换出任何现有工具。语料里 36 个广告工具"零调用"，但那是这份语料的任务偏置，
+  不足以证明该删；预算还剩 13 KB，先只做加法。等新广告面跑一段时间后再用数据决定换出。
+- `scripts/verify-package.mjs` 里写死的 `toolCount === 69` 改成**从 `spec/advertised.json` 读期望值**，
+  这样广告面再变也不会两处手写数字打架。
+
+### A2 版式 × 占位符矩阵（先探明、再修）
+
+真机扫出来的对应关系（`Slides.Add(index, ppLayout)` 之后的形状）：
+
+| layout 键 | ppLayout | 页上的占位符 |
+| --- | --- | --- |
+| `title` | 1 | 标题(3) + **副标题(4)** |
+| `titleContent` | 2 | 标题(1) + **正文(2)** |
+| `twoColumn` | 3 | 标题(1) + 表格占位符(12) |
+| `comparison` | 34 | 标题(1) + 正文(2) + 图表占位符(8) |
+| `titleOnly` | 11 | 标题(1) |
+| `blank` | 12 | 无 |
+
+顺着这张表查出并修掉三个真缺陷：
+
+| # | 缺陷 | 后果 |
+| --- | --- | --- |
+| 13 | `setSlideSubtitle` 判 `PlaceholderFormat.Type -eq 2`，而副标题是 **4**（2 是正文） | 标题页上**永远**报 "Subtitle placeholder not found"——副标题功能等于从来不可用 |
+| 14 | `setSlideContent` 判 `-eq 7`，而正文是 **2**（7 不是占位符类型） | 同上，"标题和内容"版式也永远填不进正文 |
+| 15 | `addSlide` 只认 snake_case（`title_content`），`setSlideLayout` 只认 camelCase（`titleContent`） | 同一个概念两套键；按一处写就在另一处**静默落到默认版式**（`title` 更是根本没映射） |
+
+另外确认了一条**不是缺陷但必须知道**的行为：对已有页执行 `setSlideLayout`，WPS 自己可能直接拒（`E_FAIL`）。
+所以技能文档改写为"**要哪个版式就在 add_slide 时指定**"，而不是"先加空白页再换版式"。
+
+### A6 语义对齐
+
+- `find_replace` 新增 `selectFound`（默认 false）：以前查找**从不移动光标**，"查找→定位→改命中处的格式"
+  这条最常规的走法在桥里走不通，调用方只能读全文自己猜字符坐标。开启后结果回报定位到的 `start/end`。
+- `apply_style` 的 `range` 现在与 `set_font` **同一套语义**：`{start,end}` 对象或字符串 `"all"`。
+  为此把参数形状校验从"只读 `schema.type`"改成**支持类型数组**（`['object','string']`）——
+  以前声明数组会落进"需要 X，实际 Y"的假报错。
+
+### 顺带挖出的两个工具链问题
+
+- **`extract-spec` 的静态抽取有 300 字符窗口**：`/(?:executeMethod|invokeAction)(?:<[\s\S]{0,300}?>)?\(\s*'action'/`。
+  我按常规给 `beautify` 的返回类型加了注释，泛型超过 300 字符后**静默失配** —— 该工具从 `engine: bridge`
+  降级成 `opaque`，`action` 变 `null`，连带不进键表、不进广告面，而 `verify` 照样全绿。
+  已在 `slide.ts` 就地写下这条陷阱；`spec-reproduction` 的 untooled 计数是唯一会叫的门禁。
+- **契约管线中间必须再 `tsc` 一次**：`extract-spec` 写 `mcp/src/spec/operations.ts`，而 `gen-tool-surface`
+  读的是 `mcp/dist/spec/operations.js`。顺序是 `tsc → extract → tsc → surface → skills → coverage`，
+  少一次 tsc 就会生成出"上游认为没动作"的 spec（这次的表现正是 `beautify` 的 `action: null` 一直不消失）。
+
+### B1 账本更新
+
+- `known-defects.md`：**S1 → fixed**（FIXES 88 已让 `set_active_target` 的两处失败返回 `success:false`，
+  之前状态一直写着 `open (downgraded to honest reporting)`）。
+- **C7 → 残余精确化**：明确残留是 `copySheet` 的**目的地工作簿**与 `transpose` 的目的地表（源解析有歧义警告），
+  并写明"不修目的地解析"是**有意的**（改动会碰到所有写路径，而缺陷只在多工作簿会话里、且不破坏数据），
+  同时把这条限制写进 `skills/wps-excel/SKILL.md`。
+
+### 验证
+
+- 整轮回归：见下方"验证"表的当前读数（唯一既有失败仍是 `confirm-dialog`，本机 Excel 确认框不弹）。
+- `spec-reproduction` 15/15；PPT 覆盖 87 项（矩阵 46/50 真成功）；Word 回归 42 项；`verify` 19 项。
 ## 验证
+
+> **下表是 FIXES 63 当时（2026-09 末）的快照**，用来记录"那时哪些文件存在、各覆盖什么"。
+> **当前读数**（2026-10-04，FIXES 90）：**1076 断言 / 48 个文件**；`verify` 19 项 static + 24 项 runtime；
+> `spec-reproduction` 15 项；广告面 84 工具 / 46,867 字节；`any` 弱断言 0 个。
+> 单看这一节的旧数字会误判现状，以 `docs/HANDOFF.md` §5 为准。
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。
 

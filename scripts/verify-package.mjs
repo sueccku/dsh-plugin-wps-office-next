@@ -123,7 +123,9 @@ if (existsSync(join(pluginRoot, "mcp", "package.json"))) {
 const result = await handshake(pluginRoot);
 check("MCP server answers initialize", Boolean(result.ok), result.ok ? "" : String(result.error || "timeout"));
 if (result.ok) {
-  check("tools/list advertises the standard toolset", result.toolCount === 69, "tools=" + result.toolCount);
+  // 广告面数量随 D1-C 重平衡变化（69 → 84，FIXES 90）。断言从**生成物**读期望值，避免两处手写数字漂移。
+  const advertisedCount = JSON.parse(readFileSync(join(ROOT, "spec", "advertised.json"), "utf8")).length;
+  check("tools/list advertises the standard toolset", result.toolCount === advertisedCount, "tools=" + result.toolCount + " expected=" + advertisedCount);
   check("wps_status is advertised", result.hasStatus === true);
 }
 if (!result.ok || result.stderr.length) {

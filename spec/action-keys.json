@@ -1044,7 +1044,8 @@
   "matchCase",
   "matchWholeWord",
   "replaceAll",
-  "replaceText"
+  "replaceText",
+  "selectFound"
  ],
  "generateTOC": [
   "includePageNumbers",

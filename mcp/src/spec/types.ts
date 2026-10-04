@@ -7,7 +7,18 @@
  */
 
 /** 参数在桥里被读取时的类型；用于生成 JSON Schema 与文档。 */
-export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'array2d';
+export type ParamType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'object'
+  | 'array'
+  | 'array2d'
+  // 允许双类型（JSON Schema 合法写法）：range: ['object','string'] —— 对象坐标或 "all"（FIXES 90）。
+  | readonly ParamScalarType[];
+
+/** 单值类型名（ParamType 的元素）。 */
+export type ParamScalarType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'array2d';
 
 /** 一个参数的规格。字段名即桥读取的键（公开名 = 桥名，见 P1-4）。 */
 /**

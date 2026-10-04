@@ -54,10 +54,11 @@ export const applyStyleDefinition: ToolDefinition = {
           '样式名称，如「标题 1」（有空格）、「正文」、「副标题」。英文别名可用（Heading 1 / Normal / Title / Subtitle / Quote），会自动翻译成中文内置名。',
       },
       range: {
-        type: 'object',
+        type: ['object', 'string'],
         description:
-          '指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。' +
-          '注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。',
+          '指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。也可以直接传字符串 "all" 表示整篇文档' +
+          '（与 wps_word_set_font 的 range 语义一致）。注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，' +
+          '就用 wps_word_get_paragraphs 里那一段的 start/end。',
         properties: {
           start: {
             type: 'number',
@@ -80,7 +81,7 @@ export const applyStyleHandler: ToolHandler = async (
 ): Promise<ToolCallResult> => {
   const { styleName, range } = args as {
     styleName: string;
-    range?: { start: number; end: number };
+    range?: { start: number; end: number } | 'all';
   };
 
   // FIXES 88（L2）：中文 WPS 的样式表里没有英文名（实测 NameInternational 全空、Item 抛错），

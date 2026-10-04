@@ -701,7 +701,7 @@ exports.operations = [
             }
         },
         "effect": "lifecycle",
-        "advertised": false,
+        "advertised": true,
         "required": [],
         "engine": "bridge"
     }),
@@ -1095,7 +1095,7 @@ exports.operations = [
             }
         },
         "effect": "lifecycle",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "name"
         ],
@@ -1347,7 +1347,7 @@ exports.operations = [
             }
         },
         "effect": "export",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "chartName",
             "outputPath"
@@ -1387,7 +1387,7 @@ exports.operations = [
             }
         },
         "effect": "export",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "range",
             "outputPath"
@@ -1596,7 +1596,7 @@ exports.operations = [
             }
         },
         "effect": "read",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "sheet",
             "cell"
@@ -1651,7 +1651,7 @@ exports.operations = [
             }
         },
         "effect": "read",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "range"
         ],
@@ -2884,7 +2884,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "range",
             "condition",
@@ -3240,7 +3240,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -3351,7 +3351,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -3487,7 +3487,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "range",
             "column"
@@ -3565,7 +3565,7 @@ exports.operations = [
             }
         },
         "effect": "lifecycle",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "name"
         ],
@@ -3584,7 +3584,7 @@ exports.operations = [
             }
         },
         "effect": "lifecycle",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "name"
         ],
@@ -6544,11 +6544,17 @@ exports.operations = [
                 "required": true
             },
             "range": {
-                "type": "object",
-                "description": "指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。",
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "description": "指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。也可以直接传字符串 \"all\" 表示整篇文档（与 wps_word_set_font 的 range 语义一致）。注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。",
                 "schema": {
-                    "type": "object",
-                    "description": "指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。",
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "description": "指定范围（0 基字符偏移，end 不含），不填则应用到当前选中区域。也可以直接传字符串 \"all\" 表示整篇文档（与 wps_word_set_font 的 range 语义一致）。注意：段落样式会作用于与范围相交的**整段**——想改第 N 段，就用 wps_word_get_paragraphs 里那一段的 start/end。",
                     "properties": {
                         "start": {
                             "type": "number",
@@ -6589,7 +6595,7 @@ exports.operations = [
             }
         },
         "effect": "lifecycle",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -6741,6 +6747,10 @@ exports.operations = [
             "matchWholeWord": {
                 "type": "boolean",
                 "description": "是否全字匹配，默认false"
+            },
+            "selectFound": {
+                "type": "boolean",
+                "description": "是否把光标/选区定位到命中处，默认 false（不动用户的光标）。传 true 后可以接着用 wps_word_set_font / wps_word_apply_style 直接作用于刚找到的那处文本，不必自己算字符坐标。结果里会回报定位到的 start/end。"
             }
         },
         "effect": "read",
@@ -6866,7 +6876,7 @@ exports.operations = [
         "summary": "获取当前WPS Writer中所有已打开的文档列表。\n\n使用场景：\n- \"看看现在打开了哪些文档\"\n- \"列出所有打开的Word文件\"\n- \"查看当前文档列表\"",
         "params": {},
         "effect": "lifecycle",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -7767,7 +7777,7 @@ exports.operations = [
             }
         },
         "effect": "lifecycle",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "name"
         ],

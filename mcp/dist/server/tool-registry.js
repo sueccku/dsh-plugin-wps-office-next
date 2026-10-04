@@ -212,8 +212,11 @@ class ToolRegistry {
                 continue;
             }
             const actual = Array.isArray(value) ? 'array' : typeof value === 'object' ? 'object' : typeof value;
-            const expected = schema.type;
-            const shapeOk = expected === actual || (isScalar(expected) && isScalar(actual));
+            // type 允许是数组（JSON Schema 合法写法，例如 ['object','string']）。以前只读 schema.type，
+            // 数组会落进"需要 X，实际 Y"的假报错里（FIXES 90：apply_style 的 range 就踩了这个）。
+            const expectedTypes = Array.isArray(schema.type) ? schema.type : [schema.type];
+            const shapeOk = expectedTypes.some((t) => t === actual || (isScalar(t) && isScalar(actual)));
+            const expected = expectedTypes.join(' | ');
             if (!shapeOk) {
                 throw new error_1.InvalidParamsError(`参数 ${key} 的形状不对：需要 ${expected}，实际收到 ${actual}`, { toolName: definition.name, param: key, expected, actual });
             }

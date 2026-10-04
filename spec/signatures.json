@@ -1111,7 +1111,7 @@
  },
  {
   "tool": "wps_word_find_replace",
-  "signature": "word_find_replace(findText*, replaceText?, replaceAll?, matchCase?, matchWholeWord?)",
+  "signature": "word_find_replace(findText*, replaceText?, replaceAll?, matchCase?, matchWholeWord?, selectFound?)",
   "effect": "read"
  },
  {

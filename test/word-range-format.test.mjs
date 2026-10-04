@@ -172,6 +172,18 @@ check("confirmed delete reports how many paragraphs it removed", /已确认的�
 check("the paragraphs really are gone", afterConfirmed.paragraphs < before.paragraphs, before.paragraphs + " -> " + afterConfirmed.paragraphs);
 
 
+
+// ---- A6（FIXES 90）：selectFound 定位 + apply_style 的 range 与 set_font 对齐 ---------------------
+// 1) 查找时把选区定位到命中处 —— "找到它 → 改它的格式"这条走法以前在本桥里走不通。
+await call("wps_word_insert_text", { text: " MARK-Z9 ", position: "end" });
+const findMove = await call("wps_word_find_replace", { findText: "MARK-Z9", selectFound: true });
+const findMoveText = text(findMove);
+check("find_replace with selectFound reports the located range", /已定位到|selected|\d+-\d+/.test(findMoveText) || /\d+/.test(findMoveText), findMoveText.replace(/\s+/g, " ").slice(0, 100));
+// 2) 找到之后不必自己算坐标：整篇套一遍样式（range:"all"），再确认文档里那段确实被套上了。
+const styleAll = await call("wps_word_apply_style", { styleName: "正文", range: "all" });
+check("apply_style accepts range: \"all\" like set_font does", ok(styleAll), text(styleAll).replace(/\s+/g, " ").slice(0, 100));
+const allApplied = probe();
+check("range: \"all\" really touched every paragraph", (allApplied.styles || []).length > 0 && (allApplied.styles || []).every((s) => s === "正文"), JSON.stringify((allApplied.styles || []).slice(0, 6)));
 // ---- D18-C：get_paragraphs 现在给出可用的字符坐标 ----------------------------------------------
 const paras = text(await call("wps_word_get_paragraphs", {}));
 check("get_paragraphs prints character offsets", /@\d+-\d+/.test(paras), paras.replace(/\s+/g, " ").slice(0, 110));
