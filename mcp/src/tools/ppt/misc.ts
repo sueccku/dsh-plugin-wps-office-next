@@ -57,10 +57,12 @@ export const getSlideMasterHandler: ToolHandler = async (
   _args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
   try {
+    // FIXES 89：桥返回的是 { shapeCount, shapes }，handler 却读了 data.master —— 于是"母版信息获取成功！undefined"。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
-      master: Record<string, unknown>;
+      shapeCount?: number;
+      shapes?: Array<Record<string, unknown>>;
     }>(
       'getSlideMaster',
       {},
@@ -68,13 +70,19 @@ export const getSlideMasterHandler: ToolHandler = async (
     );
 
     if (response.success && response.data) {
+      const shapes = Array.isArray(response.data.shapes) ? response.data.shapes : [];
+      const lines = shapes
+        .slice(0, 20)
+        .map((s) => `  ${String(s.name ?? '?')}（类型 ${String(s.type ?? '?')}）@ ${String(s.left ?? '?')},${String(s.top ?? '?')} ${String(s.width ?? '?')}x${String(s.height ?? '?')}`);
       return {
         id: uuidv4(),
         success: true,
         content: [
           {
             type: 'text',
-            text: `母版信息获取成功！\n${JSON.stringify(response.data.master, null, 2)}`,
+            text:
+              `母版信息获取成功！\n形状数: ${response.data.shapeCount ?? shapes.length}` +
+              (lines.length ? '\n' + lines.join('\n') : '\n(母版上没有形状)'),
           },
         ],
       };

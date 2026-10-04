@@ -186,6 +186,7 @@ export const setPptChartDataHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
+      cellsWritten?: number;
     }>(
       'setPptChartData',
       { slideIndex, chartIndex, data },

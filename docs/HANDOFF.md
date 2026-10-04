@@ -164,8 +164,8 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | **本轮** | **D18** | 诊断与自验 | **C**：`affectedText` 改前置快照 + 回报受影响段落 + `get_paragraphs` 给字符坐标 | FIXES 86 |
 | **本轮** | **D19** | 回归测试与弱断言 | **B**：新增 31 项回归；报告点名的 4 条从 `any` 升到 `ok` | FIXES 86 |
 | **本轮** | **D20** | 交付节奏 | **B**：**攒批**，不单独发 0.6.2（数据破坏已在野，此选择是知情的） | 待发版 |
-| **本轮** | **D21** | D9 挂起项 | **A**：**转正**——`any` 弱断言放行过真实的假成功，优先按域推进 | 进行中 |
-| **遗留轮**<br>2026-10-03 | **L1** | 71 个工具只有最弱断言（`any`） | **待选范围**：A 按域全补 / B 只补最易错 5–8 个（PPT 32 / Excel 23 / Word 11 / 通用 5） | 见 FIXES 88 |
+| **本轮** | **D21** | D9 挂起项 | **A**：**转正**——`any` 弱断言放行过真实的假成功，优先按域推进 | **已完成**：`any` 71 → 0（FIXES 89） |
+| **遗留轮**<br>2026-10-03 | **L1** | 71 个工具只有最弱断言（`any`） | **已做（用户选 A：按域全补）**：71 → **0**；过程中挖出并修掉 **12 个真缺陷**（Excel 2 / Word 1 / PPT 9），全是"回 success 但结果不对" | FIXES 89 |
 | **遗留轮** | **L2** | 英文样式名不可用 | **已修**：工具层翻译（Heading 1→标题 1 等）+ 空格归一化 + 失败文案带下一步 | FIXES 88 + 28 项纯函数单测 |
 | **遗留轮** | **L9** | `set_active_target` 校验失败仍回成功 | **已修**：两处失败改 `success: false`（锁照记，但不再谎报「校验通过」） | FIXES 88 + 真机回归 3 项 |
 
@@ -214,11 +214,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **38,878** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 155,613 字节（268 工具，≈44,461 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **982 断言 / 48 个测试文件**（口径见下方注；新增 FIXES 88 的 28 项纯函数单测） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
+| 测试 | **1072 断言 / 48 个测试文件**（口径见下方注；FIXES 89 按域补全弱断言后 +90 项） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～88 号 | `docs/FIXES.md` |
+| FIXES | 1～89 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
@@ -254,9 +254,10 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 4. **测试覆盖缺口**（以下三个数字是 S4 当时的口径）：267 个工具里**只有 159 个被测试点名**（PPT 最弱，76 中仅 26）。
    历史上 **7 个「从来没工作过」的缺陷（FIXES 38 / 39 / 43，按正文逐条数共 7 处）全部落在无测试覆盖的路径上**。
    **S4 已完成**：覆盖率 **267/267**（当时；现在 **268/268**，ratchet 进 `spec-reproduction`，只许涨），`scripts/smoke-tools.mjs`
-   出矩阵并可 `--live` 只读冒烟。**当前（2026-10-03）**：268 个工具里 **175 个有专门测试、22 个矩阵 ok/error、71 个只剩最弱断言（`any`）**
-（PPT 77 里 32、Excel 118 里 23、Word 59 里 11）。弱断言不是"没测"，但**只验"没挂住"、不验对错**——
-用户报告（FIXES 86）证明这类断言放行过真实的假成功与数据破坏，所以 **D21-A 已把它转正为优先项**，按域分批升级。
+   出矩阵并可 `--live` 只读冒烟。**2026-10-03 收官（FIXES 89 / D21-A / L1-A）**：268 个工具里
+**237 个有专门测试、31 个矩阵 ok/error、最弱断言（`any`）为 0** —— 之前那 71 个 `any` 已按域全部补成真场景断言，
+过程中挖出并修掉 **12 个真缺陷**（详见 FIXES 89，全是"回 success 但结果不对/字段是空的"）。
+**这就是弱断言的代价**：只验"没挂住"会把"调用返回了"当成"事情做成了"。
 5. **静默失败**：空 catch 走账本（**S5 已完成**，FIXES 59）：桥 34 + 宿主 6 全部登记，新增即红（`test/silent-catch.test.mjs`）。
 6. **恢复路径原有的两个缺陷已修**（由本轮新测试抓出）：陈旧子进程的 `exit` 会反杀新宿主；
    `ready` 帧误清 `suspect` 标志。二者都在 `mcp/src/client/com-host.ts`。
@@ -518,7 +519,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～87 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂、86 = 用户报告的 Word 假成功/数据破坏、87 = 测试跑的是旧副本） |
+| `docs/FIXES.md` | 1～89 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂、86 = 用户报告的 Word 假成功/数据破坏、87 = 测试跑的是旧副本、88 = 英文样式名 / `set_active_target`、89 = 补弱断言时挖出的 12 个真缺陷） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

@@ -215,6 +215,7 @@ exports.getPptTableCellDefinition = {
 const getPptTableCellHandler = async (args) => {
     const { slideIndex, tableIndex, row, col } = args;
     try {
+        // FIXES 89：桥回的是 value / rowCount / colCount，handler 却读了 text —— 于是"内容: undefined"。
         const response = await wps_client_1.wpsClient.executeMethod('getPptTableCell', { slideIndex, tableIndex, row, col }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             return {
@@ -223,7 +224,7 @@ const getPptTableCellHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `单元格内容获取成功！\n幻灯片: 第 ${slideIndex} 页\n表格: 第 ${tableIndex} 个\n位置: 第 ${row} 行第 ${col} 列\n内容: ${response.data.text}`,
+                        text: `单元格内容获取成功！\n幻灯片: 第 ${slideIndex} 页\n表格: 第 ${tableIndex} 个\n位置: 第 ${row} 行第 ${col} 列\n内容: ${response.data.value === null || response.data.value === undefined ? "(空)" : response.data.value}${typeof response.data.rowCount === "number" ? `\n表格规模: ${response.data.rowCount} 行 x ${response.data.colCount} 列` : ""}`,
                     },
                 ],
             };

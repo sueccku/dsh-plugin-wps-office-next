@@ -3095,7 +3095,11 @@ return }
         $sel = $excel.Selection
         if ($null -eq $sel) { Output-Json @{ success = $false; error = "No selection" }; return }
         $addr = $sel.Address()
-        Output-Json @{ success = $true; data = @{ address = $addr; rows = $sel.Rows.Count; columns = $sel.Columns.Count } }
+        # FIXES 89：字段名必须与 TS handler 读的一致（rowCount/columnCount/sheet）。以前回的是 rows/columns
+        # 且没有 sheet —— handler 拿到 undefined，却照样回 success:true，界面上就是"工作表: undefined"。
+        $selSheet = ""
+        try { $selSheet = [string]$sel.Worksheet.Name } catch { $selSheet = "" }
+        Output-Json @{ success = $true; data = @{ address = $addr; rowCount = $sel.Rows.Count; columnCount = $sel.Columns.Count; sheet = $selSheet } }
     }
 
     "clearRange" {
@@ -4744,7 +4748,9 @@ return }
         elseif ($delimiter -eq ",") { $comma = $true }
         elseif ($delimiter -eq " ") { $space = $true }
         else { $other = $true; $otherChar = $delimiter }
-        $range.TextToColumns($null, 1, 1, $false, $tab, $semicolon, $comma, $space, $other, $otherChar)
+        # FIXES 89：第一个参数 Destination 传 $null 会被 WPS 拒（实测 "Value does not fall within the expected range"）。
+        # 可选参数要传 [Type]::Missing；这样分列结果留在原处（VBA 的 Destination:= 省略语义）。
+        $range.TextToColumns([Type]::Missing, 1, 1, $false, $tab, $semicolon, $comma, $space, $other, $otherChar)
         Output-Json @{ success = $true; data = @{ range = $p.range; delimiter = $delimiter } }
     }
 
@@ -5090,8 +5096,16 @@ return }
         $levels = if ($p.levels) { [int]$p.levels } else { 3 }
         $includePageNumbers = if ($null -ne $p.includePageNumbers) { [bool]$p.includePageNumbers } else { $true }
         $range = if ($position -eq "cursor") { $word.Selection.Range } else { $doc.Range(0, 0) }
-        $doc.TablesOfContents.Add($range, $true, 1, $levels, $false, "", $true, $true, $includePageNumbers, $true)
-        Output-Json @{ success = $true; data = @{ levels = $levels; position = $position; includePageNumbers = $includePageNumbers } }
+        # FIXES 89：WPS 的 TablesOfContents.Add 只吃前 8 个参数 —— 实测第 9 个（UseHyperlinks /
+        # 页码相关那个）一传就抛「值不在预期的范围内」，于是整个目录生成失败（真机：TablesOfContents 停在 0，
+        # 而工具照旧回 success）。这里只传被验证可用的 8 个；不用 [Type]::Missing 是因为 WPS 对它也算"给了参数"。
+        $doc.TablesOfContents.Add($range, $true, 1, $levels, $false, "", $true, $true)
+        $tocCount = 0
+        try { $tocCount = [int]$doc.TablesOfContents.Count } catch { $tocCount = 0 }
+        if ($tocCount -lt 1) {
+            Output-Json @{ success = $false; error = "生成目录失败：调用后文档里没有目录（TablesOfContents = 0）。（动作：generateTOC）下一步：先给标题段落套上「标题 1/2/3」样式再生成目录。" }
+return }
+        Output-Json @{ success = $true; data = @{ levels = $levels; position = $position; includePageNumbers = $includePageNumbers; tablesOfContents = $tocCount } }
     }
 
     "getDocumentText" {
@@ -6079,9 +6093,21 @@ return }
         if (-not $index) { $index = 1 }
         $layoutMap = @{ title = 1; titleContent = 2; blank = 12; twoColumn = 4; comparison = 5; titleOnly = 11 }
         $layout = $layoutMap[$p.layout]
-        if ($null -eq $layout) { $layout = if ($p.layout) { $p.layout } else { 2 } }
-        $pres.Slides.Item($index).Layout = $layout
-        Output-Json @{ success = $true; data = @{ slideIndex = $index; layout = $layout } }
+        # FIXES 89：以前只认下面这张英文枚举表，传真实版式名（中文 WPS 里是「标题和内容」这类）会被当成索引 →
+        # "索引超出了数组界限"。实测 WPS 12.1 的 SlideMaster.CustomLayouts.Count 恒为 0，按名字找这条路走不通，
+        # 所以：只接受枚举键或数字索引，其它一律明确报错并列出可用键（别再让它冒充索引）。
+        if ($null -ne $layout -and $p.layout -is [int]) { $layout = [int]$p.layout }
+        if ($null -eq $layout) {
+            Output-Json @{ success = $false; error = ("不认识的版式：'" + $p.layout + "'。可用值：" + (($layoutMap.Keys | Sort-Object) -join " / ") + "，或直接给数字索引（1-12）。（动作：setSlideLayout）下一步：中文 WPS 的版式名读不到（CustomLayouts 为空），请用上面的枚举键。") }
+return }
+        try {
+            $pres.Slides.Item($index).Layout = $layout
+        } catch {
+            Output-Json @{ success = $false; error = ("设置版式失败（索引 " + $layout + "）：" + $_.Exception.Message + "（动作：setSlideLayout）下一步：换一个枚举键重试。") }
+return }
+        $layoutName = ""
+        try { $layoutName = [string]$pres.Slides.Item($index).Layout.Name } catch { $layoutName = "" }
+        Output-Json @{ success = $true; data = @{ slideIndex = $index; layout = $layout; layoutName = $layoutName } }
     }
 
     "getSlideNotes" {
@@ -6239,8 +6265,17 @@ return }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        if ($slide.Shapes.HasTitle) { $slide.Shapes.Title.TextFrame.TextRange.Text = $p.title }
-        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; title = $p.title } }
+        # FIXES 89：以前 HasTitle 为假时什么都不做却照样回 success —— 在"空白"版式的页上设标题就是这种假成功。
+        if (-not $slide.Shapes.HasTitle) {
+            Output-Json @{ success = $false; error = "第 $slideIndex 页没有标题占位符（当前版式不支持标题）。（动作：setSlideTitle）下一步：先 setSlideLayout 换成带标题的版式，再用 add_textbox 加一个文本框。" }
+return }
+        $slide.Shapes.Title.TextFrame.TextRange.Text = $p.title
+        $readBack = ""
+        try { $readBack = [string]$slide.Shapes.Title.TextFrame.TextRange.Text } catch { $readBack = "" }
+        if ($readBack -ne [string]$p.title) {
+            Add-WpsWarning ("标题没有完全按请求写入：请求 '" + $p.title + "'，读回 '" + $readBack + "'。")
+        }
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; title = $p.title; readBack = $readBack } }
     }
 
     "getSlideTitle" {
@@ -6925,19 +6960,65 @@ return }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.chartName) { $p.chartName } else { $p.chartIndex }))
-        $chart = $shape.Chart
-        $chart.ChartData.Activate()
-        $dataSheet = $chart.ChartData.Workbook.Worksheets.Item(1)
-        if ($p.data) {
-            for ($r = 0; $r -lt $p.data.Count; $r++) {
-                $rowData = $p.data[$r]
-                for ($c = 0; $c -lt $rowData.Count; $c++) {
-                    Set-ComValue $dataSheet.Cells.Item($r + 1, $c + 1) 'Value2' $rowData[$c]
+        # FIXES 89：以前是 Shapes.Item(chartIndex) —— 把"第几个图表"当成了形状索引，图表不在该位置时拿到空值，
+        # 于是报"不能对 Null 值表达式调用方法"。按 HasChart 数第 N 个（与 getPptTableCell 找表格同一套路）。
+        $shape = $null
+        if ($p.chartName) {
+            try { $shape = $slide.Shapes.Item($p.chartName) } catch { $shape = $null }
+        } else {
+            $targetIndex = if ($p.chartIndex) { [int]$p.chartIndex } else { 1 }
+            $chartCount = 0
+            for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
+                $s = $slide.Shapes.Item($i)
+                $hasChart = $false
+                try { $hasChart = [bool]$s.HasChart } catch { $hasChart = $false }
+                if ($hasChart) {
+                    $chartCount++
+                    if ($chartCount -eq $targetIndex) { $shape = $s; break }
                 }
             }
         }
-        Output-Json @{ success = $true; data = @{ chartName = $shape.Name } }
+        if ($null -eq $shape) {
+            Output-Json @{ success = $false; error = ("第 $slideIndex 页找不到图表（请求第 " + $(if ($p.chartIndex) { $p.chartIndex } else { 1 }) + " 个）。（动作：setPptChartData）下一步：用 wps_ppt_get_shapes 确认该页有图表。" ) }
+return }
+        $chart = $shape.Chart
+        $chart.ChartData.Activate()
+        $dataSheet = $chart.ChartData.Workbook.Worksheets.Item(1)
+        # FIXES 89：工具 schema 收的是 { categories: [...], series: [{name, values}] }（对象），
+        # 而这里按二维数组解 —— $p.data.Count 对对象没有意义，于是要么什么都不写、要么写到 null 上。
+        # 现在两种形态都接受：对象 → 先铺成行列表；数组 → 原样。
+        $rows = @()
+        if ($null -ne $p.data) {
+            if ($null -ne $p.data.categories -or $null -ne $p.data.series) {
+                $cats = @($p.data.categories)
+                $seriesList = @($p.data.series)
+                $header = @("")
+                foreach ($s in $seriesList) { $header += [string]$s.name }
+                $rows += , $header
+                for ($i = 0; $i -lt $cats.Count; $i++) {
+                    $row = @([string]$cats[$i])
+                    foreach ($s in $seriesList) {
+                        $vals = @($s.values)
+                        $row += $(if ($i -lt $vals.Count) { $vals[$i] } else { "" })
+                    }
+                    $rows += , $row
+                }
+            } else {
+                for ($r = 0; $r -lt $p.data.Count; $r++) { $rows += , @($p.data[$r]) }
+            }
+        }
+        $written = 0
+        for ($r = 0; $r -lt $rows.Count; $r++) {
+            $rowData = @($rows[$r])
+            for ($c = 0; $c -lt $rowData.Count; $c++) {
+                Set-ComValue $dataSheet.Cells.Item($r + 1, $c + 1) 'Value2' $rowData[$c]
+                $written++
+            }
+        }
+        if ($written -eq 0) {
+            Output-Json @{ success = $false; error = "没有写入任何数据：data 需要 { categories: [...], series: [{ name, values }] } 或二维数组。（动作：setPptChartData）下一步：按 schema 传 categories 与 series。" }
+return }
+        Output-Json @{ success = $true; data = @{ chartName = $shape.Name; cellsWritten = $written } }
     }
 
     "setPptChartStyle" {
@@ -7003,9 +7084,19 @@ return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
         $seq = $slide.TimeLine.MainSequence
-        $effect = $seq.Item($p.from)
-        $effect.MoveTo($p.to)
-        Output-Json @{ success = $true; data = @{ from = $p.from; to = $p.to } }
+        $total = 0
+        try { $total = [int]$seq.Count } catch { $total = 0 }
+        # FIXES 89：以前直接 Item(from) 再 MoveTo —— 页上没有动画（或 from 超出）时会报
+        # "值不在预期的范围内"，看不出是"没有动画"还是"参数错"。边界先判，并回报总数。
+        if ($total -lt 1) {
+            Output-Json @{ success = $false; error = ("第 $slideIndex 页没有任何动画，无法调整顺序。（动作：setAnimationOrder）下一步：先用 wps_ppt_add_animation 加动画。" ) }
+return }
+        if ([int]$p.from -lt 1 -or [int]$p.from -gt $total -or [int]$p.to -lt 1 -or [int]$p.to -gt $total) {
+            Output-Json @{ success = $false; error = ("动画序号超出范围：from=" + $p.from + " to=" + $p.to + "，本页共 $total 个动画。（动作：setAnimationOrder）下一步：用 wps_ppt_get_animations 看现有动画序号。" ) }
+return }
+        $effect = $seq.Item([int]$p.from)
+        $effect.MoveTo([int]$p.to)
+        Output-Json @{ success = $true; data = @{ from = [int]$p.from; to = [int]$p.to; total = $total } }
     }
 
     "removeSlideTransition" {
@@ -7363,11 +7454,21 @@ return }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
         $color = Convert-HexColorToRgbInt([string]$p.color)
         if ($null -eq $color) { Output-Json @{ success = $false; error = "color must be a hex value such as #FF0000" }; return }
+        $slide = $pres.Slides.Item([int]$p.slideIndex)
+        $shape = $slide.Shapes.Item([int]$p.shapeIndex)
+        # FIXES 89：原来对 TextFrame.TextRange.Font.Color.RGB 赋值，但形状没有文本时 TextRange 不存在，
+        # 报的是"在此对象上找不到属性 RGB"（把"没有文本"说成了"没有这个属性"）。另外对没有文本的形状
+        # 设颜色本来就是空操作，必须明确失败。
+        $hasText = $false
+        try { $hasText = [bool]($shape.HasTextFrame -and $shape.TextFrame.HasText) } catch { $hasText = $false }
+        if (-not $hasText) {
+            Output-Json @{ success = $false; error = ("第 " + $p.slideIndex + " 页的第 " + $p.shapeIndex + " 个形状没有文字，设不了字体颜色。（动作：setFontColor）下一步：用 wps_ppt_get_shapes 找一个有文字的形状（文本框/标题/表格）再设。" ) }
+return }
         try {
-            $slide = $pres.Slides.Item([int]$p.slideIndex)
-            $shape = $slide.Shapes.Item([int]$p.shapeIndex)
             $shape.TextFrame.TextRange.Font.Color.RGB = $color
-            Output-Json @{ success = $true; data = @{ shape = $shape.Name; color = [string]$p.color } }
+            $readBack = $null
+            try { $readBack = $shape.TextFrame.TextRange.Font.Color.RGB } catch { $readBack = $null }
+            Output-Json @{ success = $true; data = @{ shape = $shape.Name; color = [string]$p.color; rgb = $readBack } }
         } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 

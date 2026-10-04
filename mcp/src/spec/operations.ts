@@ -4384,13 +4384,14 @@ export const operations: OperationSpec[] = [
   }),
   op({
     "tool": "wps_ppt_beautify",
-    "action": "beautifySlide",
+    "action": null,
     "app": "ppt",
     "summary": "一键美化幻灯片，优化排版、配色、字体和间距。\n\n支持的配色方案：\n- business: 商务风（深蓝+灰色）\n- tech: 科技风（蓝色+绿色）\n- creative: 创意风（珊瑚红+金色）\n- minimal: 简约风（黑白灰）\n\n美化包含的操作：\n- 统一字体\n- 应用配色方案\n- 对齐元素\n- 优化间距\n\n使用场景：\n- \"美化这页PPT\"\n- \"用商务风格优化一下\"\n- \"把PPT弄好看点\"",
     "params": {
       "slideIndex": {
         "type": "number",
-        "description": "要美化的幻灯片页码，不填则美化当前页"
+        "description": "要美化的幻灯片页码，不填则美化当前页",
+        "kind": "local"
       },
       "color_scheme": {
         "type": "string",
@@ -4417,7 +4418,7 @@ export const operations: OperationSpec[] = [
     "effect": "write",
     "advertised": false,
     "required": [],
-    "engine": "bridge"
+    "engine": "opaque"
   }),
   op({
     "tool": "wps_ppt_close_presentation",

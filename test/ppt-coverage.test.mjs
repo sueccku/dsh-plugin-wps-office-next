@@ -5,7 +5,7 @@
 // entries marked "ok" additionally must succeed. Coverage itself is counted by the S4 ratchet in
 // test/spec-reproduction.test.mjs and reported by scripts/smoke-tools.mjs.
 // Run: node test/ppt-coverage.test.mjs
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 
@@ -21,6 +21,15 @@ function send(o) { child.stdin.write(JSON.stringify(o) + "\n"); }
 function req(id, method, params) { return new Promise((r) => { pending.set(id, r); send({ jsonrpc: "2.0", id, method, params }); }); }
 child.stdout.on("data", (d) => { buf += d.toString(); let i; while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line) continue; let m; try { m = JSON.parse(line); } catch { continue; } if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } } });
 child.stderr.on("data", () => {});
+
+// 裸 COM 读真值（只读）。输出走 base64：中文经 PowerShell → pipe 的编码链会被改坏。
+function com(script) {
+  const b64 = Buffer.from(script, "utf8").toString("base64");
+  const r = spawnSync("powershell", ["-NoProfile", "-STA", "-Command",
+    "$s = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + b64 + "')); $out = Invoke-Expression $s; [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$out))"],
+    { encoding: "utf8", windowsHide: true });
+  try { return Buffer.from((r.stdout || "").trim(), "base64").toString("utf8"); } catch { return ""; }
+}
 
 const results = [];
 function check(name, ok, detail) { results.push({ name, ok }); console.log((ok ? "PASS " : "FAIL ") + name + (detail ? "  " + detail : "")); }
@@ -48,6 +57,17 @@ await call("wps_ppt_insert_table", { slideIndex: 1, rows: 2, cols: 3 });
 await call("wps_ppt_insert_ppt_image", { slideIndex: 1, imagePath: imgPath });
 await call("wps_ppt_insert_ppt_chart", { slideIndex: 1, type: "column_clustered", title: "销量" });
 await call("wps_ppt_add_animation", { slideIndex: 1, effect: "fadeIn", shapeIndex: 1 });
+// L1（FIXES 89）：switch_presentation 需要一个真实的文稿名 —— 从"已打开的演示文稿"里取。
+const presList = text(await call("wps_ppt_get_open_presentations", {}));
+// 实测列表形如「当前打开 1 个演示文稿：\n 1. 演示文稿15 路径: 演示文稿15 页数: 0」——取编号行的名字，
+// 去掉「路径:」及其后面的内容。
+const presLine = presList.split(/\r?\n/).find((l) => /^\s*\d+\./.test(l)) || "";
+const presName = (presLine.replace(/^\s*\d+\.\s*/, "").split(/\s+路径:|\s*\|/)[0] || "演示文稿1").trim();
+// 第 1 页换成带标题占位符的版式：矩阵里的 set_slide_title / subtitle / content 才有对象可写。
+await call("wps_ppt_set_slide_layout", { slideIndex: 1, layout: "titleContent" });
+await call("wps_ppt_set_slide_layout", { slideIndex: 2, layout: "titleContent" });
+// 补一个动画：后面的 set_slide_layout 会把动画清掉，矩阵与断言都需要页上有动画。
+await call("wps_ppt_add_animation", { slideIndex: 1, effect: "fadeIn", shapeIndex: 1 });
 
 // ---- matrix -------------------------------------------------------------------------------
 // [tool, args, expectation]  expectation: "ok" (must succeed) | "error" (must fail clearly) | "any"
@@ -55,69 +75,207 @@ const MATRIX = [
   // reads
   ["wps_ppt_get_slide_count", {}, "ok"],
   ["wps_ppt_get_slide_info", { slideIndex: 1 }, "ok"],
-  ["wps_ppt_get_slide_master", {}, "any"],
+  ["wps_ppt_get_slide_master", {}, "ok"],
   ["wps_ppt_get_slide_notes", { slideIndex: 1 }, "ok"],
-  ["wps_ppt_get_slide_title", { slideIndex: 1 }, "any"],
+  ["wps_ppt_get_slide_title", { slideIndex: 1 }, "ok"],
   ["wps_ppt_get_shapes", { slideIndex: 1 }, "ok"],
   ["wps_ppt_get_textboxes", { slideIndex: 1 }, "ok"],
   ["wps_ppt_get_animations", { slideIndex: 1 }, "ok"],
   ["wps_ppt_get_table_cell", { slideIndex: 1, tableIndex: 1, row: 1, col: 1 }, "ok"],
-  ["wps_ppt_find_ppt_text", { text: "标题" }, "any"],
+  ["wps_ppt_find_ppt_text", { text: "标题" }, "ok"],
   // slide settings
   ["wps_ppt_switch_slide", { slideIndex: 1 }, "ok"],
-  ["wps_ppt_set_slide_layout", { slideIndex: 1, layout: "title_content" }, "any"],
-  ["wps_ppt_set_slide_title", { slideIndex: 1, title: "覆盖标题" }, "any"],
-  ["wps_ppt_set_slide_subtitle", { slideIndex: 1, subtitle: "副标题" }, "any"],
-  ["wps_ppt_set_slide_content", { slideIndex: 1, content: "正文内容" }, "any"],
+  ["wps_ppt_set_slide_layout", { slideIndex: 1, layout: "titleContent" }, "ok"],
+  // 第 1 页已换成 titleContent（有标题占位符）。
+  ["wps_ppt_set_slide_title", { slideIndex: 1, title: "覆盖标题" }, "ok"],
+  // 第 2 页是 titleContent 版式（带正文占位符）；副标题没有对应占位符时会明确报错，属正确行为。
+  ["wps_ppt_set_slide_subtitle", { slideIndex: 2, subtitle: "副标题" }, "any"],
+  ["wps_ppt_set_slide_content", { slideIndex: 2, content: "正文内容" }, "any"],
   ["wps_ppt_set_slide_notes", { slideIndex: 1, notes: "讲稿备注" }, "ok"],
   ["wps_ppt_set_slide_size", { width: 1280, height: 720 }, "ok"],
   ["wps_ppt_set_slide_theme", { theme: resolvePath("test/.artifacts/nope.thmx") }, "error"],
-  ["wps_ppt_remove_slide_transition", { slideIndex: 1 }, "any"],
+  ["wps_ppt_remove_slide_transition", { slideIndex: 1 }, "ok"],
   // backgrounds
-  ["wps_ppt_set_background_color", { slideIndex: 1, color: "#112233" }, "any"],
-  ["wps_ppt_set_background_gradient", { slideIndex: 1, gradient: { color1: "#FFFFFF", color2: "#000000" } }, "any"],
-  ["wps_ppt_set_background_image", { slideIndex: 1, imagePath: imgPath }, "any"],
+  ["wps_ppt_set_background_color", { slideIndex: 1, color: "#112233" }, "ok"],
+  ["wps_ppt_set_background_gradient", { slideIndex: 1, gradient: { color1: "#FFFFFF", color2: "#000000" } }, "ok"],
+  ["wps_ppt_set_background_image", { slideIndex: 1, imagePath: imgPath }, "ok"],
   // shapes
   ["wps_ppt_set_shape_position", { slideIndex: 1, shapeIndex: 1, left: 60, top: 60, width: 120, height: 80 }, "ok"],
   ["wps_ppt_set_shape_style", { slideIndex: 1, shapeIndex: 1, fillColor: "#FF0000", lineColor: "#000000", lineWidth: 1 }, "ok"],
+  // 形状有没有文字取决于版式切换后的实际内容；失败时 FIXES 89 会明说"没有文字"（有专门断言覆盖）。
   ["wps_ppt_set_font_color", { slideIndex: 1, shapeIndex: 1, color: "#00FF00" }, "any"],
   ["wps_ppt_duplicate_shape", { slideIndex: 1, shapeIndex: 1 }, "ok"],
-  ["wps_ppt_set_shape_z_order", { slideIndex: 1, shapeIndex: 1, zOrder: "front" }, "any"],
+  ["wps_ppt_set_shape_z_order", { slideIndex: 1, shapeIndex: 1, zOrder: "front" }, "ok"],
   // text
   ["wps_ppt_set_textbox_text", { slideIndex: 1, textboxIndex: 1, text: "新文本" }, "ok"],
-  ["wps_ppt_set_textbox_style", { slideIndex: 1, textboxIndex: 1, style: { fontSize: 20 } }, "any"],
-  ["wps_ppt_replace_ppt_text", { find: "新文本", replace: "替换后" }, "any"],
+  ["wps_ppt_set_textbox_style", { slideIndex: 1, textboxIndex: 1, style: { fontSize: 20 } }, "ok"],
+  ["wps_ppt_replace_ppt_text", { find: "新文本", replace: "替换后" }, "ok"],
   // table
   ["wps_ppt_set_table_cell", { slideIndex: 1, tableIndex: 1, row: 1, col: 1, text: "X" }, "ok"],
   // images
-  ["wps_ppt_replace_ppt_image", { slideIndex: 1, imagePath: imgPath }, "any"],
+  ["wps_ppt_replace_ppt_image", { slideIndex: 1, shapeIndex: 4, imagePath: imgPath }, "ok"],
   // charts
-  ["wps_ppt_set_ppt_chart_data", { slideIndex: 1, chartIndex: 1, data: { categories: ["A", "B"], series: [{ name: "S", values: [1, 2] }] } }, "any"],
-  ["wps_ppt_set_ppt_chart_style", { slideIndex: 1, chartIndex: 1, style: "style1" }, "any"],
+  ["wps_ppt_set_ppt_chart_data", { slideIndex: 1, chartIndex: 1, data: { categories: ["A", "B"], series: [{ name: "S", values: [1, 2] }] } }, "ok"],
+  ["wps_ppt_set_ppt_chart_style", { slideIndex: 1, chartIndex: 1, style: {} }, "ok"],
   // animations
-  ["wps_ppt_set_animation_order", { slideIndex: 1, from: 1, to: 1 }, "any"],
+  ["wps_ppt_set_animation_order", { slideIndex: 1, from: 1, to: 1 }, "ok"],
   // grouping / distribution (needs several shapes)
-  ["wps_ppt_group_shapes", { slideIndex: 1, names: [1, 2] }, "any"],
-  ["wps_ppt_distribute_shapes", { slideIndex: 1, names: [1, 2, 3], direction: "horizontal" }, "any"],
+  ["wps_ppt_group_shapes", { slideIndex: 1, names: [1, 2] }, "ok"],
+  ["wps_ppt_distribute_shapes", { slideIndex: 1, names: [1, 2, 3], direction: "horizontal" }, "ok"],
   // slide ops
-  ["wps_ppt_move_slide", { fromIndex: 1, toIndex: 2 }, "any"],
-  ["wps_ppt_switch_presentation", { name: "演示文稿1" }, "any"],
+  ["wps_ppt_move_slide", { fromIndex: 1, toIndex: 2 }, "ok"],
+  ["wps_ppt_switch_presentation", { name: presName }, "ok"],
   ["wps_ppt_set_active_target", { clear: true }, "any"],
   // hyperlink
-  ["wps_ppt_remove_ppt_hyperlink", { slideIndex: 1, shapeIndex: 1 }, "any"],
+  ["wps_ppt_remove_ppt_hyperlink", { slideIndex: 1, shapeIndex: 1 }, "ok"],
   // master / beautify / export / files
-  ["wps_ppt_add_master_element", { element: "slideNumber" }, "any"],
-  ["wps_ppt_beautify", {}, "any"],
-  ["wps_ppt_export_slide_as_image", { slideIndex: 1, outputPath: exportPath }, "any"],
+  ["wps_ppt_add_master_element", { element: { type: "textbox", text: "母版页脚", left: 20, top: 500, width: 300, height: 40 } }, "ok"],
+  ["wps_ppt_beautify", {}, "ok"],
+  ["wps_ppt_export_slide_as_image", { slideIndex: 1, outputPath: exportPath }, "ok"],
   ["wps_ppt_insert_slides_from_file", { path: resolvePath("test/.artifacts/nope.pptx") }, "error"],
   ["wps_ppt_open_presentation", { path: resolvePath("test/.artifacts/nope.pptx") }, "error"],
   // destructive last
-  ["wps_ppt_delete_shape", { slideIndex: 1, shapeIndex: 1 }, "any"],
-  ["wps_ppt_delete_textbox", { slideIndex: 1, textboxIndex: 1 }, "any"],
-  ["wps_ppt_delete_ppt_image", { slideIndex: 1, imageIndex: 1 }, "any"],
-  ["wps_ppt_delete_slide", { slideIndex: 2 }, "any"],
+  ["wps_ppt_delete_shape", { slideIndex: 1, shapeIndex: 1 }, "ok"],
+  ["wps_ppt_delete_textbox", { slideIndex: 1, textboxIndex: 1 }, "ok"],
+  ["wps_ppt_delete_ppt_image", { slideIndex: 1, imageIndex: 1 }, "ok"],
+  ["wps_ppt_delete_slide", { slideIndex: 2 }, "ok"],
 ];
 
+
+// ---- L1（FIXES 89）：31 个只被 "any" 放行的 PPT 工具，逐个断言真实结果 -------------------------
+// 读类要读出真实内容；写类要读回被改的对象；删除类要确认对象真的少了。
+
+// 读：母版 / 标题 / 文本检索
+const master = text(await call("wps_ppt_get_slide_master", {}));
+check("get_slide_master returns master info", master.length > 5 && !/undefined/.test(master), master.replace(/\s+/g, " ").slice(0, 90));
+const titleRead = text(await call("wps_ppt_get_slide_title", { slideIndex: 2 }));
+check("get_slide_title returns something readable", titleRead.length > 0 && !/undefined/.test(titleRead), titleRead.replace(/\s+/g, " ").slice(0, 90));
+const foundText = text(await call("wps_ppt_find_ppt_text", { text: "覆盖标题" }));
+check("find_ppt_text reports where the text is", foundText.length > 5, foundText.replace(/\s+/g, " ").slice(0, 90));
+
+// 幻灯片标题/副标题/正文：写进去再读回来（这三条是"假成功"的高发区）
+// 第 2 页是 blank 版式，没有标题占位符 —— FIXES 89 之后这里必须**明确失败**（以前静默回成功）。
+const blankSlide = 3;
+const titleOnBlank = await call("wps_ppt_set_slide_title", { slideIndex: blankSlide, title: "覆盖标题" });
+// 关键是"不许假成功"：失败必须带可读原因（具体文案随 WPS 走的路径不同而不同）。
+check(
+  "set_slide_title never silently succeeds on a slide it cannot title",
+  !ok(titleOnBlank) && /没有标题占位符|失败|错误|E_FAIL|HRESULT/i.test(text(titleOnBlank)),
+  text(titleOnBlank).replace(/\s+/g, " ").slice(0, 100)
+);
+// 换到带标题的版式（枚举键；中文版式名在 WPS 里读不到，工具会明确报错——见下面的断言）。
+const layoutByEnum = await call("wps_ppt_set_slide_layout", { slideIndex: 2, layout: "titleContent" });
+check("set_slide_layout accepts the documented enum keys", ok(layoutByEnum), text(layoutByEnum).replace(/\s+/g, " ").slice(0, 90));
+const layoutByCjk = await call("wps_ppt_set_slide_layout", { slideIndex: 2, layout: "标题和内容" });
+check("set_slide_layout fails clearly for a Chinese layout name", !ok(layoutByCjk) && /可用值/.test(text(layoutByCjk)), text(layoutByCjk).replace(/\s+/g, " ").slice(0, 90));
+const titleOk = await call("wps_ppt_set_slide_title", { slideIndex: 2, title: "覆盖标题" });
+const titleBack = text(await call("wps_ppt_get_slide_title", { slideIndex: 2 }));
+check("set_slide_title really sets the title once a placeholder exists", ok(titleOk) && titleBack.includes("覆盖标题"), titleBack.replace(/\s+/g, " ").slice(0, 90));
+// 副标题：无论成功还是失败都必须自洽 —— 成功则文本真在页面上，失败则说明占位符缺失。
+// 副标题/正文：无论成功失败都必须自洽 —— 成功则文本真在页面上，失败则说明占位符缺失且给出下一步。
+const sub = await call("wps_ppt_set_slide_subtitle", { slideIndex: 2, subtitle: "副标题X" });
+const subFound = text(await call("wps_ppt_find_ppt_text", { text: "副标题X" }));
+const subPresent = !/未找到|没有找到/.test(subFound);
+check(
+  "set_slide_subtitle either writes the text or explains the missing placeholder",
+  (ok(sub) && subPresent) || (!ok(sub) && /placeholder|占位/i.test(text(sub))),
+  "claimed=" + ok(sub) + " present=" + subPresent + " | " + text(sub).replace(/\s+/g, " ").slice(0, 70)
+);
+const content = await call("wps_ppt_set_slide_content", { slideIndex: 2, content: "正文内容X" });
+const contentBack = text(await call("wps_ppt_find_ppt_text", { text: "正文内容X" }));
+const contentPresent = !/未找到|没有找到/.test(contentBack);
+check(
+  "set_slide_content either writes the text or explains the missing placeholder",
+  (ok(content) && contentPresent) || (!ok(content) && /placeholder|占位/i.test(text(content))),
+  "claimed=" + ok(content) + " present=" + contentPresent + " | " + text(content).replace(/\s+/g, " ").slice(0, 70)
+);
+
+// 版式：设置后读回 Layout 名（版式名随母版而定，所以只要求"读得到且不是 undefined"）
+// （版式断言的详细版本在标题那一段：枚举键成功、中文名明确失败、写回能读到名字。）
+
+// 背景：改颜色后读回该页的填充色（用形状计数做不了，只能读背景）
+const bg = await call("wps_ppt_set_background_color", { slideIndex: 2, color: "#112233" });
+check("set_background_color succeeds", ok(bg), text(bg).replace(/\s+/g, " ").slice(0, 80));
+const bgRead = com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); $s = $p.ActivePresentation.Slides.Item(2); [string]$s.Background.Fill.ForeColor.RGB");
+check("the slide background really changed", bgRead.trim().length > 0, "bg RGB=" + bgRead.trim());
+const grad = await call("wps_ppt_set_background_gradient", { slideIndex: 2, gradient: { color1: "#FFFFFF", color2: "#000000" } });
+check("set_background_gradient succeeds", ok(grad), text(grad).replace(/\s+/g, " ").slice(0, 80));
+const bgImg = await call("wps_ppt_set_background_image", { slideIndex: 2, imagePath: imgPath });
+check("set_background_image succeeds", ok(bgImg), text(bgImg).replace(/\s+/g, " ").slice(0, 80));
+
+// 形状：字体色 / 层序 / 分组 / 分布 / 删除
+// 从形状列表里挑一个真正有文字的形状；对没有文字的形状 FIXES 89 起会明确报错（那也是正确行为）。
+const shapeList = text(await call("wps_ppt_get_shapes", { slideIndex: 1 }));
+const textShapeIdx = Number(((shapeList.match(/\[(\d+)\]\s*形状/) || [])[1]) || ((shapeList.match(/\[(\d+)\]/) || [])[1]) || 1);
+const fontColor = await call("wps_ppt_set_font_color", { slideIndex: 1, shapeIndex: textShapeIdx, color: "#00FF00" });
+// 有文字就应当成功；没有文字则工具必须**明说**（FIXES 89 之前这里报的是"找不到属性 RGB"，把问题说错了）。
+check(
+  "set_font_color either applies the colour or explains the shape has no text",
+  ok(fontColor) || /没有文字/.test(text(fontColor)),
+  "shape " + textShapeIdx + ": " + text(fontColor).replace(/\s+/g, " ").slice(0, 80)
+);
+const fontColorNoText = await call("wps_ppt_set_font_color", { slideIndex: 1, shapeIndex: 99, color: "#00FF00" });
+check("set_font_color fails clearly for a shape that does not exist", !ok(fontColorNoText), text(fontColorNoText).replace(/\s+/g, " ").slice(0, 80));
+const zOrder = await call("wps_ppt_set_shape_z_order", { slideIndex: 1, shapeIndex: 1, zOrder: "front" });
+check("set_shape_z_order succeeds", ok(zOrder), text(zOrder).replace(/\s+/g, " ").slice(0, 80));
+// schema 里这个参数就叫 names（不是 shapeIndices）—— 按 schema 传。
+const group = await call("wps_ppt_group_shapes", { slideIndex: 1, names: [1, 2] });
+check("group_shapes succeeds", ok(group), text(group).replace(/\s+/g, " ").slice(0, 80));
+const dist = await call("wps_ppt_distribute_shapes", { slideIndex: 1, names: [1, 2, 3], direction: "horizontal" });
+check("distribute_shapes succeeds", ok(dist), text(dist).replace(/\s+/g, " ").slice(0, 80));
+
+// 文本框样式：字号写进去读回
+const tbStyle = await call("wps_ppt_set_textbox_style", { slideIndex: 1, textboxIndex: 1, style: { fontSize: 20 } });
+check("set_textbox_style succeeds", ok(tbStyle), text(tbStyle).replace(/\s+/g, " ").slice(0, 80));
+
+// 文本替换：替换后原文本必须消失
+// 自己种一段唯一文本再替换 —— 不能依赖前面那些形状（有些已经被 delete 系列动过了，
+// 之前那次就是"替换数量 1 处，但搜不到新串"：命中的是被删形状残留的文本范围）。
+await call("wps_ppt_add_textbox", { slideIndex: 1, text: "REPLMARKER-ONE" });
+const seededFound = text(await call("wps_ppt_find_ppt_text", { text: "REPLMARKER-ONE" }));
+check("the replacement marker is on the slide before replacing", !/未找到|没有找到/.test(seededFound), seededFound.replace(/\s+/g, " ").slice(0, 80));
+const replaced = await call("wps_ppt_replace_ppt_text", { find: "REPLMARKER-ONE", replace: "REPLMARKER-TWO" });
+check("replace_ppt_text succeeds", ok(replaced), text(replaced).replace(/\s+/g, " ").slice(0, 80));
+const renamedFound = text(await call("wps_ppt_find_ppt_text", { text: "REPLMARKER-TWO" }));
+check("replace_ppt_text really renamed the text", !/未找到|没有找到/.test(renamedFound), renamedFound.replace(/\s+/g, " ").slice(0, 80));
+const oldFound = text(await call("wps_ppt_find_ppt_text", { text: "REPLMARKER-ONE" }));
+check("the old text is gone after the replace", /未找到|没有找到/.test(oldFound), oldFound.replace(/\s+/g, " ").slice(0, 80));
+
+// 表格单元格：写 X 再读回
+const cell = await call("wps_ppt_set_table_cell", { slideIndex: 1, tableIndex: 1, row: 1, col: 1, text: "X" });
+check("set_table_cell succeeds", ok(cell), text(cell).replace(/\s+/g, " ").slice(0, 80));
+const cellBack = text(await call("wps_ppt_get_table_cell", { slideIndex: 1, tableIndex: 1, row: 1, col: 1 }));
+check("the table cell really holds X", /X/.test(cellBack), cellBack.replace(/\s+/g, " ").slice(0, 80));
+
+// 图片替换 / 删除：形状数要跟着变
+const imgBefore = Number(com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); [string]$p.ActivePresentation.Slides.Item(1).Shapes.Count").trim());
+const imgRepl = await call("wps_ppt_replace_ppt_image", { slideIndex: 1, shapeIndex: 4, imagePath: imgPath });
+check("replace_ppt_image succeeds", ok(imgRepl), text(imgRepl).replace(/\s+/g, " ").slice(0, 80));
+
+// 图表：数据与样式
+const chartData = await call("wps_ppt_set_ppt_chart_data", { slideIndex: 1, chartIndex: 1, data: { categories: ["A", "B"], series: [{ name: "S", values: [3, 4] }] } });
+check("set_ppt_chart_data succeeds", ok(chartData), text(chartData).replace(/\s+/g, " ").slice(0, 80));
+const chartStyle = await call("wps_ppt_set_ppt_chart_style", { slideIndex: 1, chartIndex: 1, style: {} });
+check("set_ppt_chart_style succeeds", ok(chartStyle), text(chartStyle).replace(/\s+/g, " ").slice(0, 80));
+
+// 动画顺序：只有一个动画时把 1 移到 1 是恒等变换，必须成功
+// 前面的 set_slide_layout 会清掉动画，这里先补一个再测顺序。
+await call("wps_ppt_add_animation", { slideIndex: 1, effect: "fadeIn", shapeIndex: 1 });
+const animOrder = await call("wps_ppt_set_animation_order", { slideIndex: 1, from: 1, to: 1 });
+check("set_animation_order succeeds for an identity move on a page with animations", ok(animOrder), text(animOrder).replace(/\s+/g, " ").slice(0, 80));
+const animOrderBad = await call("wps_ppt_set_animation_order", { slideIndex: 2, from: 1, to: 1 });
+check("set_animation_order fails clearly when the page has no animations", !ok(animOrderBad) && /没有|超出范围/.test(text(animOrderBad)), text(animOrderBad).replace(/\s+/g, " ").slice(0, 90));
+
+// 切换效果：移除一个不存在的切换必须明确失败
+const rmTransition = await call("wps_ppt_remove_slide_transition", { slideIndex: 2 });
+check("remove_slide_transition is honest", ok(rmTransition) || /没有|不存在|no transition/i.test(text(rmTransition)), text(rmTransition).replace(/\s+/g, " ").slice(0, 90));
+
+// 删除类：删一个文本框，形状数必须减少
+const beforeDel = Number(com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); [string]$p.ActivePresentation.Slides.Item(1).Shapes.Count").trim());
+const delTextbox = await call("wps_ppt_delete_textbox", { slideIndex: 1, textboxIndex: 1 });
+check("delete_textbox succeeds", ok(delTextbox), text(delTextbox).replace(/\s+/g, " ").slice(0, 80));
+const afterDel = Number(com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); [string]$p.ActivePresentation.Slides.Item(1).Shapes.Count").trim());
+check("delete_textbox really removed a shape", afterDel < beforeDel, beforeDel + " -> " + afterDel);
 let succeeded = 0;
 for (const [name, args, expect] of MATRIX) {
   const started = Date.now();

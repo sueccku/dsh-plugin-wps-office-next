@@ -2604,6 +2604,43 @@ powershell … -File C:\Users\qwer\.dsh\profiles\desktop\node_modules\dsh-plugin
 （`common_get_app_info`、`common_get_selected_text`、`common_set_selected_text`、`common_wire_check`、`convert_format`）。
 "全部 71 个补真场景断言"是一个多轮工作量，与"先补最易错的 5–8 个"差别很大 —— **按 A/B 二选一执行**（见报告）。
 
+## 89. L1 按域补全弱断言（71 → 0）：过程中挖出的 12 个真缺陷（已修）
+
+**来源**：FIXES 86 的遗留栏 L1（用户点名按域全补）。71 个只被 `"any"`（只验"没挂住"）放行的工具，
+按域补真场景断言：**Excel 23 / Word 11 / PPT 31 / 通用 5**。为了写"真值断言"必须读回真实结果，
+于是这些工具长期藏着的缺陷全部现形 —— **12 个真缺陷，全是"回 success 但结果不对/字段是空的"**。
+
+### 按域清单
+
+| # | 工具 / 动作 | 缺陷 | 修法 |
+| --- | --- | --- | --- |
+| 1 | `wps_excel_get_selection` | 桥回 `rows`/`columns` 且没有 `sheet`，handler 读 `rowCount`/`columnCount`/`sheet` → 界面上"工作表: undefined，行数: undefined" | 桥按 handler 的字段名回传（并补 `sheet`） |
+| 2 | `wps_excel_text_to_columns` | `Range.TextToColumns($null, …)` 的第一个参数（Destination）传 `$null` 必抛"值不在预期的范围内"（实测 `[Type]::Missing` 或自指地址才行） | 改传 `[Type]::Missing` |
+| 3 | `wps_word_generate_toc` | `TablesOfContents.Add` 传了 10 个参数，**第 9 个一到就抛错**（实测传 8 个成功）→ 目录永远建不出来却回 success | 只传前 8 个；并读回 `TablesOfContents.Count`，为 0 就明确报错 |
+| 4 | `wps_ppt_get_slide_master` | 桥回 `{shapeCount, shapes}`，handler 读 `data.master` → "母版信息获取成功！undefined" | handler 按真实结构格式化输出 |
+| 5 | `wps_ppt_get_table_cell` | 桥回 `value`，handler 读 `text` → "内容: undefined" | handler 改读 `value`（并回报表格规模） |
+| 6 | `wps_ppt_set_slide_title` | 页上没有标题占位符时**什么都不做却回 success** | 明确报错 + 给下一步（先换版式或加文本框） |
+| 7 | `wps_ppt_set_slide_layout` | 只认 6 个英文枚举键，其它一律当索引 → 传"标题和内容"报"索引超出了数组界限"；实测 WPS 的 `CustomLayouts.Count` 恒为 0，按名查找走不通 | 枚举键/数字索引二选一，其它明确报错并**列出可用键** |
+| 8 | `wps_ppt_set_ppt_chart_data` | schema 收 `{categories, series}`（对象），桥按二维数组解 → `$p.data.Count` 无意义、写到 null 上："不能对 Null 值表达式调用方法" | 桥接受两种形态：对象先铺成行列表；并回报写入的格子数，为 0 明确报错 |
+| 9 | `wps_ppt_set_ppt_chart_data`（取图表） | 用 `Shapes.Item(chartIndex)` 把"第几个图表"当形状索引 → 取不到就空引用 | 按 `HasChart` 数第 N 个（与表格读取同一套路） |
+| 10 | `wps_ppt_set_animation_order` | 页上没有动画或序号越界时直接 `Item(from).MoveTo` → "值不在预期的范围内"，看不出是哪种错 | 先读 `MainSequence.Count`，两种情况分别明确报错 |
+| 11 | `wps_ppt_set_font_color` | 对没有文字的形状报"在此对象上找不到属性 RGB"（把"没文本"说成了"没这个属性"） | 先判有无文本，没有就明确说清 |
+| 12 | `wps_ppt_beautify` | TS 侧对 `result.operations` 直接 `forEach`，而桥只回 `{style, count}` → "Cannot read properties of undefined (reading 'forEach')"，整个工具崩 | 类型与运行时按桥的真实返回对齐，编排详情由工具层自己叙述 |
+
+### 覆盖面的变化（ratchet 只许涨，这次是涨）
+
+| 指标 | 之前 | 现在 |
+| --- | --- | --- |
+| 只有最弱断言（`any`）的工具 | **71** | **0** |
+| 有专门测试（bespoke） | 175 | **207+** |
+| 矩阵 ok/error（强断言） | 25 | **30+** |
+
+### 遗留（本轮未做完，已记录）
+
+- `set_slide_subtitle` / `set_slide_content` 的占位符映射：矩阵里两条仍是 `any`（`titleContent` 版式在 WPS 里没给出正文占位符），
+  行为本身是诚实的（明确报 placeholder not found），但"哪个版式带哪些占位符"还没测清楚。
+- `set_font_color` 与 `set_slide_title` 在"形状/页确实没有目标"时走的是 WPS 的 E_FAIL 路径（有可读三段式），
+  没有进一步收敛到更精确的文案。
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

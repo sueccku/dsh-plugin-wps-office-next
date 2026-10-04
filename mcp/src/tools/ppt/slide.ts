@@ -199,7 +199,10 @@ export const beautifyHandler: ToolHandler = async (
       success: boolean;
       message: string;
       slideIndex: number | string;
-      operations: Array<{
+      // 桥实际回的是 { style, count }（FIXES 89：以前这里声明 operations，运行时就是 undefined）
+      count?: number;
+      style?: string;
+      operations?: Array<{
         operation: string;
         count: number;
         details?: string;
@@ -231,7 +234,14 @@ export const beautifyHandler: ToolHandler = async (
       output += `字体: ${font || '微软雅黑'}\n\n`;
       output += `优化详情：\n`;
 
-      result.operations.forEach((op) => {
+      // FIXES 89：桥只回 { style, count }，没有 operations —— 直接 forEach 会抛
+      // "Cannot read properties of undefined (reading 'forEach')"，整个工具以"美化幻灯片出错"收场。
+      // 编排详情由工具层自己叙述（它知道自己请求了什么）。
+      const operations = Array.isArray(result.operations) ? result.operations : [];
+      if (!operations.length) {
+        operations.push({ operation: 'apply_color_scheme', count: Number(result.count) || 0, details: schemeName });
+      }
+      operations.forEach((op) => {
         const opName = {
           unify_font: '统一字体',
           apply_color_scheme: '应用配色',
