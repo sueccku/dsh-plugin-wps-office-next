@@ -166,10 +166,14 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | **本轮** | **D20** | 交付节奏 | **B**：**攒批**，不单独发 0.6.2（数据破坏已在野，此选择是知情的） | 待发版 |
 | **本轮** | **D21** | D9 挂起项 | **A**：**转正**——`any` 弱断言放行过真实的假成功，优先按域推进 | **已完成**：`any` 71 → 0（FIXES 89） |
 | **本轮**<br>2026-10-04 | **D22** | 遗留清单里先做哪些 | **用户点名 A1 + A6 + A2 + B1**（C 类"看证据+说明"、A7 发版未表态，未动） | FIXES 90 |
+| **本轮** | **D23** | B 类收尾的批 | **用户点名 B1–B4 全做**（B1 已在 FIXES 90 完成，本轮补 B2/B3/B4） | FIXES 91 |
 | **本轮** | **A1（原 D1-C）** | 广告面重平衡 | **已做**：按真实调用数据把 15 个高频隐藏工具提到广告面，**69 → 84**（46,867 字节 / 预算 60,000）；**没换出任何工具**（零调用是语料偏置，不足为据） | FIXES 90 |
 | **本轮** | **A6** | `find_replace` 不移动选区 / `range:"all"` 只有 `set_font` 收 | **已做**：新增 `selectFound`（默认 false，不动用户光标）；`apply_style.range` 与 `set_font` 对齐为 `{start,end}` 或 `"all"`，并让参数形状校验支持类型数组 | FIXES 90 |
 | **本轮** | **A2** | PPT 版式 × 占位符没测清楚 | **已做**：真机扫出 6 个版式的占位符矩阵，据此修掉 3 个真缺陷（副标题判类型 2 应为 4、正文判 7 应为 2、`add_slide` 与 `set_slide_layout` 键名两套） | FIXES 90 |
 | **本轮** | **B1** | `known-defects.md` 状态过期 | **已做**：S1 → fixed；C7 残余精确到"目的地解析"，并写明不修的理由 | FIXES 90 |
+| **本轮**<br>2026-10-04 | **B2** | FIXES 验证表是旧快照 | **已做**：标注为"FIXES 63 快照 + 现值看哪里"，表头改"项数（当时）"（不毁历史证据） | FIXES 91 |
+| **本轮** | **B3** | `PROGRESS.md` 阶段数字是历史值 | **已做**：最终数字一节标注为 v0.4.0 快照并指向现值；其余 26 处保持原样（D10-B） | FIXES 91 |
+| **本轮** | **B4** | 文档数字没有单一来源（漂过 5 次） | **已做**：`gen-numbers.mjs` 从**真实 tools/list** + spec + 宿主键表算数、写 `docs/current-numbers.md`、逐项核对 README/HANDOFF 声明值；CI 加 `--check` + 生成物对账；`run-tests.ps1` 出 `test/summary.json` | FIXES 91 |
 | **遗留轮**<br>2026-10-03 | **L1** | 71 个工具只有最弱断言（`any`） | **已做（用户选 A：按域全补）**：71 → **0**；过程中挖出并修掉 **12 个真缺陷**（Excel 2 / Word 1 / PPT 9），全是"回 success 但结果不对" | FIXES 89 |
 | **遗留轮** | **L2** | 英文样式名不可用 | **已修**：工具层翻译（Heading 1→标题 1 等）+ 空格归一化 + 失败文案带下一步 | FIXES 88 + 28 项纯函数单测 |
 | **遗留轮** | **L9** | `set_active_target` 校验失败仍回成功 | **已修**：两处失败改 `success: false`（锁照记，但不再谎报「校验通过」） | FIXES 88 + 真机回归 3 项 |
@@ -212,18 +216,22 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 
 ## 5. 当前权威数字（**引自代码内常量，不要用正则重数**）
 
+> **本表的机器可读版**：[current-numbers.md](current-numbers.md) —— 由 `node scripts/gen-numbers.mjs` 生成，
+> 并逐项核对本文件与 README 里的声明值（CI 跑 `--check`，对不上就红，FIXES 91）。
+> 改了工具面/测试就先跑生成器，别手改数字。
+
 | 指标 | 值 | 权威来源 |
 | --- | --- | --- |
 | 注册动作 | **263** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
-| 对外工具 | **69**（65 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
-| 广告面字节 | **38,878** / 上限 60,000 | `node scripts/verify.mjs` |
-| 全量 schema | 155,613 字节（268 工具，≈44,461 tokens） | 同上 |
+| 对外工具 | **84**（80 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
+| 广告面字节 | **46,867** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
+| 全量 schema | 157,854 字节（268 工具，≈45,101 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
 | 测试 | **1076 断言 / 48 个测试文件**（口径见下方注；FIXES 89 按域补全弱断言 +90，FIXES 90 +4） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～89 号 | `docs/FIXES.md` |
+| FIXES | 1～91 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
@@ -524,7 +532,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 | `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
 | `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
 | `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～89 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂、86 = 用户报告的 Word 假成功/数据破坏、87 = 测试跑的是旧副本、88 = 英文样式名 / `set_active_target`、89 = 补弱断言时挖出的 12 个真缺陷） |
+| `docs/FIXES.md` | 1～91 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂、86 = 用户报告的 Word 假成功/数据破坏、87 = 测试跑的是旧副本、88 = 英文样式名 / `set_active_target`、89 = 补弱断言时挖出的 12 个真缺陷、90 = 广告面重平衡 + 版式矩阵 + 语义对齐、91 = 文档数字收成单一来源） |
 | `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
 | `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
 | `docs/param-contract.md` | 生成物（重新生成后应无漂移） |

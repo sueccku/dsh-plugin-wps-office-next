@@ -35,6 +35,9 @@ function Clear-Orphans {
 $files = Get-ChildItem (Join-Path $root 'test') -Filter '*.test.mjs' | Sort-Object Name
 if ($Filter) { $files = $files | Where-Object { $_.Name -like $Filter } }
 $totalPass = 0; $totalFail = 0; $reaped = 0; $badFiles = @()
+# FIXES 91（B4）：把这次整轮的权威计数落成一份机器可读的快照，供 docs/current-numbers.md 与
+# spec/current-numbers.json 引用 —— 文档里的数字从此只有一个来源（这个文件由跑测试产生，不手写）。
+$summaryRows = @()
 foreach ($f in $files) {
     $env:WPS_OFFICE_MCP_ENTRY = [System.IO.Path]::Combine($root, 'mcp', 'dist', 'index.js')
     $env:WPS_OFFICE_HOST_SCRIPT = [System.IO.Path]::Combine($root, 'host', 'wps-com-host.ps1')
@@ -45,10 +48,25 @@ foreach ($f in $files) {
     $reaped += Clear-Orphans
     $tail = ($out -split "`r?`n" | Where-Object { $_ -match 'FAIL|ERROR|OK \(|FAILED' } | Select-Object -Last 4) -join ' | '
     "{0,-42} PASS={1,-4} FAIL={2,-3} exit={3}  {4}" -f $f.Name, $p, $x, $LASTEXITCODE, $tail
+    $summaryRows += [ordered]@{ file = $f.Name; pass = $p; fail = $x; exit = $LASTEXITCODE }
     if ($LASTEXITCODE -ne 0 -or $x -gt 0) { $badFiles += $f.Name }
 }
 $left = @(Get-Orphans).Count
 ""
 "TOTAL PASS=$totalPass FAIL=$totalFail FILES=$($files.Count) REAPED=$reaped ORPHANS_LEFT=$left"
 if ($badFiles.Count -gt 0) { 'BAD FILES: ' + ($badFiles -join ', ') } else { 'ALL TEST FILES GREEN' }
+
+$summary = [ordered]@{
+    generatedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
+    files = $files.Count
+    assertions = $totalPass + $totalFail
+    pass = $totalPass
+    fail = $totalFail
+    badFiles = @($badFiles)
+    perFile = $summaryRows
+}
+$summaryPath = Join-Path $root 'test/summary.json'
+[System.IO.File]::WriteAllText($summaryPath, ($summary | ConvertTo-Json -Depth 4), (New-Object System.Text.UTF8Encoding($false)))
+"SUMMARY written: test/summary.json (assertions=$($summary.assertions) files=$($summary.files))"
+
 if ($totalFail -gt 0 -or $badFiles.Count -gt 0) { exit 1 }

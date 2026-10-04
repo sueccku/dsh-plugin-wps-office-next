@@ -65,6 +65,14 @@ jobs:
       - name: Committed coverage matrix must match
         run: git diff --exit-code -- docs/tool-coverage.md
 
+      # FIXES 91（B4）：文档里的数字只有一个来源。生成器从真实 tools/list + spec + 宿主键表算，
+      # 并核对 README / HANDOFF 的声明值；两件事一起做（重生成 + 对账），对不上就非零退出。
+      - name: Documented numbers must match the generated snapshot
+        run: node scripts/gen-numbers.mjs --check
+
+      - name: Committed numbers snapshot must match
+        run: git diff --exit-code -- docs/current-numbers.md
+
       - name: Project lint (byte conventions, tabs, console, test exit codes, modal-dialog guards)
         run: npm run lint
 

@@ -2724,6 +2724,52 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
 
 - 整轮回归：见下方"验证"表的当前读数（唯一既有失败仍是 `confirm-dialog`，本机 Excel 确认框不弹）。
 - `spec-reproduction` 15/15；PPT 覆盖 87 项（矩阵 46/50 真成功）；Word 回归 42 项；`verify` 19 项。
+## 91. B1–B4：账本更新 + 文档数字收成单一来源（自动对账进 CI）
+
+**来源**：遗留清单的 B 类四项（用户点名）。B1 在 FIXES 90 里已做（S1 → fixed、C7 残余精确化），这里补齐 B2–B4。
+
+### B2 历史快照的读法
+
+`docs/FIXES.md` 的"测试文件与覆盖"表是 **FIXES 63 当时**的读数（41 个文件、816 项那个年代）。
+它记录的是"那时哪些文件存在、各覆盖什么"，本身有价值，**改数字反而是毁证据**。
+所以做法是标注而不是更新：表前加引用块写明"这是快照 + 现值看哪里"，表头改成"项数（当时）"。
+
+### B3 `PROGRESS.md` 的历史阶段数字
+
+同样处理（D10-B 的既定决策：保留历史、只标注）：在"全项目最终数字（P5 收尾）"一节前面加引用块，
+写明这是 **v0.4.0 发布时（2026-09-19）** 的快照，现值指向 `HANDOFF.md` §5 与 `docs/current-numbers.md`；
+表头"现在"改成"当时"。其余 26 处阶段数字保持原样。
+
+### B4 文档数字的单一来源（本轮的主要工作）
+
+**问题**：同一组数字散落在 README、HANDOFF §5、FIXES 验证表、PROGRESS、CHANGELOG 里，靠手改；
+历史上至少漂过 5 次（918 / 928 / 949 / 982 / 1072…）。这次 A1 改广告面又同时要动 README 的 5 处。
+
+**做法**（三步，都是机器判定的）：
+
+1. `scripts/lib/tool-face.mjs`：**真的把 MCP server 拉起来**，对 minimal / standard / full 三档各做一次
+   JSON-RPC 握手并量 `tools/list` 的载荷字节。以前 README 的字节数是手抄的，现在从真实载荷来 ——
+   口径也就顺带统一了（我第一版从 spec 推全量定义，量出 157,854，而 README 的 standard 行是 46,867）。
+2. `scripts/gen-numbers.mjs`：算广告面 / 注册工具 / schema 字节 / 三档工具面 / 桥 action / 桥参数键 /
+   未工具化 action / 测试文件数，写出 `docs/current-numbers.md`（入库）+ `test/numbers-report.json`；
+   同时**逐项核对 README 与 HANDOFF 里的声明值**，对不上就非零退出（`--check`，CI 用）。
+   桥 action 特意用与 `verify.mjs` **同一个口径**（桥源文件的 case 块 263），而不是键表条数（262）——
+   两个口径并存正是这类数字会漂的根因。
+3. `scripts/run-tests.ps1` 每次整轮写出 `test/summary.json`（断言数 / 文件数 / 逐文件明细，**不入库**）。
+   生成器读它来核对 README 的"测试 1076 项 / 48 个文件"；**没有这个文件的机器不写那一行、也不核对**，
+   所以生成物在"跑过测试的本机"与"CI"上完全一致（实测：藏掉 summary 后生成物零差异、14 项核对全过）。
+
+**接线**：CI 新增两步 —— `node scripts/gen-numbers.mjs --check` + `git diff --exit-code -- docs/current-numbers.md`，
+与既有的 dist / host / skills / spec / coverage / param-contract 对账一个模式。
+`package.json` 加了 `gen:numbers` 与 `check:numbers`。
+
+**顺带修**：`scripts/lint.mjs` 不再扫描不入库的 `test/summary.json`（它是机器产物，不该被文本约定管）。
+
+### 验证
+
+- `node scripts/gen-numbers.mjs --check`：**18 项声明值全过**（README badge/表格/当前数字块、HANDOFF 工具面与测试行）。
+- CI 等价复现：藏掉 `test/summary.json` 后重跑生成器 → 生成物无差异、14 项核对全过（不误报）。
+- `npm run lint`：182 文件 0 违规；整轮回归 1075/1076（唯一失败仍是既有的 `confirm-dialog`）。
 ## 验证
 
 > **下表是 FIXES 63 当时（2026-09 末）的快照**，用来记录"那时哪些文件存在、各覆盖什么"。
@@ -2733,7 +2779,9 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。
 
-| 测试 | 项数 | 覆盖 |
+**测试文件与覆盖（FIXES 63 当时的快照，非现值）**
+
+| 测试 | 项数（当时） | 覆盖 |
 | --- | --- | --- |
 | test/com-host.test.mjs | 6 | 常驻宿主握手、就绪帧、串行队列、重启 |
 | test/plugin.test.mjs | 32 | 插件注册、skills、工具面过滤、预算 |

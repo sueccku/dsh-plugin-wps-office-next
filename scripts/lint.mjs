@@ -17,7 +17,8 @@ function walk(dir, out = []) {
     const full = join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) walk(full, out);
-    else out.push(full);
+    // test/summary.json 是跑测试才产生的机器快照（不入库），不必遵守文本约定
+    else if (!full.endsWith('summary.json')) out.push(full);
   }
   return out;
 }
