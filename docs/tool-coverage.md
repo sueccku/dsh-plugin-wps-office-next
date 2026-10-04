@@ -11,12 +11,12 @@
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Excel | 118 | 92 | 3 | 23 | 26 |
 | Word | 59 | 45 | 3 | 11 | 21 |
-| PPT | 77 | 29 | 16 | 32 | 14 |
+| PPT | 77 | 30 | 16 | 31 | 14 |
 | 通用 | 7 | 3 | 0 | 4 | 2 |
 | 转换 | 2 | 1 | 0 | 1 | 2 |
 | 逃生舱 | 1 | 1 | 0 | 0 | 0 |
 | 其他 | 4 | 4 | 0 | 0 | 4 |
-| **合计** | **268** | **175** | **22** | **71** | **69** |
+| **合计** | **268** | **176** | **22** | **70** | **69** |
 
 ## 矩阵
 
@@ -198,7 +198,7 @@
 | `wps_ppt_remove_slide_transition` | PPT | `removeSlideTransition` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_replace_ppt_image` | PPT | `replacePptImage` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_replace_ppt_text` | PPT | `replacePptText` |  | matrix any | ppt-coverage.test.mjs |
-| `wps_ppt_set_active_target` | PPT | `getOpenPresentations` |  | matrix any | ppt-coverage.test.mjs |
+| `wps_ppt_set_active_target` | PPT | `getOpenPresentations` |  | bespoke | ppt-coverage.test.mjs, word-range-format.test.mjs |
 | `wps_ppt_set_animation_order` | PPT | `setAnimationOrder` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_set_background_color` | PPT | `setBackgroundColor` |  | matrix any | ppt-coverage.test.mjs |
 | `wps_ppt_set_background_gradient` | PPT | `setBackgroundGradient` |  | matrix any | ppt-coverage.test.mjs |

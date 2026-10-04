@@ -4900,7 +4900,7 @@ exports.operations = [
         "tool": "wps_ppt_group_shapes",
         "action": "groupShapes",
         "app": "ppt",
-        "summary": "将幻灯片中的多个形状组合为一个组。\n\n使用场景：\n- \"把这几个形状组合在一起\"\n- \"将第1、2���3个形状编组\"",
+        "summary": "将幻灯片中的多个形状组合为一个组。\n\n使用场景：\n- \"把这几个形状组合在一起\"\n- \"将第1、2、3个形状编组\"",
         "params": {
             "slideIndex": {
                 "type": "number",
@@ -6536,11 +6536,11 @@ exports.operations = [
         "tool": "wps_word_apply_style",
         "action": "applyStyle",
         "app": "word",
-        "summary": "应用Word样式到当前选中区域或指定范围。\n\n支持的常用样式：\n- 标题1、标题2、标题3...（或 Heading 1, Heading 2...）\n- 正文、正文首行缩进\n- 引用、强调\n- 列表段落\n\n使用场景：\n- \"把这段设成标题1\"\n- \"应用正文样式\"",
+        "summary": "应用Word样式到当前选中区域或指定范围。\n\n支持的常用样式（**用中文名最稳**）：\n- 标题 1 … 标题 9（注意中间有空格）、标题、副标题\n- 正文、正文文本、正文首行缩进\n- 引用、明显引用、强调、明显强调、题注、列表段落\n\n英文别名会自动翻译：Heading 1 → 标题 1、Normal → 正文、Title → 标题、Subtitle → 副标题、Quote → 引用；\n「标题1」（少空格）也会自动补成「标题 1」。**中文版 WPS 里没有英文样式名**，传别的英文名不会生效。\n\n使用场景：\n- \"把这段设成标题1\"\n- \"应用正文样式\"",
         "params": {
             "styleName": {
                 "type": "string",
-                "description": "样式名称，如 \"标题 1\"、\"正文\"、\"Heading 1\"",
+                "description": "样式名称，如「标题 1」（有空格）、「正文」、「副标题」。英文别名可用（Heading 1 / Normal / Title / Subtitle / Quote），会自动翻译成中文内置名。",
                 "required": true
             },
             "range": {

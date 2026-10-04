@@ -2553,6 +2553,57 @@ powershell … -File C:\Users\qwer\.dsh\profiles\desktop\node_modules\dsh-plugin
 **验收**：修前 `word-common-coverage` 因旧宿主红 1–3 条；修后 `run-tests.ps1 -Filter "word-*"` 六个文件
 **141 项全绿**，其中新回归文件 31 项由 runner 驱动通过。
 
+## 88. 用户报告的后续三项：英文样式名不可用、set_active_target 假成功（已修）+ 弱断言清单
+
+**来源**：FIXES 86 的遗留栏。用户点名做 L9（假成功）、L2（英文样式名）、L1（71 个弱断言）。
+
+### L2 英文样式名：中文版 WPS 里**根本不存在**（已修）
+
+**定性实测**（一次性 Word 文档，478 个样式）：
+
+| 探针 | 结果 |
+| --- | --- |
+| `Style.NameInternational` | **一律空串**（478 个全空） |
+| `Styles.Item("Heading 1")` | 抛 `E_FAIL` |
+| `Range.Style = "Heading 1"` | 抛 `E_FAIL` |
+| `Styles.Item("标题 1")` / `Range.Style = "标题 1"` | 正常，读回 `标题 1` |
+| `Styles.Item("标题1")`（少空格）/ `"标题  1"`（双空格） | **都抛错** —— 名字对空格敏感 |
+
+也就是说：工具描述里把 `Heading 1` 当示例，模型照着传就必吃 `E_FAIL`，而且 E_FAIL 不告诉它问题在哪。
+**这不是"WPS 偶发"，是名字压根不在样式表里。**
+
+**修法**：新增 `mcp/src/tools/word/style-names.ts`（纯函数，可单测）——
+① 英文别名表 `Heading 1..9 → 标题 1..9`、`Normal → 正文`、`Body Text → 正文文本`、`Title → 标题`、
+`Subtitle → 副标题`、`Quote → 引用`、`Intense Quote → 明显引用`、`Emphasis → 强调`、`Caption → 题注`、
+`List Paragraph → 列表段落`（查表时**去掉空格 + 转小写**，所以 `BodyText` / `Body Text` 都命中）；
+② 空白归一化（全角空格、连续空格塌成一个）；
+③ 中文名少空格形状补全（`标题1 → 标题 1`，只在"标题/副标题/列表/索引… + 数字"这类精确形状上做，不碰用户自定义样式名）；
+④ 描述改成**中文名在前**，英文别名标注为"会自动翻译"。
+
+**失败文案也改了**：样式不存在时回 `请求的样式: 「X」→ 实际发送: 「Y」` + 可执行的下一步
+（旧版只回桥的通用三段式，模型看不出是自己名字写错了）。
+
+**验收**：`test/style-names.test.mjs` **28 项**（纯函数，已进 CI）；真机回归里 5 项
+（英文别名真的把段落染成 `标题 2`、坏名字报错且带下一步）。
+
+### L9 set_active_target：校验失败却回 success（已修）
+
+**问题**（known-defects S1 的 TS 版）：两处失败都回 `success: true` ——
+① 名字不在"已打开"列表里（只在正文挂个 ⚠️）；② `getOpenPresentations` 直接抛错（把错误塞进正文）。
+调用方按 `success` 判断，于是一路以为锁好了，直到后续 PPT 操作报"未找到目标文稿"。
+
+**修法**：两处都改成 `success: false` + `error`，正文里写清"已按该名字记录锁定（文件稍后打开也能生效），
+但**校验未通过**"以及下一步（先 `wps_ppt_get_open_presentations` 核对文件名含扩展名）。
+**锁照旧记录**——语义上"锁了但没校验过"不等于"没锁"，只是不能再谎报成功。
+
+**验收**：真机回归 3 项（锁一个不存在的名字必须失败且列出实际打开了什么；`clear` 仍成功）。
+
+### L1 弱断言清单（**未做，等你选范围**）
+
+71 个工具只有最弱断言（`any`＝只验"没挂住"）：**PPT 32 / Excel 23 / Word 11 / 通用 5**
+（`common_get_app_info`、`common_get_selected_text`、`common_set_selected_text`、`common_wire_check`、`convert_format`）。
+"全部 71 个补真场景断言"是一个多轮工作量，与"先补最易错的 5–8 个"差别很大 —— **按 A/B 二选一执行**（见报告）。
+
 ## 验证
 
 全部测试都在**真实 WPS** 上跑：各自创建一次性文档、回读校验、不保存关闭。

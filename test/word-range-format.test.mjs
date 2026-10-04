@@ -122,6 +122,27 @@ check("apply_style reports the affected paragraphs", /影响的段落: 第 1 段
 check("apply_style's affectedText is a pre-write snapshot", /XXX/.test(text(applied)), text(applied).replace(/\s+/g, " ").slice(0, 110));
 check("apply_style really restyled paragraph 1", afterApply.styles[0] === "标题 1", "styles=" + JSON.stringify(afterApply.styles));
 
+// ---- L2（FIXES 88）：英文样式名要能翻译成中文内置名 --------------------------------------------
+// 中文 WPS 的样式表里没有英文名（实测 NameInternational 全空、Item("Heading 1") 直接抛错），旧版把
+// "Heading 2" 原样发给 WPS 就吃 E_FAIL；现在工具层先翻译再发。
+const englishStyle = await call("wps_word_apply_style", { styleName: "Heading 2", range: { start: 0, end: 3 } });
+const afterEnglish = probe();
+check("english style alias is accepted", ok(englishStyle), text(englishStyle).replace(/\s+/g, " ").slice(0, 90));
+check("the english alias really applied 标题 2", afterEnglish.styles[0] === "标题 2", "styles=" + JSON.stringify(afterEnglish.styles));
+const bogusStyle = await call("wps_word_apply_style", { styleName: "No Such Style 123", range: { start: 0, end: 3 } });
+const bogusText = text(bogusStyle);
+check("a style that does not exist fails loudly", !ok(bogusStyle), bogusText.replace(/\s+/g, " ").slice(0, 80));
+check("the failure names the style that was sent", /No Such Style 123/.test(bogusText), "");
+check("the failure tells the caller what to do next", /下一步/.test(bogusText), "");
+
+// ---- L9（FIXES 88）：set_active_target 不再回假成功 ---------------------------------------------
+// 拒绝对调用方是 isError、没有 JSON 载荷，所以看原始响应文本。
+const badTarget = await call("wps_call", { tool: "wps_ppt_set_active_target", args: { name: "definitely-not-open.pptx" } });
+check("locking a non-existent presentation reports failure", !ok(badTarget), text(badTarget).replace(/\s+/g, " ").slice(0, 110));
+check("the failure lists what is actually open", /已打开/.test(text(badTarget)), "");
+const clearedTarget = await call("wps_call", { tool: "wps_ppt_set_active_target", args: { clear: true } });
+check("clearing the lock still succeeds", ok(clearedTarget), text(clearedTarget).replace(/\s+/g, " ").slice(0, 90));
+
 // ---- B10：越界必须报错（以前是静默删掉 [start, 文末)） -----------------------------------------
 // 注意：via() 返回的是**解析后的载荷**，而拒绝对调用方是 isError、没有 JSON 载荷 ——
 // 所以这里用 call() 拿原始响应，再读错误文本。
@@ -149,6 +170,7 @@ const afterConfirmed = probe();
 check("confirmed multi-paragraph delete goes through", ok(confirmed), confirmedText.replace(/\s+/g, " ").slice(0, 110));
 check("confirmed delete reports how many paragraphs it removed", /已确认的批量删除: \d+ 个段落标记/.test(confirmedText), confirmedText.replace(/\s+/g, " ").slice(-80));
 check("the paragraphs really are gone", afterConfirmed.paragraphs < before.paragraphs, before.paragraphs + " -> " + afterConfirmed.paragraphs);
+
 
 // ---- D18-C：get_paragraphs 现在给出可用的字符坐标 ----------------------------------------------
 const paras = text(await call("wps_word_get_paragraphs", {}));

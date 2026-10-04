@@ -511,16 +511,30 @@ const setActiveTargetHandler = async (args) => {
         const names = resp.success && resp.data ? resp.data.presentations.map((x) => x.name) : [];
         const matched = names.includes(name);
         (0, wps_client_1.setPptTarget)(name);
-        const warn = matched
-            ? ''
-            : `\n⚠️ 当前打开的文稿中没有完全同名的「${name}」。已打开：${names.join(' / ') || '(无)'}。若名称不符，后续操作会报"未找到目标文稿"。`;
+        if (!matched) {
+            // FIXES 88（L9）：名字对不上以前也回 success:true（只在正文里挂个 ⚠️），调用方看不见。
+            // 锁已经按名字记下了 —— 文件可能稍后才打开 —— 但"没校验通过"这件事必须如实报成失败。
+            return {
+                id: (0, uuid_1.v4)(),
+                success: false,
+                error: `没有找到名为「${name}」的已打开演示文稿`,
+                content: [
+                    {
+                        type: 'text',
+                        text: `未找到名为「${name}」的已打开演示文稿。已打开：${names.join(' / ') || '(无)'}\n` +
+                            `已按该名字记录锁定（文件稍后打开也能生效），但**校验未通过**：后续 PPT 操作可能报「未找到目标文稿」。\n` +
+                            '下一步：用 wps_ppt_get_open_presentations 核对文件名（含扩展名），或先打开目标文稿再锁定。',
+                    },
+                ],
+            };
+        }
         return {
             id: (0, uuid_1.v4)(),
             success: true,
             content: [
                 {
                     type: 'text',
-                    text: `已锁定目标演示文稿：${name}\n后续所有 PPT 操作都会定位到该文稿（不受活动窗口切换影响）。${warn}`,
+                    text: `已锁定目标演示文稿：${name}\n后续所有 PPT 操作都会定位到该文稿（不受活动窗口切换影响）。`,
                 },
             ],
         };
@@ -528,10 +542,18 @@ const setActiveTargetHandler = async (args) => {
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
         (0, wps_client_1.setPptTarget)(name);
+        // FIXES 88（L9）：校验失败不再伪装成成功。锁照记（名字仍会被注入后续调用），但结论是"未校验通过"。
         return {
             id: (0, uuid_1.v4)(),
-            success: true,
-            content: [{ type: 'text', text: `已锁定目标演示文稿：${name}（打开列表校验失败：${errMsg}）` }],
+            success: false,
+            error: errMsg,
+            content: [
+                {
+                    type: 'text',
+                    text: `已按「${name}」记录锁定，但**打开列表校验失败**：${errMsg}\n` +
+                        '下一步：先用 wps_ppt_get_open_presentations 确认能读到打开列表（可能需要先打开一个演示文稿），再重新锁定。',
+                },
+            ],
         };
     }
 };

@@ -165,6 +165,9 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | **本轮** | **D19** | 回归测试与弱断言 | **B**：新增 31 项回归；报告点名的 4 条从 `any` 升到 `ok` | FIXES 86 |
 | **本轮** | **D20** | 交付节奏 | **B**：**攒批**，不单独发 0.6.2（数据破坏已在野，此选择是知情的） | 待发版 |
 | **本轮** | **D21** | D9 挂起项 | **A**：**转正**——`any` 弱断言放行过真实的假成功，优先按域推进 | 进行中 |
+| **遗留轮**<br>2026-10-03 | **L1** | 71 个工具只有最弱断言（`any`） | **待选范围**：A 按域全补 / B 只补最易错 5–8 个（PPT 32 / Excel 23 / Word 11 / 通用 5） | 见 FIXES 88 |
+| **遗留轮** | **L2** | 英文样式名不可用 | **已修**：工具层翻译（Heading 1→标题 1 等）+ 空格归一化 + 失败文案带下一步 | FIXES 88 + 28 项纯函数单测 |
+| **遗留轮** | **L9** | `set_active_target` 校验失败仍回成功 | **已修**：两处失败改 `success: false`（锁照记，但不再谎报「校验通过」） | FIXES 88 + 真机回归 3 项 |
 
 **挂起项（明确不做、但要记得）**
 
@@ -211,11 +214,11 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **38,878** / 上限 60,000 | `node scripts/verify.mjs` |
 | 全量 schema | 155,613 字节（268 工具，≈44,461 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **949 断言 / 47 个测试文件**（口径见下方注） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
+| 测试 | **982 断言 / 48 个测试文件**（口径见下方注；新增 FIXES 88 的 28 项纯函数单测） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～87 号 | `docs/FIXES.md` |
+| FIXES | 1～88 号 | `docs/FIXES.md` |
 
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
@@ -425,7 +428,14 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - 先测量再改代码；每个结论都要有可运行命令；优先用**真机 WPS** 验证而不是推理。
   **本轮的最大教训**：计划里「补 `PasswordDocument:=""`」这条**实测是错的**（空串=没给密码，照样弹框），
   如果照计划直接改，会得到一个「看起来修好了、其实照样卡死」的版本。**计划也是假设，一样要验证。**
-- 账本（`ALIAS_DEBT` / `UNTOOLED_ACTIONS` / `EXPECTED_ACTIONS` / `BUDGET`）**涨即失败**，缩小要显式改。
+- **账本**（`ALIAS_DEBT` / `UNTOOLED_ACTIONS` / `EXPECTED_ACTIONS` / `BUDGET`）**涨即失败**，缩小要显式改。
+- **杀掉后台作业 ≠ 杀掉它的子进程**（2026-10-03 实测，代价半小时）：`run-tests.ps1` 被中断后，它的主进程变成了**孤儿**，
+  继续在循环里逐个启动 `test/*.test.mjs`；于是「刚跑通的回归测试」反复报**单实例租约被占**（写着别人的 `hostPid`/`clientPid`），
+  看起来像自己的改动坏了。**排查任何"租约被占"，先查这两个**：`Get-CimInstance Win32_Process | ? { $_.CommandLine -like "*run-tests.ps1*" }`
+  与 `… -like "*.test.mjs*"`（node）、`… -like "*wps-com-host.ps1*"`（宿主）。清理顺序：先杀 run-tests 主进程，再杀测试 node 与宿主，
+  最后删 `%USERPROFILE%\.wps-office-mcp\com-host.json`。
+- **别在会话里一边调 WPS 一边跑测试**：宿主是**单实例**的，你自己的探针/诊断调用会占住租约，把测试挡在门外（错误是中文的「另一个 DSH 会话…」）。
+  跑测试前先释放自己的宿主（杀 `wps-com-host.ps1` + 删租约文件），跑完再继续。
 
 **PowerShell / WPS 实测坑（都已踩过并修复，别再踩）**
 - 生成的 `.ps1` 必须带 **UTF-8 BOM**，否则中文乱码。`host/wps-com-host.ps1` 本轮加了中文错误文案，

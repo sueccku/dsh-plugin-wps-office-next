@@ -86,7 +86,7 @@ jobs:
       - name: Packaged tarball installs and the MCP server boots (FIXES 84 gate)
         run: npm run verify:package
 
-      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger, argument shape guard, encrypted-file preflight, removed aliases, modal-dialog gate)
+      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger, argument shape guard, encrypted-file preflight, removed aliases, modal-dialog gate, Word style-name aliases)
         run: |
           node test/plugin.test.mjs
           node test/com-host.test.mjs
@@ -99,3 +99,4 @@ jobs:
           node test/encrypted-preflight.test.mjs
           node test/alerts-gate.test.mjs
           node test/deprecated.test.mjs
+          node test/style-names.test.mjs

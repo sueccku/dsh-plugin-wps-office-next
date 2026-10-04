@@ -18,6 +18,7 @@ exports.formatTools = exports.setPageSetupHandler = exports.setPageSetupDefiniti
 const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
+const style_names_1 = require("./style-names");
 const wps_1 = require("../../types/wps");
 /**
  * 应用样式到选中区域
@@ -27,11 +28,13 @@ exports.applyStyleDefinition = {
     name: 'wps_word_apply_style',
     description: `应用Word样式到当前选中区域或指定范围。
 
-支持的常用样式：
-- 标题1、标题2、标题3...（或 Heading 1, Heading 2...）
-- 正文、正文首行缩进
-- 引用、强调
-- 列表段落
+支持的常用样式（**用中文名最稳**）：
+- 标题 1 … 标题 9（注意中间有空格）、标题、副标题
+- 正文、正文文本、正文首行缩进
+- 引用、明显引用、强调、明显强调、题注、列表段落
+
+英文别名会自动翻译：Heading 1 → 标题 1、Normal → 正文、Title → 标题、Subtitle → 副标题、Quote → 引用；
+「标题1」（少空格）也会自动补成「标题 1」。**中文版 WPS 里没有英文样式名**，传别的英文名不会生效。
 
 使用场景：
 - "把这段设成标题1"
@@ -42,7 +45,7 @@ exports.applyStyleDefinition = {
         properties: {
             styleName: {
                 type: 'string',
-                description: '样式名称，如 "标题 1"、"正文"、"Heading 1"',
+                description: '样式名称，如「标题 1」（有空格）、「正文」、「副标题」。英文别名可用（Heading 1 / Normal / Title / Subtitle / Quote），会自动翻译成中文内置名。',
             },
             range: {
                 type: 'object',
@@ -66,8 +69,11 @@ exports.applyStyleDefinition = {
 };
 const applyStyleHandler = async (args) => {
     const { styleName, range } = args;
+    // FIXES 88（L2）：中文 WPS 的样式表里没有英文名（实测 NameInternational 全空、Item 抛错），
+    // 而描述里曾把 Heading 1 当示例。这里把英文别名与「少空格」写法翻译成 WPS 认的名字再发出去。
+    const resolved = (0, style_names_1.resolveStyleName)(styleName);
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('applyStyle', { styleName: styleName, range }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('applyStyle', { styleName: resolved.name, range }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const d = response.data;
             const paragraphs = Array.isArray(d.affectedParagraphs) ? d.affectedParagraphs : [];
@@ -93,10 +99,16 @@ const applyStyleHandler = async (args) => {
             };
         }
         else {
+            // FIXES 88（L2）：样式名不存在时把「实际发送的名字」与可执行的下一步说清楚，
+            // 否则模型只会照着 schema 的示例继续试错（E_FAIL 本身不告诉它问题在哪）。
+            const hint = resolved.translated
+                ? `（已把「${styleName}」翻译为「${resolved.name}」）下一步：用 wps_word_get_paragraphs 看现有段落的样式名，或换一个文档里确实存在的样式。`
+                : '下一步：样式名必须与文档里的完全一致（中文名中间有空格，如「标题 1」）；可用 wps_word_get_paragraphs 看当前段落在用的样式名。';
+            const errText = `应用样式失败: ${response.error}\n请求的样式: 「${styleName}」→ 实际发送: 「${resolved.name}」\n${hint}`;
             return {
                 id: (0, uuid_1.v4)(),
                 success: false,
-                content: [{ type: 'text', text: `应用样式失败: ${response.error}` }],
+                content: [{ type: 'text', text: errText }],
                 error: response.error,
             };
         }
