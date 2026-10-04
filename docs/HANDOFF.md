@@ -586,12 +586,15 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 | `host/wps-com-host.ps1` | 常驻 STA 宿主：**单实例租约 + 心跳 + 陈旧接管**（手写，非生成，必须有 BOM） |
 | `mcp/src/client/com-host.ts` | 宿主客户端：`timeoutFor` + suspect 短超时 + 陈旧子进程守卫 + 等旧宿主退出 |
 | `mcp/src/client/wps-client.ts` | WPS 客户端门面（`executeMethod` / `invokeAction`） |
-| `mcp/src/server/toolset.ts` | `STANDARD_TOOLS`（65 curated） |
+| `mcp/src/server/toolset.ts` | `STANDARD_TOOLS`（80 curated）+ `FACADE_TOOLS`（4）= 广告面 84 |
 | `mcp/src/server/mcp-server.ts` | 注册与描述（含 `wps_execute_method`、`wps_batch` 上限 50） |
 | `mcp/src/tools/{excel,word,ppt}/` | 各能力域的 TS 工具定义 |
 | `mcp/src/spec/aliases.ts` | `dynamicParamActions`——动态动作必须登记 |
 | `scripts/{extract-spec,gen-tool-surface,gen-skill-tools}.mjs` | 契约管线（顺序见 §4） |
 | `scripts/{verify,doctor,param-contract,e2e}.mjs` | 验证入口 |
+| `scripts/gen-numbers.mjs` + `scripts/lib/tool-face.mjs` | **文档数字的唯一来源**（FIXES 91）：真实 `tools/list` 量三档载荷 + 逐项核对 README/HANDOFF 的声明值 |
+| `docs/current-numbers.md` | **现值的权威快照**（生成物，CI 对账） |
+| `baseline/known-defects.md` | 上游/工具层缺陷清单与当前状态（S1 已修、C7 残余已精确化） |
 | `scripts/build-host-actions.ps1` | 生成宿主动作表，打印 `switch_cases` / `functions` / `guard_installed` |
 | `scripts/run-tests.ps1` | **整轮测试入口**：跑完每个文件回收无头 WPS 孤儿（FIXES 65），`-KeepOrphans` / `-Filter` 可调 |
 | `scripts/lint.mjs` | 项目化 lint：手写 PowerShell 的 BOM/CRLF、制表符与行尾空白、`console.*`、测试退出码（进 CI） |
@@ -603,7 +606,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 | `test/silent-catch.test.mjs` | S5：空 `catch { }` 必须登记理由，账本式（桥 34 + 宿主 6） |
 | `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
 | `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | 47 个文件、949 断言（口径见 §5）；账本在 `spec-reproduction.test.mjs`；FIXES 86 的回归在 `word-range-format.test.mjs` |
+| `test/*.test.mjs` | **48 个文件 / 1077 断言**（口径见 §5）；账本在 `spec-reproduction.test.mjs`；FIXES 86/90 的回归在 `word-range-format.test.mjs` |
 | `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
 | `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
 | `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
