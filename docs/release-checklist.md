@@ -251,7 +251,8 @@ dsh --profile desktop --dump-config | Select-String wps     # 应出现两个 id
 
 ## 6. GitHub 侧（与 npm 同步）
 
-> **顺序很重要**：先把 README 里那两处 GitHub 回退 tag 改成**本次要打的 tag**，再提交、再打 tag、再推送。
+> **顺序很重要**（2026-10-04 发 0.6.2 时按此执行）：先把 README 里那几处 GitHub 回退 tag 改成**本次要打的 tag**，
+> 再提交、再打 tag、再推送。
 > 0.6.1 就是漏了这一步：README 一直写着 `#v0.6.0`，而 `v0.6.0` **从未打过 tag**（它的 npm 版本还是坏的、已撤销）——
 > 照着 README 回退的用户只会拿到 `ERR_PNPM_GIT_RESOLVE_FAILED`。
 

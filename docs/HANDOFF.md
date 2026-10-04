@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 用途：把当前工作、进展、现状与下一步整理成**自包含**的一页，让一个**全新对话**无需回看历史即可接手。
-> 核实时间：2026-10-03（**v0.6.1 发布后重核**；本文所有数字均从仓库/命令实测，非记忆）。
+> 核实时间：2026-10-04（**准备发布 v0.6.2 时重核**；本文所有数字均从仓库/命令实测，非记忆）。
+> 现值数字统一看 [current-numbers.md](current-numbers.md)（自动生成 + CI 对账）。
 > 本文是工作文档，不随包发布（`docs/` 不在 `package.json` 的 `files` 白名单内）。
 
 ---
@@ -55,15 +56,15 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 项 | 值 |
 | --- | --- |
 | 仓库根 | `D:\dsh\a` |
-| 分支 / HEAD | `main` / `v0.6.1-1-g2d42d65`（v0.6.1 之后 1 个提交——CHANGELOG 补空行；以 `git describe --tags` 为准）——已推送，与 `origin/main` 一致 |
+| 分支 / HEAD | `main`（以 `git describe --tags` / `git log --oneline -1` 为准）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`、`v0.2.1`、`v0.3.0`、`v0.4.0`、`v0.5.0`、`v0.5.1`、`v0.5.2`、`v0.5.3`、`v0.5.4`、`v0.6.1`（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
+| 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、**`v0.6.2`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
 | Releases | 见 GitHub Releases 页（Latest 为 **v0.6.1**，2026-10-02）——正文均为正常 UTF-8 |
-| 包 | `dsh-plugin-wps-office-next@0.6.1`（**npm 上唯一在架版本**：`npm view dsh-plugin-wps-office-next versions` → `["0.6.1"]`，`dist-tags.latest = 0.6.1`），依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 包 | `dsh-plugin-wps-office-next@0.6.2`（**0.6.2 已提交/打标签/推送；npm 上架由用户在本机交互终端执行 `npm publish` —— 需要 OTP，脚本/后台跑不了**。上架后用 `npm view dsh-plugin-wps-office-next versions` 与 `dist-tags.latest` 回验并把这一行改成实测值），依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
-**工作区**：**干净**（`git status --porcelain` 无输出，与 `origin/main` 一致）。v0.6.1 已发布并推送，工作区只剩「领先标签 1 个提交」的那次 CHANGELOG 空行（`2d42d65`）。
+**工作区**：**干净**（`git status --porcelain` 无输出，与 `origin/main` 一致）。
 临时 profile（`wpsdoc2` / `wpse2e*` / `wpsnpmver`）均已删除；一次性收包验证目录 **`D:\dsh\_pubcheck`** 是历史残留（在仓库之外，别提交、也别当作现状）。
 
 > 若本节与 registry 或 `git` 现状不符，**以命令实测为准**：`git describe --tags`、`git status --porcelain`、`npm view dsh-plugin-wps-office-next versions`。
