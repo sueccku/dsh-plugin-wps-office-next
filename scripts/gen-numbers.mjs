@@ -172,10 +172,25 @@ lines.push('');
 if (!summary) lines.push('> 本机没有 `test/summary.json`，涉及测试断言数的声明这次没有核对（跑一次整轮即可补上）。');
 lines.push('');
 
-writeFileSync(path.join(ROOT, 'docs', 'current-numbers.md'), lines.join('\n'), 'utf8');
-writeFileSync(path.join(ROOT, 'test', 'numbers-report.json'), JSON.stringify({ numbers, claims }, null, 1) + '\n', 'utf8');
+// FIXES 91（发版审计发现）：`--check` 以前**照样覆写**生成物，只影响退出码 —— 于是文档把它归进
+// 「只读核对」，实际却会先改写已入库的快照再返回非零。现在 --check 是**真只读**：
+// 只把"会写成什么"与本机现存的比，报告有没有差异，不落盘。
+const nextDoc = lines.join('\n');
+const nextReport = JSON.stringify({ numbers, claims }, null, 1) + '\n';
+const docPath = path.join(ROOT, 'docs', 'current-numbers.md');
+const reportPath = path.join(ROOT, 'test', 'numbers-report.json');
+const onDisk = (p) => { try { return readFileSync(p, 'utf8'); } catch { return null; } };
+const drift = [];
+if (onDisk(docPath) !== nextDoc) drift.push('docs/current-numbers.md');
+if (onDisk(reportPath) !== nextReport) drift.push('test/numbers-report.json');
 
-console.log('docs/current-numbers.md written');
+if (CHECK) {
+  console.log('check 模式：不写文件。与磁盘比对的差异：' + (drift.length ? drift.join(', ') : '(无)'));
+} else {
+  writeFileSync(docPath, nextDoc, 'utf8');
+  writeFileSync(reportPath, nextReport, 'utf8');
+  console.log('docs/current-numbers.md written');
+}
 console.log('  advertised=' + numbers.advertisedTools + ' registered=' + numbers.registeredTools +
   ' schemaBytes=' + numbers.schemaBytes + ' bridgeActions=' + numbers.bridgeActions +
   ' untooled=' + numbers.untooledActions + ' testFiles=' + numbers.testFiles +
@@ -183,7 +198,10 @@ console.log('  advertised=' + numbers.advertisedTools + ' registered=' + numbers
 if (failed.length) {
   console.log('CLAIM MISMATCH (' + failed.length + '):');
   for (const c of failed) console.log('  x ' + c.label + ': doc=' + c.expected + ' actual=' + c.actual);
-  if (CHECK) process.exit(1);
 } else {
   console.log('CLAIMS OK (' + claims.length + ' checked)');
+}
+if (CHECK && (failed.length || drift.length)) {
+  if (drift.length && !failed.length) console.log('GENERATED FILES OUT OF DATE: ' + drift.join(', ') + '（跑不带 --check 的 gen-numbers 刷新）');
+  process.exit(1);
 }

@@ -2409,7 +2409,8 @@ This file is being treated as an ES module because it has a '.js' file extension
 - `package.json` 的 `files` 加回 `mcp/package.json`；`mcp/package.json` 显式写 `"type": "commonjs"`，
   让这层边界声明不再是隐含的。
 - 新增 **`scripts/verify-package.mjs`**：`npm pack` → 装进临时目录 → **真的把 MCP server 拉起来**做一次 JSON-RPC 握手 →
-  断言 `tools/list` 广告 **69** 个工具、`wps_status` 在列。**不需要 WPS**。它先在临时目录里**复现了 0.6.0 的崩溃**，
+  断言 `tools/list` 广告的工具数与 `spec/advertised.json` 一致（当时写死 69；FIXES 90 起从生成物读）、`wps_status` 在列。
+**不需要 WPS**。它先在临时目录里**复现了 0.6.0 的崩溃**，
   再用同样的方式确认修复；已写进 `docs/release-checklist.md` §3.1 作为**发布前必跑**。
 - 新增 **`scripts/probe-installed.mjs`**：对**已安装的副本**做同样的握手并真调一次 `wps_status`（需要 WPS），
   用于发布后与排错时分辨「包坏了」还是「环境没起 WPS」。
@@ -2756,7 +2757,7 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
    桥 action 特意用与 `verify.mjs` **同一个口径**（桥源文件的 case 块 263），而不是键表条数（262）——
    两个口径并存正是这类数字会漂的根因。
 3. `scripts/run-tests.ps1` 每次整轮写出 `test/summary.json`（断言数 / 文件数 / 逐文件明细，**不入库**）。
-   生成器读它来核对 README 的"测试 1076 项 / 48 个文件"；**没有这个文件的机器不写那一行、也不核对**，
+   生成器读它来核对 README 的"测试 1077 项 / 48 个文件"；**没有这个文件的机器不写那一行、也不核对**，
    所以生成物在"跑过测试的本机"与"CI"上完全一致（实测：藏掉 summary 后生成物零差异、14 项核对全过）。
 
 **接线**：CI 新增两步 —— `node scripts/gen-numbers.mjs --check` + `git diff --exit-code -- docs/current-numbers.md`，

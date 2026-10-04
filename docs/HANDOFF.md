@@ -36,7 +36,9 @@ node scripts/doctor.mjs                                     # 环境自检，末
 
 > ⚠️ **不要在「正在开着 WPS 干活」的会话里跑需要 WPS 的检查**：宿主的单实例租约会把测试挡在门外
 > （`test/host-lease.test.mjs` 会打印中文「另一个 DSH 会话正在控制 WPS」）。这是环境冲突、不是代码缺陷。
-> 上面这组**都是只读且不需要 WPS**（`verify.mjs` 不带 `--static` 时才连 WPS、会调一次 `wps_status`）。
+> 上面这组**都不写仓库、也不需要 WPS**（`verify.mjs` 不带 `--static` 时才连 WPS、会调一次 `wps_status`）。
+> `gen-numbers.mjs --check` 是**真只读**：它只把"会生成成什么"与磁盘上的比，不落盘（FIXES 91 修过这一点——以前
+> `--check` 照写不误，只是退出码不同）。要刷新生成物就跑不带 `--check` 的那条。
 
 ### 0.3 需要时再跑整轮回归
 
@@ -217,7 +219,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | **本轮** | **D19** | 回归测试与弱断言 | **B**：新增 31 项回归；报告点名的 4 条从 `any` 升到 `ok` | FIXES 86 |
 | **本轮** | **D20** | 交付节奏 | 当时选 **B 攒批**（不单独发 0.6.2）；**后由用户改为发布**：攒的 FIXES 86–91 已随 **v0.6.2**（2026-10-04）发布 | FIXES 90/91 + v0.6.2 |
 | **本轮** | **D21** | D9 挂起项 | **A**：**转正**——`any` 弱断言放行过真实的假成功，优先按域推进 | **已完成**：`any` 71 → 0（FIXES 89） |
-| **本轮**<br>2026-10-04 | **D22** | 遗留清单里先做哪些 | **用户点名 A1 + A6 + A2 + B1**（C 类"看证据+说明"、A7 发版未表态，未动） | FIXES 90 |
+| **本轮**<br>2026-10-04 | **D22** | 遗留清单里先做哪些 | **用户点名 A1 + A6 + A2 + B1**（当时 C 类"看证据+说明"与发版节奏未表态；**发版已在 2026-10-04 完成**，见 §2） | FIXES 90 |
 | **本轮** | **D23** | B 类收尾的批 | **用户点名 B1–B4 全做**（B1 已在 FIXES 90 完成，本轮补 B2/B3/B4） | FIXES 91 |
 | **本轮** | **A1（原 D1-C）** | 广告面重平衡 | **已做**：按真实调用数据把 15 个高频隐藏工具提到广告面，**69 → 84**（46,867 字节 / 预算 60,000）；**没换出任何工具**（零调用是语料偏置，不足为据） | FIXES 90 |
 | **本轮** | **A6** | `find_replace` 不移动选区 / `range:"all"` 只有 `set_font` 收 | **已做**：新增 `selectFound`（默认 false，不动用户光标）；`apply_style.range` 与 `set_font` 对齐为 `{start,end}` 或 `"all"`，并让参数形状校验支持类型数组 | FIXES 90 |
@@ -304,10 +306,13 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
-> **「断言数」的口径说明（2026-10-03 补）**：928 是 FIXES 81 那轮记录的**运行时合计**（46 个文件跑完各自打印的总数），
-> 文档里历史上的 918 是它之前的读数。静态点名只能得到 782 —— 差额来自**循环里重复执行的 `check()`**，所以
-> 「按名字数」永远数不出这个数。**下次整轮回归（`scripts/run-tests.ps1`）后，用各文件末尾打印的实际数字替换本行**，
-> 不要让这个数字继续靠推算维持。
+> **「断言数」的口径说明（2026-10-04 重写）**：上表那个数**不再靠推算** —— 它就是 `scripts/run-tests.ps1` 跑完
+> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（当前 1077 = 1076 通过 + 1 失败/48 个文件）。
+> 想刷新：跑一次整轮，再 `node scripts/gen-numbers.mjs`。
+>
+> **别用"数 `check(` 出现次数"去核对它**：静态点名当前是 **924** 处，与 1077 的差额来自**循环里重复执行的 `check()`**
+> （同一个调用点在循环里跑 N 次就贡献 N 个断言）。历史上这段笔记里出现过的 782 / 918 / 928 都是**各自当时的读数**，
+> 已经过期，不要再引用（FIXES 91 发版审计发现这三行与被审计时上方的表格自相矛盾）。
 
 ---
 
@@ -375,7 +380,8 @@ This file is being treated as an ES module because it has a '.js' file extension
 - `files` 加回 `mcp/package.json`（包内 288 文件）；`mcp/package.json` 显式写 `"type": "commonjs"`，
   让这份边界声明不再是隐含的。
 - 新增 **`scripts/verify-package.mjs`**：`npm pack` → 装进临时目录 → **真的把 MCP server 拉起来**做一次
-  JSON-RPC 握手 → 断言 `tools/list` 广告 **69** 个工具、`wps_status` 在列。**不需要 WPS**。
+  JSON-RPC 握手 → 断言 `tools/list` 广告的工具数与 `spec/advertised.json` 一致（当时写死 69，FIXES 90 起改为
+  从生成物读，现为 **84**）、`wps_status` 在列。**不需要 WPS**。
   这个脚本先在临时目录里**复现了 0.6.0 的崩溃**，再用同样的方式确认修复 —— 已写进
   `docs/release-checklist.md` §3.1 作为**发布前必跑**。
 - 版本推进到 **0.6.1**；`CHANGELOG.md` 的 0.6.0 条目被打上「这一版是坏的」标记。
@@ -541,7 +547,8 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - **不要用 `Get-Content -Raw` + `Set-Content -Encoding UTF8` 改含中文的 UTF-8 无 BOM 文件**
   （`.mjs` / 桥源码）：PS 5.1 会按 ANSI 读入、写成乱码，本轮把一个测试文件的 `密码|加密` 正则毁过一次。
   要么用编辑工具，要么 `[System.IO.File]::ReadAllText/WriteAllText` 并显式指定编码。
-- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（7126 行、77 函数——以 `scripts/build-host-actions.ps1` 打印的 `functions` 为准）；改完要重新生成 host 并对账。
+- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（**7381 行、78 个 `^function `**；生成物 `host/wps-actions.ps1` 是 79 个 ——
+  以 `scripts/build-host-actions.ps1` 打印的 `functions=79` 为准，它数的是生成物）；改完要重新生成 host 并对账。
 - PS 逗号优先级高于 `+`：`$m[$a + $r, $b + $c]` 会被解析错，必须加括号。
 - `return $range` 会把多格 Range 展开成数组——要写 `return ,$range`。
 - `Worksheet.Scenarios` 是 PSMethod（`$s.Scenarios()`）。
@@ -581,7 +588,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 
 | 路径 | 作用 |
 | --- | --- |
-| `mcp/scripts/wps-com.ps1` | **桥，真源**（263 个动作分派、77 函数、7126 行、纯 CRLF 无 BOM） |
+| `mcp/scripts/wps-com.ps1` | **桥，真源**（263 个动作分派、78 个函数、7381 行、纯 CRLF 无 BOM） |
 | `host/wps-actions.ps1` | 生成物（字节一致证明目标，UTF-8 BOM） |
 | `host/wps-com-host.ps1` | 常驻 STA 宿主：**单实例租约 + 心跳 + 陈旧接管**（手写，非生成，必须有 BOM） |
 | `mcp/src/client/com-host.ts` | 宿主客户端：`timeoutFor` + suspect 短超时 + 陈旧子进程守卫 + 等旧宿主退出 |
