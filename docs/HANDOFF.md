@@ -60,7 +60,7 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、**`v0.6.2`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
-| Releases | 见 GitHub Releases 页（Latest 为 **v0.6.1**，2026-10-02；**v0.6.2 的 tag 已推，Release 页待补**） |
+| Releases | **Latest = v0.6.2**（2026-10-04，正文取自 CHANGELOG 的 0.6.2 段）：`gh release create v0.6.2 …` 已执行 |
 | 包 | `dsh-plugin-wps-office-next@0.6.2` —— **2026-10-04 已上架 npmjs，`dist-tags.latest = 0.6.2`**（本次发布**不需要 OTP**：本机 token 已可免 2FA 发布，`PUT → 202`，约 2 分钟后 registry 上可见）。实测元数据：`fileCount=296`、`unpackedSize=3,294,700`、`shasum=3d9f2c3a…`、`integrity=sha512-agvvryjeImdzt…jAIKLAwGfqC8w==`（与本地 `npm publish` 打印的逐字符一致）。在架版本 `["0.6.1","0.6.2"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
