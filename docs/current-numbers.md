@@ -15,7 +15,7 @@
 | 带键表的 action | **261** | spec/action-keys.json |
 | 未工具化 action | **2（getActivePresentation / getActiveWorkbook）** | 键表 − spec |
 | 测试文件 | **48** | test/*.test.mjs |
-| 测试断言 | **1076（失败 1，2026-10-04T14:18:07+08:00）** | test/summary.json |
+| 测试断言 | **1077（失败 1，2026-10-04T15:39:43+08:00）** | test/summary.json |
 
 ## 声明值核对
 
@@ -30,13 +30,15 @@
 | README minimal bytes | 1353 | 1353 | ✅ |
 | README full tools | 268 | 268 | ✅ |
 | README full bytes | 157854 | 157854 | ✅ |
+| README install guide advertisedTools | 84 | 84 | ✅ |
+| README status sample advertisedTools | 84 | 84 | ✅ |
 | README detail summary | 84 | 84 | ✅ |
 | README registered catalogue | 268 | 268 | ✅ |
 | README current advertised | 84 | 84 | ✅ |
 | README current bytes | 46867 | 46867 | ✅ |
-| README test assertions | 1076 | 1076 | ✅ |
+| README test assertions | 1077 | 1077 | ✅ |
 | README test files | 48 | 48 | ✅ |
-| HANDOFF test assertions | 1076 | 1076 | ✅ |
+| HANDOFF test assertions | 1077 | 1077 | ✅ |
 | HANDOFF test files | 48 | 48 | ✅ |
 | HANDOFF advertised | 84 | 84 | ✅ |
 

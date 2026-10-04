@@ -87,6 +87,7 @@ git diff --exit-code -- host/wps-actions.ps1
 node scripts\gen-tool-surface.mjs;     git diff --exit-code -- spec
 node scripts\gen-skill-tools.mjs;      git diff --exit-code -- skills
 node scripts\gen-tool-coverage.mjs;    git diff --exit-code -- docs/tool-coverage.md
+node scripts\gen-numbers.mjs --check;  git diff --exit-code -- docs/current-numbers.md   # 文档数字对账（FIXES 91）
 npm run lint
 node scripts\verify.mjs --static
 node scripts\param-contract.mjs;       git diff --exit-code -- docs\param-contract.md
@@ -111,11 +112,20 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 }
 ```
 
-**期望值**（**2026-10-03 当场实测**）：`files=290 / entryCount=290  packed≈580KB  unpacked≈3.04MB`。
+**期望值**（**2026-10-04 当场实测，0.6.2 候选**）：`entryCount=296  packed=611.9KB (626570 B)  unpacked=3.13MB (3286262 B)`。
 
-> 这行数字**会随仓库增长漂移**（0.6.1 发布时是 288 + `entryCount` 289、3.03MB；现在源码与脚本变多，已是 290 / 3.04MB）。
-> 所以它只是**量具的读数**，不是断言：真正的断言在 §3.1 的 `verify-package.mjs` 里（包内必需文件 + server 真的能起来）。
-> 每次发布照上面那条命令**重新量一次**，顺手把这一行更新掉，别照抄本文的历史数字。
+> **更硬的一步：与 npm 上那一版逐文件对比**，它不受"手抄数字"影响：
+>
+> ```powershell
+> $tmp = "$env:TEMP\_packdiff"; Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $tmp | Out-Null
+> Push-Location $tmp; npm pack dsh-plugin-wps-office-next@0.6.1 --silent; tar -xzf *.tgz; Pop-Location
+> # 把 npm 0.6.1 的文件清单与本次 pack 的清单 diff：应当只剩"本次新增的文件"，且**没有移除**
+> ```
+>
+> 2026-10-04 实测：npm 0.6.1 = **289 文件**，本次 = **296 文件**，**新增 7 个、移除 0 个**
+> （`mcp/dist/tools/word/style-names.{js,d.ts}` 及两个 `.map`、`scripts/gen-numbers.mjs`、`scripts/lib/tool-face.mjs`、`scripts/probe-installed.mjs`）。
+> 文件数**会随仓库增长漂移**，所以它只是量具读数、不是断言：真正的断言在 §3.1 的 `verify-package.mjs`（包内必需文件 + server 真能起来）。
+> 每次发布照上面两条命令**重新量一次并更新这一行**，别照抄本文的历史数字。
 
 必须出现、且一个都不能少：
 
@@ -155,7 +165,7 @@ $b = [System.IO.File]::ReadAllBytes('mcp\scripts\wps-com.ps1')
 ### 3.1 一条命令：`node scripts\verify-package.mjs`（**发布前必跑**）
 
 它自己完成 `npm pack` → 装进临时目录 → **真的把 MCP server 拉起来做一次 JSON-RPC 握手** → 断言 `tools/list`
-广告 69 个工具、`wps_status` 在列。**不需要 WPS**，全程只碰临时目录。**11 个断言**全绿会打印
+广告的工具数与 `spec/advertised.json` 一致（当前 **84**，断言从生成物读、不再写死）、`wps_status` 在列。**不需要 WPS**，全程只碰临时目录。**11 个断言**全绿会打印
 `PACKAGE RUNTIME OK`（2026-10-03 实测：12.4 秒、11/11）。
 
 > **CI 也会跑它**（2026-10-03 起，D6-B）：`.github/workflows/ci.yml` 里新增 gate `npm run verify:package`——
@@ -237,20 +247,30 @@ dsh --profile desktop --dump-config | Select-String wps     # 应出现两个 id
 ```
 
 **必须重启 DSH**（插件只在启动时加载），重启后新建会话调用 `wps_status`，确认 `connected: true`、
-`advertisedTools: 69`、`registeredTools: 268`。
+`advertisedTools: 84`、`registeredTools: 268`（两个数都应与 `docs/current-numbers.md` 一致）。
 
 ## 6. GitHub 侧（与 npm 同步）
 
+> **顺序很重要**：先把 README 里那两处 GitHub 回退 tag 改成**本次要打的 tag**，再提交、再打 tag、再推送。
+> 0.6.1 就是漏了这一步：README 一直写着 `#v0.6.0`，而 `v0.6.0` **从未打过 tag**（它的 npm 版本还是坏的、已撤销）——
+> 照着 README 回退的用户只会拿到 `ERR_PNPM_GIT_RESOLVE_FAILED`。
+
 ```powershell
-git add package.json package-lock.json mcp/package.json mcp/package-lock.json CHANGELOG.md README.md docs\HANDOFF.md docs\release-checklist.md
-git commit -m "release: v0.6.0（上架 npm + 打包载荷 76.6MB → 3.0MB）"
-git tag v0.6.0
+# 1) 先把 README 的两处回退 tag 改成 vX.Y.Z（第 98/190/196 行附近）
+Select-String -Path README.md -Pattern '#v|refs/tags/v'
+# 2) 同步版本号：package.json / package-lock.json / mcp/package.json 三处都必须是本次版本
+# 3) 写 CHANGELOG 段（标题格式与既有一致：## X.Y.Z（一句话））
+# 4) 提交 → 打 tag → 推送 → 建 release
+git add package.json package-lock.json mcp/package.json CHANGELOG.md README.md docs/HANDOFF.md docs/release-checklist.md docs/current-numbers.md
+git commit -m "release: vX.Y.Z（一句话）"
+git tag vX.Y.Z
 git push origin main
-git push origin v0.6.0
-gh release create v0.6.0 --title "v0.6.0（上架 npm）" --notes "$(Select-String -Path CHANGELOG.md -Pattern '^## 0\.6\.0' -Context 0,30 | Out-String)"
+git push origin vX.Y.Z
+gh release create vX.Y.Z --title "vX.Y.Z" --notes "$(Select-String -Path CHANGELOG.md -Pattern '^## X\.Y\.Z' -Context 0,30 | Out-String)"
 ```
 
-README 里的 GitHub pin（`#v0.6.0`）指向的 tag 必须真实存在，否则回退路径是坏的。
+**打 tag 之后必须回验**：`git ls-remote --tags origin` 里能看到新 tag，且 `README.md` 里出现的每个 tag 都在这个列表里
+（0.6.1 的教训：README 指向了一个不存在的 tag，谁都没发现，因为没人把这句话当断言）。
 
 ## 7. 出问题怎么办
 

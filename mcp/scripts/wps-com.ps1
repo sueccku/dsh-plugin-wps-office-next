@@ -5072,7 +5072,18 @@ switch ($Action) {
                 $sel = $doc.Content.Find
                 $sel.ClearFormatting()
                 $found = $sel.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, "", 0)
-                if ($found) { $word.Selection.SetRange($sel.Parent.Start, $sel.Parent.End); $selectedAt = @{ start = $sel.Parent.Start; end = $sel.Parent.End } }
+                if ($found) {
+                    # FIXES 91：以前直接读 $sel.Parent.Start/End —— 那是 Word 内部的**绝对**文档坐标，
+                    # 与工具层公开的字符偏移不是同一把尺子（实测少了 16），调用方照着它调 apply_style 会改错位置。
+                    # 改为在正文里定位这段文本，用与 getParagraphs / apply_style 相同的坐标基准回报。
+                    $whole = [string]$doc.Content.Text
+                    $at = $whole.IndexOf($findText)
+                    if ($at -lt 0) { $at = $whole.IndexOf($findText, [StringComparison]::OrdinalIgnoreCase) }
+                    if ($at -ge 0) {
+                        $word.Selection.SetRange($at, $at + $findText.Length)
+                        $selectedAt = @{ start = $at; end = ($at + $findText.Length) }
+                    }
+                }
             } catch { Add-WpsWarning ("定位到命中处失败：" + $_.Exception.Message) }
         }
 
@@ -5096,7 +5107,14 @@ switch ($Action) {
                 $sel2 = $doc.Content.Find
                 $sel2.ClearFormatting()
                 $found2 = $sel2.Execute($replaceText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, "", 0)
-                if ($found2) { $word.Selection.SetRange($sel2.Parent.Start, $sel2.Parent.End); $selectedAt = @{ start = $sel2.Parent.Start; end = $sel2.Parent.End } }
+                if ($found2) {
+                    $whole2 = [string]$doc.Content.Text
+                    $at2 = $whole2.IndexOf($replaceText)
+                    if ($at2 -ge 0) {
+                        $word.Selection.SetRange($at2, $at2 + $replaceText.Length)
+                        $selectedAt = @{ start = $at2; end = ($at2 + $replaceText.Length) }
+                    }
+                }
             } catch { Add-WpsWarning ("定位到替换结果失败：" + $_.Exception.Message) }
         }
         Output-Json @{ success = $true; data = @{ count = $replacedCount; replaced = [bool]$result; found = $count; find = $findText; replace = $replaceText; replaceMode = $true } }

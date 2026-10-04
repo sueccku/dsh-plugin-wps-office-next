@@ -96,7 +96,13 @@ lines.push(
 lines.push("");
 lines.push("## 矩阵");
 lines.push("");
-lines.push("「广告」= 每次请求随 tools/list 下发的 69 个工具之一；其余经 " + code("wps_call") + " / " + code("wps_help") + " 触达。");
+// FIXES 91（发版审计）：这里以前把广告面数量**写死成 69**，而 A1 之后是 84 —— 同一份文件里
+// 上一段表格已经写着 84，自相矛盾；又因为它是生成器里的字面量，"重生成 + git diff" 这道门禁永远看不见。
+// 现在从 rows 现算，跟表格同源。
+lines.push(
+  "「广告」= 每次请求随 tools/list 下发的 " + rows.filter((r) => r.advertised).length +
+  " 个工具之一；其余经 " + code("wps_call") + " / " + code("wps_help") + " 触达。"
+);
 lines.push("");
 lines.push("| 工具 | 应用 | 桥 action | 广告 | 测试层级 | 名字出现过的文件 |");
 lines.push("| --- | --- | --- | :---: | --- | --- |");

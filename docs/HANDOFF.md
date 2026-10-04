@@ -21,17 +21,23 @@ node scripts/verify.mjs          # 预算 + 桥动作数 + 契约 + 长动作名
 node scripts/doctor.mjs          # 环境自检（末尾应打印 DOCTOR OK）
 ```
 
-跑完整测试（28 个文件，多数驱动真实 WPS，约 12 分钟）：
+跑完整测试（**48 个文件**，多数驱动真实 WPS，约 15 分钟；跑完会在 `test/summary.json` 留一份机器可读的计数）：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "test\.artifacts\run-tests.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1
+node scripts\gen-numbers.mjs          # 用新计数刷新 docs/current-numbers.md
 ```
+
+> ⚠️ 这里以前写的是 `test\.artifacts\run-tests.ps1` ——那是个**被 `.gitignore` 忽略的临时脚本**，
+> 全新克隆里根本不存在（而且是没有环境钉住、没有孤儿回收的旧版）。请一律用仓库里维护中的
+> `scripts/run-tests.ps1`（FIXES 91 发版审计发现）。
 
 ---
 
 ## 1. 一句话现状
 
-**功能面仍与 v0.2.1 完全一致（工具数、广告面、参数契约都没变）；加固计划 S1–S9 已全部完成**：
+**功能面（截至 2026-10-04，v0.6.2 候选）**：注册工具 **268**、广告面 **84 / 46,867 字节**、桥 action **263**、
+参数契约 **257 对**（A/B/C/D 全 0）；加固计划 S1–S9 已全部完成，FIXES 86–91 又清掉一批假成功与数据破坏：
 第 1 波（S1 弹窗围堵 + S2 宿主单实例）作为 `v0.3.0` 于 2026-09-16 发布（提交 `d7736e1`）；
 第 2～4 波（S3 破坏性守卫 25/25、S4 覆盖率 267/267（当时；现 268/268）、S5 空 catch 账本、S6 失败/超时契约、
 S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确认框实测）随后全部落地并推送，CI 全绿。
@@ -66,7 +72,7 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 
 ## 3. 已定决策（不要再翻案）
 
-- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 69 / 38,878，FIXES 78 补声明扁平参数后）。
+- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 **84 / 46,867** —— 2026-10-04 按真实调用数据重平衡后，FIXES 90）。
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
 - **D4 废弃名处理**：18 个旧工具名**保留一个周期**作为 dispatch 别名；12 个 builtin 直接删除。
@@ -182,9 +188,11 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 
 | # | 内容 | 状态 / 唤醒条件 |
 | --- | --- | --- |
-| D9（本轮） | 96 个工具没有专门测试、其中 **75 个只断言「没挂住」**（[tool-coverage.md](tool-coverage.md)：PPT 77 里 32、Excel 118 里 23、Word 59 里 15） | **已转正（D21-A）**：用户报告证明 `any` 放行过真实的假成功（`wps_word_replace_range` 越界删数据）。本轮已把 4 条升级为 `ok`，剩下按域分批做 |
-| D8 残余 | `param-contract` 那次 2 小时挂起**未复现、未定性**（只读脚本，正常几秒） | 再出现一次时抓现场（别用 `Select-Object -Last N` 包住输出，会看不到进度） |
-| D1-C/D/E（本轮） | 广告面重平衡 / 弱覆盖补测 / 产品扩张 | 分别需要：真实用法数据（**已在 §8 沉淀**）/ D9 排期 / 明确的目标客户与场景 |
+| D9（本轮） | 96 个工具没有专门测试、其中 **75 个只断言「没挂住」**（[tool-coverage.md](tool-coverage.md)：PPT 77 里 32、Excel 118 里 23、Word 59 里 15） | **已转正（D21-A）**：用户报告证明 `any` 放行过真实的假成功（`wps_word_replace_range` 越界删数据）。**已做完**：L1 把 71 个 `any` 全部补成真场景断言（`any` = 0，FIXES 89） |
+| D8 残余 | `param-contract` 那次 2 小时挂起**未复现、未定性**（只读脚本，正常几秒） | 再出现一次时抓现场（别用 `Select-Object -Last N` 包住输出，会看不到进度）。建议顺手给它加心跳输出 + 自超时 |
+| ~~D1-C~~ | 广告面重平衡 | **已做**（FIXES 90）：按 §8 的真实调用数据把 15 个高频隐藏工具提到广告面，69 → 84；**没有换出任何工具** |
+| ~~D1-D~~ | 弱覆盖补测 | **已做**（FIXES 89）：71 个最弱断言 → 0，过程中修掉 12 个"回 success 但结果不对"的缺陷 |
+| D1-E（本轮） | 产品扩张 / 跨应用工作流 | **仍挂起**：缺明确的目标客户与场景；没有场景就做等于猜需求。唤醒条件：用户给出具体场景 |
 
 ## 4. 架构与契约管线（顺序不能错）
 
@@ -195,13 +203,22 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
    目标是与重新生成的结果字节一致。
 3. `mcp/src/` —— TS 工具面（MCP server）。
 
-**生成顺序（颠倒会拿到旧数据）**：
+**生成顺序（颠倒会拿到旧数据；完整顺序如下，一次都不能省）**：
 
 ```
-scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scripts/gen-skill-tools.mjs
+cd mcp; npx tsc        # 1) 先把 TS 编进 mcp/dist（extract 读的是这里）
+node scripts/extract-spec.mjs      # 2) 写 mcp/src/spec/operations.ts
+cd mcp; npx tsc        # 3) 关键：把新 spec 再编进 mcp/dist
+node scripts/gen-tool-surface.mjs  # 4) 读 mcp/dist/spec → spec/*.json
+node scripts/gen-skill-tools.mjs   # 5) 技能清单
+node scripts/gen-tool-coverage.mjs # 6) docs/tool-coverage.md
+node scripts/gen-numbers.mjs       # 7) docs/current-numbers.md（并核对文档里的数字）
 ```
 
-注意：`gen-tool-surface.mjs` 读的是 **`mcp/dist`**，所以**必须先 tsc 再生成**。
+**为什么中间那次 tsc 不能省**：`extract-spec.mjs` 写的是 **`mcp/src/spec/operations.ts`**，而
+`gen-tool-surface.mjs` / `gen-tool-coverage.mjs` 读的是 **`mcp/dist/spec/operations.js`**。少了第 3 步，
+生成器看到的是**上一次编译的旧 spec**——实测症状是「明明 extract 说某个工具的 action 已修好，
+surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduction` 的 untooled 计数上叫（FIXES 90/91 各踩一次）。
 
 **加一个新工具**：写 TS 定义 + handler（显式字面量 `executeMethod('action', {...})`，**绝不要工厂函数**）→ extract → tsc → gen。
 **动态动作**必须在 `mcp/src/spec/aliases.ts` 的 `dynamicParamActions` 里声明，**否则宿主生成器直接 throw**。
@@ -227,7 +244,7 @@ scripts/extract-spec.mjs  →  tsc  →  scripts/gen-tool-surface.mjs  →  scri
 | 广告面字节 | **46,867** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
 | 全量 schema | 157,854 字节（268 工具，≈45,101 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **1076 断言 / 48 个测试文件**（口径见下方注；FIXES 89 按域补全弱断言 +90，FIXES 90 +4） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 782 处，差额来自循环内断言） |
+| 测试 | **1077 断言 / 48 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 922 处，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
@@ -313,7 +330,7 @@ This file is being treated as an ES module because it has a '.js' file extension
 - 另加 **`scripts/probe-installed.mjs`**：对**已安装的副本**做同样的握手并真调一次 `wps_status`（需要 WPS），
   用于发布后与排错时分辨「包坏了」还是「环境没起 WPS」。
 
-**0.6.1 的验收（2026-10-02 13:1x）**
+**0.6.1 的验收（2026-10-02 13:1x）** — *历史记录：其中"广告 69 个工具"是**当时**的数字，现值看 [current-numbers.md](current-numbers.md)（84）。*
 
 - registry：`dist-tags.latest = 0.6.1`，integrity `sha512-jcztFCKPkhTpSPEPmnFcWNQeShNA707cy911D0uBoy26QROIEPoop2M7YdrL/0yOfPoimGbZUJ0v7fUued3T2A==`
   —— 与本地 dry-run 打印的**逐字符一致**；`fileCount = 289`、`unpackedSize = 3,187,511`。
@@ -372,8 +389,9 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
   `wps_excel_create_sheet` **14**、`set_conditional_format` / `set_sheet_header_footer` / `set_sheet_print_titles` 各 6–7；
 - 模型 2 次**直接**调 `wps_excel_create_sheet` → `unknown tool`（注册表里有、广告面没有），只好退回 `wps_call`。
 
-**读法**：69 个广告工具是从上游 250 个「砍」出来的，从未按真实用法回看过；「打开 → 干活 → 关闭」这条链在广告面上**缺尾巴**。
-怎么改广告面需要单独拍板（不要顺手改：任何改动都会动预算与 `spec/advertised.json` 的生成物）。
+**读法（2026-10-04 更新）**：这段数据已经**用过一次**了 —— FIXES 90 / A1 按它把 15 个高频隐藏工具提到广告面
+（69 → 84，「打开 → 干活 → 关闭」的尾巴补齐：`close_workbook` / `close_document` / `get_open_documents`）。
+后续再要动广告面，请注意它同时影响预算与 `spec/advertised.json` 等生成物，改完必须重跑契约管线 + `gen-numbers`。
 
 <details><summary>复算办法（可重复，不需要 WPS）</summary>
 
@@ -384,7 +402,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 
 </details>
 
-**顺手可清**：无（`docs/PROGRESS.md` 已同步到 928 项 / 46 文件——口径见 §5 的注）。
+**顺手可清**：无（`docs/PROGRESS.md` 的阶段数字按 D10-B 保留为历史快照，现值统一看 `docs/current-numbers.md`）。
 
 **2026-10-03 的文档收尾（本轮，只动文档）**：把 **FIXES 84** 补进 `docs/FIXES.md`（此前只在本文与 `release-checklist.md` 里被引用，
 修复日志本身缺号）；§2 的仓库/发布事实与 §8 的发布状态按命令实测重写（此前仍停在「0.6.0 已备好、尚未 publish」）；

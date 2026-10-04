@@ -20,7 +20,7 @@
 
 ## 矩阵
 
-「广告」= 每次请求随 tools/list 下发的 69 个工具之一；其余经 `wps_call` / `wps_help` 触达。
+「广告」= 每次请求随 tools/list 下发的 84 个工具之一；其余经 `wps_call` / `wps_help` 触达。
 
 | 工具 | 应用 | 桥 action | 广告 | 测试层级 | 名字出现过的文件 |
 | --- | --- | --- | :---: | --- | --- |
@@ -163,7 +163,7 @@
 | `wps_ppt_add_textbox` | PPT | `addTextBox` | ✅ | bespoke | destructive-guard.test.mjs, merged-tools.test.mjs, ppt-contract-fixes.test.mjs, +1 |
 | `wps_ppt_align_shapes` | PPT | `alignShapes` |  | bespoke | merged-tools.test.mjs |
 | `wps_ppt_apply_transition_to_all` | PPT | `applyTransitionToAll` |  | bespoke | ppt-contract-fixes.test.mjs |
-| `wps_ppt_beautify` | PPT | — |  | matrix ok | ppt-coverage.test.mjs |
+| `wps_ppt_beautify` | PPT | `beautifySlide` |  | matrix ok | ppt-coverage.test.mjs |
 | `wps_ppt_close_presentation` | PPT | `closePresentation` |  | bespoke | close-safety.test.mjs, honest-reporting.test.mjs, ppt-slimming.test.mjs |
 | `wps_ppt_copy_slide` | PPT | `duplicateSlide` |  | bespoke | merged-tools.test.mjs, ppt-contract-fixes.test.mjs |
 | `wps_ppt_create_presentation` | PPT | `createPresentation` |  | bespoke | close-safety.test.mjs, destructive-guard.test.mjs, honest-reporting.test.mjs, +4 |
@@ -253,7 +253,7 @@
 | `wps_word_get_comments` | Word | `getComments` | ✅ | bespoke | word-deep.test.mjs, word-produce.test.mjs |
 | `wps_word_get_content_controls` | Word | `getContentControls` |  | bespoke | word-longtail.test.mjs |
 | `wps_word_get_document_stats` | Word | `getDocumentStats` | ✅ | bespoke | word-deep.test.mjs |
-| `wps_word_get_document_text` | Word | `getDocumentText` | ✅ | bespoke | excel-contract-fixes.test.mjs, find-replace.test.mjs, warning-channel.test.mjs |
+| `wps_word_get_document_text` | Word | `getDocumentText` | ✅ | bespoke | excel-contract-fixes.test.mjs, find-replace.test.mjs, warning-channel.test.mjs, +1 |
 | `wps_word_get_notes` | Word | `getNotes` | ✅ | bespoke | word-longtail.test.mjs |
 | `wps_word_get_open_documents` | Word | `getOpenDocuments` | ✅ | bespoke | warning-channel.test.mjs, word-deep.test.mjs, word-lifecycle.test.mjs, +4 |
 | `wps_word_get_paragraphs` | Word | `getDocumentParagraphs` | ✅ | bespoke | word-common-coverage.test.mjs, word-range-format.test.mjs |
@@ -297,7 +297,7 @@
 
 无——268 个工具都至少被一个测试或 e2e 在代码里点到（注释不算）。
 
-## 解析不出桥 action 的工具（11）
+## 解析不出桥 action 的工具（10）
 
 - `wps_batch`
 - `wps_call`
@@ -306,7 +306,6 @@
 - `wps_excel_text_to_columns`
 - `wps_execute_method`
 - `wps_help`
-- `wps_ppt_beautify`
 - `wps_status`
 - `wps_word_proofread_basic`
 - `wps_word_set_paragraph`

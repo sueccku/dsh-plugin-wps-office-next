@@ -175,10 +175,39 @@ check("the paragraphs really are gone", afterConfirmed.paragraphs < before.parag
 
 // ---- A6（FIXES 90）：selectFound 定位 + apply_style 的 range 与 set_font 对齐 ---------------------
 // 1) 查找时把选区定位到命中处 —— "找到它 → 改它的格式"这条走法以前在本桥里走不通。
-await call("wps_word_insert_text", { text: " MARK-Z9 ", position: "end" });
-const findMove = await call("wps_word_find_replace", { findText: "MARK-Z9", selectFound: true });
+// 用唯一标记：文档里前几项断言已经留下过文本，复用固定串会匹配到**旧的**那处，
+// 于是"定位到的是不是刚插的那段"就无从判断（FIXES 91：收紧断言后抓到的第二个问题）。
+const marker = "MARK-" + Date.now();
+await call("wps_word_insert_text", { text: " " + marker + " ", position: "end" });
+const findMove = await call("wps_word_find_replace", { findText: marker, selectFound: true });
 const findMoveText = text(findMove);
-check("find_replace with selectFound reports the located range", /已定位到|selected|\d+-\d+/.test(findMoveText) || /\d+/.test(findMoveText), findMoveText.replace(/\s+/g, " ").slice(0, 100));
+// 断言要能区分「回报了定位」与「没回报」：桥在 selectFound 成功时会给出 selected.start/end，
+// 工具层把它渲染成"已定位到 N-M"。以前这里写成 `... || /\d+/.test(...)` —— 任何含页码/计数/段号的
+// 结果都算过，等于没断言（FIXES 91 发版审计抓到）。
+const locateMatch = /已定位到[^0-9]*(\d+)\s*-\s*(\d+)/.exec(findMoveText);
+check(
+  "find_replace with selectFound reports the located range",
+  Boolean(locateMatch) && Number(locateMatch[2]) > Number(locateMatch[1]),
+  findMoveText.replace(/\s+/g, " ").slice(0, 110)
+);
+// 而且那个范围必须真的落在文档里、且覆盖到我们刚插入的标记。
+// 关键：回报的范围必须**正好落在刚插入的那个唯一标记上** —— 这才是"定位可用"的证据。
+const docText = text(await call("wps_word_get_document_text", {}));
+if (locateMatch) {
+  const [start, end] = [Number(locateMatch[1]), Number(locateMatch[2])];
+  // get_document_text 的输出带一层头部（`文档文本内容 (N字符):` + 空行），桥报的字符坐标是**纯正文**
+  // 的偏移 —— 比较前必须先剥掉这段头部，否则差 17 个字符（FIXES 91 实测）。
+  const headerEnd = docText.indexOf("\n\n");
+  const body = headerEnd >= 0 ? docText.slice(headerEnd + 2) : docText;
+  const at = body.slice(start, end);
+  check(
+    "the reported range covers exactly the text that was just inserted",
+    at.includes(marker),
+    "range=" + start + "-" + end + " -> " + JSON.stringify(at.slice(0, 40)) + " marker=" + marker
+  );
+} else {
+  check("the reported range covers exactly the text that was just inserted", false, "no location in: " + findMoveText.replace(/\s+/g, " ").slice(0, 80));
+}
 // 2) 找到之后不必自己算坐标：整篇套一遍样式（range:"all"），再确认文档里那段确实被套上了。
 const styleAll = await call("wps_word_apply_style", { styleName: "正文", range: "all" });
 check("apply_style accepts range: \"all\" like set_font does", ok(styleAll), text(styleAll).replace(/\s+/g, " ").slice(0, 100));

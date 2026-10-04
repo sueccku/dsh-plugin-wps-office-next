@@ -2,7 +2,7 @@
 // Same contract: every entry must RETURN (never hang); "ok" must succeed, "any" may be a business error.
 // Run: node test/word-common-coverage.test.mjs
 import { spawn, spawnSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -147,9 +147,21 @@ check("common_wire_check reports the wiring state", wire.length > 5 && !/undefin
 const selText = text(await call("wps_common_get_selected_text", {}));
 check("common_get_selected_text is readable even with no selection", selText.length > 0 && !/undefined/.test(selText), selText.replace(/\s+/g, " ").slice(0, 90));
 const setSel = await call("wps_common_set_selected_text", { text: "选中替换" });
-check("common_set_selected_text either writes or explains why not", ok(setSel) || text(setSel).length > 0, text(setSel).replace(/\s+/g, " ").slice(0, 90));
+// 以前这里是 `ok(x) || text(x).length > 0` —— 裸报错也算过，等于没断言（FIXES 91 发版审计抓到）。
+// 要么真的写进去（回读能查到），要么明确说清为什么不行。
+const selRoundTrip = text(await call("wps_common_get_selected_text", {}));
+check(
+  "common_set_selected_text either writes the text or says why not",
+  ok(setSel) ? selRoundTrip.includes("选中替换") : /失败|错误|没有|无法|not found/i.test(text(setSel)),
+  "claimed=" + ok(setSel) + " roundTrip=" + selRoundTrip.replace(/\s+/g, " ").slice(0, 60)
+);
 const conv = await call("wps_convert_format", { targetFormat: "pdf", outputPath: pdfPath, appType: "wps" });
-check("convert_format either converts or explains why not", ok(conv) || text(conv).length > 0, text(conv).replace(/\s+/g, " ").slice(0, 90));
+// 同上：成功就必须真的落盘，失败就必须有可读原因。
+check(
+  "convert_format either writes the file or says why not",
+  ok(conv) ? existsSync(pdfPath) : /失败|错误|无法|不支持|not |missing/i.test(text(conv)),
+  "claimed=" + ok(conv) + " pdfExists=" + existsSync(pdfPath) + " | " + text(conv).replace(/\s+/g, " ").slice(0, 70)
+);
 let succeeded = 0;
 for (const [name, args, expect] of MATRIX) {
   const started = Date.now();

@@ -95,13 +95,13 @@
 3. 执行安装：
    dsh plugin --profile <profile> add dsh-plugin-wps-office-next
    如果报 ERR_PNPM_FETCH_404 或装不上，改用 GitHub 标签重试：
-   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.6.0
+   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.6.1
 4. 用下面这条命令确认接线成功（输出里应出现 wps-office-next-plugin 与 mcp-wps-office-next）：
    dsh --profile <profile> --dump-config | Select-String wps
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
    插件是在 DSH 启动时加载的，必须重启才会生效。
 6. 我重启回来后，先提醒我启动 WPS 并打开一个表格/文档，然后调用 wps_status，
-   确认返回 connected: true（此时 advertisedTools 应为 69，registeredTools 应为 268）。
+   确认返回 connected: true（此时 advertisedTools 应为 84，registeredTools 应为 268）。
 
 安装、排错与卸载的完整说明见 README 的「给 AI 的安装指引」一节：
 https://github.com/sueccku/dsh-plugin-wps-office-next#给-ai-的安装指引
@@ -187,13 +187,16 @@ dsh plugin --profile <profile> add dsh-plugin-wps-office-next
 - 报 `ERR_PNPM_FETCH_404`（包名/版本取不到，或该机器改了 registry）或网络不通时，改用 GitHub 标签重试（标签就是发布版本，内容与 npm 包一致）：
 
   ```powershell
-  dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.6.0
+  dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.6.1
   ```
+
+  > 标签必须是**真实存在、且能装上**的那个。历史上这里写的是 `v0.6.0`，而 `v0.6.0` 从未打过 tag（它的 npm 版本还是坏的、已撤销），照着敲只会拿到 `ERR_PNPM_GIT_RESOLVE_FAILED`。
+  > 每次发版都要把这两处 tag 改成新版本（见 `docs/release-checklist.md` §6 的"发版动作"，那里把它列成了必做项）。
 
 - 报 `ERR_PNPM_GIT_RESOLVE_FAILED`、`could not connect to server`、连接超时等，是这台机器访问 github.com 不稳定。此时优先回到上面那条 npm 命令；确实要走 GitHub 又连不上时，可用打包地址（已实测可行）：
 
   ```powershell
-  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.6.0
+  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.6.1
   ```
 
 - **注意 dsh 事后那句「构建脚本被拦截 / allowBuilds」提示**：本包没有任何 `prepare` 脚本，也没装 `esbuild` 之类的原生依赖，所以**永远不需要**改 `allowBuilds`。dsh 在 pnpm 失败时会补上这句通用提示，照着改只会白费功夫——**先看真正的错误**：如果是 `ERR_PNPM_GIT_RESOLVE_FAILED` / `Failed to connect to github.com`，用上面的 codeload 地址重试即可（这一条已实测：4.1 秒装好）。
@@ -222,7 +225,7 @@ dsh --profile <profile> --dump-config | Select-String wps
 
    ```
    connected: true
-   advertisedTools: 69
+   advertisedTools: 84
    registeredTools: 268
    ```
 
@@ -296,7 +299,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | wps_call | 执行任意已注册但未广告的工具 |
 | wps_batch | 顺序批量执行，单次上限 50 项 |
 
-配套两道契约防线：工具层发给桥的多余参数会被拒绝并列出可接受的键；`scripts/param-contract.mjs` 零副作用地把 256 对工具/action 的参数契约对账一遍，结果写入 [docs/param-contract.md](docs/param-contract.md)。
+配套两道契约防线：工具层发给桥的多余参数会被拒绝并列出可接受的键；`scripts/param-contract.mjs` 零副作用地把 257 对工具/action 的参数契约对账一遍，结果写入 [docs/param-contract.md](docs/param-contract.md)。
 
 </details>
 
@@ -371,9 +374,9 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1076 项 / 48 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 84 工具 / 46,867 字节（内部预算上限 100 / 60,000）；注册工具 268、桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
+当前数字：测试 **1077 项 / 48 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 84 工具 / 46,867 字节（内部预算上限 100 / 60,000）；注册工具 268、桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
 
-`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十一个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `deprecated`）。需要真实 WPS 的测试与一键 e2e 留在本机。
+`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十二个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `deprecated` / `style-names`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
 一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」，以及「归属记录不会指向已经死掉的主人」。**29 项检查、约 2–4 分钟。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
@@ -394,7 +397,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
 | scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口 |
-| test/ | 46 个回归测试文件（多数需要本机 WPS）；整轮用 `scripts/run-tests.ps1` 跑，收尾自动回收无头 WPS 孤儿 |
+| test/ | 48 个回归测试文件（多数需要本机 WPS）；整轮用 `scripts/run-tests.ps1` 跑，收尾自动回收无头 WPS 孤儿并写出 `test/summary.json` |
 | baseline/ | 早期基线快照与缺陷清单 |
 | docs/ | FIXES（修复记录）、PROGRESS（进度）、param-contract（生成的契约报告） |
 

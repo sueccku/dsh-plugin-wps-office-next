@@ -233,15 +233,24 @@ const findReplaceHandler = async (args) => {
             }
             // A search must report the real match count: the bridge counts matches without touching
             // the document, so an absent number here means the bridge is older, not that nothing matched.
+            // selectFound 在查找模式下也要把定位结果说出来 —— 否则调用方拿不到坐标，"找到它再改它的格式"
+            // 这条路径等于只做了一半（FIXES 91：收紧断言之后立刻抓到）。
+            const searchSelNote = selectFound !== true
+                ? ''
+                : result.selected
+                    ? `\n已定位到命中处: 第 ${result.selected.start}-${result.selected.end} 个字符`
+                    : found === 0
+                        ? ''
+                        : '\n注意：请求了定位但没有拿到位置';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
                 content: [
                     {
                         type: 'text',
-                        text: typeof found === 'number'
+                        text: (typeof found === 'number'
                             ? `查找完成！\n"${findText}" 在文档中出现了 ${found} 次`
-                            : `查找完成！\n已查找 "${findText}"（桥未回报匹配次数）`,
+                            : `查找完成！\n已查找 "${findText}"（桥未回报匹配次数）`) + searchSelNote,
                     },
                 ],
             };

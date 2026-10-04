@@ -104,6 +104,10 @@ if (fullRow) {
   claim('README full tools', Number(fullRow[1]), tiers.full.tools);
   claim('README full bytes', Number(fullRow[2].replace(/,/g, '')), tiers.full.bytes);
 }
+// 安装指引里的 advertisedTools（用户照着这句核对安装是否成功，必须一起对账；
+// FIXES 91 发版审计发现这两处写着 69 而 CI 抓不到）。
+for (const m of readme.matchAll(/advertisedTools 应为 (\d+)/g)) claim('README install guide advertisedTools', Number(m[1]), numbers.advertisedTools);
+for (const m of readme.matchAll(/advertisedTools: (\d+)/g)) claim('README status sample advertisedTools', Number(m[1]), numbers.advertisedTools);
 const detail = /每次请求只广告 (\d+) 个/.exec(readme);
 if (detail) claim('README detail summary', Number(detail[1]), numbers.advertisedTools);
 const reg = /注册目录 \*\*(\d+)\*\* 个工具/.exec(readme);

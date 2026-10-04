@@ -2765,9 +2765,30 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
 
 **顺带修**：`scripts/lint.mjs` 不再扫描不入库的 `test/summary.json`（它是机器产物，不该被文本约定管）。
 
+
+### 发版前审计又补掉的问题（同一编号，2026-10-04 第二轮）
+
+在"要不要发 0.6.2"之前对全仓库做了一次专门找"发出去就改不了"的审计，又抓出一批：
+
+| # | 问题 | 后果 |
+| --- | --- | --- |
+| 1 | `README` 的 GitHub 回退 tag 写的是 **`v0.6.0`** —— 该 tag **从未存在**（npm 上的 0.6.0 还是坏的、已撤销） | npm 装不上时照 README 回退的用户必然失败；`release-checklist` §6 现在把"同步 README tag"列成必做步骤 + 打 tag 后回验 |
+| 2 | `scripts/gen-tool-coverage.mjs` 里"广告面 **69** 个"是**写死的字符串** | 与同一文件表格里的 84 自相矛盾，而"重生成 + diff"这道门禁永远看不见生成器里的字面量。改成现算 |
+| 3 | README 安装指引里"advertisedTools 应为 **69**"（两处） | 用户照着核对安装是否成功会以为装坏了；已修，并**纳入 `gen-numbers` 对账**（声明值 18 → 20 项） |
+| 4 | `docs/HANDOFF.md` §0 让人跑 `test\.artifacts\run-tests.ps1` | 那是**被 `.gitignore` 忽略的临时脚本**：全新克隆里不存在，且无环境钉住/无孤儿回收。改成 `scripts/run-tests.ps1` |
+| 5 | 我上一轮给 `slide.ts` 写的注释里**写出了抽取器用的正则字面量** | 静态解析器把它当成一次真实 `executeMethod`，`calls.length` 变 2 → `wps_ppt_beautify` 的参数契约整条降级为 UNPARSED（契约报告 257 → 256 对）。注释改写 |
+| 6 | `find_replace` 的 `selectFound` 在**查找模式**下定位了选区却**不回报坐标** | 我上一轮的断言写成 `... || /\d+/`（任何含数字的结果都过）把它盖住了。收紧断言后立刻暴露；已补回报 |
+| 7 | `selectFound` 回报的坐标用的是 Word 内部绝对偏移，与工具层公开基准**差 16** | 调用方拿它去调 `apply_style` 会改错位置。改为在正文里定位文本、按公开基准回报；断言改为"回报的范围必须**正好覆盖刚插入的那段唯一文本**" |
+| 8 | 陈旧现值声明一批 | HANDOFF 的"功能面仍与 v0.2.1 完全一致 / 当前用量 69 / 28 个文件 / check( 782 处 / PROGRESS 已同步 928"、README 的"256 对 / 46 个测试文件 / 十一个 CI 测试文件"、`stabilization-plan` 与 `tool-roadmap` 的"npm 未发布"、`index.ts` 注释指向已删除的 `deprecated.ts` —— 逐条改为现值或标注为历史 |
+| 9 | 发版检查单自身过期 | 包体积读数（290/580KB/3.04MB → **296 文件 / 611.9KB / 3.13MB**，并加"与 npm 上那版逐文件 diff"这条不靠手抄的核对）、"广告 69 个"、缺 `gen-numbers --check` 这一步 |
+
+审计同时**确认为真、但本轮不改**的（都写进了文档）：`wps_excel_paste_range` 无剪贴板源时只要求"说清原因"、
+`verify.mjs` 与 `gen-numbers` 的 schema 字节口径不同（46,782 vs 46,867，差 85 = 括号与逗号）、
+矩阵里 14 条 `"any"` 行（这 14 个工具另有 bespoke 断言，故"仅矩阵放行"仍为 0）、
+`wps_excel_text_to_columns` 等 4 个工具的静态参数解析限制（只有 `wps_word_set_paragraph` 在广告面上，其键表正确）。
 ### 验证
 
-- `node scripts/gen-numbers.mjs --check`：**18 项声明值全过**（README badge/表格/当前数字块、HANDOFF 工具面与测试行）。
+- `node scripts/gen-numbers.mjs --check`：**20 项声明值全过**（README badge/表格/当前数字块、HANDOFF 工具面与测试行）。
 - CI 等价复现：藏掉 `test/summary.json` 后重跑生成器 → 生成物无差异、14 项核对全过（不误报）。
 - `npm run lint`：182 文件 0 违规；整轮回归 1075/1076（唯一失败仍是既有的 `confirm-dialog`）。
 ## 验证

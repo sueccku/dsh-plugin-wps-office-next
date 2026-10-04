@@ -18,7 +18,8 @@ import { RegisteredTool } from '../types/tools';
  *
  * 这里不再逐工具枚举（以前那份清单每加一个工具就会过期）：要清单看生成物 skills/<app>/reference.md，
  * 或让模型用 wps_help {app:"excel"} 查。
- * 18 个已合并的重复名不注册、只做派发期别名（见 tools/deprecated.ts）；
+ * 18 个已合并的重复名不注册、只做派发期别名（别名表在 mcp/src/spec/aliases.ts；原来的
+ * tools/deprecated.ts 已在 v0.5.0 整模块删除 —— 本注释曾指向它，FIXES 91 发版审计发现）；
  * 内置工具只剩 wps_execute_method 一个逃生舱（其余 11 个重复/缓存/连接检查类已在 P0 清理中删除）。
  */
 export declare const allTools: RegisteredTool[];

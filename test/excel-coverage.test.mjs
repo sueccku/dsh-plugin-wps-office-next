@@ -153,7 +153,15 @@ check("unmerge_cells succeeds on a merged range", ok(unmergeOk), text(unmergeOk)
 await call("wps_excel_write_range", { range: "A30", data: [["L", "R"]] });
 await call("wps_excel_merge_cells", { range: "A30:B30" });
 const mergedRight = text(await call("wps_excel_get_cell_value", { sheet: "Sheet1", row: 30, col: 2 }));
-check("merge_cells really drops the right-hand values", /^\s*$|null|空/.test(mergedRight) || !/R/.test(mergedRight), mergedRight.replace(/\s+/g, " ").slice(0, 80));
+// 判定面以前是 `... || !/R/.test(x)`：任何不含字母 R 的取值（包括 undefined、别的报错）都会通过。
+// 现在要求"明确为空"，或者"值不再是原来的 R"——二者都必须能看见具体内容。
+const mergedRightEmpty = /^\s*$|null|空|undefined/.test(mergedRight);
+const mergedRightChanged = !/\bR\b/.test(mergedRight) && mergedRight.trim().length > 0 && !/失败|错误/.test(mergedRight);
+check(
+  "merge_cells really drops the right-hand values",
+  mergedRightEmpty || mergedRightChanged,
+  "value=" + JSON.stringify(mergedRight.replace(/\s+/g, " ").slice(0, 60))
+);
 await call("wps_excel_unmerge_cells", { range: "A30:B30" });
 
 // 打印区域：设置后要能读回
