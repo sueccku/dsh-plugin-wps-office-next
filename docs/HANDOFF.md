@@ -60,11 +60,18 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、**`v0.6.2`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
-| Releases | 见 GitHub Releases 页（Latest 为 **v0.6.1**，2026-10-02）——正文均为正常 UTF-8 |
-| 包 | `dsh-plugin-wps-office-next@0.6.2`（**0.6.2 已提交/打标签/推送；npm 上架由用户在本机交互终端执行 `npm publish` —— 需要 OTP，脚本/后台跑不了**。上架后用 `npm view dsh-plugin-wps-office-next versions` 与 `dist-tags.latest` 回验并把这一行改成实测值），依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| Releases | 见 GitHub Releases 页（Latest 为 **v0.6.1**，2026-10-02；**v0.6.2 的 tag 已推，Release 页待补**） |
+| 包 | `dsh-plugin-wps-office-next@0.6.2` —— **2026-10-04 已上架 npmjs，`dist-tags.latest = 0.6.2`**（本次发布**不需要 OTP**：本机 token 已可免 2FA 发布，`PUT → 202`，约 2 分钟后 registry 上可见）。实测元数据：`fileCount=296`、`unpackedSize=3,294,700`、`shasum=3d9f2c3a…`、`integrity=sha512-agvvryjeImdzt…jAIKLAwGfqC8w==`（与本地 `npm publish` 打印的逐字符一致）。在架版本 `["0.6.1","0.6.2"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
 **工作区**：**干净**（`git status --porcelain` 无输出，与 `origin/main` 一致）。
+**发布后验收（2026-10-04 实测）**：全新 profile 从 registry 装 `@0.6.2` → **296 文件、doctor OK**；
+`--dump-config` 两个 id 都在。
+
+> ⚠️ **pnpm 元数据缓存**：`dsh plugin add dsh-plugin-wps-office-next`（不写版本）在本机仍解析到 **0.6.1** ——
+> pnpm 缓存了旧的 packument（当时 latest 还是 0.6.1），而 `dsh plugin add` 把依赖写成 `^0.6.1`。
+> 要拿到新版本：写全版本 `add dsh-plugin-wps-office-next@0.6.2`，或先 `pnpm store prune` / 等缓存过期后重装。
+> 这不是包的问题（npm registry 侧 `latest` 已是 0.6.2），但**发布后要记得这样验证**，否则会以为发布没生效。
 临时 profile（`wpsdoc2` / `wpse2e*` / `wpsnpmver`）均已删除；一次性收包验证目录 **`D:\dsh\_pubcheck`** 是历史残留（在仓库之外，别提交、也别当作现状）。
 
 > 若本节与 registry 或 `git` 现状不符，**以命令实测为准**：`git describe --tags`、`git status --porcelain`、`npm view dsh-plugin-wps-office-next versions`。

@@ -239,6 +239,18 @@ npm view dsh-plugin-wps-office-next version dist.tarball --registry https://regi
 node scripts\accept-install.mjs --profile wpsnpm
 ```
 
+**从 registry 真装一遍（发布后必做）**：
+
+```powershell
+dsh plugin --profile wpsnpm2 add dsh-plugin-wps-office-next@X.Y.Z   # 写全版本号，见下面的缓存陷阱
+# 确认装出的版本与文件数
+(Get-Content "$env:USERPROFILE\.dsh\profiles\wpsnpm2\node_modules\dsh-plugin-wps-office-next\package.json" | ConvertFrom-Json).version
+```
+
+> ⚠️ **pnpm 元数据缓存陷阱（2026-10-04 实测）**：刚发布完就 `add <包名>`（不写版本）会**装到上一版** ——
+> pnpm 缓存了旧的 packument，而 `dsh plugin add` 把依赖写成 `^上一版`。别据此判断"发布没生效"：
+> 先写全版本号装一次证明 registry 上有，再 `pnpm store prune` 或等缓存过期。
+
 然后才是真实用户路径（会动到你自己在用的 profile，**先问过用户再执行**）：
 
 ```powershell
