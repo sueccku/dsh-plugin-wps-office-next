@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）
 
 > 用途：把当前工作、进展、现状与下一步整理成**自包含**的一页，让一个**全新对话**无需回看历史即可接手。
-> 核实时间：2026-10-04（**准备发布 v0.6.2 时重核**；本文所有数字均从仓库/命令实测，非记忆）。
+> 核实时间：2026-10-04（**v0.6.2 发布后重核**；本文所有数字均从仓库/命令实测，非记忆）。
 > 现值数字统一看 [current-numbers.md](current-numbers.md)（自动生成 + CI 对账）。
 > 本文是工作文档，不随包发布（`docs/` 不在 `package.json` 的 `files` 白名单内）。
 
@@ -11,43 +11,59 @@
 
 新开对话后，第一句话建议原样发送：
 
-> 读 @docs/HANDOFF.md 和 @docs/stabilization-plan.md，然后继续。
+> 读 @docs/HANDOFF.md 和 @docs/current-numbers.md，然后按里面的「新对话怎么开始」做。
 
-接手时**先做只读核对**，确认真实状态与本文一致，再决定动手：
+### 0.1 先读这五份（按顺序，约 10 分钟）
+
+| # | 文件 | 读它为了知道什么 |
+| --- | --- | --- |
+| 1 | [HANDOFF.md](HANDOFF.md)（本文） | 现状、决策登记表、契约管线、纪律 |
+| 2 | [current-numbers.md](current-numbers.md) | **所有现值的唯一来源**（自动生成 + CI 对账）。别用正则自己数 |
+| 3 | [FIXES.md](FIXES.md) 的 84–91 号 | 最近一轮做了什么、踩过哪些坑（含"字段名不匹配""静默失配"这类反复出现的模式） |
+| 4 | [stabilization-plan.md](stabilization-plan.md) | 稳定性加固的既定纪律（预算红线、账本只许缩、只读核对优先） |
+| 5 | [tool-roadmap.md](tool-roadmap.md) | 还剩哪些规划项没做 |
+
+### 0.2 再做只读核对（确认真实状态与本文一致，**再动手**）
 
 ```powershell
 Set-Location "D:\dsh\a"
-git log --oneline -6 ; git status --porcelain ; git tag --list
-node scripts/verify.mjs          # 预算 + 桥动作数 + 契约 + 长动作名单（24 项）
-node scripts/doctor.mjs          # 环境自检（末尾应打印 DOCTOR OK）
+git log --oneline -6 ; git status --porcelain ; git describe --tags
+git ls-remote --tags origin | Select-String "v0\.6"        # README 里的回退 tag 必须在这里
+node scripts/verify.mjs --static                            # 不需要 WPS：预算/桥动作/契约/长动作（19 项）
+node scripts/gen-numbers.mjs --check                        # 文档里的数字是否与生成值一致（20 项）
+node scripts/doctor.mjs                                     # 环境自检，末尾应打印 DOCTOR OK
 ```
 
-跑完整测试（**48 个文件**，多数驱动真实 WPS，约 15 分钟；跑完会在 `test/summary.json` 留一份机器可读的计数）：
+> ⚠️ **不要在「正在开着 WPS 干活」的会话里跑需要 WPS 的检查**：宿主的单实例租约会把测试挡在门外
+> （`test/host-lease.test.mjs` 会打印中文「另一个 DSH 会话正在控制 WPS」）。这是环境冲突、不是代码缺陷。
+> 上面这组**都是只读且不需要 WPS**（`verify.mjs` 不带 `--static` 时才连 WPS、会调一次 `wps_status`）。
+
+### 0.3 需要时再跑整轮回归
+
+跑完整测试（**48 个文件**，多数驱动真实 WPS，约 15 分钟）：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1
-node scripts\gen-numbers.mjs          # 用新计数刷新 docs/current-numbers.md
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 跑完会刷新 test/summary.json
+node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbers.md（两步都要）
 ```
-
-> ⚠️ 这里以前写的是 `test\.artifacts\run-tests.ps1` ——那是个**被 `.gitignore` 忽略的临时脚本**，
-> 全新克隆里根本不存在（而且是没有环境钉住、没有孤儿回收的旧版）。请一律用仓库里维护中的
-> `scripts/run-tests.ps1`（FIXES 91 发版审计发现）。
 
 ---
 
 ## 1. 一句话现状
 
-**功能面（截至 2026-10-04，v0.6.2 候选）**：注册工具 **268**、广告面 **84 / 46,867 字节**、桥 action **263**、
-参数契约 **257 对**（A/B/C/D 全 0）；加固计划 S1–S9 已全部完成，FIXES 86–91 又清掉一批假成功与数据破坏：
-第 1 波（S1 弹窗围堵 + S2 宿主单实例）作为 `v0.3.0` 于 2026-09-16 发布（提交 `d7736e1`）；
-第 2～4 波（S3 破坏性守卫 25/25、S4 覆盖率 267/267（当时；现 268/268）、S5 空 catch 账本、S6 失败/超时契约、
-S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确认框实测）随后全部落地并推送，CI 全绿。
-本机最近一次整轮真机回归 **856/0**、一键 e2e **29/29**（v0.4.0 时）；此后新增的断言逐文件跑过、未重跑整轮。S3–S9 与审计后续已作为 **v0.4.0**（2026-09-19）发布；**v0.5.0（2026-10-02，FIXES 68–76）已发布**：稳定性收口（加密预检 / 弹窗不变量 / 结果如实 / 大范围预算）+ warnings 到模型 + 验证口径分层 + 模型文档生成化 + 废弃别名清理；随后 **v0.5.1**（2026-10-02）把 59 处参数名对齐到桥键（ALIAS_DEBT 归零）；接着 **v0.5.2**（2026-10-02）补声明 `set_cell_format` 的扁平参数（FIXES 78）、**v0.5.3** 统一桥键（FIXES 79）、
-**v0.5.4** 补两个真缺口并把未工具化账本清到 2（FIXES 80–83）。
-**v0.6.0 / v0.6.1（2026-10-02）只改分发方式**：0.6.0 上架 npm 时漏发 `mcp/package.json`（模块边界），装上去 server 起不来；
-**v0.6.1 修掉并已在 registry 上架（唯一在架版本）**，FIXES 84。
+**已发布 `v0.6.2`（2026-10-04）**：npm `dist-tags.latest = 0.6.2`，git tag 与 GitHub Release 均已就位（详见 §2）。
+这一版收口了**假成功与数据破坏**（FIXES 86–91），并把广告面按真实调用数据从 69 重排到 84。
 
-> 「856/0」「267/267」都是**当时**的读数，不要当成现在的数字；现在见 §5。
+| 指标 | 现值 | 权威来源 |
+| --- | --- | --- |
+| 注册工具 / 广告面 | **268 / 84**（46,867 字节，预算上限 60,000） | [current-numbers.md](current-numbers.md) |
+| 桥 action / 参数契约 | **263 / 257 对**（A/B/C/D 四类静默失效均为 0） | 同上 |
+| 测试 | **1077 项 / 48 个文件** | 同上（来自 `test/summary.json`） |
+| 本机整轮回归 | **1076 通过 / 1 失败** | 唯一失败是**已知环境问题** `confirm-dialog`（本机 Excel 确认框不弹；已用 `git stash` 证明与代码无关） |
+
+**历史阶段（都是当时的读数，别当现值）**：S1–S9 加固分四波落地，`v0.3.0`（09-16）→ `v0.4.0`（09-19）→
+`v0.5.0`–`v0.5.4`（10-02）→ `v0.6.0`（上架 npm，因漏发 `mcp/package.json` 而坏）→ `v0.6.1`（修好分发）→ `v0.6.2`（本版）。
+各阶段的原始读数保留在 [PROGRESS.md](PROGRESS.md)（已标注为历史快照）。
 
 ---
 
@@ -65,20 +81,39 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
 **工作区**：**干净**（`git status --porcelain` 无输出，与 `origin/main` 一致）。
-**发布后验收（2026-10-04 实测）**：全新 profile 从 registry 装 `@0.6.2` → **296 文件、doctor OK**；
-`--dump-config` 两个 id 都在。
 
-> ⚠️ **pnpm 元数据缓存**：`dsh plugin add dsh-plugin-wps-office-next`（不写版本）在本机仍解析到 **0.6.1** ——
-> pnpm 缓存了旧的 packument（当时 latest 还是 0.6.1），而 `dsh plugin add` 把依赖写成 `^0.6.1`。
-> 要拿到新版本：写全版本 `add dsh-plugin-wps-office-next@0.6.2`，或先 `pnpm store prune` / 等缓存过期后重装。
-> 这不是包的问题（npm registry 侧 `latest` 已是 0.6.2），但**发布后要记得这样验证**，否则会以为发布没生效。
-临时 profile（`wpsdoc2` / `wpse2e*` / `wpsnpmver`）均已删除；一次性收包验证目录 **`D:\dsh\_pubcheck`** 是历史残留（在仓库之外，别提交、也别当作现状）。
+**本机当前状态（新会话请看这里）**：
+
+- `desktop` profile 里装的**就是 0.6.2**（`…/profiles/desktop/node_modules/dsh-plugin-wps-office-next/package.json` → `0.6.2`），
+  与其他 profile（`web`）之外的临时 profile 都已删除。**你若在 DSH 里用插件，跑的就是本 HEAD 这版行为**。
+- 但**仓库工作区是权威**：改完源码要重新 `tsc` + 跑管线，装出来的副本不会自动跟着变（除了 `desktop` 依赖的是本地路径时）。
+
+**发布后验收（2026-10-04 实测）**：全新 profile 从 registry 装 `@0.6.2` → **296 文件、`doctor` OK**、`--dump-config` 两个 id 都在。
+
+> ⚠️ **pnpm 元数据缓存（发下一版时会再遇到）**：刚发完新版本时，`dsh plugin add <包名>` 不写版本可能**装到上一版** ——
+> pnpm 缓存了旧 packument，而 `dsh plugin add` 把依赖写成 `^上一版`（本次发 0.6.2 时就实测到解析出 `^0.6.1`）。
+> 要拿到新版本：写全版本 `add <包名>@X.Y.Z`，或先 `pnpm store prune` / 等缓存过期后重装。
+> 这不是包的问题（registry 侧 `dist-tags.latest` 是对的），但**发布后必须这样验证**，否则会误判"发布没生效"。
 
 > 若本节与 registry 或 `git` 现状不符，**以命令实测为准**：`git describe --tags`、`git status --porcelain`、`npm view dsh-plugin-wps-office-next versions`。
 
 ---
 
 ## 3. 已定决策（不要再翻案）
+
+### 3.1 当前开口的决策（**只有这些**，其余都已定）
+
+| # | 待定事项 | 为什么还开着 | 需要谁决定 |
+| --- | --- | --- | --- |
+| **A3**（原 D1-E） | 产品扩张 / 跨应用工作流要做成什么样 | 缺**具体场景与目标客户**；没有场景就做等于猜需求 | 用户（给一个真实场景即可启动） |
+| **A4** | `param-contract` 那次 2 小时挂起未定性 | 只出现过一次、未能复现；建议下次复现时抓现场（给它加心跳 + 自超时） | 等复现，不需要现在决定 |
+
+**已交付、不要再当待办**（都在这两轮做完并发布）：B1–B4（账本更新 + 文档数字单一来源）、
+A1（广告面重平衡 69→84）、A2（版式 × 占位符矩阵）、A6（`find_replace.selectFound` + `apply_style.range` 对齐）、
+L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）、以及 FIXES 86 的用户报告全部条目。
+详见 FIXES 86–91。
+
+### 3.2 长期决策（不要再翻案）
 
 - **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 **84 / 46,867** —— 2026-10-04 按真实调用数据重平衡后，FIXES 90）。
 - **D2 Word 长尾**：全都要（不做减法）。
@@ -148,6 +183,9 @@ S7 中文文案、S8 版本/架构检查、S9 安装自检）与 S3 余量（确
 >
 > **编号消歧**：历史发布用过 D1–D18（0.6.0 那次），**本轮又用了 D5–D12** —— 所以同一个号在不同轮次含义不同；
 > 引用时一律写「**哪一轮**的哪个号」或带上 FIXES/版本号，别只写「D5」。
+
+> **读表须知**：这是**时间线**，早期行写的是当时的状态（例如 D9 那行写着「挂起」，但它在 FIXES 89 已做完）。
+> **当前还有什么没定，一律看 §3.1**，不要从这张表里读"待办"。
 
 | 轮次 | # | 问题 | 结论 | 落地 |
 | --- | --- | --- | --- | --- |
@@ -228,9 +266,15 @@ node scripts/gen-numbers.mjs       # 7) docs/current-numbers.md（并核对文�
 生成器看到的是**上一次编译的旧 spec**——实测症状是「明明 extract 说某个工具的 action 已修好，
 surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduction` 的 untooled 计数上叫（FIXES 90/91 各踩一次）。
 
-**加一个新工具**：写 TS 定义 + handler（显式字面量 `executeMethod('action', {...})`，**绝不要工厂函数**）→ extract → tsc → gen。
+**加一个新工具**：写 TS 定义 + handler（显式字面量 `executeMethod('action', {...})`，**绝不要工厂函数**）→ 按上面 7 步重跑管线。
 **动态动作**必须在 `mcp/src/spec/aliases.ts` 的 `dynamicParamActions` 里声明，**否则宿主生成器直接 throw**。
 守卫不变量：0 个未解析参数；桥的每个参数都必须映射到桥真正读取的 key。
+
+> ⚠️ **两个静态抽取陷阱**（都真踩过，症状都是"门禁不叫但功能没了"）：
+> 1. handler 的 `executeMethod<泛型>` 里**泛型部分不能超过 300 字符**（抽取器的窗口），超了会静默失配，
+>    整个工具从 `bridge` 降级成 `opaque`、不进广告面（FIXES 90 踩过）。
+> 2. **别在注释里写出抽取用的那个正则字面量**（`executeMethod…'action'`），解析器会把它当成一次真实调用，
+>    于是 `calls.length` 变 2、该工具的**参数契约整条降级为 UNPARSED**（FIXES 91 踩过）。
 
 **S1 新增的桥内助手**（都在 `wps-com.ps1` 头部，生成物里会一并出现，不要手改生成物）：
 `Set-WpsAlertsSuppressed` / `Restore-WpsAlerts` / `Open-WordDocument` / `Open-ExcelWorkbook` /
@@ -239,7 +283,7 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 
 ---
 
-## 5. 当前权威数字（**引自代码内常量，不要用正则重数**）
+## 5. 当前权威数字（**引自代码内常量与生成物，不要用正则重数**）
 
 > **本表的机器可读版**：[current-numbers.md](current-numbers.md) —— 由 `node scripts/gen-numbers.mjs` 生成，
 > 并逐项核对本文件与 README 里的声明值（CI 跑 `--check`，对不上就红，FIXES 91）。
@@ -267,7 +311,7 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 
 ---
 
-## 6. 已完成的阶段
+## 6. 已完成的阶段（历史；现状看 §1/§5）
 
 P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深（4 波）→ P4 PPT 收敛（2 波，88→76）
 → P5 收尾（逃生舱决策、广告面重定、文档重生成）→ **P5-4 发布（v0.2.0，随后 v0.2.1）**
@@ -276,7 +320,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 ---
 
-## 7. 稳定性实测（**本轮新增证据**，是第 2 波计划的立足点）
+## 7. 稳定性实测（第 2 波计划的立足点；数字是当时读数，现值看 §5）
 
 1. **模态弹窗的真实触发条件只有一个：打开加密文件**（实测）
    - 加密 `.docx`：裸开**永久卡死**（弹 `文档已加密` 模态框，class `Qt5QWindow`）；
@@ -308,7 +352,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 ---
 
-## 7.5 发布事故与教训（FIXES 84，2026-10-02）
+### 7.1 发布事故与教训（FIXES 84，2026-10-02）
 
 **事故**：`0.6.0` 发到 npm 后，用户装进 `desktop` profile，**所有 WPS 工具全不可用**。MCP server 一启动就崩：
 
@@ -362,16 +406,23 @@ This file is being treated as an ES module because it has a '.js' file extension
 
 ## 8. 待办（下一步）
 
-**加固计划 S1–S9 已全部完成，S3 余量（破坏性动作确认框实测）也已收尾**：S3 25/25、S4 覆盖率 267/267（当时）、
-S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架构检查、S9 安装自检，审计 P2、进程残留根因、跨会话回收与 P3 见 `docs/FIXES.md` 52–67。
-**当前没有必须做的技术债。** 未工具化 action 账本已从 7 清到 **2**（FIXES 80）：只剩 `getActivePresentation` /
-`getActiveWorkbook`，两者的信息已由 `getOpenPresentations` / `getOpenWorkbooks` 的 `active` 标记覆盖，属对称性缺口
-（Word 的 `getActiveDocument` 是工具化的），**故意留着**。
+**当前没有必须做的技术债。** 未工具化 action 账本只剩 **2** 个（FIXES 80）：`getActivePresentation` / `getActiveWorkbook`，
+两者的信息已由 `getOpenPresentations` / `getOpenWorkbooks` 的 `active` 标记覆盖，属对称性缺口（Word 的 `getActiveDocument` 是工具化的），
+**故意留着**。全部弱断言（`any`）已归零（FIXES 89），四类参数静默失效均为 0。
 
-> **发布状态（2026-10-03 实测重核）**：FIXES 79 随 v0.5.3、**FIXES 80–83 随 v0.5.4**、**FIXES 84 随 v0.6.1**。
-> **npm 上架已完成**：`dsh-plugin-wps-office-next` 的**在架版本只有 `0.6.1`**（`dist-tags.latest = 0.6.1`）；坏掉的 `0.6.0` 已由用户
-> 手动 `npm unpublish` 撤销（2026-10-02 14:53 UTC），registry 上不再有它，但 **CHANGELOG 保留这次事故的记录**（不要删）。
-> 「尚未 `npm publish`」这句已结束，不要再当成现状。
+### 8.1 开口的两项（与 §3.1 同源，别再重复列）
+
+| # | 事项 | 状态 |
+| --- | --- | --- |
+| A3 | 产品扩张 / 跨应用工作流 | **等用户给具体场景**；没有场景不做 |
+| A4 | `param-contract` 2 小时挂起 | 未复现；下次复现时抓现场（加心跳 + 自超时） |
+
+### 8.2 发布状态（2026-10-04 实测）
+
+- **在架版本：`0.6.1` + `0.6.2`，`dist-tags.latest = 0.6.2`**；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），
+  但 **CHANGELOG 保留那次事故的记录**（不要删）。
+- 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、**86–91→v0.6.2**。
+- 「尚未 `npm publish`」「唯一在架版本是 0.6.1」这类句子都已过期，不要再当现状——发布事实一律看 §2。
 
 计划之外、审计出来的可选工作（文档同步是其中 P0 项，本轮已做）：
 
@@ -387,7 +438,7 @@ S5 空 catch 账本、S6 失败/超时契约、S7 中文文案、S8 版本/架�
 **v0.5.0（2026-10-02，FIXES 68–76）** 同样走完整流程：升 `package.json` / lockfile、写 CHANGELOG、
 更新 README 安装 pin（`#v0.5.0`）、tag + Release，并跑了一键 e2e **29/29**。**v0.5.1（2026-10-02）** 只做参数命名对齐、**v0.5.2** 补声明 `set_cell_format` 的扁平参数、**v0.5.3** 统一桥键（旧拼写不再接受）、**v0.5.4** 补两个缺口 + 修长动作超时名单 + DSH 0.2.0 兼容核验 + 文档审计，都走完整流程（pin 分别到 `#v0.5.1` … `#v0.5.4`）。
 
-**真实用法数据（2026-10-03 新增，是「广告面该放哪些工具」的唯一实测依据）**
+**真实用法数据（2026-10-03 采集，是「广告面该放哪些工具」的唯一实测依据；2026-10-04 已据此完成 A1 重平衡）**
 
 汇总 `~/.dsh/sessions/**/session.v4.jsonl.zstd` 里所有真实 `wps_*` 调用（17 个会话、**742 次调用**，失败 6 次）：
 
@@ -429,8 +480,9 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
   旧的 npm 全局安装 `%APPDATA%\npm\node_modules\@deepseek-ai\dsh\lib\bin.js` **已不存在**。
   `scripts/e2e.mjs` 两种装法都认（`resolveDshLauncher()`），找不到时用 `--dsh-bin <lib/bin.js>` 显式指定。
   `DSH_HOME = C:\Users\qwer\.dsh`。
-- GUI：本会话通过 `http://127.0.0.1:19387` 交互（端口以实际启动为准，不要照抄旧值）；profile `headless` 是模板。
-  临时 profile（`wpsdoc2` / `wpse2e*`）用完要 `dsh plugin --profile <name> remove dsh-plugin-wps-office-next`
+- GUI：本会话通过 `http://127.0.0.1:19387` 交互（端口以实际启动为准，不要照抄旧值）。
+  **现存 profile 只有 `desktop`（在用）与 `web`**；`wpsdoc2` / `wpse2e*` / `wpsnpm*` / `wps-acceptance` 都是历史临时 profile，
+  每次用完都删掉了（若要再建，用完要 `dsh plugin --profile <name> remove dsh-plugin-wps-office-next`
   **（必须带包名，不带会报 `ERR_PNPM_MUST_REMOVE_SOMETHING`）**，再删 profile 目录。`node scripts/e2e.mjs --clean`
   只清产物、不动 profile。
 - 会话日志：`~/.dsh/sessions/<编码的工作目录>/session-<id>/session.v<N>.jsonl.zstd`（**v4**，e2e 需要它做行为断言）。
@@ -466,8 +518,14 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 
 **方法**
 - 先测量再改代码；每个结论都要有可运行命令；优先用**真机 WPS** 验证而不是推理。
-  **本轮的最大教训**：计划里「补 `PasswordDocument:=""`」这条**实测是错的**（空串=没给密码，照样弹框），
+  **教训**：计划里「补 `PasswordDocument:=""`」这条**实测是错的**（空串=没给密码，照样弹框），
   如果照计划直接改，会得到一个「看起来修好了、其实照样卡死」的版本。**计划也是假设，一样要验证。**
+- **按危险度排序找缺陷：静默错 > 崩溃 > 挂起。** 这两轮挖出的 17 个缺陷里，**没有一个**是崩溃或超时——
+  全是「回了 success 但结果不对」（字段名不匹配、占位符类型判错、参数被静默忽略）。
+  所以：**断言要读回真值，不能只断言 `success`**。最弱的 `check(x.status === "ok")` 放行过真实的假成功；
+  「`any`（只验没挂住）」这种断言等于没测（FIXES 86 的用户报告就是这么漏出去的）。
+- **验收别人的产出要跑，不要读。** 发版前那次独立审计抓到的问题（README 指向不存在的 tag、生成器里写死的数字、
+  我自己写的注释让静态解析器误判），**全都没有任何门禁会叫** —— 只有"真的去执行/核对"才能发现。
 - **账本**（`ALIAS_DEBT` / `UNTOOLED_ACTIONS` / `EXPECTED_ACTIONS` / `BUDGET`）**涨即失败**，缩小要显式改。
 - **杀掉后台作业 ≠ 杀掉它的子进程**（2026-10-03 实测，代价半小时）：`run-tests.ps1` 被中断后，它的主进程变成了**孤儿**，
   继续在循环里逐个启动 `test/*.test.mjs`；于是「刚跑通的回归测试」反复报**单实例租约被占**（写着别人的 `hostPid`/`clientPid`），
