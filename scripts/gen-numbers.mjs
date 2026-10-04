@@ -58,7 +58,8 @@ const summary = existsSync(summaryPath) ? JSON.parse(readFileSync(summaryPath, '
 
 const numbers = {
   note: '由 scripts/gen-numbers.mjs 生成。文档里的数字请引用这里，不要手写（FIXES 91）。',
-  generatedAt: new Date().toISOString().slice(0, 19) + 'Z',
+  // 按**天**取，不按秒：这个文件里的每个字节都会进 CI 的生成物对账，秒级时间戳只会制造噪音。
+  generatedAt: new Date().toISOString().slice(0, 10),
   advertisedTools: advertised.length,
   registeredTools: definitions.length,
   schemaBytes,
@@ -156,8 +157,10 @@ row('未工具化 action', numbers.untooledActions + (numbers.untooledActionName
 row('测试文件', String(numbers.testFiles), 'test/*.test.mjs');
 // 只有真跑过整轮的机器才有 test/summary.json（它不入库）。没有就**不写这一行** ——
 // 否则同一份生成物在「跑过测试的机器」和「CI」上会长得不一样，--check 会误报。
+// 注意：这里**不能**带上 testRunAt（每次跑整轮都会变）—— 这个文件由 CI 用 `git diff --exit-code` 对账，
+// 带时间戳就会让 CI 在每次跑完测试后误报（FIXES 91 发布后回验时发现）。只放稳定数字。
 if (numbers.testAssertions !== null) {
-  row('测试断言', numbers.testAssertions + '（失败 ' + numbers.testFailures + '，' + numbers.testRunAt + '）', 'test/summary.json');
+  row('测试断言', numbers.testAssertions + '（失败 ' + numbers.testFailures + '）', 'test/summary.json（该行不含跑测时间戳：会让 CI 对账误报）');
 }
 lines.push('');
 lines.push('## 声明值核对');

@@ -15,7 +15,7 @@
 | 带键表的 action | **261** | spec/action-keys.json |
 | 未工具化 action | **2（getActivePresentation / getActiveWorkbook）** | 键表 − spec |
 | 测试文件 | **48** | test/*.test.mjs |
-| 测试断言 | **1077（失败 1，2026-10-04T15:39:43+08:00）** | test/summary.json |
+| 测试断言 | **1077（失败 1）** | test/summary.json（该行不含跑测时间戳：会让 CI 对账误报） |
 
 ## 声明值核对
 
