@@ -368,7 +368,17 @@ export const evaluateFormulaHandler = async (args: Record<string, unknown>) => {
     'evaluateFormula', args, WpsAppType.SPREADSHEET
   );
 
-  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: JSON.stringify(response.data ?? { error: response.error }) }] };
+  // FIXES 94（W6-2）：公式求值得到错误值（#DIV/0! 等）时，桥现在回 success=false + 可读原因。
+  // 以前把错误码当 result 塞进 JSON 返回，模型会把 -2146826281 读成"计算结果"。
+  if (!response.success) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: "text" as const, text: `计算公式失败: ${response.error ?? '未知原因'}` }],
+      error: response.error,
+    };
+  }
+  return { id: uuidv4(), success: true, content: [{ type: "text" as const, text: JSON.stringify(response.data ?? {}) }] };
 };
 
 export const setPrintAreaDefinition: ToolDefinition = {
@@ -387,7 +397,13 @@ export const setPrintAreaHandler = async (args: Record<string, unknown>) => {
     'setPrintArea', args, WpsAppType.SPREADSHEET
   );
 
-  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: response.success ? "打印区域已设置" : "设置失败" }] };
+  // FIXES 94（W6-3）：失败时以前只回一句"设置失败"，没有原因也没有下一步 —— 把桥的原因透出来。
+  return {
+    id: uuidv4(),
+    success: response.success,
+    content: [{ type: "text" as const, text: response.success ? "打印区域已设置" : `设置失败: ${response.error ?? '未知原因'}` }],
+    ...(response.success ? {} : { error: response.error }),
+  };
 };
 
 

@@ -3,6 +3,10 @@
 // outline levels, page-break reset, and formula auditing (precedents/dependents).
 // Run: node test/excel-page-setup.test.mjs
 import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+// FIXES 95（W1-4）：这个文件 25 条断言**全部**在验证插件自己的回读文案，而打印设置恰恰是
+// "回报写了 ≠ 文件里真是那样"的重灾区。现在存盘后用 openpyxl 直接读文件本身做独立核对。
+import { xlsxProps } from './lib/oracle.mjs';
 
 const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 let buf = '';
@@ -90,6 +94,29 @@ const constRes = await call('wps_excel_get_formula_audit', { sheet: SHEET, cell:
 check('a constant cell is reported honestly', ok(constRes) && textOf(constRes).includes('不是公式'), textOf(constRes).replace(/\n/g, ' | ').slice(0, 110));
 const noCellRes = await call('wps_excel_get_formula_audit', {});
 check('audit without a cell is rejected', !ok(noCellRes), textOf(noCellRes).slice(0, 60));
+
+// ---- 独立 oracle：把设置**存进文件**再读回来（W1-4）------------------------------------------
+// 不以插件的回读为准，改以**磁盘上的 xlsx**为准：方向 / 纸张 / 页边距 / 居中 / 打印标题 /
+// 页眉页脚 / 标签色 / 工作表可见性。单位提醒：openpyxl 的页边距是**英寸**（36 磅 = 0.5），paperSize 是**数字**（A3 = 8）。
+const OUT = resolve('test/.artifacts/page-setup.xlsx');
+const saved = await viaCall('wps_common_save_as', { outputPath: OUT, format: 'xlsx' });
+check('workbook saved for independent verification', ok(saved), textOf(saved).replace(/\n/g, ' ').slice(0, 80));
+const props = xlsxProps(OUT);
+check('oracle can read the saved workbook', !!props && !!props[SHEET] && !!props.Extra, JSON.stringify(Object.keys(props || {})));
+if (props && props[SHEET]) {
+  const p = props[SHEET];
+  check('file says landscape (not just the report)', p.orientation === 'landscape', JSON.stringify(p.orientation));
+  check('file says A3 paper (openpyxl paperSize 8)', Number(p.paperSize) === 8, String(p.paperSize));
+  check('file says 36pt margins = 0.5 inch', Math.abs(Number(p.marginTop) - 0.5) < 0.01 && Math.abs(Number(p.marginLeft) - 0.5) < 0.01, 'top=' + p.marginTop + ' left=' + p.marginLeft);
+  check('file says horizontally centred', p.horizontalCentered === true, String(p.horizontalCentered));
+  check('file says print titles are row 1', String(p.printTitleRows || '').replace(/\$/g, '') === '1:1', JSON.stringify(p.printTitleRows));
+  check('file carries the header/footer fields', /&F/.test(String(p.headerLeft)) && /&P/.test(String(p.footerCenter)), JSON.stringify({ header: p.headerLeft, footer: p.footerCenter }));
+  check('file says the last scale mode won (zoom 90, not fit-to-page)', Number(p.scale) === 90 && p.fitToPage === false, 'scale=' + p.scale + ' fitToPage=' + p.fitToPage);
+  check('file says the tab colour was really cleared', !p.tabColor || p.tabColor === '00000000', JSON.stringify(p.tabColor));
+}
+if (props && props.Extra) {
+  check('file says the Extra sheet is visible again', props.Extra.sheetState === 'visible', JSON.stringify(props.Extra.sheetState));
+}
 
 await viaCall('wps_excel_close_workbook', { save: false });
 const open = textOf(await call('wps_excel_get_open_workbooks', {}));

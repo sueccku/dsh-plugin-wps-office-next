@@ -2,6 +2,11 @@
 // workbook-wide refresh, goal seek, sparklines, chart labels and chart deletion.
 // Run: node test/excel-advanced.test.mjs
 import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+// FIXES 95（W1-4）：这个文件全程只信插件自己的回报。现在加三个真值核对：
+// ① 单变量求解后**直接读那两个单元格**（不是读工具说的"A10 = 25"）；
+// ② 图表标题是不是真的写进了 chart part；③ 迷你图组在文件里的真实条数。
+import { comGrid, zipScan } from './lib/oracle.mjs';
 
 const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 let buf = '';
@@ -58,6 +63,9 @@ const seekRes = await call('wps_excel_goal_seek', { sheet: SHEET, cell: 'B10', g
 const seek = textOf(seekRes);
 check('goal_seek solves for the changing cell', ok(seekRes) && seek.includes('求出解') && seek.includes('A10 = 25'), seek.replace(/\n/g, ' | ').slice(0, 140));
 check('goal_seek reports the achieved result', seek.includes('B10 现在 = 50'), seek.replace(/\n/g, ' | ').slice(0, 140));
+// ---- 独立 oracle ①：直接读 A10 / B10 的真实值（工具说"求出解"，但格子到底变没变？）----
+const solved = comGrid('A10:B10', SHEET);
+check('the changing cell and the target really hold the solved values', !!solved && Number(solved[0][0]) === 25 && Number(solved[0][1]) === 50, JSON.stringify(solved));
 const seekBadRes = await call('wps_excel_goal_seek', { sheet: SHEET, cell: 'B10', goal: 50 });
 check('goal_seek without changingCell is rejected', !ok(seekBadRes), textOf(seekBadRes).slice(0, 60));
 
@@ -78,10 +86,23 @@ const labelsRes = await call('wps_excel_set_chart_labels', { sheet: SHEET, title
 const labels = textOf(labelsRes);
 check('set_chart_labels sets the title and both axes', ok(labelsRes) && labels.includes('月度销售') && labels.includes('地区') && labels.includes('金额'), labels.replace(/\n/g, ' | ').slice(0, 170));
 check('the applied list names all three', labels.includes('已更新') && labels.includes('valueAxisTitle'), labels.split('\n')[0].slice(0, 110));
+// ---- 独立 oracle ②：标题是不是真的写进了 chart part ----
+const ADV1 = resolve('test/.artifacts/excel-advanced-1.xlsx');
+check('workbook saved for independent verification (1)', ok(await viaCall('wps_common_save_as', { outputPath: ADV1, format: 'xlsx' })), '');
+const titleScan = zipScan(ADV1, '月度销售', 'xl/charts/');
+check('file says the chart carries the new title', !!titleScan && titleScan.count >= 1, JSON.stringify(titleScan));
+const axisScan = zipScan(ADV1, '地区', 'xl/charts/');
+check('file says the category axis title landed too', !!axisScan && axisScan.count >= 1, JSON.stringify(axisScan));
 const delRes = await call('wps_excel_delete_chart', { sheet: SHEET });
 check('delete_chart removes the only chart', ok(delRes) && textOf(delRes).includes('还剩 0 张'), textOf(delRes).slice(0, 110));
 const delAgainRes = await call('wps_excel_delete_chart', { sheet: SHEET });
 check('deleting again is rejected honestly', !ok(delAgainRes) && textOf(delAgainRes).includes('chart not found'), textOf(delAgainRes).slice(0, 90));
+
+// ---- 独立 oracle ③：文件里到底还剩几组迷你图（加了两组、清了一组 → 应剩 1 组）----
+const ADV2 = resolve('test/.artifacts/excel-advanced-2.xlsx');
+check('workbook saved for independent verification (2)', ok(await viaCall('wps_common_save_as', { outputPath: ADV2, format: 'xlsx' })), '');
+const sparkScan = zipScan(ADV2, '<x14:sparklineGroup ', 'xl/worksheets/');
+check('file says exactly one sparkline group survived the clear', !!sparkScan && sparkScan.count === 1, JSON.stringify(sparkScan));
 
 await viaCall('wps_excel_close_workbook', { save: false });
 const open = textOf(await call('wps_excel_get_open_workbooks', {}));

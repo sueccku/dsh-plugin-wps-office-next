@@ -236,7 +236,7 @@
  },
  {
   "tool": "wps_excel_export_chart_as_image",
-  "signature": "excel_export_chart_as_image(chartName*, outputPath*, format?, sheet?)",
+  "signature": "excel_export_chart_as_image(chartName?, outputPath*, format?, sheet?)",
   "effect": "export"
  },
  {
@@ -1306,7 +1306,7 @@
  },
  {
   "tool": "wps_word_set_paragraph",
-  "signature": "word_set_paragraph(alignment?, lineSpacing?)",
+  "signature": "word_set_paragraph(alignment?, lineSpacing?, spaceBefore?, spaceAfter?, firstLineIndent?, leftIndent?, rightIndent?, range?)",
   "effect": "write"
  },
  {

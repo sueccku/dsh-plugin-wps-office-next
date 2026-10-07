@@ -47,7 +47,8 @@ const mixed = await call("wps_batch", { calls: [
 ] });
 const m = payload(mixed);
 check("a partial failure does not fail the whole batch", !isErr(mixed) && m.count === 3, JSON.stringify(m).slice(0, 120));
-check("the first item succeeded", !!(m.results && m.results[0] && m.results[0].success === true), "");
+// FIXES 93（W1-1）：以前只看 results[0] —— 第 2、3 项的状态没有任何断言。现在断言完整向量。
+check("the batch reports exactly [ok, failed, ok]", JSON.stringify((m.results || []).map((r) => r.success)) === "[true,false,true]", JSON.stringify((m.results || []).map((r) => r.success)));
 check("the unknown tool is reported as its own failed item", !!(m.results && m.results[1] && m.results[1].success === false && String(m.results[1].error || "").includes("无效")), JSON.stringify(m.results && m.results[1]));
 check("execution continued after the failed item", !!(m.results && m.results[2] && m.results[2].success === true), "");
 check("every item result is truncated to 2000 chars", !!(m.results && m.results.every((r) => !r.result || r.result.length <= 2000)), "");

@@ -11,6 +11,11 @@
 //
 // Needs a real WPS. Run: node test/open-safety.test.mjs
 import { spawn, spawnSync } from 'node:child_process';
+// FIXES 95（W1-4）：这个文件已经很强（证明 fixture 真的加密、失败要快、不留残留）。
+// 补一条**跨源**核对：加密打开失败之后，WPS 里是不是真的没有半开着的文档/工作簿 ——
+// 直接问两个应用实例，而不是信工具自己的 getOpenDocuments。
+// 注意正则闸门（要求纯数字）：com() 读失败返回空串，Number('') === 0 会让断言**假通过**。
+import { com } from './lib/oracle.mjs';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -307,6 +312,12 @@ check('encrypted .xlsx returns instead of hanging', !!lockedExcel.res, 'returned
 check('encrypted .xlsx fails', !ok(lockedExcel.res), lockedExcelText.replace(/\s+/g, ' ').slice(0, 110));
 check('encrypted .xlsx explains the password and the next step', /密码|加密/.test(lockedExcelText) && /另存为/.test(lockedExcelText), lockedExcelText.replace(/\s+/g, ' ').slice(0, 150));
 check('encrypted .xlsx fails inside the timeout budget', lockedExcel.elapsed < 20000, lockedExcel.elapsed + 'ms');
+
+// ---- 独立 oracle：裸 COM 核对“加密失败”之后没有半开着的文档/工作簿 ----
+const rawDocs = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application'); [int]$w.Documents.Count")).trim();
+const rawWbs = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); [int]$w.Workbooks.Count")).trim();
+check('raw COM says no Word document was left half-open by the encrypted failure', /^\d+$/.test(rawDocs) && Number(rawDocs) === 0, 'raw=' + JSON.stringify(rawDocs));
+check('raw COM says no workbook was left half-open by the encrypted failure', /^\d+$/.test(rawWbs) && Number(rawWbs) === 0, 'raw=' + JSON.stringify(rawWbs));
 
 // The real proof that nothing is left blocking: the host answers a fresh call afterwards.
 const after = await call('wps_common_ping', {}, 20000);

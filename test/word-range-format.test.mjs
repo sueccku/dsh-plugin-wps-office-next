@@ -112,23 +112,80 @@ check("insert_text reports the paragraph it landed in", /所在段落: 第 2 段
 const styled = await call("wps_word_insert_text", { text: "HEAD-B", position: "end", new_paragraph: true, style: "标题 3" });
 const afterStyle = probe();
 check("style landed on the last (new) paragraph", afterStyle.styles[lastIndex(afterStyle)] === "标题 3", "styles=" + JSON.stringify(afterStyle.styles));
-check("earlier paragraphs kept their style", afterStyle.styles[0] === "正文", "styles=" + JSON.stringify(afterStyle.styles));
+// FIXES 92（P5）：这条以前只断言 styles[0] —— 而缺陷污染的恰恰是**紧邻的上一段**，所以漏了过去。
+// 现在断言"此前已存在的**每一段**都没变"，这才抓得住。
+check("every earlier paragraph kept its style", (afterStyle.styles || []).slice(0, -1).every((s) => s === "正文"), "styles=" + JSON.stringify(afterStyle.styles));
 check("insert_text names the paragraph it styled", /第 \d+ 段/.test(text(styled)), text(styled).replace(/\s+/g, " ").slice(-90));
 
+// ---- FIXES 92（P5）：样式只许落在**刚插入的那一段** --------------------------------------------
+// 旧行为：start / end 分支插入的是 "\r" + 文本，样式范围的起点正好是那个**前导段落标记**，
+// 而段落标记决定整段样式 —— 于是**上一段被一起染成标题**（并因此混进自动生成的目录），全程无警告。
+// 这里插入一段带样式的文本，断言**此前所有段落一个都没变**。
+const beforeP5 = probe();
+const p5Insert = await call("wps_word_insert_text", { text: "P5-" + Date.now(), position: "end", new_paragraph: true, style: "标题 3" });
+const afterP5 = probe();
+check("P5: a styled insert leaves every earlier paragraph untouched",
+  JSON.stringify((afterP5.styles || []).slice(0, -1)) === JSON.stringify(beforeP5.styles || []),
+  "before=" + JSON.stringify(beforeP5.styles) + " after=" + JSON.stringify(afterP5.styles));
+check("P5: the style did land on the newly inserted paragraph",
+  afterP5.styles[lastIndex(afterP5)] === "标题 3", "styles=" + JSON.stringify(afterP5.styles));
+
+// ---- FIXES 92（P7）：文本重复时"所在段落"也要报对 ----------------------------------------------
+// 旧行为按 Content.Text.IndexOf 找**第一处**匹配：插入的文本若与前面某段重复，回报的段号就是旧的那一段
+// （实测新段在第 4 段却报第 2 段）。这里故意用**完全相同的文本**制造重复。
+const dupMarker = "DUP-" + Date.now();
+await call("wps_word_insert_text", { text: dupMarker, position: "end", new_paragraph: true });
+await call("wps_word_insert_text", { text: "MID-" + Date.now(), position: "end", new_paragraph: true });
+const beforeDup = probe();
+const dupStyled = await call("wps_word_insert_text", { text: dupMarker, position: "end", new_paragraph: true, style: "标题 3" });
+const afterDup = probe();
+const dupParagraph = beforeDup.paragraphs + 1;
+check("P7: the reported paragraph is the one just inserted, not an earlier duplicate",
+  new RegExp("所在段落: 第 " + dupParagraph + " 段").test(text(dupStyled)),
+  "expected 第 " + dupParagraph + " 段, got: " + text(dupStyled).replace(/\s+/g, " ").slice(-90));
+check("P7: the duplicate-text insert still leaves earlier paragraphs untouched",
+  JSON.stringify((afterDup.styles || []).slice(0, -1)) === JSON.stringify(beforeDup.styles || []),
+  "before=" + JSON.stringify(beforeDup.styles) + " after=" + JSON.stringify(afterDup.styles));
+
+// ---- FIXES 92（P6）：insert_text 的 style 也要过英文别名翻译（与 apply_style 对齐） --------------
+// 旧行为把 "Heading 2" 原样发给 WPS（中文样式表里没有英文名）→ E_FAIL，段落停在"正文"，
+// 而 apply_style 早就翻译了 —— 同一个概念两个工具行为不一致。
+const englishInsert = await call("wps_word_insert_text", { text: "ENG-" + Date.now(), position: "end", new_paragraph: true, style: "Heading 2" });
+const afterEnglishInsert = probe();
+check("P6: insert_text accepts an english style alias", ok(englishInsert), text(englishInsert).replace(/\s+/g, " ").slice(0, 120));
+check("P6: the english alias really applied 标题 2",
+  afterEnglishInsert.styles[lastIndex(afterEnglishInsert)] === "标题 2", "styles=" + JSON.stringify(afterEnglishInsert.styles));
+check("P6: the report names both the input and the style that was used",
+  /原输入 Heading 2/.test(text(englishInsert)), text(englishInsert).replace(/\s+/g, " ").slice(0, 130));
+
 // ---- B4：applyStyle 如实回报被扩张到的段落 -----------------------------------------------------
+// FIXES 93（W1-1）：这条以前只断言 styles[0] —— 正是 P5 漏过去的形状（缺陷打的是相邻元素）。
+// 现在改成"**只有**目标段变了"：先取插入前快照，再逐段比对。
+const beforeApply = probe();
 const applied = await call("wps_word_apply_style", { styleName: "标题 1", range: { start: 0, end: 3 } });
 const afterApply = probe();
 check("apply_style reports the affected paragraphs", /影响的段落: 第 1 段/.test(text(applied)), text(applied).replace(/\s+/g, " ").slice(-90));
 check("apply_style's affectedText is a pre-write snapshot", /XXX/.test(text(applied)), text(applied).replace(/\s+/g, " ").slice(0, 110));
-check("apply_style really restyled paragraph 1", afterApply.styles[0] === "标题 1", "styles=" + JSON.stringify(afterApply.styles));
+check(
+  "apply_style restyled paragraph 1 and left every other paragraph alone",
+  afterApply.styles[0] === "标题 1" &&
+    JSON.stringify(afterApply.styles.slice(1)) === JSON.stringify(beforeApply.styles.slice(1)),
+  "before=" + JSON.stringify(beforeApply.styles) + " after=" + JSON.stringify(afterApply.styles)
+);
 
 // ---- L2（FIXES 88）：英文样式名要能翻译成中文内置名 --------------------------------------------
 // 中文 WPS 的样式表里没有英文名（实测 NameInternational 全空、Item("Heading 1") 直接抛错），旧版把
 // "Heading 2" 原样发给 WPS 就吃 E_FAIL；现在工具层先翻译再发。
+const beforeEnglish = probe();
 const englishStyle = await call("wps_word_apply_style", { styleName: "Heading 2", range: { start: 0, end: 3 } });
 const afterEnglish = probe();
 check("english style alias is accepted", ok(englishStyle), text(englishStyle).replace(/\s+/g, " ").slice(0, 90));
-check("the english alias really applied 标题 2", afterEnglish.styles[0] === "标题 2", "styles=" + JSON.stringify(afterEnglish.styles));
+check(
+  "the english alias applied 标题 2 to paragraph 1 and left the rest alone",
+  afterEnglish.styles[0] === "标题 2" &&
+    JSON.stringify(afterEnglish.styles.slice(1)) === JSON.stringify(beforeEnglish.styles.slice(1)),
+  "before=" + JSON.stringify(beforeEnglish.styles) + " after=" + JSON.stringify(afterEnglish.styles)
+);
 const bogusStyle = await call("wps_word_apply_style", { styleName: "No Such Style 123", range: { start: 0, end: 3 } });
 const bogusText = text(bogusStyle);
 check("a style that does not exist fails loudly", !ok(bogusStyle), bogusText.replace(/\s+/g, " ").slice(0, 80));
@@ -212,7 +269,11 @@ if (locateMatch) {
 const styleAll = await call("wps_word_apply_style", { styleName: "正文", range: "all" });
 check("apply_style accepts range: \"all\" like set_font does", ok(styleAll), text(styleAll).replace(/\s+/g, " ").slice(0, 100));
 const allApplied = probe();
-check("range: \"all\" really touched every paragraph", (allApplied.styles || []).length > 0 && (allApplied.styles || []).every((s) => s === "正文"), JSON.stringify((allApplied.styles || []).slice(0, 6)));
+check(
+  "range: \"all\" really touched every paragraph",
+  (allApplied.styles || []).length === allApplied.paragraphs && (allApplied.styles || []).every((s) => s === "正文"),
+  "paragraphs=" + allApplied.paragraphs + " styles=" + JSON.stringify((allApplied.styles || []).slice(0, 6))
+);
 // ---- D18-C：get_paragraphs 现在给出可用的字符坐标 ----------------------------------------------
 const paras = text(await call("wps_word_get_paragraphs", {}));
 check("get_paragraphs prints character offsets", /@\d+-\d+/.test(paras), paras.replace(/\s+/g, " ").slice(0, 110));

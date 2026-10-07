@@ -2,6 +2,11 @@
 // sheet info / autofit x3 / wrap text / find-with-locations / named ranges read+delete.
 // Run: node test/excel-missing-halves.test.mjs
 import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+// FIXES 95（W1-4）：命名区域的 set/delete 都只走插件自己的 get_named_ranges。
+// 补一对**以文件为准**的核对：定义的名字真的写进了工作簿 XML，删除后**真的不在**了
+// （"删掉了"如果只删了内存副本，用户下次打开文件会看到那个名字还在）。
+import { zipScan } from './lib/oracle.mjs';
 
 const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 let buf = '';
@@ -47,9 +52,19 @@ check('find_in_sheet reports a miss clearly', textOf(await call('wps_excel_find_
 check('named range set (existing tool)', ok(await viaCall('wps_excel_set_named_range', { name: '测试范围', range: 'A1:B2' })), '');
 const names = textOf(await call('wps_excel_get_named_ranges', {}));
 check('get_named_ranges lists it', names.includes('测试范围'), names.replace(/\n/g, ' | ').slice(0, 100));
+// ---- 独立 oracle ①：名字真的写进了文件 ----
+const MH1 = resolve('test/.artifacts/missing-halves-defined.xlsx');
+await viaCall('wps_common_save_as', { outputPath: MH1, format: 'xlsx' });
+const nameBefore = zipScan(MH1, '测试范围', 'xl/');
+check('the named range really landed in the file', !!nameBefore && nameBefore.count >= 1, JSON.stringify(nameBefore));
 check('delete_named_range succeeds', ok(await call('wps_excel_delete_named_range', { name: '测试范围' })), '');
 const after = textOf(await call('wps_excel_get_named_ranges', {}));
 check('the deleted name is gone', !after.includes('测试范围'), after.replace(/\n/g, ' | ').slice(0, 100));
+// ---- 独立 oracle ②：删除后文件里**真的没有**这个名字了 ----
+const MH2 = resolve('test/.artifacts/missing-halves-deleted.xlsx');
+await viaCall('wps_common_save_as', { outputPath: MH2, format: 'xlsx' });
+const nameAfter = zipScan(MH2, '测试范围', 'xl/');
+check('the deleted name is really gone from the file', !!nameAfter && nameAfter.count === 0, JSON.stringify(nameAfter));
 
 await viaCall('wps_excel_close_workbook', { save: false });
 const open = textOf(await call('wps_excel_get_open_workbooks', {}));

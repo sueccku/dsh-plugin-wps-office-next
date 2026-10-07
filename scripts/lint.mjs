@@ -40,12 +40,19 @@ function textFiles() {
 const files = textFiles();
 
 // 1) 手写 PowerShell 的字节约定（生成物 host/wps-actions.ps1 由 CI 对账，不在此列）
-for (const entry of [['mcp/scripts/wps-com.ps1', false], ['host/wps-com-host.ps1', true]]) {
-  const rel = entry[0]; const wantBom = entry[1];
+// FIXES 92（P8）：scripts/run-tests.ps1 原先**含中文却不带 BOM**，而 Windows PowerShell 5.1 会把无 BOM 的
+// 文件按 ANSI/GBK 读 —— 实测中文注释把紧随其后的那条语句（$summaryRows = @()）整个吞掉：于是第一次
+// `$null += [ordered]@{...}` 把变量变成了字典，第二次 `+=` 就抛「Item has already been added」，
+// test/summary.json 的 perFile 只剩第一个文件那一行（48 行丢 47 行），而 totals 是另一条累加所以看着正常。
+// 补上 BOM 后立刻恢复。教训：**含非 ASCII 的手写 .ps1 必须带 BOM**，这份清单不能只列两个文件。
+// 每条 = [路径, 是否要 BOM, 是否要 CRLF]。\`scripts/*.ps1\` 按本目录既有约定是 **LF**
+// （\`build-host-actions.ps1\` 也是 LF，且 \`.gitattributes\` 写着 \`* -text\`「never rewrite line endings」），
+// 所以对它**只强制 BOM**，不动行尾；host/ 与 mcp/scripts/ 下的是 CRLF。
+for (const [rel, wantBom, wantCrlf] of [['mcp/scripts/wps-com.ps1', false, true], ['host/wps-com-host.ps1', true, true], ['scripts/run-tests.ps1', true, false]]) {
   const buf = readFileSync(join(ROOT, rel));
   const hasBom = buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf;
   if (hasBom !== wantBom) bad('ps1-bom', join(ROOT, rel), 'BOM=' + hasBom + ' 期望 ' + wantBom);
-  if (/[^\r]\n/.test(buf.toString('utf8'))) bad('ps1-crlf', join(ROOT, rel), '存在裸 LF');
+  if (wantCrlf && /[^\r]\n/.test(buf.toString('utf8'))) bad('ps1-crlf', join(ROOT, rel), '存在裸 LF');
 }
 
 // 2) 文本文件里不许有制表符、不许行尾空白、必须以换行结尾

@@ -7,9 +7,6 @@
  * 这个设计遵循OCP原则：扩展开放，修改关闭
  */
 import { ToolDefinition, ToolHandler, RegisteredTool, ToolCallRequest, ToolCallResult, ToolCategory, ListToolsResponse } from '../types/tools';
-/**
- * Tool注册表 - 单例模式，全局唯一
- */
 export declare class ToolRegistry {
     private static instance;
     private readonly tools;

@@ -40,9 +40,19 @@ export declare const evaluateFormulaHandler: (args: Record<string, unknown>) => 
         type: "text";
         text: string;
     }[];
+    error: string | undefined;
+} | {
+    id: string;
+    success: boolean;
+    content: {
+        type: "text";
+        text: string;
+    }[];
+    error?: undefined;
 }>;
 export declare const setPrintAreaDefinition: ToolDefinition;
 export declare const setPrintAreaHandler: (args: Record<string, unknown>) => Promise<{
+    error?: string | undefined;
     id: string;
     success: boolean;
     content: {

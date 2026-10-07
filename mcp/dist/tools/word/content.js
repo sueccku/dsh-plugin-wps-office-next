@@ -25,6 +25,7 @@ const uuid_1 = require("uuid");
 const tools_1 = require("../../types/tools");
 const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
+const style_names_1 = require("./style-names");
 /**
  * 插入文本到文档
  * 可以在光标位置、文档开头或结尾插入文本
@@ -76,10 +77,14 @@ const insertTextHandler = async (args) => {
         // FIXES 86：这里以前用 text + '\n' 冒充"新起一段"，而桥又把 new_paragraph 从白名单里丢掉 ——
         // 结果是"文本并进上一段 + 多出一个空段"，且没有任何提示。现在把开关如实传给桥，由桥用
         // InsertParagraphAfter 产生真正的段落标记，样式也只施加在刚插入的文本上。
+        // FIXES 92（P6）：style 以前原样发给桥，而 WPS 12.1 中文版的样式表里**没有英文名** ——
+        // "Heading 2" 会直接吃 E_FAIL（apply_style 早就翻译了，两个工具对同一个概念行为不一致）。
+        // 这里与 apply_style 对齐：先过 resolveStyleName，再把解析后的名字喂桥。
+        const resolvedStyle = style ? (0, style_names_1.resolveStyleName)(style) : undefined;
         const response = await wps_client_1.wpsClient.executeMethod('insertText', {
             text,
             position: position || 'cursor',
-            style,
+            style: resolvedStyle?.name,
             new_paragraph: new_paragraph === true,
         }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
@@ -93,8 +98,12 @@ const insertTextHandler = async (args) => {
             }
             if (typeof d.affectedParagraph === 'number')
                 lines.push(`所在段落: 第 ${d.affectedParagraph} 段`);
-            if (style)
-                lines.push(`应用样式: ${style}${typeof d.affectedParagraph === 'number' ? `（作用在第 ${d.affectedParagraph} 段）` : ''}`);
+            if (style) {
+                // 回报桥实际用的名字（已翻译）；原输入是英文别名时一并给出，便于对照。
+                const appliedStyle = d.style || resolvedStyle?.name || style;
+                const originNote = appliedStyle !== style ? `（原输入 ${style}）` : '';
+                lines.push(`应用样式: ${appliedStyle}${originNote}${typeof d.affectedParagraph === 'number' ? `（作用在第 ${d.affectedParagraph} 段）` : ''}`);
+            }
             if (new_paragraph === true) {
                 lines.push(d.newParagraph ? '已新起一段' : '注意：请求了新起一段但桥未确认，段落可能没有分开');
             }
@@ -320,13 +329,29 @@ exports.insertTableHandler = insertTableHandler;
  */
 exports.setParagraphDefinition = {
     name: 'wps_word_set_paragraph',
-    description: '设置当前段落格式（对齐方式、行间距等）',
+    // FIXES 94（W6-1）：桥本来就支持 8 个属性，但广告面只暴露了 2 个 —— 段前/段后间距与三种缩进
+    // 对模型**完全不可见**（模型不可能去猜没写在 schema 里的参数名）。
+    description: `设置段落格式：对齐方式、行间距、段前/段后间距、缩进。
+
+使用场景：
+- "把这段设成居中"
+- "行距改成 1.5 倍"
+- "首行缩进 2 个字符"
+
+作用范围默认是**当前选区所在的段落**；也可以用 range 指定字符范围（坐标从 wps_word_get_paragraphs 取）或 "all"（整篇）。
+至少要给一个要设置的属性 —— 一个都不给会明确报错，而不是假装成功。`,
     category: tools_1.ToolCategory.DOCUMENT,
     inputSchema: {
         type: 'object',
         properties: {
-            alignment: { type: 'string', description: '对齐方式: left/center/right/justify' },
-            lineSpacing: { type: 'number', description: '行间距倍数，如1.5、2' },
+            alignment: { type: 'string', enum: ['left', 'center', 'right', 'justify'], description: '对齐方式：left / center / right / justify（其它值会被拒绝）' },
+            lineSpacing: { type: 'number', description: '行间距倍数（正数），如 1.5、2' },
+            spaceBefore: { type: 'number', description: '段前间距（磅）' },
+            spaceAfter: { type: 'number', description: '段后间距（磅）' },
+            firstLineIndent: { type: 'number', description: '首行缩进（字符数，如 2 表示缩进 2 个字符）' },
+            leftIndent: { type: 'number', description: '左缩进（字符数）' },
+            rightIndent: { type: 'number', description: '右缩进（字符数）' },
+            range: { type: ['object', 'string'], description: '作用范围：{start,end}（0 基字符偏移、end 不含）或 "all"（整篇）；不填 = 当前选区所在的段落' },
         },
     },
 };
@@ -335,10 +360,13 @@ const setParagraphHandler = async (args) => {
     try {
         const response = await wps_client_1.wpsClient.executeMethod('setParagraph', params, wps_1.WpsAppType.WRITER);
         if (response.success) {
+            // FIXES 94（W6-1）：回报**实际设置了哪些属性** —— 只说"已设置"无法让调用方判断有没有落空。
+            const applied = response.data?.applied;
+            const text = applied && applied.length ? `段落格式已设置：${applied.join('、')}` : '段落格式已设置';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [{ type: 'text', text: '段落格式已设置' }],
+                content: [{ type: 'text', text }],
             };
         }
         return {

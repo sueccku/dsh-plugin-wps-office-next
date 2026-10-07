@@ -18,7 +18,8 @@ try {
   const noSheet = await comHost.invoke("getRangeData", { range: "A1:B2" });
   check("read_range without sheet", noSheet.success === true, JSON.stringify(noSheet).slice(0, 140));
   const d1 = noSheet.data && noSheet.data.data;
-  check("2D shape is rows x cols", Array.isArray(d1) && d1.length === 2 && Array.isArray(d1[0]) && d1[0].length === 2, JSON.stringify(d1));
+  // FIXES 93（W1-1）：以前只查 d1[0].length —— 第 2..n 行宽度错了不会红。现在逐行查。
+check("2D shape is rows x cols", Array.isArray(d1) && d1.length === 2 && d1.every((r) => Array.isArray(r) && r.length === 2), JSON.stringify(d1));
   check("values round-trip", JSON.stringify(d1) === JSON.stringify([[11, 22], [33, 44]]), JSON.stringify(d1));
 
   const withSheet = await comHost.invoke("getRangeData", { sheet: 1, range: "A1:B2" });
@@ -47,9 +48,10 @@ try {
   const big = await comHost.invoke("getRangeData", { range: address });
   const ms = Date.now() - t0;
   const db = big.data && big.data.data;
-  check("read " + (rows * cols) + " cells in one call", big.success === true && db.length === rows && db[0].length === cols, ms + "ms");
+  check("read " + (rows * cols) + " cells in one call", big.success === true && db.length === rows && db.every((r) => Array.isArray(r) && r.length === cols), ms + "ms");
   check("large read under 2s", ms < 2000, ms + "ms  (cell-by-cell would be ~" + (rows * cols) + " COM round trips)");
-  check("large read values intact", db[rows - 1][cols - 1] === rows * cols - 1, "last=" + db[rows - 1][cols - 1]);
+  // FIXES 93（W1-2）：以前只看最后一个格子 —— 中间任何一格错了都不会红。现在整块逐格比对。
+check("large read values intact", JSON.stringify(db) === JSON.stringify(block), "first mismatch at " + (() => { for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (db[r][c] !== block[r][c]) return "r" + r + "c" + c + " got " + db[r][c] + " want " + block[r][c]; return "none"; })());
 } finally {
   await comHost.invoke("closeWorkbook", { saveChanges: false });
 }

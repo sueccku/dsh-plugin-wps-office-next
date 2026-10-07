@@ -3,6 +3,10 @@
 // Needs a real WPS installation. Run: node test/range-limits.test.mjs
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+// FIXES 95（W1-4）：这个文件验证预算拒绝，本身合理，但漏了一种最坏情况：
+// **拒绝 ≠ 没动手**。如果预算检查在真正清理之后才触发，数据就没了，而错误文案照样漂亮。
+// 所以被拒的 clean_data 之后必须逐格确认数据还在（comGrid 失败返回 null，用 !! 挡住假通过）。
+import { comGrid } from './lib/oracle.mjs';
 
 const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 let buf = '';
@@ -40,6 +44,10 @@ check('and keeps the 2D shape after the preallocation change', /1 \| 2 \| 3/.tes
 // ---- per-cell budget (clean_data) --------------------------------------------------------------------
 const clean = await call('wps_excel_clean_data', { range: 'A:A', operations: ['trim'] });
 check('cleaning a whole column is refused', clean.isErr && /范围太大/.test(clean.text) && /20000/.test(clean.text), clean.ms + 'ms ' + clean.text.slice(0, 120));
+
+// ---- 独立 oracle：被拒绝的 clean_data 必须什么都没做 ----
+const afterClean = comGrid('A1:C2', 'Sheet1');
+check('the refused clean_data left the data untouched', !!afterClean && JSON.stringify(afterClean) === JSON.stringify([['1', '2', '3'], ['4', '5', '6']]), JSON.stringify(afterClean));
 
 // ---- scan budget must not block ordinary searches ---------------------------------------------------
 const find = await call('wps_excel_find_in_sheet', { searchText: 'zzz-no-such-value' });

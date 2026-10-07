@@ -3,6 +3,10 @@
 // resize, and unlist back to a plain range.
 // Run: node test/excel-list-object.test.mjs
 import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+// FIXES 95（W1-4）：这个文件全程只信插件自己的回报。现在在三个关键节点**存盘后用 openpyxl 读文件里的表定义**
+// （表名 / 范围 / 列名 / 表格样式），并在 unlist 之后确认文件里**真的不再有表**、而数据还在。
+import { xlsx, xlsxTables } from './lib/oracle.mjs';
 
 const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 let buf = '';
@@ -51,6 +55,16 @@ const added = textOf(addedRes);
 check('add_list_row appends and reports 4 rows', ok(addedRes) && /3 列 \/ 4 行/.test(added), added.replace(/\n/g, ' | ').slice(0, 120));
 const row5 = textOf(await viaCall('wps_excel_read_range', { range: 'A5:C5' }));
 check('the appended row really landed in the sheet', row5.includes('West') && row5.includes('40'), row5.replace(/\n/g, ' | ').slice(0, 90));
+
+// ---- 独立 oracle ①：建表 + 加行之后，读磁盘上的 xlsx ----
+const LO1 = resolve('test/.artifacts/list-object-1.xlsx');
+check('workbook saved for independent verification (1)', ok(await viaCall('wps_common_save_as', { outputPath: LO1, format: 'xlsx' })), '');
+const t1 = xlsxTables(LO1);
+check('oracle can read the table out of the file', !!t1 && !!t1.Sales, JSON.stringify(Object.keys(t1 || {})));
+if (t1 && t1.Sales) {
+  check('file says the table spans A1:C5 after the append', String(t1.Sales.ref).replace(/\$/g, '') === 'A1:C5', JSON.stringify(t1.Sales.ref));
+  check('file says the columns are the header row', JSON.stringify(t1.Sales.columns) === JSON.stringify(['Region', 'Product', 'Amount']), JSON.stringify(t1.Sales.columns));
+}
 const missingTableRes = await call('wps_excel_add_list_row', { table: 'Nope', values: ['x'] });
 check('add_list_row on a missing table is rejected', !ok(missingTableRes), '');
 
@@ -86,12 +100,30 @@ check('resize_list_object grows the table', ok(resizedRes) && /3 列 \/ 5 行/.t
 const resizeNoRange = await call('wps_excel_resize_list_object', { table: 'SalesData' });
 check('resize_list_object without range is rejected', !ok(resizeNoRange), '');
 
+// ---- 独立 oracle ②：改名 + 调整范围 + 样式之后，文件里到底是什么 ----
+const LO2 = resolve('test/.artifacts/list-object-2.xlsx');
+check('workbook saved for independent verification (2)', ok(await viaCall('wps_common_save_as', { outputPath: LO2, format: 'xlsx' })), '');
+const t2 = xlsxTables(LO2);
+check('file says the table was renamed (old name gone)', !!t2 && !!t2.SalesData && !t2.Sales, JSON.stringify(Object.keys(t2 || {})));
+if (t2 && t2.SalesData) {
+  check('file says the table now spans A1:C6', String(t2.SalesData.ref).replace(/\$/g, '') === 'A1:C6', JSON.stringify(t2.SalesData.ref));
+  check('file carries the applied table style', /TableStyleMedium2/.test(String(t2.SalesData.style)), JSON.stringify(t2.SalesData.style));
+}
+
 const unlistedRes = await call('wps_excel_unlist_list_object', { table: 'SalesData' });
 check('unlist_list_object converts back to a range', ok(unlistedRes) && textOf(unlistedRes).includes('转回普通区域'), textOf(unlistedRes).replace(/\n/g, ' | ').slice(0, 130));
 const afterRes = await call('wps_excel_get_list_objects', {});
 check('no table remains after unlist', textOf(afterRes).includes('没有表'), textOf(afterRes).replace(/\n/g, ' | ').slice(0, 90));
 const kept = textOf(await viaCall('wps_excel_read_range', { range: 'A1:C4' }));
 check('unlist kept the data', kept.includes('East') && kept.includes('West'), kept.replace(/\n/g, ' | ').slice(0, 110));
+
+// ---- 独立 oracle ③：转回区域之后 —— 文件里**真的不再有表**，而数据一格不少 ----
+const LO3 = resolve('test/.artifacts/list-object-3.xlsx');
+check('workbook saved for independent verification (3)', ok(await viaCall('wps_common_save_as', { outputPath: LO3, format: 'xlsx' })), '');
+const t3 = xlsxTables(LO3);
+check('file says no table remains after unlist', !!t3 && Object.keys(t3).length === 0, JSON.stringify(t3));
+const v3 = xlsx(LO3, 'A1:C4');
+check('file still carries the data after unlist', !!v3 && JSON.stringify(v3.values).includes('East') && JSON.stringify(v3.values).includes('West'), JSON.stringify(v3 && v3.values));
 
 await viaCall('wps_excel_close_workbook', { save: false });
 const open = textOf(await call('wps_excel_get_open_workbooks', {}));

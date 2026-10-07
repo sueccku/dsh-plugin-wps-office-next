@@ -91,11 +91,28 @@ function Test-ProcessAlive($processId) {
     try { return $null -ne (Get-Process -Id ([int]$processId) -ErrorAction SilentlyContinue) } catch { return $false }
 }
 
+# FIXES 96（W5-1）：**PID 会被复用** —— 只看"这个进程号在不在进程表里"，会把早就死掉的宿主判成"还活着"，
+# 于是新宿主永远拒绝接管，报「检测到另一个 DSH 会话正在控制 WPS」，而其实一个宿主都没有。
+# 实测：租约里 hostPid=41592，系统里 **0 个** wps-com-host.ps1 进程 —— 那个号已被无关进程占用；
+# 用户除了手工删 %USERPROFILE%\.wps-office-mcp\com-host.json 之外没有别的办法。
+# 租约里本来就记着宿主的启动时刻（startedUtc），拿它核对身份即可分辨复用。
+function Test-OwnerAlive($processId, $startedUtc) {
+    if (-not (Test-ProcessAlive $processId)) { return $false }
+    if ([string]::IsNullOrEmpty($startedUtc)) { return $true }   # 旧租约没这一项：退回只看 PID
+    try {
+        $proc = Get-Process -Id ([int]$processId) -ErrorAction Stop
+        $actual = $proc.StartTime.ToUniversalTime()
+        $recorded = ([datetime]::Parse([string]$startedUtc)).ToUniversalTime()
+        # 允许 2 秒误差：记录的时刻是宿主自己取的，与进程表里的 StartTime 可能有亚秒级差异。
+        return ([math]::Abs(($actual - $recorded).TotalSeconds) -lt 2)
+    } catch { return $false }
+}
+
 function Get-StaleOwnerReason {
     # $null means "the owner looks alive" - the newcomer must refuse.
     $state = Read-HostState
     if ($null -eq $state) { return 'the lease file is missing or unreadable' }
-    if (-not (Test-ProcessAlive $state.hostPid)) { return 'the owning host process is gone' }
+    if (-not (Test-OwnerAlive $state.hostPid $state.startedUtc)) { return 'the owning host process is gone (or its pid was reused by an unrelated process)' }
     if ([int]$state.clientPid -gt 0 -and -not (Test-ProcessAlive $state.clientPid)) { return 'the DSH/MCP client that owned it is gone' }
     $age = 99999
     try { $age = ((Get-Date).ToUniversalTime() - ([datetime]::Parse([string]$state.updatedUtc)).ToUniversalTime()).TotalSeconds } catch { $age = 99999 }
@@ -114,7 +131,9 @@ function Acquire-HostMutex {
     $reason = Get-StaleOwnerReason
     if ($null -eq $reason) { return $null }
     $state = Read-HostState
-    if ($null -ne $state -and (Test-ProcessAlive $state.hostPid)) {
+    # FIXES 96（W5-1）：必须用**身份核对**而不是"PID 还在"来决定要不要杀 —— 否则一个被复用的 PID
+    # 会让新宿主去 Stop-Process 一个毫不相干的进程。
+    if ($null -ne $state -and (Test-OwnerAlive $state.hostPid $state.startedUtc)) {
         # Only the stale host is stopped. WPS itself is never killed: its documents may hold
         # unsaved work that nobody asked this plugin to throw away.
         try { Stop-Process -Id ([int]$state.hostPid) -Force -ErrorAction SilentlyContinue } catch { }
@@ -130,7 +149,8 @@ if ($null -eq $script:HostMutex) {
     if ($null -ne $state -and $state.hostPid) { $holder = '（占用者 hostPid=' + [string]$state.hostPid + '，clientPid=' + [string]$state.clientPid + '，最近动作：' + [string]$state.lastAction + '）' }
     $message = '检测到另一个 DSH 会话或自动化程序正在控制 WPS：本插件同一时间只允许一个宿主，' +
         '以免两个会话交叉操作同一个 WPS 实例（表现为「莫名其妙卡住」）。' +
-        '请先关闭那个会话或结束它的 WPS 操作，然后重试。' + $holder
+        '请先关闭那个会话或结束它的 WPS 操作，然后重试。' + $holder +
+        '（FIXES 96：如果确认没有别的会话在用 WPS，删掉 ' + $script:StateFile + ' 再重试即可。）'
     try { Write-Frame ((@{ ready = $false; protocol = 1; error = $message } | ConvertTo-Json -Compress)) } catch { Write-Frame '{"ready":false,"protocol":1,"error":"another COM host is already running"}' }
     exit 1
 }
@@ -150,13 +170,25 @@ if ($psMajor -ne 5) {
     exit 1
 }
 
-Write-Frame ('{"ready":true,"pid":' + $PID + ',"clientPid":' + $script:ClientPid + ',"protocol":1,"psVersion":"' + $psVersion + '","actions":"wps-actions.ps1"}')
-Update-HostState 'idle'
-
+# FIXES 102（A4 定性）：**ready 必须等回收做完再发**。
+# 以前这里是「先发 ready，再回收」——而回收里全是针对遗留 WPS 的 COM 调用
+# （GetActiveObject / Test-WpsAppUsable / Test-WpsAppHasUnsavedWork / Quit），这条路上**没有任何超时**。
+# 后果（实测复现）：
+#   ① 客户端看到 ready 就以为宿主可用（它的 30 秒启动兜底**在这一刻就满足了**）；
+#   ② 客户端紧接着发的第一个请求排在管道里 —— 宿主此时还没进主循环，根本不读 stdin；
+#   ③ 如果那个遗留实例正卡在模态对话框/繁忙状态（本项目一直在防的失效模式），COM 会一直等，
+#      于是**第一个请求永远得不到响应**。param-contract 的 2 小时挂起就是这么来的（它有 invoke 无超时）。
+# 顺序证据：在"响应到达的那一刻"检查回收记录文件 —— 已经被 Clear-WpsOwnedApps 删掉了，
+# 说明响应确实排在回收之后（详见 docs/FIXES.md 102）。
+# 把 ready 挪到回收之后：客户端等待的是"宿主真正可用"，卡住时会由它的启动超时报出来，而不是无限等。
+#
 # FIXES 66: a predecessor that was force-killed (FIXES 65) left WPS instances behind. Now that this
 # host holds the lease, reclaim them - unless the recorded owner is still alive, or a document holds
 # unsaved work. One file probe when there is nothing to reclaim.
 try { $null = Invoke-WpsOrphanReclaim } catch { }
+
+Write-Frame ('{"ready":true,"pid":' + $PID + ',"clientPid":' + $script:ClientPid + ',"protocol":1,"psVersion":"' + $psVersion + '","actions":"wps-actions.ps1"}')
+Update-HostState 'idle'
 
 while ($true) {
     $line = [Console]::In.ReadLine()

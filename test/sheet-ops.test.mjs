@@ -30,18 +30,21 @@ const info = async (cell, sheet) => (payload(await viaAction("getCellInfo", { ce
 
 await viaAction("createWorkbook", {});
 check("workbook created", (await order()).length >= 1, (await order()).join(", "));
+// FIXES 93（W1-1）：记下默认表名，后面就能断言**整份**顺序，而不是只看第 0/2 个元素 ——
+// 只查一个下标的写法正是 P5 漏过去的形状（缺陷打的是相邻元素）。
+const defaultSheet = (await order())[0];
 
 const c0 = await call("wps_excel_create_sheet", { name: "Alpha", position: 0 });
 check("create_sheet at position 0", ok(c0), text(c0).replace(/\s+/g, " ").slice(0, 90));
-check("new sheet is first", (await order())[0] === "Alpha", (await order()).join(", "));
+check("new sheet is first (default sheet follows it)", JSON.stringify(await order()) === JSON.stringify(["Alpha", defaultSheet]), (await order()).join(", "));
 
 const c2 = await call("wps_excel_create_sheet", { name: "Beta", position: 2 });
 check("create_sheet at position 2", ok(c2), text(c2).replace(/\s+/g, " ").slice(0, 90));
-check("new sheet sits at index 2", (await order())[2] === "Beta", (await order()).join(", "));
+check("new sheet sits at index 2", JSON.stringify(await order()) === JSON.stringify(["Alpha", defaultSheet, "Beta"]), (await order()).join(", "));
 
 // The schema promises "append at the end" when position is omitted.
 const cDef = await call("wps_excel_create_sheet", { name: "Appended" });
-check("omitted position appends at the end", ok(cDef) && (await order())[(await order()).length - 1] === "Appended", (await order()).join(", "));
+check("omitted position appends at the end", ok(cDef) && JSON.stringify(await order()) === JSON.stringify(["Alpha", defaultSheet, "Beta", "Appended"]), (await order()).join(", "));
 
 const cNeg = await call("wps_excel_create_sheet", { name: "Nope", position: -3 });
 check("negative position is rejected", !ok(cNeg), text(cNeg).slice(0, 70));
@@ -52,7 +55,7 @@ check("renamed in place, old name gone", (await order()).includes("AlphaRenamed"
 
 const cp = await call("wps_excel_copy_sheet", { name: "AlphaRenamed", newName: "AlphaCopy", position: 0 });
 check("copy_sheet at position 0", ok(cp), text(cp).replace(/\s+/g, " ").slice(0, 80));
-check("copy is first and renamed", (await order())[0] === "AlphaCopy", (await order()).join(", "));
+check("copy is first and renamed", JSON.stringify(await order()) === JSON.stringify(["AlphaCopy", "AlphaRenamed", defaultSheet, "Beta", "Appended"]), (await order()).join(", "));
 check("copy left the source intact", (await order()).includes("AlphaRenamed"), (await order()).join(", "));
 
 const sw = await call("wps_excel_switch_sheet", { name: "Beta" });
@@ -60,7 +63,7 @@ check("switch_sheet activates the named sheet", ok(sw) && (await state()).active
 
 const mv = await call("wps_excel_move_sheet", { name: "Beta", position: 0 });
 check("move_sheet runs", ok(mv), text(mv).replace(/\s+/g, " ").slice(0, 80));
-check("moved sheet is now first", (await order())[0] === "Beta", (await order()).join(", "));
+check("moved sheet is now first", JSON.stringify(await order()) === JSON.stringify(["Beta", "AlphaCopy", "AlphaRenamed", defaultSheet, "Appended"]), (await order()).join(", "));
 
 // THE safety case: deleting one sheet must not touch a different (active) one
 await call("wps_excel_create_sheet", { name: "Victim", position: 0 });

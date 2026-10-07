@@ -8,7 +8,7 @@
 // This file needs no WPS and no mcp/dist build of the client - it drives host/wps-com-host.ps1
 // directly. Run: node test/host-lease.test.mjs
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -123,6 +123,32 @@ check('the stale owner was stopped', dExit !== null, 'exit=' + dExit);
 check('the takeover winner is the new host', Number(leaseOf()?.hostPid) === Number(readyE?.pid), 'recorded=' + leaseOf()?.hostPid + ' actual=' + readyE?.pid);
 await d.stop();
 await e.stop();
+
+// ---------------- a recycled pid must not look like a live owner (FIXES 96 / W5-1) ----------------
+// 真实故障：租约里的 hostPid 指向一个**早就死掉的宿主**，但那个进程号被无关进程复用了。
+// 只看"这个号在不在进程表里"就会判定占用者还活着 → 新宿主**永久拒绝接管**，
+// 报「检测到另一个 DSH 会话正在控制 WPS」，而系统里其实一个宿主都没有 —— 用户只能手工删租约文件。
+// 这里伪造一份租约：hostPid 用一个**活着的无关进程**（本测试 spawn 的），但 startedUtc 与它的真实
+// 启动时刻对不上；心跳给新的（所以"心跳过期"那条救不了场，必须靠身份核对分辨）。
+const impostor = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'ignore', windowsHide: true });
+await sleep(400);
+writeFileSync(STATE_FILE, JSON.stringify({
+  phase: 'idle',
+  hostPid: impostor.pid,
+  clientPid: process.pid,
+  startedUtc: '2020-01-01T00:00:00.0000000Z',
+  updatedUtc: new Date().toISOString(),
+  busySinceUtc: '',
+  lastAction: '',
+  lastMs: 0,
+}), 'utf8');
+
+const f = startHost(process.pid);
+const readyF = await f.ready();
+check('a recycled pid is not mistaken for a live owner', !!readyF && readyF.ready === true, JSON.stringify(readyF || {}).slice(0, 140));
+check('the unrelated process holding that pid was NOT killed', impostor.exitCode === null && impostor.signalCode === null, 'exitCode=' + impostor.exitCode + ' signal=' + impostor.signalCode);
+await f.stop();
+try { impostor.kill(); } catch { /* already gone */ }
 
 // ---------------- state file hygiene ----------------
 const finalLease = leaseOf();

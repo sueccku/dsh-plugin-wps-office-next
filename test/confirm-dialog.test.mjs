@@ -5,6 +5,11 @@
 // operations.md while a background watcher enumerates visible windows and records any whose class
 // starts with "Qt" (WPS renders its modal dialogs as Qt windows; document frames are XLMAIN/OpusApp/
 // PP12FrameClass). Passing children + zero recorded dialogs is the acceptance.
+//
+// FIXES 92（P1）：看门狗是**全机**枚举的，只按「类名以 Qt 开头」判定 —— 本机**微信**（Weixin.exe）的窗口
+// 类名正是 Qt51514QWindowIcon，与 WPS 对话框同类名前缀，于是这条断言在任何装了 Qt 应用的机器上**永远红**
+// （实测：窗口在看门狗启动后 25 ms 就被记账，早于任何场景开跑）。这里改用**基线**：只对"场景开跑之后
+// 新出现"的窗口做判定。注意不能反过来"看到 DIALOG 就忽略" —— 那会让看门狗失效伪装成没有弹框。
 // Run: node test/confirm-dialog.test.mjs   (needs WPS)
 import { spawn, spawnSync } from "node:child_process";
 import { writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
@@ -22,6 +27,8 @@ function check(name, ok, detail) { results.push({ name, ok }); console.log((ok ?
 const watcher = spawn("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", WATCHER, "-Log", LOG], { windowsHide: true, stdio: "ignore" });
 check("dialog watcher started", !!watcher.pid, "pid=" + watcher.pid);
 await new Promise((r) => setTimeout(r, 2500)); // let Add-Type compile before the first scenario
+// FIXES 92（P1）：场景开跑的时刻就是基线分界线 —— 早于它的 DIALOG 都是"开跑前就存在的"（如微信的窗口）。
+const scenariosStart = Date.now();
 
 // These three scenarios exercise all 25 destructive actions from the inventory.
 const SCENARIOS = [
@@ -41,9 +48,22 @@ await new Promise((r) => setTimeout(r, 1500));
 if (!watcher.killed) { try { watcher.kill(); } catch { /* already gone */ } }
 
 const log = existsSync(LOG) ? readFileSync(LOG, "utf8") : "";
-const dialogs = log.split(/\r?\n/).filter((l) => l.startsWith("DIALOG "));
+// 日志行形如 `DIALOG <ISO 时间> <类名>`。
+const dialogLines = log.split(/\r?\n/).filter((l) => l.startsWith("DIALOG "));
+const parsed = dialogLines.map((l) => ({ line: l, at: Date.parse(l.split(" ")[1] || "") }));
+// 时间戳解析不出来的行**不能**被当成"基线里的"而悄悄放过 —— 那会让"看门狗/日志格式坏了"伪装成"没有弹框"，
+// 所以单独断言（FIXES 92 / P1）。
+const unparsed = parsed.filter((d) => Number.isNaN(d.at));
+const observed = parsed.filter((d) => !Number.isNaN(d.at));
+const preexisting = observed.filter((d) => d.at < scenariosStart);
+const dialogs = observed.filter((d) => d.at >= scenariosStart);
 check("watcher reported a clean start", log.includes("watcher started"), "");
-check("no modal confirmation dialog appeared", dialogs.length === 0, dialogs.length ? dialogs.join(" | ") : "0 Qt windows seen while " + SCENARIOS.length + " scenarios ran");
+check(
+  "every DIALOG line carries a parseable timestamp",
+  unparsed.length === 0,
+  unparsed.length ? unparsed.map((d) => d.line).join(" | ") : dialogLines.length + " dialog line(s), all parseable"
+);
+check("no modal confirmation dialog appeared", dialogs.length === 0, (dialogs.length ? dialogs.map((d) => d.line).join(" | ") : "0 new Qt windows while " + SCENARIOS.length + " scenarios ran") + "（开跑前已存在、按基线忽略 " + preexisting.length + " 个）");
 
 rmSync(WATCHER, { force: true });
 rmSync(STOP, { force: true });

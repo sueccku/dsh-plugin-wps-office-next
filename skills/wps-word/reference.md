@@ -15,7 +15,7 @@
 | wps_word_insert_text | 直达 | 在Word文档中插入文本。 |
 | wps_word_find_replace | 直达 | 在Word文档中查找并替换文本。 |
 | wps_word_insert_table | wps_call | 在Word文档光标位置插入表格 |
-| wps_word_set_paragraph | 直达 | 设置当前段落格式（对齐方式、行间距等） |
+| wps_word_set_paragraph | 直达 | 设置段落格式：对齐方式、行间距、段前/段后间距、缩进。 |
 | wps_word_get_active_document | 直达 | 获取当前WPS Writer活动文档的基本信息 |
 | wps_word_insert_image | wps_call | 在Word文档中插入图片。 |
 | wps_word_insert_page_break | wps_call | 在文档光标位置插入分页符 |

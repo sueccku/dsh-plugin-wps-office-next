@@ -48,8 +48,10 @@ send({ jsonrpc: "2.0", method: "notifications/initialized" });
 
 const list = await req(2, "tools/list", {});
 const tools = (list.result && list.result.tools) || [];
-let bytes = 0;
-for (const t of tools) bytes += Buffer.byteLength(JSON.stringify(t), "utf8");
+// FIXES 92（P2）：量 tools/list 的**数组载荷**（含元素之间的逗号与两端方括号），与
+// scripts/lib/tool-face.mjs 的算法同源。以前是逐个 JSON.stringify 相加，比真实载荷少 n+1 字节
+// （84 个工具正好少 85），于是同一个工具面在 verify 与 gen-numbers 里有两个读数（46782 / 46867）。
+const bytes = Buffer.byteLength(JSON.stringify(tools), "utf8");
 const names = new Set(tools.map((t) => t.name));
 console.log("advertised tools=" + tools.length + " schemaBytes=" + bytes + " approxTokens=" + Math.round(bytes / 3.5));
 

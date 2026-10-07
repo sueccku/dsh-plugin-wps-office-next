@@ -48,6 +48,20 @@ check("well-formed call passes the guard", !shapeRejected(good), text(good).repl
 const missing = await call("wps_excel_read_range", {});
 check("missing required parameter keeps its own error", /Missing required parameter/.test(text(missing)) && !shapeRejected(missing), text(missing).replace(/\s+/g, " ").slice(0, 110));
 
+// ---- FIXES 99（W6-4）：未知参数**名**必须响亮拒绝，不能静默按默认值执行 ----
+// 在这条路径上，工具注册层是**唯一还看得见原始实参**的地方：handler 用显式解构拼参数，
+// 未知键在到达桥之前就被丢掉，桥的"未知键拒绝"永远看不见它。
+// 实证（W6-4）：`wps_excel_text_to_columns { range, sep }` 曾经不报错、按默认逗号执行，
+// 回报还写着「分隔符: ","」—— 调用方以为自己传的 sep 生效了。
+// 这三个断言在注册层就被拒，**不会走到 WPS**（所以本文件仍然是纯本地测试）。
+const unknownParam = await call("wps_excel_text_to_columns", { range: "A1:A2", sep: "," });
+check("an unknown parameter name is rejected instead of silently dropped", /未知参数/.test(text(unknownParam)) && /sep/.test(text(unknownParam)), text(unknownParam).slice(0, 140));
+check("the rejection lists the accepted parameter names", /delimiter/.test(text(unknownParam)), text(unknownParam).slice(0, 160));
+const nearMissParam = await call("wps_excel_text_to_columns", { range: "A1:A2", delimiter1: "," });
+check("a near-miss parameter name gets a suggestion", /是不是想传 delimiter/.test(text(nearMissParam)), text(nearMissParam).slice(0, 160));
+const declaredParam = await call("wps_help", { tool: "wps_excel_text_to_columns" });
+check("a declared parameter is not rejected by the guard", !/未知参数/.test(text(declaredParam)), text(declaredParam).slice(0, 110));
+
 child.kill();
 const failed = results.filter((r) => !r.ok).length;
 console.log(failed === 0 ? "ARG SHAPE TESTS OK (" + results.length + ")" : "ARG SHAPE TESTS FAILED (" + failed + "/" + results.length + ")");

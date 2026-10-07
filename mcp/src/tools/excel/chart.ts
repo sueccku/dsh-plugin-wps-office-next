@@ -525,7 +525,8 @@ export const exportChartAsImageDefinition: ToolDefinition = {
 
 注意：
 - outputPath 必须是绝对路径
-- chartName 通常为 "Chart 1"、"图表 1" 等，可通过 wps_excel_create_chart 返回值或界面查看
+- chartName 可以给**名字**（"Chart 1"、"图表 1"）或**序号**（从 1 开始）；整张表只有一张图时可以**省略**
+- 名字找不到时不会给一句裸 COM 报错，而是**列出这张表上现有的图表名**，照着重试即可
 - macOS 上建议输出到 ~/Downloads 等用户可写目录，避免沙箱权限拒绝`,
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
@@ -533,7 +534,7 @@ export const exportChartAsImageDefinition: ToolDefinition = {
     properties: {
       chartName: {
         type: 'string',
-        description: '图表名称（如 "Chart 1" 或 "图表 1"）',
+        description: '图表名称（如 "Chart 1"）或序号（从 1 开始）；整张表只有一张图时可省略，会在找不到时列出可选图表',
       },
       outputPath: {
         type: 'string',
@@ -549,7 +550,9 @@ export const exportChartAsImageDefinition: ToolDefinition = {
         description: '工作表名称，不填则使用当前活动工作表',
       },
     },
-    required: ['chartName', 'outputPath'],
+    // FIXES 94（W4-1）：chartName 由必填**改为可选**，与同族的 delete_chart 对齐 ——
+    // 整张表只有一张图时不必猜名字；名字/序号找不到时会回报可选列表。
+    required: ['outputPath'],
   },
 };
 
@@ -557,7 +560,7 @@ export const exportChartAsImageHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
   const { chartName, outputPath, format, sheet } = args as {
-    chartName: string;
+    chartName?: string;
     outputPath: string;
     format?: string;
     sheet?: string;
@@ -568,13 +571,8 @@ export const exportChartAsImageHandler: ToolHandler = async (
   const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
 
   try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message?: string;
-      chartName?: string;
-      outputPath?: string;
-      format?: string;
-    }>(
+    // 泛型是 data 的类型（WpsApiResponse<T> 自带 success / data / error）。
+    const response = await wpsClient.executeMethod<{ chartName?: string; outputPath?: string; format?: string }>(
       'exportChartAsImage',
       {
         chartName,
@@ -586,9 +584,12 @@ export const exportChartAsImageHandler: ToolHandler = async (
     );
 
     if (response.success) {
+      // FIXES 94（W4-1）：桥回报的是**实际解析到**的那张图（可能是省略 chartName 后自动选中的，
+      // 也可能是序号解析出来的），文案用它，调用方才知道自己导出的是哪张。
+      const appliedChart = response.data?.chartName || chartName || '';
       const text =
         `图表导出图片成功！\n` +
-        `图表: ${chartName}\n` +
+        `图表: ${appliedChart}\n` +
         `格式: ${filterName}\n` +
         `输出路径: ${outputPath}` +
         (sheet ? `\n工作表: ${sheet}` : '');

@@ -32,7 +32,8 @@ check("mixed-language query finds create_document", newDoc.includes("wps_word_cr
 const cjk = await namesFor("关闭工作簿");
 check("space-less CJK query finds close_workbook", cjk.includes("wps_excel_close_workbook"), cjk.slice(0, 4).join(", "));
 const exact = await namesFor("wps_word_create_document");
-check("exact name ranks first", exact[0] === "wps_word_create_document", exact.slice(0, 3).join(", "));
+// FIXES 93（W1-1）：除"排第一"外，再钉住"排序里没有重复项"这个不变量。
+check("exact name ranks first (and the ranking has no duplicates)", exact[0] === "wps_word_create_document" && new Set(exact).size === exact.length, exact.slice(0, 3).join(", "));
 const none = payload(await callTool("wps_help", { query: "zzqqxyznope" }));
 check("unmatched query explains the next step", none.matched === 0 && typeof none.hint === "string", JSON.stringify(none).slice(0, 110));
 

@@ -3,6 +3,10 @@
 // silently edited the Word document instead.
 // Run: node test/find-replace.test.mjs
 import { spawn } from "node:child_process";
+// FIXES 95（W1-4）：这个文件已经很强（真实变更、跨应用隔离、只搜不删都测了），
+// 但回读全部走插件自己的 read_range。补一条**以磁盘文件为准**的核对：替换结果真的写进了 xlsx。
+import { resolve as resolvePath } from "node:path";
+import { xlsx } from "./lib/oracle.mjs";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -48,6 +52,12 @@ const wordAfter = text(await call("wps_word_get_document_text", {}));
 check("CROSS-APP: word document untouched by excel replace", wordAfter.includes("alpha") && !wordAfter.includes("ZZZ"), wordAfter.replace(/\s+/g, " ").slice(0, 90));
 const excelAfter = text(await call("wps_excel_read_range", { range: "A1:C2" }));
 check("excel second replace applied", excelAfter.includes("ZZZ"), excelAfter.replace(/\s+/g, " ").slice(0, 90));
+
+// ---- 独立 oracle：以磁盘上的 xlsx 为准 ----
+const FR = resolvePath("test/.artifacts/find-replace.xlsx");
+await call("wps_common_save_as", { outputPath: FR, format: "xlsx" });
+const frFile = xlsx(FR, "A1:Z50");
+check("the replaced text really landed in the file", !!frFile && JSON.stringify(frFile.values).includes("ZZZ"), JSON.stringify(frFile && frFile.values).slice(0, 140));
 
 // --- Word find/replace still works ---
 const r3 = await call("wps_word_find_replace", { findText: "alpha", replaceText: "omega", replaceAll: true });

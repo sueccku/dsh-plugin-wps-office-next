@@ -313,7 +313,17 @@ exports.evaluateFormulaDefinition = {
 };
 const evaluateFormulaHandler = async (args) => {
     const response = await wps_client_1.wpsClient.executeMethod('evaluateFormula', args, wps_1.WpsAppType.SPREADSHEET);
-    return { id: (0, uuid_1.v4)(), success: response.success, content: [{ type: "text", text: JSON.stringify(response.data ?? { error: response.error }) }] };
+    // FIXES 94（W6-2）：公式求值得到错误值（#DIV/0! 等）时，桥现在回 success=false + 可读原因。
+    // 以前把错误码当 result 塞进 JSON 返回，模型会把 -2146826281 读成"计算结果"。
+    if (!response.success) {
+        return {
+            id: (0, uuid_1.v4)(),
+            success: false,
+            content: [{ type: "text", text: `计算公式失败: ${response.error ?? '未知原因'}` }],
+            error: response.error,
+        };
+    }
+    return { id: (0, uuid_1.v4)(), success: true, content: [{ type: "text", text: JSON.stringify(response.data ?? {}) }] };
 };
 exports.evaluateFormulaHandler = evaluateFormulaHandler;
 exports.setPrintAreaDefinition = {
@@ -328,7 +338,13 @@ exports.setPrintAreaDefinition = {
 };
 const setPrintAreaHandler = async (args) => {
     const response = await wps_client_1.wpsClient.executeMethod('setPrintArea', args, wps_1.WpsAppType.SPREADSHEET);
-    return { id: (0, uuid_1.v4)(), success: response.success, content: [{ type: "text", text: response.success ? "打印区域已设置" : "设置失败" }] };
+    // FIXES 94（W6-3）：失败时以前只回一句"设置失败"，没有原因也没有下一步 —— 把桥的原因透出来。
+    return {
+        id: (0, uuid_1.v4)(),
+        success: response.success,
+        content: [{ type: "text", text: response.success ? "打印区域已设置" : `设置失败: ${response.error ?? '未知原因'}` }],
+        ...(response.success ? {} : { error: response.error }),
+    };
 };
 exports.setPrintAreaHandler = setPrintAreaHandler;
 exports.formulaTools = [

@@ -24,9 +24,10 @@ const ALLOWLIST = {
     "try { return [int]$range.Application.CountA($range) } catch { }": { count: 1, reason: "Get-WpsRangeNonEmpty: fallback count path; falls through again" },
     "try { $impact.address = Get-RangeAddressSafe $range $null } catch { }": { count: 1, reason: "Get-WpsRangeImpact: best-effort stats degrade to null/empty" },
     "try { $impact.cells = [int]$range.Count } catch { }": { count: 1, reason: "Get-WpsRangeImpact: best-effort stats degrade to null/empty" },
-    "try { $preview += [string]$doc.Comments.Item([int]$p.index).Range.Text } catch { }": { count: 1, reason: "deleteComment: capture the note text; if it cannot be read, report without a sample" },
-    "try { $preview += [string]$doc.Comments.Item($i).Range.Text } catch { }": { count: 1, reason: "deleteComment: same, per-item in the loop" },
-    "try { if ($cell.Comment) { $hadComment = $true; $oldText = [string]$cell.Comment.Text() } } catch { }": { count: 2, reason: "add/deleteCellComment: read the previous note text; if it cannot be read, report without a sample" },
+"try { $preview += ((([string]$doc.Comments.Item([int]$p.index).Range.Text) -replace \"[`r`n`a]\", \" \").Trim()) } catch { }": { count: 1, reason: "deleteComment: capture the note text; if it cannot be read, report without a sample (FIXES 100: trim the comment mark)" },
+"try { $preview += ((([string]$doc.Comments.Item($i).Range.Text) -replace \"[`r`n`a]\", \" \").Trim()) } catch { }": { count: 1, reason: "deleteComment: same, per-item in the loop (FIXES 100: trim the comment mark)" },
+"try { if ($cell.Comment) { $hadComment = $true; $oldText = ((([string]$cell.Comment.Text()) -replace \"[`r`n`a]\", \" \").Trim()) } } catch { }": { count: 2, reason: "add/deleteCellComment: read the previous note text; if it cannot be read, report without a sample (FIXES 100: trim the comment mark)" },
+
     "try { $prevAskLinks = [bool]$excel.AskToUpdateLinks; $excel.AskToUpdateLinks = $false } catch { }": { count: 1, reason: "openWorkbook: remember and suppress AskToUpdateLinks; skip if the property is unavailable" },
     "try { if ($null -ne $prevAskLinks) { $excel.AskToUpdateLinks = $prevAskLinks } } catch { }": { count: 1, reason: "openWorkbook: restore AskToUpdateLinks; best effort" },
     "$ver = \"\"; try { $ver = [string]$excel.Version } catch { }": { count: 1, reason: "getAppInfo: read the running WPS version; report empty if unavailable" },

@@ -1,4 +1,4 @@
-# Run every test/*.test.mjs and reap the headless WPS instances a test file leaves behind.
+﻿# Run every test/*.test.mjs and reap the headless WPS instances a test file leaves behind.
 #
 # Why the reaping exists (FIXES 65): on Windows Node puts every spawned child into a job object and
 # tears the whole tree down when that child is killed. The test files end by hard-killing the MCP

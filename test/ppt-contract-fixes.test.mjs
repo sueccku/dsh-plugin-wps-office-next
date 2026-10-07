@@ -7,6 +7,10 @@
 import { spawn } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
+// FIXES 95（W1-4）：这个文件有 38 条裸 ok() —— "参数被接受了"不等于"效果落地了"
+// （同一个缝里已经藏过一个真 bug：Excel 的 set_border 静默空转，见 FIXES 98）。
+// 这里挑三样最能代表"写进去了没有"的，存盘后直接读 pptx 的 part 核对。
+import { zipScan } from "./lib/oracle.mjs";
 
 const PROBE_PNG = "test/.artifacts/probe.png";
 if (!existsSync(PROBE_PNG)) writeFileSync(PROBE_PNG, Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100ffff03000006000557bfabd40000000049454e44ae426082", "hex"));
@@ -173,6 +177,16 @@ check("set_shape_style applies roundness to a rounded rectangle", ok(await call(
 const rrBack = await call("wps_ppt_set_shape_style", { slideIndex: 2, name: rrName, roundness: 0.4 });
 check("roundness round-trips on a rounded rectangle", ok(rrBack) && /实际圆角半径/.test(text(rrBack)), text(rrBack).replace(/\s+/g, " ").slice(0, 90));
 // teardown
+// ---- 独立 oracle：以磁盘上的 pptx 为准 ----
+const PCF = path.resolve("test/.artifacts/ppt-contract-fixes.pptx");
+check("presentation saved for independent verification", ok(await call("wps_common_save_as", { outputPath: PCF, format: "pptx" })), "");
+const transScan = zipScan(PCF, "<p:transition", "ppt/slides/");
+check("file says the slide transition really landed", !!transScan && transScan.count >= 1, JSON.stringify(transScan));
+const fillScan = zipScan(PCF, "28A745", "ppt/slides/");
+check("file says the shape fill really landed", !!fillScan && fillScan.count >= 1, JSON.stringify(fillScan));
+const textScan = zipScan(PCF, "标题", "ppt/slides/");
+check("file says the textbox text really landed", !!textScan && textScan.count >= 1, JSON.stringify(textScan));
+
 for (const [method, appType] of [["closeWorkbook", "et"], ["closeDocument", "wps"], ["closePresentation", "wpp"]]) {
   for (let i = 0; i < 6; i++) {
     const res = await call("wps_call", { tool: "wps_execute_method", args: { method, params: { save: false }, appType } });

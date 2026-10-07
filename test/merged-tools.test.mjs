@@ -5,6 +5,10 @@
 import { spawn } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
+// FIXES 95（W1-4）：Excel 段那六个断言原本全是裸 ok() —— 正是本批两个真 bug（FIXES 97/98）所在的那类断言。
+// 现在用裸 COM 逐格读真值：插入要真的把数据挤下去、删除要真的挤回来、隐藏要真的是 Hidden。
+// 读失败返回空串，所以断言用 === 精确比较，避免"读不到"被当成"通过"。
+import { com } from "./lib/oracle.mjs";
 
 const PROBE_PNG = "test/.artifacts/probe.png";
 if (!existsSync(PROBE_PNG)) writeFileSync(PROBE_PNG, Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100ffff03000006000557bfabd40000000049454e44ae426082", "hex"));
@@ -43,6 +47,20 @@ check("fill_series extends a pattern", ok(await call("wps_excel_fill_series", { 
 check("fill_series writes a linear series", ok(await call("wps_excel_fill_series", { range: "F1:F4", type: "linear", step: 1, startValue: 10 })), "");
 const series = await read("F1:F4");
 check("the series landed on the sheet", /10/.test(series) && /13/.test(series), series.replace(/\s+/g, " ").slice(0, 110));
+
+// ---- 独立 oracle：行/列插删与隐藏，读真实单元格 ----
+const cellOf = (addr) => String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); $s=$w.ActiveSheet; [string]$s.Range('" + addr + "').Text")).trim();
+const hiddenOf = (row) => String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); $s=$w.ActiveSheet; [string]$s.Rows(" + row + ").Hidden")).trim();
+const acol = ["A1", "A2", "A3", "A4"].map(cellOf);
+check("insert+delete rows really net out to the original data", JSON.stringify(acol) === JSON.stringify(["a", "b", "c", "d"]), JSON.stringify(acol));
+const row1 = ["A1", "B1", "C1"].map(cellOf);
+check("insert+delete columns really net out to the original layout", row1[0] === "a" && Number(row1[1]) === 1 && row1[2] === "", JSON.stringify(row1));
+await call("wps_excel_hide_rows", { row: 3, count: 2, hide: true });
+const hidOn = hiddenOf(3);
+check("hide_rows really sets Hidden on the row", hidOn === "True", "Hidden=" + JSON.stringify(hidOn));
+await call("wps_excel_hide_rows", { row: 3, count: 2, hide: false });
+const hidOff = hiddenOf(3);
+check("hide_rows hide=false really clears Hidden", hidOff === "False", "Hidden=" + JSON.stringify(hidOff));
 
 // ---------- Presentation ----------
 await call("wps_ppt_create_presentation", {});

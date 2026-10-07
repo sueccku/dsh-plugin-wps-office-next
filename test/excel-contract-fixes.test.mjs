@@ -7,6 +7,10 @@
 import { spawn } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
+// FIXES 95（W1-4）：这个文件里有四处**只断言"调用没报错"**（set_border / set_data_validation /
+// set_conditional_format / set_hyperlink）。参数名对上了不等于效果落地了 —— 现在存盘后用 openpyxl
+// 读文件本身，把规则/链接/边框/条件格式一条条核对出来。
+import { xlsxFeatures } from "./lib/oracle.mjs";
 
 const PROBE_PNG = "test/.artifacts/probe.png";
 if (!existsSync(PROBE_PNG)) writeFileSync(PROBE_PNG, Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100ffff03000006000557bfabd40000000049454e44ae426082", "hex"));
@@ -147,6 +151,18 @@ check("getCellComments excludes comments outside the range", !JSON.stringify(out
 
 const wordAfter = text(await call("wps_word_get_document_text", {}));
 check("CROSS-APP: the Word document is untouched", wordAfter.includes("word body text") && !wordAfter.includes("note-on-b2"), wordAfter.replace(/\s+/g, " ").slice(0, 90));
+
+// ---- 独立 oracle：以磁盘上的 xlsx 为准核对上面那四处 ----
+const XCF = path.resolve("test/.artifacts/excel-contract-fixes.xlsx");
+check("workbook saved for independent verification", ok(await call("wps_common_save_as", { outputPath: XCF, format: "xlsx" })), "");
+const feat = xlsxFeatures(XCF, "", ["A1", "C3"]);
+check("oracle can read the file features", !!feat && Array.isArray(feat.dv), JSON.stringify(feat && Object.keys(feat)));
+if (feat) {
+  check("file carries the data-validation list formula", JSON.stringify(feat.dv).includes("x,y,z"), JSON.stringify(feat.dv).slice(0, 110));
+  check("file carries the hyperlink target", JSON.stringify(feat.hyperlinks).includes("example.com"), JSON.stringify(feat.hyperlinks).slice(0, 110));
+  check("file carries the outline border", !!(feat.borders.A1 && feat.borders.A1.top), JSON.stringify(feat.borders));
+  check("file carries the conditional-format rule", Array.isArray(feat.conditional) && feat.conditional.length >= 1, JSON.stringify(feat.conditional));
+}
 
 // Close everything this test opened. The close actions are dialog-safe now (see
 // test/close-safety.test.mjs), so a scratch run leaves no documents behind for the next one.

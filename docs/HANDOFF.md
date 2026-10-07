@@ -58,10 +58,10 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 | 指标 | 现值 | 权威来源 |
 | --- | --- | --- |
-| 注册工具 / 广告面 | **268 / 84**（46,867 字节，预算上限 60,000） | [current-numbers.md](current-numbers.md) |
+| 注册工具 / 广告面 | **268 / 84**（47,630 字节，预算上限 60,000） | [current-numbers.md](current-numbers.md) |
 | 桥 action / 参数契约 | **263 / 257 对**（A/B/C/D 四类静默失效均为 0） | 同上 |
-| 测试 | **1077 项 / 48 个文件** | 同上（来自 `test/summary.json`） |
-| 本机整轮回归 | **1076 通过 / 1 失败** | 唯一失败是**已知环境问题** `confirm-dialog`（本机 Excel 确认框不弹；已用 `git stash` 证明与代码无关） |
+| 测试 | **1253 项 / 49 个文件（整轮全绿）** | 同上（来自 `test/summary.json`） |
+| 本机整轮回归 | 见 `test/summary.json` | `confirm-dialog` 那条曾长期红：看门狗把**全机**的 Qt 窗口（本机是微信）当成 WPS 弹框，属测试口径问题、不是代码缺陷。**已修（FIXES 92 / P1）**：先做基线，只报新增窗口 |
 
 **历史阶段（都是当时的读数，别当现值）**：S1–S9 加固分四波落地，`v0.3.0`（09-16）→ `v0.4.0`（09-19）→
 `v0.5.0`–`v0.5.4`（10-02）→ `v0.6.0`（上架 npm，因漏发 `mcp/package.json` 而坏）→ `v0.6.1`（修好分发）→ `v0.6.2`（本版）。
@@ -108,7 +108,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | # | 待定事项 | 为什么还开着 | 需要谁决定 |
 | --- | --- | --- | --- |
 | **A3**（原 D1-E） | 产品扩张 / 跨应用工作流要做成什么样 | 缺**具体场景与目标客户**；没有场景就做等于猜需求 | 用户（给一个真实场景即可启动） |
-| **A4** | `param-contract` 那次 2 小时挂起未定性 | 只出现过一次、未能复现；建议下次复现时抓现场（给它加心跳 + 自超时） | 等复现，不需要现在决定 |
+| ~~**A4**~~ | `param-contract` 那次 2 小时挂起 | ✅ **已定性并已修（FIXES 102）**：不是偶然故障 —— 宿主 `ready` 发在孤儿回收**之前**，而回收里是对遗留 WPS 的**无超时 COM 调用**；客户端 `invoke` 亦无超时。已把 `ready` 挪到回收之后 | 等复现，不需要现在决定 |
 
 **已交付、不要再当待办**（都在这两轮做完并发布）：B1–B4（账本更新 + 文档数字单一来源）、
 A1（广告面重平衡 69→84）、A2（版式 × 占位符矩阵）、A6（`find_replace.selectFound` + `apply_style.range` 对齐）、
@@ -117,7 +117,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 
 ### 3.2 长期决策（不要再翻案）
 
-- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 **84 / 46,867** —— 2026-10-04 按真实调用数据重平衡后，FIXES 90）。
+- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 **84 / 47,630** —— 2026-10-04 按真实调用数据重平衡后，FIXES 90）。
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
 - **D4 废弃名处理**：18 个旧工具名**保留一个周期**作为 dispatch 别名；12 个 builtin 直接删除。
@@ -237,7 +237,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | # | 内容 | 状态 / 唤醒条件 |
 | --- | --- | --- |
 | D9（本轮） | 96 个工具没有专门测试、其中 **75 个只断言「没挂住」**（[tool-coverage.md](tool-coverage.md)：PPT 77 里 32、Excel 118 里 23、Word 59 里 15） | **已转正（D21-A）**：用户报告证明 `any` 放行过真实的假成功（`wps_word_replace_range` 越界删数据）。**已做完**：L1 把 71 个 `any` 全部补成真场景断言（`any` = 0，FIXES 89） |
-| D8 残余 | `param-contract` 那次 2 小时挂起**未复现、未定性**（只读脚本，正常几秒） | 再出现一次时抓现场（别用 `Select-Object -Last N` 包住输出，会看不到进度）。建议顺手给它加心跳输出 + 自超时 |
+| D8 残余 / A4 | `param-contract` 那次 2 小时挂起 | ✅ **已定性并已修（FIXES 102）**：**不是偶然故障**。宿主先发 `ready`、之后才跑孤儿回收，而回收里全是对遗留 WPS 的**无超时 COM 调用**；客户端（`param-contract`）的 `invoke` 也没有超时、没有 `exit` 处理 → 遗留实例一卡住就无限等。已把 `ready` 挪到回收之后（让启动兜底覆盖这段），并加静态+行为两条断言钉住顺序 |
 | ~~D1-C~~ | 广告面重平衡 | **已做**（FIXES 90）：按 §8 的真实调用数据把 15 个高频隐藏工具提到广告面，69 → 84；**没有换出任何工具** |
 | ~~D1-D~~ | 弱覆盖补测 | **已做**（FIXES 89）：71 个最弱断言 → 0，过程中修掉 12 个"回 success 但结果不对"的缺陷 |
 | D1-E（本轮） | 产品扩张 / 跨应用工作流 | **仍挂起**：缺明确的目标客户与场景；没有场景就做等于猜需求。唤醒条件：用户给出具体场景 |
@@ -295,10 +295,10 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 | --- | --- | --- |
 | 注册动作 | **263** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
 | 对外工具 | **84**（80 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
-| 广告面字节 | **46,867** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
-| 全量 schema | 157,854 字节（268 工具，≈45,101 tokens） | 同上 |
+| 广告面字节 | **47,630** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
+| 全量 schema | 159,167 字节（268 工具，≈45,476 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **1077 断言 / 48 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名 `check(` 共 922 处，差额来自循环内断言） |
+| 测试 | **1253 断言 / 49 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
@@ -307,12 +307,12 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
 > **「断言数」的口径说明（2026-10-04 重写）**：上表那个数**不再靠推算** —— 它就是 `scripts/run-tests.ps1` 跑完
-> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（当前 1077 = 1076 通过 + 1 失败/48 个文件）。
+> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（当前 1085 = 1085 通过 + 0 失败/48 个文件 —— FIXES 92 之后整轮首次全绿）。
 > 想刷新：跑一次整轮，再 `node scripts/gen-numbers.mjs`。
 >
-> **别用"数 `check(` 出现次数"去核对它**：静态点名当前是 **924** 处，与 1077 的差额来自**循环里重复执行的 `check()`**
-> （同一个调用点在循环里跑 N 次就贡献 N 个断言）。历史上这段笔记里出现过的 782 / 918 / 928 都是**各自当时的读数**，
-> 已经过期，不要再引用（FIXES 91 发版审计发现这三行与被审计时上方的表格自相矛盾）。
+> **别用"数 `check(` 出现次数"去核对它**：静态点名与运行时合计**不是一回事** —— 差额来自**循环里重复执行的 `check()`**
+> （同一个调用点在循环里跑 N 次就贡献 N 个断言）。**这里故意不再写具体数字**：它已经漂过 782 / 918 / 928 / 922 四次，
+> 每次写进去的都只是"当时的读数"，只会制造下一个矛盾（FIXES 92 / D2-A）。
 
 ---
 
@@ -421,7 +421,7 @@ This file is being treated as an ES module because it has a '.js' file extension
 | # | 事项 | 状态 |
 | --- | --- | --- |
 | A3 | 产品扩张 / 跨应用工作流 | **等用户给具体场景**；没有场景不做 |
-| A4 | `param-contract` 2 小时挂起 | 未复现；下次复现时抓现场（加心跳 + 自超时） |
+| ~~A4~~ | `param-contract` 2 小时挂起 | ✅ **已定性并已修（FIXES 102）**：`ready` 早于孤儿回收 + 回收无超时 + 客户端无超时。已挪 `ready` 并加两条断言钉住顺序 |
 
 ### 8.2 发布状态（2026-10-04 实测）
 
@@ -507,8 +507,11 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
   单独手跑某个 `test/*.test.mjs` 时，自己把这两个变量指向仓库内路径（`$env:WPS_OFFICE_HOST_SCRIPT = "$PWD\host\wps-com-host.ps1"`）。
 - **改完 `scripts/*.ps1` 若行为"没变化"，先怀疑 PowerShell 的脚本缓存**（FIXES 87 实测踩过）：文件被 `git stash` 或直接覆写改过时，
   `-File` 启动可能仍读缓存里的旧内容 —— 判据是"内容长度一变行为就跟着变"。让文件内容长度发生变化（或改文件名）即可稳定绕过。
-- **`test/confirm-dialog.test.mjs` 在本机会稳定红一条**（2026-10-03 实测）：它等 Excel 的确认框（`Qt*` 窗口），本机不弹，
-  于是 `no modal confirmation dialog appeared` 失败。**已用 `git stash` 在改动之前复跑确认：同样红** —— 环境相关，不是某次改动引入的。
+- **`test/confirm-dialog.test.mjs` 曾在本机稳定红一条**（2026-10-03 实测；FIXES 92 / P1 已修）：看门狗用 `EnumWindows`
+  **全机**枚举可见窗口，只按「类名以 `Qt*` 开头」判定，于是把**微信**（`Weixin.exe`，窗口类名恰是 `Qt51514QWindowIcon`，
+  与 WPS 对话框**同类名前缀**）当成了弹框 —— 日志实测：看门狗启动后 **25 ms** 就记账，早于任何场景开跑。
+  **失败的原因是"看到了 Qt 窗口"，不是"对话框没弹"**（本文件早先那句解释写反了，FIXES 92 / P4 更正）。
+  结论不变：**不是代码缺陷**（`git stash` 在改动前复跑同样红）。修法：先做基线，只报**新增**窗口。
 - **别在「正在用 WPS 的 DSH 会话」里跑全套**（2026-10-03 实测）：宿主的单实例租约正好把测试挡在门外 ——
   `test/host-lease.test.mjs`（10/18）与 `test/encrypted-preflight.test.mjs`（3 项）会打印**中文「另一个 DSH 会话正在控制 WPS」**而失败。
   这是**环境冲突，不是代码缺陷**（租约保护正常工作）。要拿到可信读数，就在没有活跃 WPS 宿主的终端里跑 `scripts/run-tests.ps1`，
@@ -553,86 +556,3 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - `return $range` 会把多格 Range 展开成数组——要写 `return ,$range`。
 - `Worksheet.Scenarios` 是 PSMethod（`$s.Scenarios()`）。
 - ListObject 的几何信息在 `Delete()` / `Add()` 之后是**陈旧的**，必须先重新解析。
-- 脚注正文要读 `.Reference.Text`，不是 `.Range.Text`；加完脚注后光标还在注释故事里，需要 `Get-MainTextRange` 兜底。
-- **`$pid` 是只读变量**，探针里别拿它当局部变量名。
-- **WPS 的 IDispatch 不支持命名参数**（`InvokeMember` + namedParameters → `E_INVALIDARG`），只能按位置传。
-- **一次性临时文件（如测试 fixture）必须自己验证**：本轮「加密」fixture 一开始根本没加密，
-  若不加验证，整份测试会为了错误的原因通过。
-- **裸 COM 探针要按桥的规矩来，否则会把「共享的」WPS 实例搞坏，连累后面不相干的测试**（本轮真实翻车）：
-  ① `GetActiveObject` 可能回一个**空壳实例**——`Workbooks` 看着正常，`Add()` 出来的工作簿 `Sheets` 是 null
-  （桥里 `Test-WpsAppUsable` 防的就是这个）；② 对「脏」文档直接 `Close()` 会弹**模态保存框**，
-  模态框会把整个实例钉住，之后所有调用回 `RPC_E_CALL_REJECTED`。
-  规矩：取实例要「`GetActiveObject` → 校验 → `New-Object` → 校验」，open/close 一律用 `DisplayAlerts` 包住并还原。
-- **WPS 卡住了怎么救（本轮实测有效，按顺序试）**：
-  1) 列出可见窗口，只关 **`class` 以 `Qt*` 开头**的那些（那是对话框：密码框 / 保存框 / 恢复提示）——
-     `XLMAIN` / `OpusApp` / `PP12FrameClass` 才是真正的文档窗口，**不要关**；
-  2) 关了对话框后 COM 通常立刻恢复，这时再把残留文档/工作簿关掉（`Workbooks.Count=0`）；
-  3) 仍不行才 `Stop-Process` **那一个**应用进程（`et` / `wps` / `wpp`），桥下次会自己重建实例。
-  **不要**按进程名批量杀：实测本机有 **243 个**进程叫 `wps`、34 个叫 `et`，那是 WPS 的多进程架构，
-  按名字杀会连带关掉用户所有文档。
-- 跑全套前建议先看 `test/.artifacts/s1/visible.ps1`（一次性探针，未入库，丢了就照上面重写）——
-  环境脏会让 `open-safety` 之外的测试也成片失败，别把它误判成代码缺陷。
-- **清残留只清「从未保存过」的文档/工作簿**（`Path` 为空）：那是测试僵尸的特征；
-  用户真正打开着的文件一律别碰——体检/清理自己变成丢数据的凶手，比不清理更糟。
-
-**实测不可实现（是 COM 层面的限制，禁止重试，推广材料应写「不支持」）**
-- Word 水印（页眉 `Shapes` 拒绝一切添加，`Count` 恒为 0）
-- 文档属性（`BuiltInDocumentProperties` / `CustomDocumentProperties` 是空壳）
-- Excel 切片器（`SlicerCaches.Add2` 可调用但 `Slicers.Count` 恒为 0）
-- 方案管理器（`Scenarios` 行为与预期不符）
-- **加密 .pptx 的密码框无法拦截**（`Presentations.Open` 没有密码参数）
-
----
-
-## 11. 文件地图
-
-| 路径 | 作用 |
-| --- | --- |
-| `mcp/scripts/wps-com.ps1` | **桥，真源**（263 个动作分派、78 个函数、7381 行、纯 CRLF 无 BOM） |
-| `host/wps-actions.ps1` | 生成物（字节一致证明目标，UTF-8 BOM） |
-| `host/wps-com-host.ps1` | 常驻 STA 宿主：**单实例租约 + 心跳 + 陈旧接管**（手写，非生成，必须有 BOM） |
-| `mcp/src/client/com-host.ts` | 宿主客户端：`timeoutFor` + suspect 短超时 + 陈旧子进程守卫 + 等旧宿主退出 |
-| `mcp/src/client/wps-client.ts` | WPS 客户端门面（`executeMethod` / `invokeAction`） |
-| `mcp/src/server/toolset.ts` | `STANDARD_TOOLS`（80 curated）+ `FACADE_TOOLS`（4）= 广告面 84 |
-| `mcp/src/server/mcp-server.ts` | 注册与描述（含 `wps_execute_method`、`wps_batch` 上限 50） |
-| `mcp/src/tools/{excel,word,ppt}/` | 各能力域的 TS 工具定义 |
-| `mcp/src/spec/aliases.ts` | `dynamicParamActions`——动态动作必须登记 |
-| `scripts/{extract-spec,gen-tool-surface,gen-skill-tools}.mjs` | 契约管线（顺序见 §4） |
-| `scripts/{verify,doctor,param-contract,e2e}.mjs` | 验证入口 |
-| `scripts/gen-numbers.mjs` + `scripts/lib/tool-face.mjs` | **文档数字的唯一来源**（FIXES 91）：真实 `tools/list` 量三档载荷 + 逐项核对 README/HANDOFF 的声明值 |
-| `docs/current-numbers.md` | **现值的权威快照**（生成物，CI 对账） |
-| `baseline/known-defects.md` | 上游/工具层缺陷清单与当前状态（S1 已修、C7 残余已精确化） |
-| `scripts/build-host-actions.ps1` | 生成宿主动作表，打印 `switch_cases` / `functions` / `guard_installed` |
-| `scripts/run-tests.ps1` | **整轮测试入口**：跑完每个文件回收无头 WPS 孤儿（FIXES 65），`-KeepOrphans` / `-Filter` 可调 |
-| `scripts/lint.mjs` | 项目化 lint：手写 PowerShell 的 BOM/CRLF、制表符与行尾空白、`console.*`、测试退出码（进 CI） |
-| `scripts/lint-alerts.mjs` | **弹框守卫门禁**（FIXES 70）：可能弹框的调用必须关 `DisplayAlerts` 并还原，且不许绕过两个共用助手 |
-| `scripts/lint-com-boundary.mjs` | **COM 边界门禁**（FIXES 74）：`return $range` 必须 `return ,$range`；裸 `catch { continue }` 必须登记理由 |
-| `scripts/lib/coverage-tiers.mjs` | **覆盖率口径唯一实现**（FIXES 74）：bespoke / matrixOk / matrixAny / notDriven 四层，CLI 与 CI 共用 |
-| `mcp/src/utils/tool-warnings.ts` | **warnings 通道**（FIXES 73）：AsyncLocalStorage 收集桥侧 warnings，`tool-registry` 追加到结果文本 |
-| `test/deprecated.test.mjs` | FIXES 76：18 个废弃工具名已全部消失（**不需要 WPS**，已进 CI） |
-| `test/silent-catch.test.mjs` | S5：空 `catch { }` 必须登记理由，账本式（桥 34 + 宿主 6） |
-| `scripts/accept-install.mjs` | 全新一次性 profile 的安装验收：装一遍、验接线与产物、跑 doctor、再拆掉 |
-| `mcp/scripts/wps-com.ps1` 的 `owned-apps.json` 记录 | FIXES 66 的归属记录（`~/.wps-office-mcp/owned-apps.json`），只由强杀留下 |
-| `test/*.test.mjs` | **48 个文件 / 1077 断言**（口径见 §5）；账本在 `spec-reproduction.test.mjs`；FIXES 86/90 的回归在 `word-range-format.test.mjs` |
-| `test/target-ambiguity.test.mjs` | P2/C7 目标歧义警告：多文件且未指定目标才有 warning（需要真实 WPS） |
-| `test/arg-shape-guard.test.mjs` | P2 入参形状守卫：数组/对象错位被拒，标量放行（不需要 WPS，已进 CI） |
-| `test/orphan-reclaim.test.mjs` | FIXES 66 跨会话回收：强杀后新宿主收孤儿，无归属记录则不动（需要真实 WPS） |
-| `test/wps-version.test.mjs` | P3 版本前置检查的纯函数单测（不需要 WPS，已进 CI） |
-| `test/host-lease.test.mjs` | S2 单实例租约（**不需要 WPS**，已进 CI） |
-| `test/open-safety.test.mjs` | S1 打开加密/异常文件不得卡死；**开头有环境体检**（需要真实 WPS） |
-| `test/watchdog.test.mjs` | S1 超时契约（**不需要 WPS**，已进 CI） |
-| `test/encrypted-preflight.test.mjs` | FIXES 69：加密 OOXML 在打开前被文件头认出来（**不需要 WPS**，已进 CI） |
-| `test/alerts-gate.test.mjs` | FIXES 70：弹窗守卫门禁自己的断言（**不需要 WPS**，已进 CI） |
-| `test/honest-reporting.test.mjs` | FIXES 71：close 的 saved 如实、protect 读回、删除列整段、PPT 导出不改指源文件（需要真实 WPS） |
-| `test/range-limits.test.mjs` | FIXES 72：大范围预算、长路径文案、一次插整段（需要真实 WPS） |
-| `test/warning-channel.test.mjs` | FIXES 73：warnings 经第一方工具到模型、原样透传不重复（需要真实 WPS） |
-| `docs/FIXES.md` | 1～91 号修复记录（**新 bug 继续追加编号**；84 = 0.6.0 发布事故、85 = verify-package 在 `npm run` 下必挂、86 = 用户报告的 Word 假成功/数据破坏、87 = 测试跑的是旧副本、88 = 英文样式名 / `set_active_target`、89 = 补弱断言时挖出的 12 个真缺陷、90 = 广告面重平衡 + 版式矩阵 + 语义对齐、91 = 文档数字收成单一来源） |
-| `docs/error-contract.md` | **错误与超时契约**：结果信封、批量部分失败、三档超时、调用方该做什么 |
-| `docs/PROGRESS.md` / `tool-roadmap.md` | 阶段进展 / 路线图 |
-| `docs/param-contract.md` | 生成物（重新生成后应无漂移） |
-| `docs/stabilization-plan.md` | **加固计划**：S1–S9 全部完成（FIXES 52–63），含实测修正与排期状态 |
-| `docs/destructive-operations.md` | **S3 破坏性操作清单**：动作 / 影响 / 回传统计 / 弹窗抑制 / 测试 + 剩余项 |
-| `docs/tool-coverage.md` | **工具覆盖矩阵**（生成物）：工具 × 应用 × action × 广告 × 测试证据 |
-| `scripts/gen-tool-coverage.mjs` | 生成 `docs/tool-coverage.md`；CI 重新生成并对账 |
-| `README.md` | **面向客户的唯一契约**：安装由 AI 照做（7 步），AI 需逐条实测 |
-| `CHANGELOG.md` | 在 `files` 白名单内，随包发布 |

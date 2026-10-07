@@ -2,6 +2,10 @@
 // attached to the action's result as "warnings" (see Add-WpsWarning / Output-Json).
 // Run: node test/warnings.test.mjs
 import { spawn } from "node:child_process";
+// FIXES 95（W1-4）：这里验证的语义是"样式没设上、但文字照样插进去了"（部分成功）。
+// 文件只断言了 success 与警告内容，**从没验证文字真的在文档里** —— 部分成功最容易退化成
+// "其实什么都没做，只是警告照报"。补一条裸 COM 读正文。
+import { com } from "./lib/oracle.mjs";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -30,9 +34,14 @@ check("scratch document created", ok(created), "");
 // still inserted, so the action succeeds - and the failure must be reported, not swallowed.
 const seeded = await raw("insertText", { text: "warning probe", position: "start", style: "NoSuchStyleName" });
 check("action with a best-effort failure still succeeds", seeded.success === true, JSON.stringify(seeded).slice(0, 90));
-check("the failure is reported as a warning", Array.isArray(seeded.warnings) && seeded.warnings.length > 0, JSON.stringify(seeded.warnings || []).slice(0, 110));
-check("the warning carries the actual error text", typeof seeded.warnings?.[0] === "string" && seeded.warnings[0].length > 8, String(seeded.warnings?.[0]).slice(0, 80));
+// FIXES 93（W1-2）：以前只断言"至少一条"和"长度 > 8" —— 这两句证明不了警告内容对不对。
+check("exactly one warning is reported for the one failed step", Array.isArray(seeded.warnings) && seeded.warnings.length === 1, JSON.stringify(seeded.warnings || []).slice(0, 110));
+check("the warning names the style that actually failed", typeof seeded.warnings?.[0] === "string" && seeded.warnings[0].includes("NoSuchStyleName"), String(seeded.warnings?.[0]).slice(0, 120));
 check("warnings are also inside data for pass-through tools", Array.isArray(seeded.data?.warnings), JSON.stringify(seeded.data || {}).slice(0, 90));
+
+// ---- 独立 oracle：部分成功的**实际效果**必须落地 ----
+const docText = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application'); [string]$w.ActiveDocument.Content.Text")).trim();
+check("the insert really happened despite the failed style", docText.includes("warning probe"), JSON.stringify(docText).slice(0, 130));
 
 // Warnings are per action: a clean call must not inherit the previous one.
 const clean = await raw("ping", {});

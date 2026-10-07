@@ -1107,13 +1107,13 @@
  },
  {
   "name": "wps_excel_export_chart_as_image",
-  "description": "将工作表中指定的图表导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS Excel 原生接口 Chart.Export(FileName, FilterName)，最简单可靠，\n实现 1:1 像素级还原，避免通过 PDF + pdf2image 中转造成的版式/字体/坐标轴失真。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把 Sheet1 上的 Chart 1 导出成 PNG\"\n- \"导出销售分析柱状图给我\"\n- \"把图表保存为高清图片用于报告\"\n\n注意：\n- outputPath 必须是绝对路径\n- chartName 通常为 \"Chart 1\"、\"图表 1\" 等，可通过 wps_excel_create_chart 返回值或界面查看\n- macOS 上建议输出到 ~/Downloads 等用户可写目录，避免沙箱权限拒绝",
+  "description": "将工作表中指定的图表导出为位图图片（PNG/JPG/JPEG/GIF/BMP）。\n\n调用底层 WPS Excel 原生接口 Chart.Export(FileName, FilterName)，最简单可靠，\n实现 1:1 像素级还原，避免通过 PDF + pdf2image 中转造成的版式/字体/坐标轴失真。\n\n支持的 format（FilterName）取值：\n- PNG（默认，推荐用于截图与无损展示）\n- JPG / JPEG（自动按 JPG 滤镜处理，体积更小）\n- GIF（限 256 色，适合简单图形）\n- BMP（无压缩位图，文件最大）\n\n使用场景：\n- \"把 Sheet1 上的 Chart 1 导出成 PNG\"\n- \"导出销售分析柱状图给我\"\n- \"把图表保存为高清图片用于报告\"\n\n注意：\n- outputPath 必须是绝对路径\n- chartName 可以给**名字**（\"Chart 1\"、\"图表 1\"）或**序号**（从 1 开始）；整张表只有一张图时可以**省略**\n- 名字找不到时不会给一句裸 COM 报错，而是**列出这张表上现有的图表名**，照着重试即可\n- macOS 上建议输出到 ~/Downloads 等用户可写目录，避免沙箱权限拒绝",
   "inputSchema": {
    "type": "object",
    "properties": {
     "chartName": {
      "type": "string",
-     "description": "图表名称（如 \"Chart 1\" 或 \"图表 1\"）"
+     "description": "图表名称（如 \"Chart 1\"）或序号（从 1 开始）；整张表只有一张图时可省略，会在找不到时列出可选图表"
     },
     "outputPath": {
      "type": "string",
@@ -1136,7 +1136,6 @@
     }
    },
    "required": [
-    "chartName",
     "outputPath"
    ]
   }
@@ -2189,7 +2188,9 @@
       "bottom",
       "left",
       "right",
-      "outline"
+      "outline",
+      "outside",
+      "inside"
      ]
     },
     "color": {
@@ -2657,7 +2658,7 @@
  },
  {
   "name": "wps_excel_set_outline_levels",
-  "description": "控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇总行在上还是下、汇总列在左还是右。使用场景：分组之后把明细收起来只留汇总。",
+  "description": "控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇总行在上还是下、汇总列在左还是右。使用场景：分组之后把���细收起来只留汇总。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -6516,17 +6517,50 @@
  },
  {
   "name": "wps_word_set_paragraph",
-  "description": "设置当前段落格式（对齐方式、行间距等）",
+  "description": "设置段落格式：对齐方式、行间距、段前/段后间距、缩进。\n\n使用场景：\n- \"把这段设成居中\"\n- \"行距改成 1.5 倍\"\n- \"首行缩进 2 个字符\"\n\n作用范围默认是**当前选区所在的段落**；也可以用 range 指定字符范围（坐标从 wps_word_get_paragraphs 取）或 \"all\"（整篇）。\n至少要给一个要设置的属性 —— 一个都不给会明确报错，而不是假装成功。",
   "inputSchema": {
    "type": "object",
    "properties": {
     "alignment": {
      "type": "string",
-     "description": "对齐方式: left/center/right/justify"
+     "description": "对齐方式：left / center / right / justify（其它值会被拒绝）",
+     "enum": [
+      "left",
+      "center",
+      "right",
+      "justify"
+     ]
     },
     "lineSpacing": {
      "type": "number",
-     "description": "行间距倍数，如1.5、2"
+     "description": "行间距倍数（正数），如 1.5、2"
+    },
+    "spaceBefore": {
+     "type": "number",
+     "description": "段前间距（磅）"
+    },
+    "spaceAfter": {
+     "type": "number",
+     "description": "段后间距（磅）"
+    },
+    "firstLineIndent": {
+     "type": "number",
+     "description": "首行缩进（字符数，如 2 表示缩进 2 个字符）"
+    },
+    "leftIndent": {
+     "type": "number",
+     "description": "左缩进（字符数）"
+    },
+    "rightIndent": {
+     "type": "number",
+     "description": "右缩进（字符数）"
+    },
+    "range": {
+     "type": [
+      "object",
+      "string"
+     ],
+     "description": "作用范围：{start,end}（0 基字符偏移、end 不含）或 \"all\"（整篇）；不填 = 当前选区所在的段落"
     }
    }
   }

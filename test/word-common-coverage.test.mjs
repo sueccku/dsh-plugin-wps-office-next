@@ -4,6 +4,9 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+// FIXES 95（W1-4）：覆盖矩阵式烟测。这里补两条**以文件为准**的核对：
+// 插入的段落文字是否真的在 docx 里、插入的图片是否真的成了内嵌图形（而不是只在回报里"成功"）。
+import { docxInlineShapes, docxText } from "./lib/oracle.mjs";
 
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const imgPath = resolvePath("test/.artifacts/wordcov.png");
@@ -183,6 +186,15 @@ for (const [name, args, expect] of MATRIX) {
 // save only once the document has a real path, otherwise a Save As dialog would wedge WPS.
 if (ok(saved)) check("common_save (document already has a path)", ok(await call("wps_common_save", {})), "");
 else check("common_save skipped (save_as failed, avoiding a modal Save As)", true, "save_as did not succeed");
+
+// ---- 独立 oracle：把文档重新存一份，读**文件本身** ----
+const WD = resolvePath("test/.artifacts/wordcov-final.docx");
+check("document saved for independent verification", ok(await call("wps_common_save_as", { outputPath: WD })), "");
+const wBody = docxText(WD);
+const wFlat = Array.isArray(wBody) ? wBody.join("|") : "";
+check("file carries both inserted paragraphs", wFlat.includes("第一段测试文本") && wFlat.includes("第二段测试文本"), wFlat.slice(0, 120));
+const shapeCount = docxInlineShapes(WD);
+check("file carries the inserted image as a real inline shape", typeof shapeCount === "number" && shapeCount >= 1, "inlineShapes=" + shapeCount);
 
 for (let i = 0; i < 6; i++) {
   const res = await call("wps_call", { tool: "wps_execute_method", args: { method: "closeDocument", params: { save: false }, appType: "wps" } });

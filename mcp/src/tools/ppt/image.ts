@@ -84,10 +84,14 @@ export const insertPptImageHandler: ToolHandler = async (
 
   try {
     // 桥读的就是 imagePath（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
+    // FIXES 101（W4-5）：桥返回的是 name（`$pic.Name`，WPS 自动命名如「图片 4」）与 path，
+    // 从来不返回 imageIndex —— 旧代码声明并读取了 imageIndex，于是那句「图片索引」**永远是死代码**，
+    // 而真正有用的名字被丢掉了（`replace_ppt_image` 是接受形状名称的，链不起来）。
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
-      imageIndex?: number;
+      name?: string;
+      path?: string;
     }>(
       'insertPptImage',
       { slideIndex, imagePath, left, top, width, height },
@@ -99,7 +103,7 @@ export const insertPptImageHandler: ToolHandler = async (
       if (left !== undefined && top !== undefined) text += `\n位置: (${left}, ${top})`;
       if (width !== undefined) text += `\n宽度: ${width}`;
       if (height !== undefined) text += `\n高度: ${height}`;
-      if (response.data?.imageIndex) text += `\n图片索引: ${response.data.imageIndex}`;
+      if (response.data?.name) text += `\n形状名称: ${response.data.name}`;
 
       return {
         id: uuidv4(),

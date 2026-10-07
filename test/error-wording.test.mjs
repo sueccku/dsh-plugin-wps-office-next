@@ -3,6 +3,19 @@
 // it does not depend on any particular document being open.
 // Run: node test/error-wording.test.mjs
 import { spawn } from "node:child_process";
+// FIXES 95（W1-4）：这个文件只检查错误文案的**形状**（三段式）。补一条**副作用**核对：
+// 一个被拒绝的调用如果半执行了（空参数的 openWorkbook 却开了个空工作簿、空参数的 deleteRows 却删了行），
+// 文案照样漂亮。所以用裸 COM 量一次"打开的东西有没有变多"。
+// 只比增量、不比绝对值：不假设跑测试时的机器上本来就没开着文档。
+import { com } from "./lib/oracle.mjs";
+
+function openCounts() {
+  const read = (prog, coll) => {
+    const raw = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('" + prog + "'); [int]$w." + coll + ".Count")).trim();
+    return /^\d+$/.test(raw) ? Number(raw) : 0;   // 空串 = 该应用没在跑，按 0 计
+  };
+  return { workbooks: read("Ket.Application", "Workbooks"), documents: read("Kwps.Application", "Documents"), presentations: read("Kwpp.Application", "Presentations") };
+}
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -53,6 +66,8 @@ const SAMPLES = [
   ["__definitely_not_an_action", {}],
 ];
 
+const openBefore = openCounts();
+
 let good = 0;
 for (const [method, params] of SAMPLES) {
   const data = payload(await viaAction(method, params));
@@ -64,6 +79,12 @@ for (const [method, params] of SAMPLES) {
   check(method + " fails with a three-part message", failed && threePart && named, failed ? err.slice(0, 110) : "did NOT fail: " + JSON.stringify(data).slice(0, 90));
 }
 check("the sample is broad enough", good >= 20, good + " / " + SAMPLES.length + " well-formed");
+
+// ---- 独立 oracle：这一批"必须失败"的调用不能有任何副作用 ----
+const openAfter = openCounts();
+check("the rejected sample opened no new workbook", openAfter.workbooks <= openBefore.workbooks, JSON.stringify({ before: openBefore, after: openAfter }));
+check("the rejected sample opened no new document", openAfter.documents <= openBefore.documents, JSON.stringify({ before: openBefore, after: openAfter }));
+check("the rejected sample opened no new presentation", openAfter.presentations <= openBefore.presentations, JSON.stringify({ before: openBefore, after: openAfter }));
 
 // A mapping case: the app-not-running wording when a kind is not reachable is covered by the table in
 // the bridge, so assert the table is present and returns the three-part shape for a known phrase.

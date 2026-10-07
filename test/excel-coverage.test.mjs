@@ -5,6 +5,10 @@
 import { spawn } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+// FIXES 95（W1-4）：这个文件是"覆盖矩阵"式烟测（调用没挂住就算过）。这里补两条**以产物为准**的核对：
+// ① 导出类工具必须写出**真尺寸**的图片（本会话开头就查过一批 1x1 的 70 字节 PNG，那种必须判死）；
+// ② 存盘后的工作簿里真的还有数据。
+import { pngInfo, xlsx } from "./lib/oracle.mjs";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -248,6 +252,16 @@ check("delete_cell_comment reports one when it really deleted", hadCount === 1, 
 // 数据透视表刷新：没有透视表时必须明确失败
 const pivotRefresh = await call("wps_excel_update_pivot_table", {});
 check("update_pivot_table fails clearly when no pivot exists", !ok(pivotRefresh), text(pivotRefresh).replace(/\s+/g, " ").slice(0, 90));
+// ---- 独立 oracle：以磁盘上的 png / xlsx 为准 ----
+const rangeImg = pngInfo(rangePng);
+const chartImg = pngInfo(chartPng);
+check("the exported range image is a real image, not a placeholder", rangeImg.exists && rangeImg.png && rangeImg.width >= 50 && rangeImg.height >= 20, JSON.stringify(rangeImg));
+check("the exported chart image is a real image, not a placeholder", chartImg.exists && chartImg.png && chartImg.width >= 200 && chartImg.height >= 100, JSON.stringify(chartImg));
+const XC = resolvePath("test/.artifacts/excel-coverage.xlsx");
+check("workbook saved for independent verification", ok(await call("wps_common_save_as", { outputPath: XC, format: "xlsx" })), "");
+const xc = xlsx(XC, "A1:C3");
+check("the saved workbook really carries sheet data", !!xc && Array.isArray(xc.values) && xc.values.length === 3 && JSON.stringify(xc.values).match(/\d/) !== null, JSON.stringify(xc && xc.values));
+
 for (let i = 0; i < 6; i++) {
   const res = await call("wps_call", { tool: "wps_execute_method", args: { method: "closeWorkbook", params: { save: false }, appType: "et" } });
   if (!ok(res)) break;

@@ -7,6 +7,10 @@
 //
 // Run: node test/close-safety.test.mjs
 import { spawn } from "node:child_process";
+// FIXES 95（W1-4）：这个文件用工具自己的计数核对"没有泄漏"。补一条**跨源**核对：
+// 直接问 Excel / 演示两个应用实例还剩几份文档 —— 泄漏与否不该只听插件的一面之词。
+// 注意正则闸门（要求纯数字）：com() 读失败返回空串，Number('') === 0 会让断言**假通过**。
+import { com } from "./lib/oracle.mjs";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -85,6 +89,12 @@ if (pb < 0) {
   check("it warns that nothing was written to disk", pt2.includes("never saved"), pt2.replace(/\s+/g, " ").slice(0, 110));
   check("no presentation leaked", (await presCount()) === pb, "presentations=" + (await presCount()));
 }
+
+// ---- 独立 oracle：裸 COM 核对关完之后两个应用实例里真的是空的 ----
+const rawWb = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); [int]$w.Workbooks.Count")).trim();
+const rawPres = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Kwpp.Application'); [int]$w.Presentations.Count")).trim();
+check("raw COM says no workbook survived the closes", /^\d+$/.test(rawWb) && Number(rawWb) === 0, "raw=" + JSON.stringify(rawWb));
+check("raw COM says no presentation survived the closes", /^\d+$/.test(rawPres) && Number(rawPres) === 0, "raw=" + JSON.stringify(rawPres));
 
 child.kill();
 const failed = results.filter((r) => !r.ok).length;

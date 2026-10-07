@@ -2852,3 +2852,688 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
 另有 node scripts/param-contract.mjs：零副作用地把 256 对工具/action 的参数契约对账一遍，
 结果写入 docs/param-contract.md。A/B/C/D 四类静默失效**均为 0**；剩下的 1 处「桥无键表」（`setCellFormat`，
 动态键闸门跳过）与 5 处「handler 实参静态读不出」都在报告里逐名列出，不做隐藏。
+
+---
+
+## 102. A4 定性：`param-contract` 的 2 小时挂起**不是偶然故障** —— `ready` 发得太早
+
+**背景**：工单里 A4 记着「`param-contract` 那次 2 小时挂起，未复现、未定性（只读脚本，正常几秒）」。
+本轮专门查了它。结论：**不是环境抖动，是一条结构性缺陷，只是触发条件偶发。**
+
+### 第一步：先量基线，排除"脚本本身很慢"
+
+```
+analyseToolSource(): 12 ms
+param-contract 整轮: 928 ms
+```
+
+正常得很。于是去看"哪个 await 没有界"。
+
+### 第二步：找到无界等待
+
+`scripts/param-contract.mjs` 里两个请求函数都**没有超时**，也**没有 `child.on('exit')`**：
+
+```js
+const req = (method, params) => new Promise((r) => { const n = ++id; pending.set(n, r); child.stdin.write(...); });
+const invoke = (action, params) => new Promise((r) => { const n = ++id; pending.set(n, r); child.stdin.write(...); });
+```
+
+**子进程只要不回帧（死掉、卡住、或者根本没读到请求），这个 Promise 就永远不 resolve。**
+唯一有兜底的是 `waitReady()`（30 秒）—— 但它只管**启动阶段**。
+
+### 第三步：根因 —— 宿主在 `ready` **之后**才做孤儿回收，而回收里全是无超时的 COM 调用
+
+`host/wps-com-host.ps1` 原先的顺序：
+
+```powershell
+Write-Frame '{"ready":true,...}'        # ← 先宣告"我可用"
+Update-HostState 'idle'
+try { $null = Invoke-WpsOrphanReclaim } catch { }   # ← 之后才做启动工作
+while ($true) { $line = [Console]::In.ReadLine() ... }   # ← 主循环才开始读 stdin
+```
+
+而回收里全是对**遗留 WPS 实例**的 COM 调用（`host/wps-actions.ps1:204-232`）：
+
+```powershell
+$app = [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId)
+if (-not (Test-WpsAppUsable $app $k)) { continue }
+if (Test-WpsAppHasUnsavedWork $app $k) { continue }
+$app.Quit()
+```
+
+**这条路上一个超时都没有。** 而"遗留实例正卡在模态对话框/繁忙状态"正是本项目一直在防的失效模式
+—— 那些 COM 调用会**一直等下去**。
+
+### 第四步：把顺序钉成证据（不是推测）
+
+回收的最后一步是 `Clear-WpsOwnedApps`（删掉 `owned-apps.json`）。于是在**响应到达的那一刻**
+检查那个文件还在不在，就能判断请求有没有排在回收后面：
+
+```
+发请求时记录文件存在: true
+响应到达时记录文件存在: false     ← 回收已经跑完并清场了
+→ 响应是在回收**跑完之后**才被处理的（请求排在回收后面）
+```
+
+**完整因果链**：
+
+1. 上一个会话被强杀 → 留下 `owned-apps.json` + 一个 WPS 实例；
+2. `param-contract` 起了一个宿主；
+3. 宿主拿到租约、发出 `ready` —— **客户端的 30 秒启动兜底在这一刻就满足了**；
+4. 宿主开始跑孤儿回收，对那个实例做无超时的 COM 调用；
+5. 若那个实例正卡着 → COM 不返回；
+6. 客户端在 `ready` 之后发的第一个 `__validateParams` 排在管道里，**永远不被读**；
+7. 客户端那侧也没有超时 → **2 小时**。
+
+> 触发条件是偶发的（要在"宿主启动的那一刻正好有个卡住的遗留实例"）—— 这解释了"未复现"；
+> 但**挂起本身是结构性的** —— 这解释了为什么是 2 小时而不是一次报错。
+> 顺带解释了为什么**插件本体**没表现出这个问题：`mcp/src/client/com-host.ts` 对每个动作都有超时
+> （60s / 300s / suspect 15s），同一个卡住的回收会以「状态未知」报出来，而不是无限等。
+> **只有直连宿主、自己不做超时的调用方**（`param-contract` 与几个直接 spawn 宿主的测试文件）会中招。
+
+### 修法
+
+**把 `ready` 挪到回收之后** —— 让 `ready` 重新符合它的语义（"宿主真正可用"），
+这样客户端的启动兜底**天然覆盖**了回收这段：真的卡住时，它会超时报错，而不是先被误导再无限等。
+
+```powershell
+try { $null = Invoke-WpsOrphanReclaim } catch { }
+
+Write-Frame '{"ready":true,...}'        # ← 挪到这里
+Update-HostState 'idle'
+```
+
+### 验证
+
+- **静态顺序**：`FIXES 102: the ready frame is emitted only after the orphan reclaim`（`reclaim@9458 ready@9505`）
+- **行为顺序**：给一条"owner 已死"的回收记录再起宿主，**看到 ready 的那一刻记录必须已被清掉**
+  → `FIXES 102: the reclaim is already done when ready arrives  recordAtReady=false`
+- `test/orphan-reclaim.test.mjs`：**17/17**。
+
+### 施工时的自我纠错（值得记）
+
+改 `host/wps-com-host.ps1` 时 `edit` 把文件的 **UTF-8 BOM 弄丢了** —— 而这个文件现在含中文注释，
+**PowerShell 5.1 无 BOM 会按 GBK 误读**（正是 FIXES 92/P8 那一类坑）。`lint` 的 `ps1-bom` 规则当场抓住：
+`LINT ps1-bom host/wps-com-host.ps1 BOM=false 期望 true`。补回 BOM 后用 **PS 5.1 真解析**确认
+`parse errors = 0` 且中文注释可读。
+
+---
+
+## 101. W4-5：`insert_ppt_image` 丢掉了桥已经返回的形状名，还留了一行永远不打印的死代码
+
+**来源**：回答"W4-5 需要做吗"时去核实前提，结果发现原记录**一半过时、一半是真缺陷**。
+
+### 前提修正
+
+| 工具 | 原记录 | 实测 |
+| --- | --- | --- |
+| `wps_ppt_add_shape` | 不返回对象名 | **早就返回了**（`形状名称: 矩形 1`，slide-ops.ts:784） |
+| `wps_ppt_insert_ppt_image` | 不返回对象名 | **确实有问题**，但成因和记录写的不一样 |
+
+### 真缺陷：声明的字段与桥实际返回的对不上（死代码 + 丢名字）
+
+桥本来就返回名字（`wps-com.ps1:6397`）：
+
+```powershell
+Output-Json @{ success = $true; data = @{ name = $pic.Name; path = $p.imagePath } }
+```
+
+但工具层声明并读取的是另一个字段：
+
+```ts
+const response = await wpsClient.executeMethod<{ success: boolean; message: string; imageIndex?: number }>(...)
+if (response.data?.imageIndex) text += `\n图片索引: ${response.data.imageIndex}`;   // ← 永远 undefined
+```
+
+后果有两层：
+1. **那行是死代码** —— 桥从不返回 `imageIndex`，所以「图片索引: N」从来没打印过；
+2. **真正有用的名字被丢掉** —— `replace_ppt_image` 是**按形状名定位**的
+   （schema 原文：「要替换的图片形状名称（与 shapeIndex 二选一）」），
+   于是"刚插入这张图 → 直接按名字引用它"这条链**断了**，模型只能多调一次 `get_shapes`。
+
+### 修法
+
+改回读桥真的给的字段（**2 行**，不涉及桥、不涉及契约管线）：
+
+```ts
+const response = await wpsClient.executeMethod<{ success: boolean; message: string; name?: string; path?: string }>(...)
+if (response.data?.name) text += `\n形状名称: ${response.data.name}`;
+```
+
+### 验证
+
+```
+insert 返回: 图片插入成功！ | 幻灯片: 第 1 页 | 文件: ... | 形状名称: 图片 1
+名字与 get_shapes 一致: true
+```
+
+- 名字与 `wps_ppt_get_shapes` 报的**逐字一致**（跨源交叉验证，不是自己说自己）。
+- `test/contract-gaps.test.mjs`：**34/34**（+3 条：回了名字 / 名字与 `get_shapes` 一致 / 死代码那行已消失）。
+
+---
+
+## 100. W4-4：Word 与 Excel 的批注预览不一致（一个带段落标记、一个不带）
+
+**来源**：执行 W1-2（断言证明力）时被逼出来的 —— 当时为了写「删掉的到底是哪条」，去比对桥返回的
+`data.impact.preview` 原始字节，发现两边长得不一样：
+
+```
+Word  deleteComment      →  "S3 批注内容\r"     ← 带批注标记
+Excel deleteCellComment  →  "第二条批注"         ← 不带
+```
+
+### 根因：两个 COM API 的返回本来就不一样，桥没有做统一
+
+| 应用 | 取值方式 | 是否带标记 |
+| --- | --- | --- |
+| Word | `$doc.Comments.Item(i).Range.Text` | **带**：Word 的批注范围包含结尾的批注标记（`\r`） |
+| Excel | `$cell.Comment.Text()` | 不带 |
+
+影响面是给人看的「将删除什么」预览文本（多一个回车/换行），**轻微**；但它是**契约不一致**：
+同一个字段名 `impact.preview`，在两个应用下语义不同。
+
+### 修法
+
+按桥里**既有的约定**统一清洗（`deleteTableLine` 早就是这么做的）：
+
+```powershell
+((([string]$doc.Comments.Item($i).Range.Text) -replace "[`r`n`a]", " ").Trim())
+```
+
+三处都改：Word 的按序号删、Word 的按全部删、Excel 的 `$oldText`（Excel 今天是 no-op，
+但把契约钉死 —— 以后 WPS 换了 API 也不会再出现同一字段两种形状）。
+
+### 验证（`test/contract-gaps.test.mjs`，走直通拿桥的原始 JSON）
+
+```
+PASS word comment preview carries no paragraph mark   "这是一条测试批注"
+PASS excel comment preview carries no paragraph mark  "第二条批注"
+PASS both apps trim the preview the same way          {"word":"这是一条测试批注","excel":"第二条批注"}
+```
+
+- 该文件 **31/31**（新增 5 条回归）。
+- 断言直接读 `data.impact.preview` 的**原始字节**（控制字符正则必须不匹配），不是看人读的文案。
+
+---
+
+## 99. W6-4：参数名写错时**不报错、按默认值执行、回报还写着自己传的值**
+
+**来源**：第 3 批扫描收口后，工单里唯一剩下的**系统性**缺陷（跨 268 个工具）。
+
+### 根因：守卫把未知参数「让给桥去报」，而桥永远收不到
+
+`mcp/src/server/tool-registry.ts` 的 `validateArguments` 里原本写着：
+
+```ts
+const schema = properties[key];
+if (!schema) {
+  // 未声明的参数交给桥接层报「未知参数」，那里的措辞和提示更完整
+  continue;            // ← 这个假设是错的
+}
+```
+
+桥**确实**会拒绝未知键（`unknown parameter(s) for 'textToColumns': sep | accepted: delimiter, range, sheet`），
+但那条路只在**直通**（`wps_execute_method`）上成立：TS handler 用显式解构拼参数
+（`{ range, delimiter, sheet }`），**未知键在到达桥之前就被丢掉了**，桥根本看不见它。
+
+于是形成一条静默失效链：**参数名写错 → 不报错 → 按默认值执行 → 回报里还写着自己传的那个值**。
+
+实证（W6-4 原始记录）：
+
+```
+wps_excel_text_to_columns { range:'A1:A3', sep:',' }   →  不报错，回报「分隔符: ,」
+```
+
+调用方完全有理由认为 `sep` 生效了。**这正是静默错里最难查的一类。**
+
+### 为什么现在能修
+
+修它需要的前提是「各工具 schema 与桥的键表已经对齐」——否则一刀切严格拒绝会误伤。
+这个前提**已经由 `scripts/param-contract.mjs` 静态门禁保证**，本轮先跑基线确认：
+
+```
+A. handler SENDS a parameter the bridge NEVER READS: 0
+B. schema ADVERTISES a parameter the handler NEVER USES: 0
+C. nested object carries a property the action NEVER READS: 0
+D. pass-through handler advertises what the bridge NEVER READS: 0
+```
+
+四类全为 0 → 可以上运行期严格校验。
+
+### 修法
+
+在 `validateArguments` 里把 `continue` 换成**响亮拒绝**，并且是可操作的那种：
+列出该工具**全部可选参数名**；拼写接近时还会提示「是不是想传 X」（编辑距离，只在足够接近时才提示，避免带偏）：
+
+```
+未知参数: delimiter1（动作：wps_excel_text_to_columns）可选参数: range / delimiter / sheet。
+是不是想传 delimiter？下一步：改成上面列出的参数名重试；若这个参数确实用不上，把它从调用里删掉。
+```
+
+### 验证
+
+| 场景 | 结果 |
+| --- | --- |
+| 直通 `wps_execute_method` 传 `sep` | 桥拒绝（原有行为，未受影响） |
+| **工具层** `wps_excel_text_to_columns { sep }` | **响亮拒绝**（修前：静默按默认逗号执行） |
+| 合法 `{ delimiter: ',' }` | 正常执行，未被误伤 |
+| 拼写接近 `{ delimiter1 }` | 拒绝 + 「是不是想传 delimiter？」 |
+
+- `test/arg-shape-guard.test.mjs`：**10/10**（新增 4 条，全部在注册层就拒绝，**不碰 WPS**）。
+- **整轮回归 49 个文件零误伤**（这是改 268 个工具共同行为的风险点，实测无 false positive）。
+
+---
+
+## 98. `wps_excel_set_border` 什么都不做却回「边框设置成功」（W1-6）
+
+**来源**：D11-A 执行第 3 批时，给 `excel-contract-fixes.test.mjs` 加"以文件为准"的断言后**第一次运行就红**：
+
+```
+FAIL file carries the outline border  {"A1":{"top":null,...},"C3":{...全部 null}}
+```
+
+### 定性：schema 与桥对不上，且不匹配时**静默空转**
+
+`set_border` 原本只断言"调用没报错"——而它确实没报错，因为：
+
+```powershell
+$position = if ($p.position) { $p.position } else { "all" }
+if ($position -eq "all" -or $position -eq "outside") { $borders += 7, 8, 9, 10 }
+...
+foreach ($b in $borders) { ... }        # $borders 是空数组 → 一次都不跑
+Output-Json @{ success = $true; ... }   # 然后回"边框设置成功"
+```
+
+而**工具自己的 schema 里写的正是 `outline`**（`format.ts` 的 enum：`['all','top','bottom','left','right','outline']`），
+桥却只认 `outside` —— 两边对不上，模型照着 schema 调用就得到**一个静默无操作 + 成功回报**。
+
+**实测证据**（隔离探针，裸 COM 读每个格子的 `Borders.LineStyle`）：
+
+| | A1 | B2 | C3 |
+| --- | --- | --- | --- |
+| 设置前 | -4142 (xlLineStyleNone) | -4142 | -4142 |
+| 设置后 | **-4142** | **-4142** | **-4142** |
+
+存盘后的 xlsx 里同样一条边框都没有。
+
+### 修法
+
+1. **桥**：`outline` 与 `outside` 都收；并且**认不出的 position 响亮拒绝**（列出全部可用值），
+   不再出现"参数没人管 → 空转 → 回成功"。
+2. **schema**：补上桥本来就支持的 `inside`（原来只列了 `outline`，而桥当时不认它 —— 两头都不全）。
+
+### 验证
+
+- `test/excel-contract-fixes.test.mjs`：**41/41 通过**。新加的 5 条都读磁盘文件：
+  数据验证规则（`type=list`、`formula1="x,y,z"`、`sqref=D1:D5`）、超链接（`B20 → https://example.com`）、
+  **outline 边框**（`A1` 有上/左、`C3` 有下/右，样式 `thick`）、条件格式规则（`E1:E5`）。
+- 修前那 4 处（border / data-validation / conditional-format / hyperlink）**全都只断言"调用没报错"** ——
+  参数名对上 ≠ 效果落地，这条 bug 就是卡在这个缝里活了很久。
+
+---
+
+## 97. 打印缩放的两个静默丢失（W1-5）——由 W1-4 的独立 oracle 挖出
+
+**来源**：D11-A 执行第 3 批时，给 `excel-page-setup.test.mjs` 加"存盘后用 openpyxl 读文件本身"的
+独立 oracle，**第一条新断言就红了**：
+
+```
+FAIL file says the last scale mode won (zoom 90, not fit-to-page)   scale=null fitToPage=false
+```
+
+工具回报「缩放: 90%」，但**磁盘上的 xlsx 里连 `scale` 属性都没有** —— 重新打开就是 100%。
+这正是"回报写了 ≠ 文件里真是那样"的典型，而旧断言全都在验证插件自己的回读文案，所以一条都没红。
+
+### 定性：逐项二分到两个独立成因
+
+对"设了 fitToPages / zoom 之后，再调用别的工具"逐项二分，各存一份 xlsx 读原始 XML：
+
+| 序列 | 存盘后的 `<pageSetup>` |
+| --- | --- |
+| 只 `zoom=90` | `scale="90"` ✅ |
+| `fitToPagesWide=1` → `zoom=90` | **没有 scale** ❌（W1-5a） |
+| `zoom=90` → 打印标题 / 分级显示 / 工作表外观 | `scale="90"` ✅ |
+| `zoom=90` → **`reset_page_breaks`** | **没有 scale** ❌（W1-5b） |
+
+### W1-5a · 设 zoom 时没有清 FitToPages（互斥只实现了一半）
+
+桥里 3249 行的注释写着"Zoom 与 FitToPages 互斥：设置 FitToPages 前必须先把 Zoom 置 False"，
+但**反方向漏了**：设 `zoom` 时没有清 `FitToPagesWide/Tall`。于是先 `fitToPagesWide=1` 再 `zoom=90` 时，
+fit 模式仍留在内部状态，WPS 存盘时按 fit 路径写、**把 scale 丢掉**。
+
+**修法**：设 zoom 前把 FitToPages 两面都置 `False`（与另一方向的清 Zoom 对称）。
+验证：修后同一序列写出 `<pageSetup paperSize="9" scale="90" fitToWidth="0" fitToHeight="0" .../>`。
+
+### W1-5b · `wps_excel_reset_page_breaks` 会把打印缩放一起重置
+
+桥里就是一句 `$sheet.ResetAllPageBreaks()` —— 所以是 **WPS 自己**把打印缩放一并重置了。
+但这个工具的名字是"清手动分页符"，**不该顺手改用户的缩放**。
+
+**修法**：调用前后把 `Zoom` / `FitToPagesWide` / `FitToPagesTall` 记下来并还原（按记录的那一种恢复，
+尊重互斥关系）。还原失败走 `Add-WpsWarning`，不静默吞掉。
+
+### 验证
+
+- `test/excel-page-setup.test.mjs`：**35/35 通过**（新增 9 条"以文件为准"的断言：
+  方向 / A3 纸张 / 36 磅页边距 = 0.5 英寸 / 水平居中 / 打印标题 / 页眉页脚字段 / 缩放 90 且非按页适配 /
+  标签色真的清掉 / 工作表恢复可见）。
+- 这 9 条**全部读磁盘上的 xlsx**（openpyxl），不经过插件的读接口 —— 旧断言一条都抓不到上面两个问题。
+
+> 方法学备注：W1-4 的价值在这一轮被直接验证了 —— 加一条"以文件为准"的断言，**第一次运行就红**，
+> 而此前 25 条自证式断言全绿。
+
+---
+
+## 96. W5-1：租约的 PID 复用会让死宿主「看起来还活着」，插件从此用不了
+
+**来源**：D10-A。**这是我自己在做第 3 批时撞上的** —— 连续三次跑测试被
+「检测到另一个 DSH 会话正在控制 WPS」挡住，查下去发现系统里**一个宿主进程都没有**。
+
+### 现象与根因
+
+租约文件里记着 `hostPid=41592`，但按进程名过滤 `wps-com-host.ps1` 得到 **0 个** ——
+那个进程号早已被一个**毫不相干的进程**复用。而租约的存活判定只看"这个号在不在进程表里"：
+
+```powershell
+function Test-ProcessAlive($processId) {
+    return $null -ne (Get-Process -Id ([int]$processId) -ErrorAction SilentlyContinue)
+}
+```
+
+于是 `Get-StaleOwnerReason` 判定"占用者还活着"→ 新宿主**永久拒绝接管**。
+而且它的**心跳年龄检查排在两个 liveness 检查之后**，所以"心跳停了 28867 秒"这条**根本轮不到**
+（判据：租约 `updatedUtc` 距今 > 8 小时，远超 120 秒阈值，却照样拒绝）。
+
+**影响**：用户只要遇到一次，插件就再也起不来，且报错让人去"关闭那个会话"——而那个会话根本不存在。
+唯一出路是手工删 `%USERPROFILE%\.wps-office-mcp\com-host.json`。
+
+### 还有一个更危险的隐患（同一次修复里一并处理）
+
+接管路径原本是：
+
+```powershell
+if ($null -ne $state -and (Test-ProcessAlive $state.hostPid)) {
+    Stop-Process -Id ([int]$state.hostPid) -Force    # ← 号被复用时，这里会杀掉一个无关进程
+}
+```
+
+也就是说：PID 复用不仅让插件卡死，还会让新宿主去**杀掉别人的进程**。
+
+### 修法
+
+租约里**本来就记着宿主的启动时刻** `startedUtc`（`Update-HostState` 一直在写），用它核对身份即可分辨复用，
+不需要改 schema、对旧租约也兼容：
+
+```powershell
+function Test-OwnerAlive($processId, $startedUtc) {
+    if (-not (Test-ProcessAlive $processId)) { return $false }
+    if ([string]::IsNullOrEmpty($startedUtc)) { return $true }   # 旧租约：退回只看 PID
+    $actual   = (Get-Process -Id ([int]$processId) -ErrorAction Stop).StartTime.ToUniversalTime()
+    $recorded = ([datetime]::Parse([string]$startedUtc)).ToUniversalTime()
+    return ([math]::Abs(($actual - $recorded).TotalSeconds) -lt 2)
+}
+```
+
+- 存活判定改用 `Test-OwnerAlive`（PID + 启动时刻），复用号会被判成"宿主已不在"→ 正常接管；
+- **接管时的 Stop-Process 也改用身份核对** —— 只杀确认是我们的那个进程；
+- 拒绝文案补上可操作的自救办法：直接给出要删的租约文件路径。
+
+### 验证
+
+`test/host-lease.test.mjs` 新增 2 条针对性回归（伪造一份"号被复用、但心跳是新的"的租约）：
+
+- `a recycled pid is not mistaken for a live owner` → **ready=true**（旧代码在这里必然拒绝）
+- `the unrelated process holding that pid was NOT killed` → `exitCode=null signal=null`
+
+**HOST LEASE TESTS OK (20)**（原 18 条）。
+
+> 顺带记一条操作坑：排查时我按命令行过滤进程（`CommandLine -like '*wps-com-host.ps1*'`），
+> **匹配到了我自己这条命令**，于是把自己的 shell 杀了、把 DSH 的作业运行器都搞崩了。
+> 加 `Name -eq 'powershell.exe'` 限定才对 —— 这类"自匹配"在按命令行找进程时是通病。
+
+---
+
+## 94. 第 1 批（W4-1 + W6）：图表导出的目标解析、段落格式契约、公式错误值
+
+**来源**：D6-A（第 1 批：W4-1 + W6）。这一批修的是**三个「回 success 但结果不对」**的契约缺陷，
+每个都先有真机复现、改完再用裸 COM / 独立读回验证。
+
+### W4-1 · `wps_excel_export_chart_as_image`：名字找不到时回**裸 COM E_FAIL**，且没有任何可发现路径
+
+**现场**：真实会话（2026-09-12）里模型建图后导出，拿到的是一句无法据此恢复的报错；2026-10-04 在 0.6.2 上复现：
+
+| 调用 | 以前 |
+| --- | --- |
+| `chartName: "NoSuchChart"` | ❌ `HRESULT E_FAIL` + 「下一步：确认操作对象存在…并且 WPS 处于可操作状态」← **把"名字不对"误导成"环境坏了"** |
+| 同族对照 `delete_chart` 同名 | ✅ 会说 `chart not found on this sheet（给 chart 名称，或在只有一张图时省略）` |
+
+**根因**：桥里 `$sheet.ChartObjects($chartName)` 与 `.Chart.Export()` **两处都没有 try/catch**；
+而且**没有任何"列出图表"的工具**（`wps_help` 搜「图表」10 个工具，独缺查询型），
+工具描述却写"可通过 `create_chart` 返回值或界面查看" —— 跨会话或多图表时**无从得知名字**。
+
+**修法**：与同族 `delete_chart` **完全对齐** —— 名字或序号都收、整张表只有一张图时可**省略** `chartName`
+（由必填改为可选）、找不到时**列出这张表上现有的图表名**、`Export` 也补上保护。
+成功文案改为回报**实际解析到**的那张图（省略或给序号时调用方才知道导出的是哪张）。
+
+### W6-1 · `wps_word_set_paragraph`：三个静默错 + 6 个参数对模型不可见（广告面工具）
+
+**实测**（广告面直连调用 + 裸 COM 读回每一段的对齐真值）：
+
+| # | 旧行为 | 危害 |
+| --- | --- | --- |
+| 1 | `range` 传 `{start,end}` 被**静默忽略**（桥只认字符串 `"all"`） | 落到选区上 —— **改错位置却回 success**（`set_font`/`apply_style` 都收 `{start,end}`，同族不一致） |
+| 2 | 非法 `alignment`（如 `centre`）被**静默改成左对齐**（`if ($null -eq $align) { $align = 0 }`） | 比忽略更糟：**主动改成用户没要的格式** |
+| 3 | 一个属性都不给也回「段落格式已设置」 | 假成功：什么都没做 |
+| 4 | 桥支持 **8** 个属性，广告面只暴露 **2** 个（段前/段后间距、三种缩进**完全不可见**） | 模型不可能去猜没写进 schema 的参数名 |
+| 5 | `if ($p.lineSpacing)` 判空 → `0` 被跳过；负数无校验 | 参数静默失效 |
+
+**修法**：`range` 与 `set_font` / `apply_style` 对齐（`{start,end}` 或 `"all"`，含越界校验）；
+非法枚举**响亮拒绝并列出合法值**；行距必须正数；**空调用拒绝**；schema 补全 8 个参数；
+回报**实际设置了哪些属性**（`段落格式已设置：alignment=right`）。
+
+**验证（最强的一条）**：只给第二段的字符范围设右对齐 → 裸 COM 读回
+`{"before":[3,3,3,3],"after":[3,2,3,3]}` —— **只有目标段变了**。
+
+### W6-2 · `wps_excel_evaluate_formula`：Excel 错误值以**裸 CVErr 负数**当"结果"返回
+
+**实测**：`=1/0` → `success + result: -2146826281`；`=SUM(` → `success + result: -2146826273`。
+那是 CVErr 变体（`0x800A0000 + xlErr 码`）被 PowerShell 呈现成负数 —— **模型会把它读成计算结果**。
+
+**修法**：两条求值路径（`Application.Evaluate` 与备用的一次性单元格）都做 CVErr 判定，
+翻成 `#DIV/0!` / `#VALUE!` / `#N/A` 等可读错误并 `success = false`。
+
+### W6-3 · `wps_excel_set_print_area` 的失败文案
+
+以前只回一句「设置失败」，没有原因也没有下一步 —— 现在透出桥给的原因（错误契约三段式）。
+
+### 这一批**没修**、但已记进 [bug-hunt-orders.md](bug-hunt-orders.md) 的（避免下轮重挖）
+
+- **未知参数被静默丢弃（系统性，记为 W6-4）**：`text_to_columns` 传 `sep` 不报错、按默认逗号执行。
+  桥只对**有键表**的 action 拒绝未知键，而 TS handler 显式拼参数时会先把未知键丢掉 ——
+  这是**跨 268 个工具**的一类问题，要动 `tool-registry` 的校验层，范围与风险都超出本批。
+- `proofread_basic` 的 `start_offset` 传字符串被接受（当次结果恰好正确，未定性）。
+
+### 验证
+
+- **新增 `test/contract-gaps.test.mjs`：26/26 通过**（真实 WPS）——
+  W6-1 的空调用/非法枚举/负行距/越界范围四种拒绝 + 「只有目标段变了」；
+  W6-2 的 `#DIV/0!` 与 `#VALUE!` 都报失败且**错误码不再泄漏给调用方**；
+  W4-1 的「找不到就列出可选图表」「省略 chartName 也能导出」「序号也收」「真的写出了 9,266 字节的 PNG」。
+- 契约管线整跑：`build-host-actions`（`switch_cases=263 functions=79`、**0 解析错误**）
+  → `tsc` → `extract-spec`（268 operations、`unresolved: []`）→ `tsc` → 三个生成器 → `gen-numbers`。
+- 广告面因 W6-1 补全 6 个参数而增长：**46,867 → 47,630 字节**（预算 60,000），
+  README / HANDOFF 的声明值同步更新，`gen-numbers --check` **20 项全过**。
+
+> 过程记录（值得记一笔）：第一次跑 `build-host-actions.ps1` 时它报 **103 个解析错误** —— 我在
+> PowerShell 双引号字符串里写了 `\"`，而 PS 用**反引号**转义，`\"` 直接终止了字符串。
+> 生成器**在写盘前就解析校验**，所以坏桥根本没落地；改成单引号后一次通过。这正是那道生成期门禁的价值。
+
+---
+
+## 93. W1 断言证明力审计：50 个弱断言点位逐个甄别，升级 22 处（纯测试改动）
+
+**来源**：D1-A 的 W1-1 + W1-2（见 `docs/bug-hunt-orders.md`），按 D4-B 作为第 2 批执行。**只动测试，不碰运行时代码。**
+
+### 为什么要做这件事
+
+覆盖率已经不是瓶颈（268/268 bespoke、`any` = 0、整轮全绿），**断言证明力**才是：P5 就是在全绿套件下漏过去的 ——
+那条断言查的是 `styles[0]`（第 1 段），而缺陷打的是**紧邻的上一段**。
+
+实测口径：静态 `check(` **932**，带近似特征的 **365**（`index[0]` 23、`>0` 27、`includes()` 184、正则 144）；
+**48 个测试文件里只有 8 个用了独立 oracle**，其余 40 个只信插件自己的回报。
+
+### 做了什么
+
+**50 个点位逐个甄别 → 19 处确为真弱并升级，另顺手升级 3 处同类（共 22 处）**；其余 31 处判定为假阳性或故意的烟测。
+
+| 类 | 做法 | 代表 |
+| --- | --- | --- |
+| **相邻元素** | 只查第 0 个 → 先取**前置快照**，再断言"只有目标变了" | `word-range-format` 的 `apply_style` / 英文别名；`sheet-ops` 的整份工作表顺序；`error-contract` 的批量成功向量 `[true,false,true]` |
+| **只证非空** | `length > 0` / `> 0` → **精确值** | `warnings` 必须点名失败的样式名；`target-ambiguity` 两处警告**逐字一致**；`destructive-guard` 的命名范围引用、批注预览、形状/图片标识 |
+| **只看一格** | 只看首行/末格 → **整块逐格比对** | `excel-range` 的 8000 格大读取，整块比对并报出首个不一致坐标 |
+
+### 过程中新查出的两件事
+
+1. **Word 与 Excel 的批注预览不一致**：Word 侧 `deleteComment` 的预览是 `"S3 批注内容\r"`（**带段落标记**），
+   Excel 侧 `deleteCellComment` 的是 `"第二条批注"`（**不带**）。轻微瑕疵（影响面是给人看的"将删除"预览文本），
+   要统一应在桥侧 trim。**本次没改运行时代码**，只把断言写成"逐条 trim 后精确比对"。
+2. **`wps_ppt_add_shape` / `wps_ppt_insert_ppt_image` 不返回对象名**：原打算拿插入时的返回值与删除时的 `impact.name`
+   逐字比对，实测拿不到（形状叫「矩形 1」、图片叫「图片 4」，都是 WPS 自动命名）。断言改为"必须报出**可辨认的标识**"。
+
+> 这两条正是加强断言的副产品：**新断言先红了**，才逼出真实行为。旧断言（`length > 0`）对两种情况一律放行。
+
+### 判定为"无需升级"的 31 处（写明理由，避免下轮重复劳动）
+
+- **假阳性 9 处**：`[0]` 出现在**详情字符串**里而非断言里 —— `excel-advanced:80`、`excel-page-setup:42/63/65/67/69/71`、`ppt-contract-fixes:140/141`。
+- **已被守卫 2 处**：`alerts-gate:31` 先断言 `length === 1` 再取 `[0]`，本身不弱。
+- **故意的烟测 8 处**：覆盖矩阵里的 `body.length > 0`（"returns something readable (no hang)"）—— 设计目的就是"没挂住"，
+  项目另有 `matrixAny` 棘轮单独管；给它们补真值 oracle 属 **W1-3**，不在本批。
+- **本来就在断言"存在性" 12 处**：`host-lease` 的 pid > 0、`orphan-reclaim` 的实例数 > 0、`watchdog` 的预算 > 0、
+  `close-safety` 的 `before >= 0`（`?? -1` 哨兵检查）等 —— 语义正确，改反而错。
+
+### 验证
+
+- 8 个被改文件**逐个真机跑过**：`warnings` 7/7、`error-contract` 14/14、`target-ambiguity` 13/13、
+  `word-lifecycle` 18/18、`excel-range` 12/12、`sheet-ops` 21/21、`word-range-format` 50/50、
+  `destructive-guard` **45/45**（其中 3 条新断言**先红后修**）。
+- `node scripts/lint.mjs`：184 文件 0 违规。**断言总数不变（1085）** —— 本轮是 1:1 替换，不新增条数。
+
+### 仍未做（下一批）
+
+**W1-3 / W1-4**：给 **40 个没有独立 oracle** 的文件补"读回真值" —— 优先 `destructive-guard`（破坏性面却 0 oracle）、
+`excel-page-setup`、`word-deep` / `word-produce` / `excel-list-object` 等写入型测试。
+真值来源优先级：外部库读盘（openpyxl / python-docx / python-pptx）> 裸 COM > **绝不**用被验证工具自己的读接口。
+
+---
+
+## 92. 0.6.2 真机测试修出的 8 项：Word 插入样式**污染上一段**（严重）+ 段落号报错段 + 英文样式名 + 门禁与文档
+
+**来源**：用户要求「测一测已装的 0.6.2 有没有 bug」；连同只读核对阶段发现的 4 项，一次收口。
+被测副本与仓库 `mcp/dist` **240 个文件逐字节一致**，所以测的就是本仓库这份代码。
+纪律照旧：先复现、再改、再回读验证。
+
+### P5 · `wps_word_insert_text` 带 `style` 时**静默改写上一段的样式**（严重 · 静默错）
+
+**复现**（真实 WPS、走 MCP 工具）：新建文档 → 连插 3 个**不带样式**的段落 → 再插一段带 `style:"标题 1"` 的文本：
+
+| | 结果 |
+| --- | --- |
+| 插入前 | `[4] (正文) 普通段落丙` |
+| 插入后 | `[4] (标题 1) 普通段落丙` ← **被改了** |
+| 工具回报 | `应用样式: 标题 1（作用在第 5 段）` —— 只提第 5 段，**零警告** |
+
+**根因**：`insertText` 的 `"end"` 分支锚点是 `$doc.Range($doc.Content.End - 1, $doc.Content.End - 1)`，
+正落在**最后一段的段落标记**上；`InsertAfter("\r" + 文本)` 把 `$range` 扩成包含那个标记，
+而**段落标记决定整段样式** —— 于是对 `$range` 设样式会连带染上上一段。
+证据：工具回报「插入范围: 18-23」，而上一段是 `@13-19` —— 它的标记正好在第 18 位。
+
+**后果**：上一段套上标题的字号/间距，并**混进自动生成的目录**（实测目录里多出一条本该是正文的
+`背景细节略。 1`）。`position:"start"` 也会给新建的前导空段套样式（较轻）。
+
+**修法**：用 `$leadingMark` 记下这次插入是否放了前导段落标记，样式范围收窄一格跳过它：
+`$styleRange = $doc.Range($insertStart + 1, $insertEnd)`。
+
+**为什么以前没抓到**：既有断言是 `afterStyle.styles[0] === "正文"` —— 只查**第 1 段**，
+而缺陷污染的恰恰是**紧邻的上一段**。断言已改成「此前已存在的**每一段**都没变」。
+
+### P7 · 「所在段落」按文本找**第一处**匹配，文本一重复就报错段
+
+同一区域的第二个缺陷：`Find-WordParagraphOfText` 用 `$full.IndexOf($text)`。
+实测插入的文本若与前面某段重复，工具报「所在段落: 第 2 段」，而新段实际在第 4 段 ——
+被染上样式的是第 3、4 段，**第 2 段根本没动**，报告主动误导。
+
+**这条同时是 P5 修法的约束**：任何「取这个段号再设样式」的修法都会被打到旧段上，所以 P5 只能按
+**字符范围**修。该辅助函数已替换为按位置数段落标记的 `Get-WordParagraphIndexAt`（与文本内容无关）。
+
+### P6 · `insert_text` 不翻译英文样式名（`apply_style` 会）
+
+`resolveStyleName()` 只在 `format.ts` 里被调用，`content.ts` 把 `style` **原样**发给桥；
+中文 WPS 的样式表里没有英文名，于是 `insert_text { style: "Heading 2" }` 吃 E_FAIL、段落停在「正文」，
+而 `apply_style { styleName: "Heading 2" }` 正常解析成「标题 2」—— 同一个概念两个工具行为不一致。
+已让 `insert_text` 与 `apply_style` 对齐，并把回报改成 `应用样式: 标题 2（原输入 Heading 2）`。
+
+### P1 · `confirm-dialog` 看门狗的**机器范围**误报（测试缺陷，不是产品缺陷）
+
+看门狗用 `EnumWindows` **全机**枚举可见窗口，只按「类名以 `Qt*` 开头」判定 —— 本机**微信**
+（`Weixin.exe`）的窗口类名正是 `Qt51514QWindowIcon`，与 WPS 对话框**同类名前缀**。
+日志实测：看门狗启动后 **25 ms** 就记账，早于任何场景开跑。
+**这条断言因此在任何装了 Qt 应用的机器上永远红**，把「整轮全绿」变成常态红 —— 比缺陷本身更贵。
+
+**修法**：先做**基线**（记下开跑前已在的 Qt 窗口句柄），之后只报**新增**窗口，并把所属进程写进日志。
+**刻意不按进程名过滤** —— 宁可多记不可漏记，避免把真弹框过滤掉、让门禁失去意义。
+
+### P2 · 同一个工具面有两个 `schemaBytes` 读数
+
+`verify.mjs` 逐个 `JSON.stringify(t)` 相加（**不含**数组元素之间的逗号与两端方括号），
+比真实载荷少 `n+1` 字节（84 个工具正好少 85）→ 46,782，与 `gen-numbers` 的 46,867 不一致。
+FIXES 91 的审计已把它记为「确认为真、本轮不改」，这次收掉：改成量**数组载荷**，与
+`scripts/lib/tool-face.mjs` 同源。
+
+### P3 / P4 · `docs/HANDOFF.md` 的两处
+
+- §5 的静态 `check(` 计数**自相矛盾**（表里 922 / 脚注 924，实测 924）。按 **D2-A 直接删掉这个数字** ——
+  它已漂过 782 / 918 / 928 / 922 四次，写进去只会制造下一个矛盾；只保留「差额来自循环内断言」的说法。
+- §9 那句因果**写反**的 confirm-dialog 解释按 P1 的结论重写：失败的原因是「**看到了** Qt 窗口」，
+  不是「对话框没弹」。
+
+### P8 · `scripts/run-tests.ps1` 的 `perFile` 只剩第一个文件（含中文却**不带 BOM**）
+
+**发现于**验证 P1 时跑整轮：跑 2 个以上文件时每跑完一个就报
+`Item has already been added. Key in dictionary: 'file'`，`test/summary.json` 的 `perFile` 只剩第一行（48 行丢 47 行）。
+`files` / `assertions` / `pass` / `fail` 是另一条累加所以**看着正常** —— 这正是它一直没被发现的原因。
+
+**根因（第一版猜"脚本缓存"是错的，靠实测纠正）**：是**编码**。该文件含 **215 个汉字却不带 UTF-8 BOM**，
+Windows PowerShell 5.1 把无 BOM 的文件按 **ANSI/GBK** 读 → 中文注释的字节被曲解后
+**把紧随其后的那条语句 `$summaryRows = @()` 整个吞掉**：于是第一次 `$null += [ordered]@{...}` 让变量
+变成了**字典**，第二次 `+=` 对字典加同一个键就必然抛那个错。三种报错形态（字典键重复 / 改成 ArrayList 后的
+null 值表达式 / 报错行号与源码对不上）全部由此解释。
+判据：`scripts/build-host-actions.ps1` 有 **0 个**非 ASCII 字符，同样不带 BOM 却一切正常。
+
+**修法**：给 `scripts/run-tests.ps1` 补上 **UTF-8 BOM**，行尾**保持 LF**（`scripts/*.ps1` 本来就是 LF：
+`build-host-actions.ps1` 也是；且 `.gitattributes` 写着 `* -text`「never rewrite line endings」，
+所以只补它缺的那一样）。逐字符比对确认**内容一字未改** —— `git diff` 只有 1 行：那个 BOM。
+并把它加进 `scripts/lint.mjs` 的字节约定清单（该清单改为可逐文件声明"要不要 CRLF"）——
+这个 bug 能活下来，正是因为那份清单只列了 `mcp/scripts/wps-com.ps1` 与 `host/wps-com-host.ps1` 两个文件。
+**教训：含非 ASCII 的手写 `.ps1` 必须带 BOM。**
+
+### 验证
+
+- `node test/word-range-format.test.mjs`：**50/50 通过**（新增 6 项）。关键三项都直接对应上面的缺陷：
+  `P5: a styled insert leaves every earlier paragraph untouched`
+  （`before=["正文","正文","标题 3"] after=["正文","正文","标题 3","标题 3"]`）、
+  `P7: the reported paragraph is the one just inserted, not an earlier duplicate`（报出「第 7 段」而不是旧段）、
+  `P6: the english alias really applied 标题 2`。
+- **整轮回归 `scripts/run-tests.ps1`：`TOTAL PASS=1085 FAIL=0 FILES=48` / `ALL TEST FILES GREEN`**
+  —— 这是这个项目**第一次整轮全绿**（此前长期是 1076 / 1077，那条红的正是 `confirm-dialog`）。
+  断言数 1077 → **1085**（word-range-format +6、confirm-dialog +1，其余为既有用例）。
+- `node test/confirm-dialog.test.mjs`：**7/7 通过**（此前长期红 1 条），日志为
+  `baseline 2 Qt window(s) already visible before the scenarios`，三个破坏性场景共 93 项断言、**零新增 Qt 窗口**
+  —— 说明基线只是排除了无关窗口，**真信号没有被削弱**。
+- `test/summary.json` 的 `perFile` 恢复成 **48 行**（P8 的验收判据），`badFiles` 为空、`ORPHANS_LEFT=0`。
+- `node scripts/verify.mjs --static`：19 项全过，且 `schemaBytes=46867`，与 `gen-numbers` 一致（P2 生效）。
+- `node scripts/gen-numbers.mjs --check`：20 项声明值全过。
+- `node test/spec-reproduction.test.mjs` 15 项；`param-contract` 的未解析仍是那 5 处已知项；
+  `node scripts/lint.mjs`：183 文件 0 违规。
+- 契约管线按 §4 的顺序整跑：`build-host-actions.ps1`（`switch_cases=263 functions=79`，生成物 BOM 正确）
+  → `tsc` → `extract-spec`（268 operations、`unresolved: []`）→ `tsc` → `gen-tool-surface` →
+  `gen-skill-tools` → `gen-tool-coverage`（268 工具 / 0 untested）→ `gen-numbers`；**spec 与技能参考表零漂移**。

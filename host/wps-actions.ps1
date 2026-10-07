@@ -402,17 +402,18 @@ function Get-TargetPres($ppt, $p) {
 
 # 解析目标文档：Word 侧此前没有共用解析点（FIXES 64 的 C7 残留），56 处动作各自取 ActiveDocument，
 # 多文档同时打开时既不会提醒、也说不清落在哪一份上。与 Excel / PPT 一致：先提醒，再返回活动文档。
-# FIXES 86：定位一段文本所在的段落号。段落索引不能拿插入前的坐标去数 —— 新建段落时那个 \v 会把后面
-# 的内容整体后移一位，插入点于是落到上一段的末尾（实测报成"第 1 段"）。这里按**文档顺序**在 Content.Text
-# 里找那段文本，数它前面有几个段落标记。找不到就回 0（调用方据此省略该字段，不假装知道）。
-function Find-WordParagraphOfText($doc, [string]$text) {
-    if (-not $text) { return 0 }
+# FIXES 92（P7）：定位某个字符位置落在第几段。段落索引不能拿插入前的坐标去数 —— 新建段落时插入的
+# 那个 \r 会把后面的内容整体后移一位，插入点于是落到上一段的末尾（实测报成"第 1 段"）。
+# 也**不能按文本内容找**：早先的实现是 $full.IndexOf($text)，取的是**第一处**匹配 —— 插入的文本若与
+# 前面某段重复，回报的"第 N 段"就是旧的那一段（实测：新段实际在第 4 段，却报成第 2 段），而且任何
+# "拿这个段号去设样式"的修法都会被带偏。按位置数段落标记与文本内容无关，天然免疫重复。
+function Get-WordParagraphIndexAt($doc, [int]$pos) {
+    if ($pos -le 0) { return 1 }
     try {
         $full = [string]$doc.Content.Text
-        $idx = $full.IndexOf($text)
-        if ($idx -lt 0) { return 0 }
+        if ($pos -gt $full.Length) { $pos = $full.Length }
         $para = 1
-        foreach ($ch in $full.Substring(0, $idx).ToCharArray()) { if ($ch -eq [char]13 -or $ch -eq [char]11) { $para++ } }
+        foreach ($ch in $full.Substring(0, $pos).ToCharArray()) { if ($ch -eq [char]13 -or $ch -eq [char]11) { $para++ } }
         return $para
     } catch { return 0 }
 }
@@ -2285,9 +2286,17 @@ return }
         $styleName = if ($null -ne $p.style) { $p.style } else { $p.borderStyle }
         $style = $styleMap[$styleName]
         if ($null -eq $style) { $style = 1 }
-        $position = if ($p.position) { $p.position } else { "all" }
+        # FIXES 98（W1-4）：**工具 schema 里写的是 outline，桥只认 outside** —— 传 outline 时两个分支都不匹配，
+        # $borders 成了空数组、foreach 一次都不跑，然后**回一句「边框设置成功」**。
+        # 实测：A1/B2/C3 的 Borders.LineStyle 前后都是 -4142（xlLineStyleNone），存盘后文件里也没有边框。
+        # 现在两个名字都收，并且**认不出的位置响亮拒绝**（列出可用值），不再默默空转。
+        $position = if ($p.position) { "$($p.position)".ToLower() } else { "all" }
+        $knownPositions = @("all", "outside", "outline", "inside", "left", "top", "bottom", "right")
+        if ($knownPositions -notcontains $position) {
+            Output-Json @{ success = $false; error = ("position 只支持 " + ($knownPositions -join " / ") + "，收到的是「$($p.position)」。（动作：setBorder）下一步：改成其中之一重试，例如 position:'outline'。") }
+return }
         $borders = @()
-        if ($position -eq "all" -or $position -eq "outside") { $borders += 7, 8, 9, 10 }
+        if ($position -eq "all" -or $position -eq "outside" -or $position -eq "outline") { $borders += 7, 8, 9, 10 }
         if ($position -eq "all" -or $position -eq "inside") { $borders += 11, 12 }
         if ($position -eq "left") { $borders += 7 }
         if ($position -eq "top") { $borders += 8 }
@@ -2766,14 +2775,37 @@ return }
         $sheet = Get-WorksheetByParam $excel $p
         $outputPath = $p.outputPath
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; return }
-        $chartName = $p.chartName
-        if ([string]::IsNullOrEmpty($chartName)) { Output-Json @{ success = $false; error = "Missing chartName" }; return }
         $rawFormat = if ($p.format) { $p.format.ToString().ToUpper() } else { "PNG" }
         # JPEG 在 Excel COM 中按 JPG 滤镜处理
         $filterName = if ($rawFormat -eq "JPEG") { "JPG" } else { $rawFormat }
-        $chartObj = $sheet.ChartObjects($chartName)
-        $chartObj.Chart.Export($outputPath, $filterName)
-        Output-Json @{ success = $true; data = @{ chartName = $chartName; outputPath = $outputPath; format = $filterName } }
+        # FIXES 94（W4-1）：图表解析与 deleteChart **对齐** —— 名字或序号都收、只有一张图时可省略，
+        # 找不到时**列出表上已有的图表**，而不是把裸 COM E_FAIL 抛给调用方。
+        # 旧版是直接 $sheet.ChartObjects($chartName) + .Export()，两处都没有 try/catch：
+        # 名字不存在就回一句「HRESULT E_FAIL + 确认 WPS 是否可操作」，把"名字不对"误导成"环境坏了"。
+        $chartCount = 0
+        try { $chartCount = [int]$sheet.ChartObjects().Count } catch { $chartCount = 0 }
+        $available = @()
+        # 读不到某张图的名字就退化成"#序号" —— 不写空 catch（S5 账本只许缩：空 catch 会被 test/silent-catch 抓）。
+        for ($ci = 1; $ci -le $chartCount; $ci++) { try { $available += [string]$sheet.ChartObjects($ci).Name } catch { $available += ("#" + $ci) } }
+        $target = $null
+        $label = ""
+        if ($null -ne $p.chartName -and "$($p.chartName)" -ne "") {
+            $label = "$($p.chartName)"
+            if ($label -match '^\d+$') { try { $target = $sheet.ChartObjects([int]$label) } catch { $target = $null } }
+            else { try { $target = $sheet.ChartObjects([string]$label) } catch { $target = $null } }
+        } elseif ($chartCount -eq 1) {
+            try { $target = $sheet.ChartObjects(1); $label = [string]$target.Name } catch { $target = $null }
+        }
+        if ($null -eq $target) {
+            $asked = if ($label -ne "") { "请求的是「$label」。" } else { "本次没有指定 chartName。" }
+            $hint = if ($available.Count -gt 0) { "这张表上现有的图表：" + ($available -join "、") + "（也可以直接给序号，从 1 开始）" } else { "这张表上还没有图表：先用 wps_excel_create_chart 建一张" }
+            Output-Json @{ success = $false; error = "chart not found on this sheet：$asked$hint。（动作：exportChartAsImage）下一步：用上面列出的名字或序号重试；整张表只有一张图时可以省略 chartName。" }
+return }
+        $resolvedChartName = ""; try { $resolvedChartName = [string]$target.Name } catch { $resolvedChartName = $label }
+        try { $target.Chart.Export($outputPath, $filterName) } catch {
+            Output-Json @{ success = $false; error = ("导出图表失败：" + $_.Exception.Message + "（动作：exportChartAsImage）下一步：确认 outputPath 的目录存在且可写、扩展名与 format 一致（PNG/JPG/GIF/BMP）。") }
+return }
+        Output-Json @{ success = $true; data = @{ chartName = $resolvedChartName; outputPath = $outputPath; format = $filterName } }
     }
 
     "exportRangeAsImage" {
@@ -3509,7 +3541,15 @@ return }
                 if ($null -ne $p.fitToPagesTall) { $ps.FitToPagesTall = [int]$p.fitToPagesTall }
                 $applied += "fitToPages"
             }
-            if ($null -ne $p.zoom) { $ps.Zoom = [int]$p.zoom; $applied += "zoom" }
+            # FIXES 97（W1-5）：互斥必须**两头都清**。旧版只在设 fitToPages 时清 Zoom，反过来没做 ——
+            # 实测：先 fitToPagesWide=1 再 zoom=90，工具回报「90%」，但**存盘后的 xlsx 里没有 scale**，
+            # 重新打开就是 100%（静默丢失）。设 zoom 前必须把 FitToPages 两面都置 False。
+            if ($null -ne $p.zoom) {
+                $ps.FitToPagesWide = $false
+                $ps.FitToPagesTall = $false
+                $ps.Zoom = [int]$p.zoom
+                $applied += "zoom"
+            }
             if ($null -ne $p.centerHorizontally) { $ps.CenterHorizontally = [bool]$p.centerHorizontally; $applied += "centerHorizontally" }
             if ($null -ne $p.centerVertically) { $ps.CenterVertically = [bool]$p.centerVertically; $applied += "centerVertically" }
             if ($null -ne $p.printGridlines) { $ps.PrintGridlines = [bool]$p.printGridlines; $applied += "printGridlines" }
@@ -3628,7 +3668,31 @@ return }
         try { $hBefore = [int]$sheet.HPageBreaks.Count } catch { $hBefore = 0 }
         try { $vBefore = [int]$sheet.VPageBreaks.Count } catch { $vBefore = 0 }
         $impact = @{ kind = "pageBreaks"; count = ($hBefore + $vBefore); detail = ("清除前：横向 " + $hBefore + " 个、纵向 " + $vBefore + " 个") }
+        # FIXES 97（W1-5b）：实测 WPS 的 ResetAllPageBreaks() **会把打印缩放一起重置** ——
+        # 设了 zoom=90 再调它，存盘后的 xlsx 里连 scale 都没有了（逐项二分定位到就是这一步）。
+        # 这个工具的名字是"清手动分页符"，不该顺手改用户的缩放，所以先记下来、调用后还原。
+        $ps = $null
+        try { $ps = $sheet.PageSetup } catch { $ps = $null }
+        $zoomBefore = $null; $fitWBefore = $null; $fitTBefore = $null
+        if ($null -ne $ps) {
+            try { $zoomBefore = $ps.Zoom } catch { $zoomBefore = $null }
+            try { $fitWBefore = $ps.FitToPagesWide } catch { $fitWBefore = $null }
+            try { $fitTBefore = $ps.FitToPagesTall } catch { $fitTBefore = $null }
+        }
         try { $sheet.ResetAllPageBreaks() } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
+        # 还原（Zoom 与 FitToPages 互斥，按记录下来的那一种恢复）
+        if ($null -ne $ps) {
+            $zoomWasNumeric = ($null -ne $zoomBefore) -and ("$zoomBefore" -ne 'True') -and ("$zoomBefore" -ne 'False')
+            if ($zoomWasNumeric) {
+                try { $ps.FitToPagesWide = $false } catch { Add-WpsWarning ("恢复 FitToPagesWide 失败：" + $_.Exception.Message) }
+                try { $ps.FitToPagesTall = $false } catch { Add-WpsWarning ("恢复 FitToPagesTall 失败：" + $_.Exception.Message) }
+                try { $ps.Zoom = [int]$zoomBefore } catch { Add-WpsWarning ("恢复 Zoom 失败：" + $_.Exception.Message) }
+            } elseif (($null -ne $fitWBefore) -or ($null -ne $fitTBefore)) {
+                try { $ps.Zoom = $false } catch { Add-WpsWarning ("恢复 Zoom=False 失败：" + $_.Exception.Message) }
+                if ($null -ne $fitWBefore) { try { $ps.FitToPagesWide = [int]$fitWBefore } catch { Add-WpsWarning ("恢复 FitToPagesWide 失败：" + $_.Exception.Message) } }
+                if ($null -ne $fitTBefore) { try { $ps.FitToPagesTall = [int]$fitTBefore } catch { Add-WpsWarning ("恢复 FitToPagesTall 失败：" + $_.Exception.Message) } }
+            }
+        }
         $count = 0
         try { $count = [int]$sheet.HPageBreaks.Count } catch { $count = 0 }
         Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; hPageBreaks = $count; impact = $impact; message = "手动分页符已清除" } }
@@ -4207,7 +4271,10 @@ return }
         $preview = @()
         try {
             if ($null -ne $p.index) {
-                try { $preview += [string]$doc.Comments.Item([int]$p.index).Range.Text } catch { }
+                # FIXES 100（W4-4）：Word 批注的 Range.Text **带结尾的批注标记**（\r），直接进 preview 会得到
+                # "S3 批注内容\r"；而 Excel 那边（$cell.Comment.Text()）不带 —— 同一份"将删除什么"的预览
+                # 在两个应用里不一致。统一按桥里既有约定清洗（同 deleteTableLine 的写法）。
+                try { $preview += ((([string]$doc.Comments.Item([int]$p.index).Range.Text) -replace "[`r`n`a]", " ").Trim()) } catch { }
                 $doc.Comments.Item([int]$p.index).Delete()
                 $deleted = 1
             } else {
@@ -4215,7 +4282,7 @@ return }
                 $count = 0
                 try { $count = [int]$doc.Comments.Count } catch { $count = 0 }
                 for ($i = 1; $i -le $count -and $preview.Count -lt 3; $i++) {
-                    try { $preview += [string]$doc.Comments.Item($i).Range.Text } catch { }
+                    try { $preview += ((([string]$doc.Comments.Item($i).Range.Text) -replace "[`r`n`a]", " ").Trim()) } catch { }
                 }
                 for ($i = $count; $i -ge 1; $i--) { $doc.Comments.Item($i).Delete() }
                 $deleted = $count
@@ -4820,7 +4887,7 @@ return }
         $cell = $sheet.Range([string]$p.cell)
         $hadComment = $false
         $oldText = ""
-        try { if ($cell.Comment) { $hadComment = $true; $oldText = [string]$cell.Comment.Text() } } catch { }
+        try { if ($cell.Comment) { $hadComment = $true; $oldText = ((([string]$cell.Comment.Text()) -replace "[`r`n`a]", " ").Trim()) } } catch { }
         $preview = @()
         if ($oldText) { $preview = @($oldText) }
         $impact = @{ kind = "comment"; detail = if ($hadComment) { "覆盖了原有批注" } else { "新建批注" }; preview = $preview }
@@ -4837,7 +4904,7 @@ return }
         $cell = $sheet.Range($p.cell)
         $hadComment = $false
         $oldText = ""
-        try { if ($cell.Comment) { $hadComment = $true; $oldText = [string]$cell.Comment.Text() } } catch { }
+        try { if ($cell.Comment) { $hadComment = $true; $oldText = ((([string]$cell.Comment.Text()) -replace "[`r`n`a]", " ").Trim()) } } catch { }
         $preview = @()
         if ($oldText) { $preview = @($oldText) }
         $impact = @{ kind = "comment"; count = if ($hadComment) { 1 } else { 0 }; preview = $preview }
@@ -5198,16 +5265,19 @@ return }
         # 新起一段的做法（实测三种写法后的结论）：**在文本之前**插段落标记，再插文本；这样文本独立成段。
         # InsertParagraphAfter 会把标记追加到段末 → 文本仍留在原段、后面多出一个空段（正是报告的观感）。
         # 插入结果：$nl 变成从"新段落标记"到文本末尾的范围，正是样式该作用的地方。
+        # FIXES 92（P5）：$leadingMark 记录"这次插入在文本前面放了一个段落标记" —— 样式范围的起点
+        # 必须跳过它，否则会把上一段一起染上（见下方 $styleRange）。
+        $leadingMark = $false
         switch ($position) {
             "start" {
                 $anchor = $doc.Range(0, 0)
-                if ($p.new_paragraph) { $anchor.InsertBefore([string][char]13 + $p.text) } else { $anchor.InsertBefore($p.text) }
+                if ($p.new_paragraph) { $anchor.InsertBefore([string][char]13 + $p.text); $leadingMark = $true } else { $anchor.InsertBefore($p.text) }
                 $range = $anchor
             }
             "end" {
                 $anchor = $doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
                 # InsertAfter 会把范围扩到包含新内容；段落标记写在文本前面，文本才会落到新段落里。
-                if ($p.new_paragraph) { $anchor.InsertAfter([string][char]13 + $p.text) } else { $anchor.InsertAfter($p.text) }
+                if ($p.new_paragraph) { $anchor.InsertAfter([string][char]13 + $p.text); $leadingMark = $true } else { $anchor.InsertAfter($p.text) }
                 $range = $anchor
             }
             default {
@@ -5223,13 +5293,19 @@ return }
         }
         $insertStart = [int]$range.Start
         $insertEnd = [int]$range.End
+        # FIXES 92（P5）：样式只许落在**刚插入的那一段**上。start / end 分支插入的是 "\r" + 文本，
+        # $range 的起点正是那个**前导段落标记**，而段落标记决定整段样式 —— 直接对 $range 设样式会把
+        # **上一段**一起染上（实测：插入带样式的标题后，上一段从"正文"变成"标题 1"，并因此混进自动生成
+        # 的目录，全程无警告）。收窄一格跳过前导标记；cursor 分支没有前导标记，保持原范围。
+        $styleRange = $range
+        if ($leadingMark) { $styleRange = $doc.Range($insertStart + 1, $insertEnd) }
         if ($p.style) {
-            try { $range.Style = $p.style } catch { Add-WpsWarning ("样式 '$($p.style)' 未生效：" + $_.Exception.Message) }
+            try { $styleRange.Style = $p.style } catch { Add-WpsWarning ("样式 '$($p.style)' 未生效：" + $_.Exception.Message) }
         }
-        # 段落索引要在**插入完成之后**再算，而且不能拿 $insertStart 去数：
-        # 新建段落时插入的那个 \v 会把后续内容整体后移一位，$insertStart 就落到了上一段的末尾（实测报成"第 1 段"）。
-        # 可靠做法：把当前各段文本按 \v 拼起来，按**文档顺序**找刚插入的文本在第几段。
-        $affectedParagraph = Find-WordParagraphOfText $doc ([string]$p.text)
+        # 段落索引要在**插入完成之后**再算，按**位置**数段落标记（不能用插入前坐标，也不能按文本找 ——
+        # 详见 Get-WordParagraphIndexAt 的注释）。$textStart 是刚插入文本的起点：有前导标记时后移一位。
+        $textStart = if ($leadingMark) { $insertStart + 1 } else { $insertStart }
+        $affectedParagraph = Get-WordParagraphIndexAt $doc $textStart
         $data = @{ position = $position; textLength = $p.text.Length; insertStart = $insertStart; insertEnd = $insertEnd; newParagraph = $paragraphAdded; paragraphsBefore = $paragraphsBefore; paragraphsAfter = $paragraphsAfter }
         if ($p.style) { $data.style = $p.style }
         if ($affectedParagraph -gt 0) { $data.affectedParagraph = $affectedParagraph }
@@ -5395,24 +5471,57 @@ return }
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
-        $range = if ($p.range -eq "all") { $doc.Content } else { $word.Selection.Range }
+        # FIXES 94（W6-1）：range 与 set_font / apply_style **对齐** —— 收 {start,end} 或 "all"，省略=选区。
+        # 旧版只认字符串 "all"：传 {start,end} 会被**静默忽略**并落到选区上 —— 改错了位置却回 success。
+        if ($null -ne $p.range -and $null -ne $p.range.start -and $null -ne $p.range.end) {
+            $rs = [int]$p.range.start
+            $re = [int]$p.range.end
+            $contentEnd = [int]$doc.Content.End
+            if ($rs -lt 0 -or $re -lt 0 -or $rs -gt $re) {
+                Output-Json @{ success = $false; error = "字符范围不合法：start=$rs、end=$re（要求 0 ≤ start ≤ end）。（动作：setParagraph）下一步：用 getParagraphs 的 start/end 取真实坐标。" }
+return }
+            if ($re -gt $contentEnd) {
+                Output-Json @{ success = $false; error = "字符范围超出文档：请求 [$rs, $re)，文档长度 $contentEnd。（动作：setParagraph）下一步：用 getParagraphs 的 start/end 取真实坐标；要改到文末就传 end=$contentEnd。" }
+return }
+            $range = $doc.Range($rs, $re)
+        } elseif ($p.range -eq "all") {
+            $range = $doc.Content
+        } else {
+            $range = $word.Selection.Range
+        }
         $para = $range.ParagraphFormat
+        $touched = @()
         if ($null -ne $p.alignment) {
             $alignMap = @{ left = 0; center = 1; right = 2; justify = 3 }
-            $align = $alignMap[$p.alignment]
-            if ($null -eq $align) { $align = 0 }
-            $para.Alignment = $align
+            $alignKey = "$($p.alignment)".ToLower()
+            # FIXES 94（W6-1）：旧版对认不出的值 $align = 0 —— **静默改成左对齐**，比忽略更糟：
+            # 调用方要 center，拿回 success，段落却变成了 left。现在响亮拒绝并列出合法值。
+            if (-not $alignMap.ContainsKey($alignKey)) {
+                Output-Json @{ success = $false; error = ("alignment 只支持 left / center / right / justify，收到的是「$($p.alignment)」。（动作：setParagraph）下一步：改成这四个之一重试。") }
+return }
+            $para.Alignment = $alignMap[$alignKey]
+            $touched += ("alignment=" + $alignKey)
         }
-        if ($p.lineSpacing) {
+        if ($null -ne $p.lineSpacing) {
+            # FIXES 94（W6-1）：旧版写 if ($p.lineSpacing)，0 是假值会被跳过；负数没校验。
+            $ls = [double]$p.lineSpacing
+            if ($ls -le 0) {
+                Output-Json @{ success = $false; error = "lineSpacing 必须是正数（倍数），收到的是 $($p.lineSpacing)。（动作：setParagraph）下一步：1=单倍、1.5=1.5 倍、2=两倍。" }
+return }
             $para.LineSpacingRule = 4
-            $para.LineSpacing = [double]$p.lineSpacing * 12
+            $para.LineSpacing = $ls * 12
+            $touched += ("lineSpacing=" + $ls)
         }
-        if ($null -ne $p.spaceBefore) { $para.SpaceBefore = $p.spaceBefore }
-        if ($null -ne $p.spaceAfter) { $para.SpaceAfter = $p.spaceAfter }
-        if ($null -ne $p.firstLineIndent) { $para.FirstLineIndent = [double]$p.firstLineIndent * 28.35 }
-        if ($null -ne $p.leftIndent) { $para.LeftIndent = [double]$p.leftIndent * 28.35 }
-        if ($null -ne $p.rightIndent) { $para.RightIndent = [double]$p.rightIndent * 28.35 }
-        Output-Json @{ success = $true }
+        if ($null -ne $p.spaceBefore) { $para.SpaceBefore = $p.spaceBefore; $touched += "spaceBefore" }
+        if ($null -ne $p.spaceAfter) { $para.SpaceAfter = $p.spaceAfter; $touched += "spaceAfter" }
+        if ($null -ne $p.firstLineIndent) { $para.FirstLineIndent = [double]$p.firstLineIndent * 28.35; $touched += "firstLineIndent" }
+        if ($null -ne $p.leftIndent) { $para.LeftIndent = [double]$p.leftIndent * 28.35; $touched += "leftIndent" }
+        if ($null -ne $p.rightIndent) { $para.RightIndent = [double]$p.rightIndent * 28.35; $touched += "rightIndent" }
+        # FIXES 94（W6-1）：一个属性都没给就回"段落格式已设置"是**假成功** —— 它什么都没做。
+        if ($touched.Count -eq 0) {
+            Output-Json @{ success = $false; error = "没有任何要设置的属性：alignment / lineSpacing / spaceBefore / spaceAfter / firstLineIndent / leftIndent / rightIndent 至少要给一个。（动作：setParagraph）下一步：给出要改的属性，例如 {alignment:'center'} 或 {lineSpacing:1.5}。" }
+return }
+        Output-Json @{ success = $true; data = @{ applied = $touched } }
     }
 
     "setPageSetup" {
@@ -7445,8 +7554,18 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $formula = [string]$p.formula
         if (-not $formula.StartsWith('=')) { $formula = '=' + $formula }
+        # FIXES 94（W6-2）：Excel 的错误值是以 **CVErr 变体**返回的（0x800A0000 + xlErr 码），PowerShell 把它
+        # 呈现成一个负数。旧版直接当 result 回给调用方 —— 模型会把 -2146826281 读成"计算结果"。
+        # 实测：=1/0 → -2146826281、=SUM( → -2146826273，两个都回了 success。
+        $excelErrorNames = @{ 2000 = "#NULL!"; 2007 = "#DIV/0!"; 2015 = "#VALUE!"; 2023 = "#REF!"; 2029 = "#NAME?"; 2036 = "#NUM!"; 2042 = "#N/A"; 2045 = "#GETTING_DATA" }
         try {
             $result = $excel.Evaluate($formula)
+            $errCode = 0
+            if (($result -is [int]) -or ($result -is [int64])) { $errCode = [int64]$result + 2146828288 }
+            if ($errCode -ge 2000 -and $errCode -le 2100) {
+                $errName = if ($excelErrorNames.ContainsKey([int]$errCode)) { $excelErrorNames[[int]$errCode] } else { "#ERR" }
+                Output-Json @{ success = $false; error = ("公式求值得到错误值 " + $errName + "：" + $formula + "（动作：evaluateFormula）下一步：检查引用的区域是否为空或为零、函数名与括号是否配对；也可以先用 wps_excel_set_formula 写入，再从该格读显示值。") }
+return }
             Output-Json @{ success = $true; data = @{ formula = $formula; result = $result; method = 'application-evaluate' } }
         } catch {
             try {
@@ -7456,6 +7575,13 @@ return }
                 $probe.Formula = $formula
                 $value = $probe.Value2
                 $probe.ClearContents() | Out-Null
+                # 备用路径（写进临时单元格再读回）同样可能拿到错误值，用同一套判定。
+                $errCode2 = 0
+                if (($value -is [int]) -or ($value -is [int64])) { $errCode2 = [int64]$value + 2146828288 }
+                if ($errCode2 -ge 2000 -and $errCode2 -le 2100) {
+                    $errName2 = if ($excelErrorNames.ContainsKey([int]$errCode2)) { $excelErrorNames[[int]$errCode2] } else { "#ERR" }
+                    Output-Json @{ success = $false; error = ("公式求值得到错误值 " + $errName2 + "：" + $formula + "（动作：evaluateFormula）下一步：检查引用的区域是否为空或为零、函数名与括号是否配对。") }
+return }
                 Output-Json @{ success = $true; data = @{ formula = $formula; result = $value; method = 'scratch-cell' } }
             } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
         }

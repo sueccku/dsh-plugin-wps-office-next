@@ -5,6 +5,10 @@
 // Run: node test/warning-channel.test.mjs
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+// FIXES 95（W1-4）：这个文件验证的是"警告有没有传到"，本身合理。但它有两处**前置条件**是自证的：
+// "确实开了两个工作簿/两个文档"。前置条件要是不成立，后面整串警告断言就是白测 —— 补裸 COM 交叉验证。
+// 正则闸门（要求纯数字）：com() 读失败返回空串，Number('') === 0 会让断言**假通过**。
+import { com } from './lib/oracle.mjs';
 
 const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 let buf = '';
@@ -31,6 +35,9 @@ await call('wps_excel_create_workbook', {});
 await call('wps_excel_create_workbook', {});
 const open = await call('wps_excel_get_open_workbooks', {});
 check('two workbooks are open for the ambiguity warning', /\(2个\)/.test(open.text), open.text.slice(0, 80));
+// ---- 独立 oracle：前置条件经裸 COM 交叉验证 ----
+const rawWb2 = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); [int]$w.Workbooks.Count")).trim();
+check('raw COM confirms the two-workbook precondition', /^\d+$/.test(rawWb2) && Number(rawWb2) === 2, 'raw=' + JSON.stringify(rawWb2));
 
 // ---- first-party tool (read_range) -------------------------------------------------------------------
 const read = await call('wps_excel_read_range', { range: 'A1' });
@@ -63,6 +70,8 @@ await call('wps_word_create_document', {});
 await call('wps_word_create_document', {});
 const wOpen = await call('wps_word_get_open_documents', {});
 check('two documents are open for the Word warning', /2个/.test(wOpen.text), wOpen.text.slice(0, 80));
+const rawDoc2 = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application'); [int]$w.Documents.Count")).trim();
+check('raw COM confirms the two-document precondition', /^\d+$/.test(rawDoc2) && Number(rawDoc2) === 2, 'raw=' + JSON.stringify(rawDoc2));
 const wRead = await call('wps_word_get_document_text', {});
 check('a Word first-party tool reports the ambiguity', /检测到 2 个打开的文档/.test(wRead.text) && /注意（1 条/.test(wRead.text), wRead.text.slice(0, 170));
 for (let i = 0; i < 4; i++) { const r = await call('wps_word_close_document', { save: false }); if (/失败/.test(r.text)) break; }

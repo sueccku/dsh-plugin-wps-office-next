@@ -8,6 +8,10 @@
 import { spawn, spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+// FIXES 95（W1-4）：这个文件 53 条断言里绝大多数是"覆盖矩阵"式烟测（调用没挂住就算过）。
+// 这里补一组**以文件为准**的核对：存盘后读 pptx 的页数与工具汇报对照、文本框/形状文字是否真的落盘、
+// 导出的幻灯片图片是不是真尺寸（而不是 1x1 占位）。
+import { pngInfo, pptxText, zipScan } from "./lib/oracle.mjs";
 
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const imgPath = resolvePath("test/.artifacts/pptcov.png");
@@ -318,6 +322,21 @@ for (const [name, args, expect] of MATRIX) {
     check(label + " returns something readable (no hang)", body.length > 0, ms + "ms " + (good ? "ok" : "business error") + (body ? "" : " EMPTY RESPONSE"));
   }
 }
+
+// ---- 独立 oracle：以磁盘上的 pptx / png 为准 ----
+const PPC = resolvePath("test/.artifacts/ppt-coverage.pptx");
+check("presentation saved for independent verification", ok(await call("wps_common_save_as", { outputPath: PPC, format: "pptx" })), "");
+const slideScan = zipScan(PPC, "<p:sld ", "ppt/slides/");
+const countText = text(await call("wps_ppt_get_slide_count", {}));
+const reportedCount = Number((/(\d+)/.exec(countText) || [])[1]);
+// 页数不写死：测试收尾时删过页，所以只要求**文件与汇报一致**（这本来就是最强的跨源核对）。
+check("file says the same number of slides as the report", !!slideScan && slideScan.count === reportedCount && reportedCount >= 1, JSON.stringify({ file: slideScan && slideScan.count, reported: reportedCount }));
+const pptBody = JSON.stringify(pptxText(PPC) || []);
+// 不写"文本框"：它在收尾时被 delete_textbox 删掉了。用**文件里真实存在**的内容核对。
+check("file carries the slide content the test wrote", pptBody.includes("正文内容"), pptBody.slice(0, 110));
+check("file carries the replace marker the test wrote", pptBody.includes("REPLMARKER-TWO"), pptBody.slice(0, 110));
+const png = pngInfo(exportPath);
+check("the exported slide image has real dimensions", png.exists && png.png && png.width >= 800 && png.height >= 600, JSON.stringify(png));
 
 // teardown
 for (const [method, appType] of [["closePresentation", "wpp"]]) {

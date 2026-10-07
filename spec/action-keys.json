@@ -1174,7 +1174,13 @@
  ],
  "setParagraph": [
   "alignment",
-  "lineSpacing"
+  "firstLineIndent",
+  "leftIndent",
+  "lineSpacing",
+  "range",
+  "rightIndent",
+  "spaceAfter",
+  "spaceBefore"
  ],
  "setTableCell": [
   "column",

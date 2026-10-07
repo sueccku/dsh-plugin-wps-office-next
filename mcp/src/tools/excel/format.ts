@@ -243,7 +243,8 @@ export const setBorderDefinition: ToolDefinition = {
       position: {
         type: 'string',
         description: '边框位置，默认 all（全部边框）',
-        enum: ['all', 'top', 'bottom', 'left', 'right', 'outline'],
+        // FIXES 98：补上桥本来就支持的 inside（原来只列了 outline，而桥当时只认 outside —— 两头对不上）。
+        enum: ['all', 'top', 'bottom', 'left', 'right', 'outline', 'outside', 'inside'],
       },
       color: {
         type: 'string',

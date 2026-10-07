@@ -2,6 +2,10 @@
 // setters are now one structured tool, and the dropped families are really gone from the registry.
 // Run: node test/ppt-slimming.test.mjs
 import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+// FIXES 95（W1-4）：这个文件里合并后的效果/表格/页脚工具都只验证"报告里提到了"。
+// 补三个**以磁盘 pptx 为准**的锚点：阴影真的写成了 <a:outerShdw>、表格真的成了 <a:tbl>、页脚文字真的在。
+import { zipScan } from './lib/oracle.mjs';
 
 const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 let buf = '';
@@ -65,6 +69,17 @@ const footerNothing = await call('wps_ppt_set_slide_footer', {});
 check('footer tool with nothing to change is rejected', !ok(footerNothing) && textOf(footerNothing).includes('nothing to apply'), textOf(footerNothing).slice(0, 120));
 const animNothing = await call('wps_ppt_add_animation', { slideIndex: 1 });
 check('animation without shape or preset is rejected', !ok(animNothing) && textOf(animNothing).includes('shapeIndex/shapeName is required'), textOf(animNothing).slice(0, 120));
+
+// ---- 独立 oracle：以磁盘上的 pptx 为准 ----
+const PPS = resolve('test/.artifacts/ppt-slimming.pptx');
+const savedPps = await call('wps_common_save_as', { outputPath: PPS, format: 'pptx' });
+check('presentation saved for independent verification', ok(savedPps), textOf(savedPps).replace(/\s+/g, ' ').slice(0, 70));
+const shdwScan = zipScan(PPS, '<a:outerShdw', 'ppt/slides/');
+check('file says the shadow effect really landed', !!shdwScan && shdwScan.count >= 1, JSON.stringify(shdwScan));
+const tblScan = zipScan(PPS, '<a:tbl>', 'ppt/slides/');
+check('file says the inserted table really landed', !!tblScan && tblScan.count >= 1, JSON.stringify(tblScan));
+const ftrScan = zipScan(PPS, '内部资料', 'ppt/slides/');
+check('file says the footer text really landed', !!ftrScan && ftrScan.count >= 1, JSON.stringify(ftrScan));
 
 check('presentation closed', ok(await call('wps_ppt_close_presentation', { save: false })), '');
 const open = await text('wps_ppt_get_open_presentations', {});

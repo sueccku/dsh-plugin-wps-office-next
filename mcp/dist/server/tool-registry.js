@@ -19,6 +19,41 @@ const logger = (0, logger_1.createChildLogger)('ToolRegistry');
 /**
  * Tool注册表 - 单例模式，全局唯一
  */
+/** 编辑距离：只用来给“未知参数”提一句“是不是想传 X”，不做任何语义判断。 */
+function editDistance(a, b) {
+    const prev = new Array(b.length + 1);
+    for (let j = 0; j <= b.length; j++)
+        prev[j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        let diag = prev[0];
+        prev[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+            const tmp = prev[j];
+            prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+            diag = tmp;
+        }
+    }
+    return prev[b.length];
+}
+/** 在声明的参数里找最接近的一个；只有足够接近才提示，避免把人带偏。 */
+function closestParamName(key, accepted) {
+    const norm = (s) => s.toLowerCase().replace(/[_-]/g, '');
+    const target = norm(key);
+    let best;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const candidate of accepted) {
+        const c = norm(candidate);
+        if (c === target)
+            return candidate;
+        const score = editDistance(target, c);
+        if (score < bestScore) {
+            bestScore = score;
+            best = candidate;
+        }
+    }
+    const limit = Math.max(2, Math.floor(target.length / 3));
+    return best !== undefined && bestScore <= limit ? best : undefined;
+}
 class ToolRegistry {
     static instance;
     tools;
@@ -208,8 +243,18 @@ class ToolRegistry {
             }
             const schema = properties[key];
             if (!schema) {
-                // 未声明的参数交给桥接层报“未知参数”，那里的措辞和提示更完整
-                continue;
+                // FIXES 99（W6-4）：以前这里是 `continue`，注释写着“未声明的参数交给桥接层报未知参数”。
+                // 那个假设是**错的**：TS handler 用显式解构拼参数（`{ range, delimiter, sheet }`），
+                // 未知键在到达桥之前就被丢掉了，桥的“未知键拒绝”永远看不见它 —— 于是调用方传错参数名时
+                // **不报错、按默认值执行、回报还写着自己传的那个值**。
+                // 实证：`wps_excel_text_to_columns { range:"A1:A3", sep:"," }` 不报错，回报「分隔符: ","」。
+                // 这条路径上必须响亮拒绝 —— 它是唯一还看得见原始实参的地方。
+                const accepted = Object.keys(properties);
+                const hint = closestParamName(key, accepted);
+                throw new error_1.InvalidParamsError(`未知参数: ${key}（动作：${definition.name}）` +
+                    `可选参数: ${accepted.length ? accepted.join(' / ') : '(无)'}` +
+                    (hint ? `。是不是想传 ${hint}？` : '。') +
+                    `下一步：改成上面列出的参数名重试；若这个参数确实用不上，把它从调用里删掉。`, { toolName: definition.name, unknownParam: key });
             }
             const actual = Array.isArray(value) ? 'array' : typeof value === 'object' ? 'object' : typeof value;
             // type 允许是数组（JSON Schema 合法写法，例如 ['object','string']）。以前只读 schema.type，

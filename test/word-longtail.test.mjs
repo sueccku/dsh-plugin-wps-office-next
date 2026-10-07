@@ -2,6 +2,11 @@
 // footnotes/endnotes, index, cross reference, and mail merge from a CSV.
 // Run: node test/word-longtail.test.mjs
 import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+// FIXES 95（W1-4）：脚注、尾注、内容控件全都只走插件自己的回读。
+// 它们在 docx 里是**独立的 part**（word/footnotes.xml、endnotes.xml、document.xml 里的 <w:sdt>），
+// 直接读文件最直接：回报"插入了脚注"但文件里没有，用户存盘后打开就是空的。
+import { zipScan } from './lib/oracle.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,6 +68,17 @@ check('mail_merge produces a new document', merged.includes('新文档') && merg
 check('the merged document carries the data rows', merged.includes('Alice') && merged.includes('Bob'), merged.replace(/\n/g, ' | ').slice(0, 170));
 
 // After Execute() the merged copy is the active document; close it, then the master.
+// ---- 独立 oracle：以磁盘上的 docx 为准 ----
+const WL = resolve('test/.artifacts/word-longtail.docx');
+const savedWl = await call('wps_common_save_as', { outputPath: WL });
+check('document saved for independent verification', ok(savedWl), textOf(savedWl).replace(/\s+/g, ' ').slice(0, 70));
+const fnScan = zipScan(WL, '脚注内容ABC', 'word/');
+check('the footnote text really landed in the docx', !!fnScan && fnScan.count >= 1, JSON.stringify(fnScan));
+const enScan = zipScan(WL, '尾注内容XYZ', 'word/');
+check('the endnote text really landed in the docx', !!enScan && enScan.count >= 1, JSON.stringify(enScan));
+const sdtScan = zipScan(WL, '<w:sdt>', 'word/');
+check('the content control really landed in the docx', !!sdtScan && sdtScan.count >= 1, JSON.stringify(sdtScan));
+
 check('merged document closed', ok(await call('wps_word_close_document', { save: false })), '');
 check('master document closed', ok(await call('wps_word_close_document', { save: false })), '');
 const open = await text('wps_word_get_open_documents', {});
