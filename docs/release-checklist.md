@@ -112,7 +112,7 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 }
 ```
 
-**期望值**（**2026-10-04 当场实测，0.6.2 候选**）：`entryCount=296  packed=611.9KB (626570 B)  unpacked=3.13MB (3286262 B)`。
+**期望值**（**2026-10-07 当场实测，0.6.3 候选**）：`entryCount=296  packed=632.2KB (647388 B)  unpacked=3.19MB (3342438 B)`。
 
 > **更硬的一步：与 npm 上那一版逐文件对比**，它不受"手抄数字"影响：
 >
@@ -121,6 +121,9 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 > Push-Location $tmp; npm pack dsh-plugin-wps-office-next@0.6.1 --silent; tar -xzf *.tgz; Pop-Location
 > # 把 npm 0.6.1 的文件清单与本次 pack 的清单 diff：应当只剩"本次新增的文件"，且**没有移除**
 > ```
+>
+> 2026-10-07 实测（0.6.3 vs npm 上的 0.6.2）：**两边都是 296 文件、新增 0、移除 0** —— 内容就地更新，
+> 没有多带（没漏进 `node_modules` / `test` / `src`）也没有少带。
 >
 > 2026-10-04 实测：npm 0.6.1 = **289 文件**，本次 = **296 文件**，**新增 7 个、移除 0 个**
 > （`mcp/dist/tools/word/style-names.{js,d.ts}` 及两个 `.map`、`scripts/gen-numbers.mjs`、`scripts/lib/tool-face.mjs`、`scripts/probe-installed.mjs`）。
