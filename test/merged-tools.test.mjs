@@ -81,7 +81,9 @@ check("copy_slide added a slide", afterCount === before + 1, "before=" + before 
 // ---------- Word ----------
 await viaAction("createDocument", {}, "wps");
 await call("wps_word_insert_text", { text: "merge probe", position: "start" });
-check("set_font sets name/size/bold", ok(await call("wps_word_set_font", { fontName: "Arial", fontSize: 12, bold: true })), "");
+// R11：不指定 range 时目标是**空选区**，字体设置本来就不会产生任何效果 —— 这种「没达成」现在
+// 会被如实判成失败（success=false + shortfalls），不再是"成功 + 警告"。这里给一个真实目标走快乐路径。
+check("set_font sets name/size/bold", ok(await call("wps_word_set_font", { fontName: "Arial", fontSize: 12, bold: true, range: { start: 0, end: 11 } })), "");
 
 // ---------- visibility ----------
 const help = payload(await call("wps_help", {}));

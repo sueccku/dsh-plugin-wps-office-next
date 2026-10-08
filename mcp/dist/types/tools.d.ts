@@ -74,6 +74,14 @@ export interface ToolCallResult {
     content: ToolContent[];
     /** 错误信息（失败时） */
     error?: string;
+    /**
+     * R11 不变量：`success === true` ⟺ 调用方要求的事**全部生效**。
+     * 桥侧用 `Add-WpsShortfall` 标记「要求的事没做到」，注册表据此把 success 改判为 false 并置此位，
+     * 同时把短欠清单原样带出来（正文里仍保留已生效的部分）。
+     */
+    partial?: boolean;
+    /** 「要求了但没生效」的具体条目（与 `partial` 同时出现） */
+    shortfalls?: string[];
 }
 /**
  * Tool返回内容类型

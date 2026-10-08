@@ -71,6 +71,8 @@ class WpsClient {
             // 由 tool-registry 统一附回结果文本（FIXES 73）。失败的结果也收：部分成功同样要说清。
             (0, tool_warnings_1.collectToolWarnings)(result?.warnings);
             (0, tool_warnings_1.collectToolWarnings)(result?.data?.warnings);
+            (0, tool_warnings_1.collectToolShortfalls)(result?.shortfalls);
+            (0, tool_warnings_1.collectToolShortfalls)(result?.data?.shortfalls);
             const duration = Date.now() - startTime;
             (0, logger_1.logResponse)(action, result.success, duration);
             traceCall(action, params, result.success === true);

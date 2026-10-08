@@ -165,13 +165,15 @@ class ToolRegistry {
         try {
             // 验证参数
             this.validateArguments(tool.definition, args);
-            // 执行handler，同时收集桥侧留下的 warnings
-            const { value: result, warnings } = await (0, tool_warnings_1.runWithWarningCollector)(() => tool.handler(args));
+            // 执行handler，同时收集桥侧留下的 warnings / shortfalls
+            const { value: result, warnings, shortfalls } = await (0, tool_warnings_1.runWithWarningCollector)(() => tool.handler(args));
             const withWarnings = this.attachWarnings(result, warnings);
+            // R11 不变量：success === true ⟺ 调用方要求的事**全部生效**
+            const finalResult = shortfalls.length ? this.applyShortfalls(withWarnings, shortfalls, name) : withWarnings;
             const duration = Date.now() - startTime;
-            logger.info(`Tool executed: ${name}`, { id, duration, success: result.success, warnings: warnings.length });
+            logger.info(`Tool executed: ${name}`, { id, duration, success: finalResult.success, warnings: warnings.length, shortfalls: shortfalls.length });
             return {
-                ...withWarnings,
+                ...finalResult,
                 id,
             };
         }
@@ -195,6 +197,39 @@ class ToolRegistry {
                 error: execError.message,
             };
         }
+    }
+    /**
+     * R11：桥侧用 `Add-WpsShortfall` 标记「**要求的事没做到**」。这里统一改判为失败 ——
+     * **不变量：`success === true` ⟺ 调用方要求的事全部生效**。
+     *
+     * 内容一个字不丢：已生效的部分照旧返回，短欠清单追加在正文末尾，并置 `partial` / `shortfalls` 供程序化消费。
+     * 这条**替换**了旧政策（D16）的「部分成功也回 `success: true`，只用 warnings 提示」——
+     * warnings 是咨询性的，只检查 `success` 的调用方会被误导，而「假成功」正是本项目最贵的缺陷类别。
+     */
+    applyShortfalls(result, shortfalls, toolName) {
+        const headline = '部分未生效（动作：' +
+            toolName +
+            '）' +
+            shortfalls.join('；') +
+            '下一步：按上面的条目修正参数或前置条件后重试；已经生效的部分见正文。';
+        const note = '\n\n未生效（' + shortfalls.length + ' 条，其余已生效）：\n' + shortfalls.map((s) => '- ' + s).join('\n');
+        const body = (result.content ?? [])
+            .filter((b) => b.type === 'text' && typeof b.text === 'string')
+            .map((b) => b.text)
+            .join('\n')
+            .trim();
+        // 直通工具（wps_call / wps_execute_method / wps_batch）的正文就是桥的**原始 JSON**，
+        // 契约是「原样透传」——那种情况下正文里已经带着 shortfalls 字段，**一个字都不能改**
+        // （改了会让调用方的 JSON.parse 失败）。只改判结论，不动内容。
+        const alreadyVerbatim = shortfalls.every((s) => body.includes(s));
+        return {
+            ...result,
+            success: false,
+            error: headline,
+            partial: true,
+            shortfalls,
+            content: alreadyVerbatim ? result.content : [{ type: 'text', text: (body || headline) + note }],
+        };
     }
     /**
      * 把「尽力而为的失败」附在结果文本后面。第一方 handler 会丢掉桥侧的 warnings，这里统一补上；

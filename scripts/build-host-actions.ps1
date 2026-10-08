@@ -34,6 +34,18 @@ function Output-Json($obj) {
         $obj['warnings'] = @($script:WpsWarnings)
         if ($obj.ContainsKey('data') -and $obj['data'] -is [hashtable]) { $obj['data']['warnings'] = @($script:WpsWarnings) }
     }
+    if ($null -ne $script:WpsShortfalls -and $script:WpsShortfalls.Count -gt 0 -and $obj -is [hashtable]) {
+        $obj['shortfalls'] = @($script:WpsShortfalls)
+        if ($obj.ContainsKey('data') -and $obj['data'] -is [hashtable]) { $obj['data']['shortfalls'] = @($script:WpsShortfalls) }
+        # R11: a shortfall means the caller did not get everything it asked for -> not success.
+        # The bridge flips it here too, so the raw JSON never contradicts itself.
+        if ($obj.ContainsKey('success')) { $obj['success'] = $false }
+        # A failure must carry a reason; otherwise first-party handlers print "failed: undefined".
+        if (-not $obj.ContainsKey('error') -or [string]::IsNullOrWhiteSpace([string]$obj['error'])) {
+            $obj['error'] = 'partial: ' + ($script:WpsShortfalls -join '; ')
+        }
+        $obj['partial'] = $true
+    }
     if ($obj -is [hashtable] -and $obj['success'] -eq $false -and $obj['error'] -is [string]) {
         $obj['error'] = Format-WpsErrorText $obj['error'] $script:WpsCurrentAction
     }
@@ -161,6 +173,7 @@ $keyTable = '# Accepted parameter names per action, derived from the switch belo
 
 # Reject parameters the action does not read, right after $p is materialised.
 $guard = '    Clear-WpsWarnings' + $crlf +
+         '    Clear-WpsShortfalls' + $crlf +
          '    $script:WpsCurrentAction = $Action' + $crlf +
          '    $p = Add-WpsParamAliases $Action $p' + $crlf +
          '    $p = Expand-WpsNestedParams $Action $p' + $crlf +

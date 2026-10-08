@@ -54,6 +54,15 @@ export declare class ToolRegistry {
      */
     callTool(request: ToolCallRequest): Promise<ToolCallResult>;
     /**
+     * R11：桥侧用 `Add-WpsShortfall` 标记「**要求的事没做到**」。这里统一改判为失败 ——
+     * **不变量：`success === true` ⟺ 调用方要求的事全部生效**。
+     *
+     * 内容一个字不丢：已生效的部分照旧返回，短欠清单追加在正文末尾，并置 `partial` / `shortfalls` 供程序化消费。
+     * 这条**替换**了旧政策（D16）的「部分成功也回 `success: true`，只用 warnings 提示」——
+     * warnings 是咨询性的，只检查 `success` 的调用方会被误导，而「假成功」正是本项目最贵的缺陷类别。
+     */
+    private applyShortfalls;
+    /**
      * 把「尽力而为的失败」附在结果文本后面。第一方 handler 会丢掉桥侧的 warnings，这里统一补上；
      * 已经出现在文本里的（wps_call / wps_execute_method / wps_batch 的原样透传）不重复追加（FIXES 73）。
      */

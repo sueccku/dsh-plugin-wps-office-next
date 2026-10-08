@@ -15,7 +15,7 @@
 | 带键表的 action | **261** | spec/action-keys.json |
 | 未工具化 action | **2（getActivePresentation / getActiveWorkbook）** | 键表 − spec |
 | 测试文件 | **49** | test/*.test.mjs |
-| 测试断言 | **1253（失败 0）** | test/summary.json（该行不含跑测时间戳：会让 CI 对账误报） |
+| 测试断言 | **1256（失败 0）** | test/summary.json（该行不含跑测时间戳：会让 CI 对账误报） |
 
 ## 声明值核对
 
@@ -36,9 +36,9 @@
 | README registered catalogue | 268 | 268 | ✅ |
 | README current advertised | 84 | 84 | ✅ |
 | README current bytes | 47630 | 47630 | ✅ |
-| README test assertions | 1253 | 1253 | ✅ |
+| README test assertions | 1256 | 1256 | ✅ |
 | README test files | 49 | 49 | ✅ |
-| HANDOFF test assertions | 1253 | 1253 | ✅ |
+| HANDOFF test assertions | 1256 | 1256 | ✅ |
 | HANDOFF test files | 49 | 49 | ✅ |
 | HANDOFF advertised | 84 | 84 | ✅ |
 

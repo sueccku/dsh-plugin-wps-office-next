@@ -50,6 +50,8 @@ export interface WpsApiResponse<T = unknown> {
     errorCode?: number;
     /** 桥侧收集的「尽力而为的失败」提示：第一方 handler 不该自己拼，由注册表统一附回结果（FIXES 73） */
     warnings?: string[];
+    /** 桥侧收集的「**要求的事没做到**」（区别于 warnings：那些是「你没要求的坏消息」）；R11 会让 success=false */
+    shortfalls?: string[];
 }
 /**
  * 文档信息

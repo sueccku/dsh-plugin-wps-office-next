@@ -173,9 +173,17 @@ check("end_slide_show is idempotent when nothing is running", ok(await call("wps
 const rr = await viaAction("addShape", { slideIndex: 2, type: 5, left: 60, top: 60, width: 140, height: 70 });
 check("rounded rectangle created for the roundness check", ok(rr), text(rr).replace(/\s+/g, " ").slice(0, 60));
 const rrName = payload(rr).data?.name;
-check("set_shape_style applies roundness to a rounded rectangle", ok(await call("wps_ppt_set_shape_style", { slideIndex: 2, name: rrName, roundness: 0.4 })), "");
-const rrBack = await call("wps_ppt_set_shape_style", { slideIndex: 2, name: rrName, roundness: 0.4 });
-check("roundness round-trips on a rounded rectangle", ok(rrBack) && /实际圆角半径/.test(text(rrBack)), text(rrBack).replace(/\s+/g, " ").slice(0, 90));
+// R11 不变量：**不允许「回了成功但读回不一致」**。
+// 实测（裸 COM 四种赋值写法全试过）：WPS 演示里 `Adjustments.Item(1)` 读回恒为 1 —— 圆角半径
+// 通过自动化**设不进去**。那么正确行为就是**如实报失败**（success=false + shortfall 写明「请求 X 读回 Y」），
+// 而不是像以前那样回成功、只在 warnings 里轻描淡写一句（旧断言正是被这句掩盖的）。
+// 这条断言**两向都成立**：哪天真的能设进去 → 必须 success；设不进去 → 必须报短欠。修好了也不会红。
+const rrSet = await call("wps_ppt_set_shape_style", { slideIndex: 2, name: rrName, roundness: 0.4 });
+const rrApplied = ok(rrSet);
+// 判据用**语义**（有没有把「没做到/做不到」说出来），不要绑死某一句措辞 ——
+// 文案会随平台结论更新（A5 之后就改成了「WPS 上不可用」），钉措辞的断言会假红。
+const rrReported = /未生效|不一致|短欠|不可用|无法/.test(text(rrSet));
+check("roundness either really applies, or is honestly reported as unfulfilled", rrApplied !== rrReported, "applied=" + rrApplied + " reported=" + rrReported + " | " + text(rrSet).replace(/\s+/g, " ").slice(0, 110));
 // teardown
 // ---- 独立 oracle：以磁盘上的 pptx 为准 ----
 const PCF = path.resolve("test/.artifacts/ppt-contract-fixes.pptx");

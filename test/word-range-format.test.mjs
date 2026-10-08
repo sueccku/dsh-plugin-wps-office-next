@@ -94,8 +94,10 @@ check("the range report names the resolved scope", /作用范围: 0-3/.test(text
 com("$w = [Runtime.InteropServices.Marshal]::GetActiveObject('KWps.Application'); $w.Selection.SetRange(0, 0); 'ok'");
 const emptyRange = await call("wps_word_set_font", { italic: true });
 const emptyInfo = probe();
-check("collapsed-selection set_font reports 0 characters", /0 个字符/.test(text(emptyRange)), text(emptyRange).replace(/\s+/g, " ").slice(-90));
-check("collapsed-selection set_font explains nothing was changed", /没有任何字符|没有实际落点/.test(text(emptyRange)), "");
+// R11：空范围上设字体 = **要求的事根本没发生** → 现在是失败（success=false + shortfall），
+// 而不是「成功 + 解释一句」。这正是本段（B1）当初想达到的效果，现在由不变量从根上兜住。
+check("collapsed-selection set_font is reported as a failure, not a success", !ok(emptyRange), text(emptyRange).replace(/\s+/g, " ").slice(0, 120));
+check("collapsed-selection set_font explains the empty range", /没有字符/.test(text(emptyRange)) && /不会产生任何效果/.test(text(emptyRange)), "");
 check("collapsed-selection set_font really changed nothing", (emptyInfo.bold || []).filter((b) => b !== 0).length === 3, "bold=" + boldCount(emptyInfo));
 
 // ---- B3：new_paragraph 产生真段落、文本独立成段 ------------------------------------------------

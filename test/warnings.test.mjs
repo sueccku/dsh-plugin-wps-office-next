@@ -30,14 +30,25 @@ const raw = async (method, params) => payload(await viaAction(method, params));
 const created = await viaAction("createDocument", {});
 check("scratch document created", ok(created), "");
 
-// A style name that does not exist makes the bridge's optional style assignment fail. The text is
-// still inserted, so the action succeeds - and the failure must be reported, not swallowed.
+// R11 不变量：`success === true` ⟺ 调用方要求的事**全部生效**。
+// 一个不存在的样式名会让「设置样式」这步没做到 —— 文字照样插进去了，但要求的没全生效，
+// 所以这里 success 必须是 false，并且短欠条目要单独报出来（这是 shortfall，不是 warning）。
 const seeded = await raw("insertText", { text: "warning probe", position: "start", style: "NoSuchStyleName" });
-check("action with a best-effort failure still succeeds", seeded.success === true, JSON.stringify(seeded).slice(0, 90));
-// FIXES 93（W1-2）：以前只断言"至少一条"和"长度 > 8" —— 这两句证明不了警告内容对不对。
-check("exactly one warning is reported for the one failed step", Array.isArray(seeded.warnings) && seeded.warnings.length === 1, JSON.stringify(seeded.warnings || []).slice(0, 110));
-check("the warning names the style that actually failed", typeof seeded.warnings?.[0] === "string" && seeded.warnings[0].includes("NoSuchStyleName"), String(seeded.warnings?.[0]).slice(0, 120));
-check("warnings are also inside data for pass-through tools", Array.isArray(seeded.data?.warnings), JSON.stringify(seeded.data || {}).slice(0, 90));
+check("a request that did not fully apply is NOT success", seeded.success === false, JSON.stringify(seeded).slice(0, 100));
+check("it is marked partial, not a plain failure", seeded.partial === true, JSON.stringify(seeded).slice(0, 100));
+// FIXES 93（W1-2）：以前只断言"至少一条"和"长度 > 8" —— 这两句证明不了内容对不对。
+check("exactly one shortfall is reported for the one unfulfilled step", Array.isArray(seeded.shortfalls) && seeded.shortfalls.length === 1, JSON.stringify(seeded.shortfalls || []).slice(0, 110));
+check("the shortfall names the style that actually failed", typeof seeded.shortfalls?.[0] === "string" && seeded.shortfalls[0].includes("NoSuchStyleName"), String(seeded.shortfalls?.[0]).slice(0, 120));
+check("shortfalls are also inside data for pass-through tools", Array.isArray(seeded.data?.shortfalls), JSON.stringify(seeded.data || {}).slice(0, 90));
+
+// 工具层必须把它变成**看得见的失败**（MCP 的 isError），并且正文里保留已经生效的部分 ——
+// 这正是不变量的意义：只看 success 的调用方也不会误以为一切照做了。
+const toolLayer = await call("wps_word_insert_text", { text: "tool layer probe", position: "end", style: "NoSuchStyleName" });
+check("the tool layer reports it as an error, not a silent success", !!(toolLayer.result && toolLayer.result.isError), String(toolLayer.result?.content?.[0]?.text || "").slice(0, 100));
+// R11 第一方工具的**已知边界**（记在 FIXES 103）：handler 走失败分支时只打印 error 文案，
+// 所以「已生效部分」的结构化细节在**直通路径**（桥层 data）里完整，第一方工具的正文里只有短欠清单。
+// 这里断言当前契约下确实成立的两件事：报成 error、且短欠条目写在文案里。
+check("the tool layer names the unfulfilled step in its error", /未生效|不一致|partial/.test(String(toolLayer.result?.content?.[0]?.text || "")), String(toolLayer.result?.content?.[0]?.text || "").slice(0, 130));
 
 // ---- 独立 oracle：部分成功的**实际效果**必须落地 ----
 const docText = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application'); [string]$w.ActiveDocument.Content.Text")).trim();
@@ -46,6 +57,7 @@ check("the insert really happened despite the failed style", docText.includes("w
 // Warnings are per action: a clean call must not inherit the previous one.
 const clean = await raw("ping", {});
 check("a clean action reports no warnings", clean.warnings === undefined, JSON.stringify(clean).slice(0, 80));
+check("a clean action reports no shortfalls either", clean.shortfalls === undefined && clean.partial === undefined, JSON.stringify(clean).slice(0, 80));
 
 // And a first-class tool whose optional step succeeds reports nothing either.
 const text = await raw("getDocumentText", {});

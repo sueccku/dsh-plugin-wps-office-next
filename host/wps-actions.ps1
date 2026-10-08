@@ -244,6 +244,22 @@ function Clear-WpsWarnings() {
     $script:WpsWarnings = New-Object System.Collections.ArrayList
 }
 
+$script:WpsShortfalls = New-Object System.Collections.ArrayList
+
+function Add-WpsShortfall([string]$message) {
+    # FIXES 103（R11）：与 Add-WpsWarning 的区别是**性质**，不是严重程度 ——
+    #   warning   = 你没要求的坏消息（探测/读取/清理失败），请求的效果仍然达成了；
+    #   shortfall = **你要求的事没有（完全）做到**（例如「要设的字体读回不一致」）。
+    # 工具层据此把 success 判成 false —— 不变量：success === true ⟺ 调用方要求的事全部生效。
+    # 这样只看 success 的调用方也不会被误导；正文与 data 里仍带着已经生效的那部分。
+    if ($null -eq $script:WpsShortfalls) { $script:WpsShortfalls = New-Object System.Collections.ArrayList }
+    $null = $script:WpsShortfalls.Add($message)
+}
+
+function Clear-WpsShortfalls() {
+    $script:WpsShortfalls = New-Object System.Collections.ArrayList
+}
+
 # C7：调用方没指定目标名时，动作落在当前“活动”对象上；同时打开多个文件时，这个目标会随窗口焦点漂移，
 # 于是超时重试或连续两次调用可能落到另一个文件上。只在确有歧义（打开数大于 1 且未给目标名）时记一条
 # 警告，并按消息去重，免得同一个动作里多次解析目标时刷屏。
@@ -855,6 +871,18 @@ function Output-Json($obj) {
         $obj['warnings'] = @($script:WpsWarnings)
         if ($obj.ContainsKey('data') -and $obj['data'] -is [hashtable]) { $obj['data']['warnings'] = @($script:WpsWarnings) }
     }
+    if ($null -ne $script:WpsShortfalls -and $script:WpsShortfalls.Count -gt 0 -and $obj -is [hashtable]) {
+        $obj['shortfalls'] = @($script:WpsShortfalls)
+        if ($obj.ContainsKey('data') -and $obj['data'] -is [hashtable]) { $obj['data']['shortfalls'] = @($script:WpsShortfalls) }
+        # R11: a shortfall means the caller did not get everything it asked for -> not success.
+        # The bridge flips it here too, so the raw JSON never contradicts itself.
+        if ($obj.ContainsKey('success')) { $obj['success'] = $false }
+        # A failure must carry a reason; otherwise first-party handlers print "failed: undefined".
+        if (-not $obj.ContainsKey('error') -or [string]::IsNullOrWhiteSpace([string]$obj['error'])) {
+            $obj['error'] = 'partial: ' + ($script:WpsShortfalls -join '; ')
+        }
+        $obj['partial'] = $true
+    }
     if ($obj -is [hashtable] -and $obj['success'] -eq $false -and $obj['error'] -is [string]) {
         $obj['error'] = Format-WpsErrorText $obj['error'] $script:WpsCurrentAction
     }
@@ -1067,7 +1095,7 @@ function Get-MainTextRange($word, $doc) {
     try { $story = [int]$word.Selection.StoryType } catch { $story = 1 }
     # Word 的 Range 同样按仓库约定包一层逗号返回：不包会被管道当集合枚举（FIXES 74 的边界门禁）。
     if ($story -eq 1) { return ,$word.Selection.Range }
-    Add-WpsWarning "光标不在正文（可能停在脚注/尾注里），已在正文末尾插入"
+    Add-WpsWarning "光标不在正文（可能停在脚注/尾注里），已在正文末尾插入"  # R11 复核：这是**回退**（尾注确实插上了），不是「没做到」→ 保持 warning
     return ,$doc.Range($doc.Content.End - 1, $doc.Content.End - 1)
 }
 
@@ -1477,6 +1505,7 @@ function Invoke-WpsAction {
 try { $p = $Params | ConvertFrom-Json } catch { $p = @{} }
 
     Clear-WpsWarnings
+    Clear-WpsShortfalls
     $script:WpsCurrentAction = $Action
     $p = Add-WpsParamAliases $Action $p
     $p = Expand-WpsNestedParams $Action $p
@@ -3344,8 +3373,8 @@ return }
             $lo = $sheet.ListObjects.Add(1, $source, $null, $hasHeaders)
         } catch {
             Output-Json @{ success = $false; error = $_.Exception.Message }; return }
-        if ($p.name) { try { $lo.Name = [string]$p.name } catch { Add-WpsWarning ("list object rename failed: " + $_.Exception.Message) } }
-        if ($p.tableStyle) { try { $lo.TableStyle = [string]$p.tableStyle } catch { Add-WpsWarning ("list object style failed: " + $_.Exception.Message) } }
+        if ($p.name) { try { $lo.Name = [string]$p.name } catch { Add-WpsShortfall ("list object rename failed: " + $_.Exception.Message) } }
+        if ($p.tableStyle) { try { $lo.TableStyle = [string]$p.tableStyle } catch { Add-WpsShortfall ("list object style failed: " + $_.Exception.Message) } }
         Output-Json @{ success = $true; data = (Get-ListObjectInfo $lo $sheet.Name ([string]$p.range)) }
     }
 
@@ -4331,10 +4360,10 @@ return }
         $cc = $null
         try { $cc = $doc.ContentControls.Add($ccType, $range) } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
         if ($null -ne $p.text -and "$($p.text)" -ne "") {
-            try { $cc.Range.Text = [string]$p.text } catch { Add-WpsWarning ("content control text failed: " + $_.Exception.Message) }
+            try { $cc.Range.Text = [string]$p.text } catch { Add-WpsShortfall ("content control text failed: " + $_.Exception.Message) }
         }
-        if ($p.title) { try { $cc.Title = [string]$p.title } catch { Add-WpsWarning ("content control title failed: " + $_.Exception.Message) } }
-        if ($p.tag) { try { $cc.Tag = [string]$p.tag } catch { Add-WpsWarning ("content control tag failed: " + $_.Exception.Message) } }
+        if ($p.title) { try { $cc.Title = [string]$p.title } catch { Add-WpsShortfall ("content control title failed: " + $_.Exception.Message) } }
+        if ($p.tag) { try { $cc.Tag = [string]$p.tag } catch { Add-WpsShortfall ("content control tag failed: " + $_.Exception.Message) } }
         $readBack = ""
         try { $readBack = [string]$cc.Range.Text } catch { $readBack = "" }
         $title = ""; try { $title = [string]$cc.Title } catch { $title = "" }
@@ -5289,7 +5318,7 @@ return }
         $allowParagraphLoss = ($position -ne "end")
         $paragraphAdded = ($paragraphsAfter -gt $paragraphsBefore) -or ($allowParagraphLoss -and $p.new_paragraph)
         if ($p.new_paragraph -and $paragraphsAfter -le $paragraphsBefore -and -not $allowParagraphLoss) {
-            Add-WpsWarning ("请求了新起一段，但段落数没有增加（$paragraphsBefore → $paragraphsAfter）：文本可能被并进了上一段。")
+            Add-WpsShortfall ("请求了新起一段，但段落数没有增加（$paragraphsBefore → $paragraphsAfter）：文本可能被并进了上一段。")
         }
         $insertStart = [int]$range.Start
         $insertEnd = [int]$range.End
@@ -5300,7 +5329,7 @@ return }
         $styleRange = $range
         if ($leadingMark) { $styleRange = $doc.Range($insertStart + 1, $insertEnd) }
         if ($p.style) {
-            try { $styleRange.Style = $p.style } catch { Add-WpsWarning ("样式 '$($p.style)' 未生效：" + $_.Exception.Message) }
+            try { $styleRange.Style = $p.style } catch { Add-WpsShortfall ("样式 '$($p.style)' 未生效：" + $_.Exception.Message) }
         }
         # 段落索引要在**插入完成之后**再算，按**位置**数段落标记（不能用插入前坐标，也不能按文本找 ——
         # 详见 Get-WordParagraphIndexAt 的注释）。$textStart 是刚插入文本的起点：有前导标记时后移一位。
@@ -5360,13 +5389,13 @@ return }
             $readBack.bold = $range.Font.Bold
         } catch { }
         if ($rangeText.Length -eq 0) {
-            Add-WpsWarning ("目标范围是空的（$rangeStart-$rangeEnd，没有字符），字体设置不会产生任何效果：请先用 range:{start,end} 指定文字范围，或先在文档里选中内容。")
+            Add-WpsShortfall ("目标范围是空的（$rangeStart-$rangeEnd，没有字符），字体设置不会产生任何效果：请先用 range:{start,end} 指定文字范围，或先在文档里选中内容。")
         } else {
             if ($p.fontName -and $readBack.fontName -and $readBack.fontName -ne [string]$p.fontName) {
-                Add-WpsWarning ("字体名没有生效：请求 '$($p.fontName)'，读回 '$($readBack.fontName)'。")
+                Add-WpsShortfall ("字体名没有生效：请求 '$($p.fontName)'，读回 '$($readBack.fontName)'。")
             }
             if ($p.fontSize -and $readBack.fontSize -and [double]$readBack.fontSize -ne [double]$p.fontSize) {
-                Add-WpsWarning ("字号没有生效：请求 $($p.fontSize)，读回 $($readBack.fontSize)。")
+                Add-WpsShortfall ("字号没有生效：请求 $($p.fontSize)，读回 $($readBack.fontSize)。")
             }
         }
         $data = @{ settings = @{ fontName = $p.fontName; fontSize = $p.fontSize; bold = $p.bold; italic = $p.italic; underline = $p.underline; color = $p.color }; range = @{ start = $rangeStart; end = $rangeEnd; resolve = $resolvedRange; characters = $rangeText.Length }; readBack = $readBack }
@@ -6437,7 +6466,7 @@ return }
         $readBack = ""
         try { $readBack = [string]$slide.Shapes.Title.TextFrame.TextRange.Text } catch { $readBack = "" }
         if ($readBack -ne [string]$p.title) {
-            Add-WpsWarning ("标题没有完全按请求写入：请求 '" + $p.title + "'，读回 '" + $readBack + "'。")
+            Add-WpsShortfall ("标题没有完全按请求写入：请求 '" + $p.title + "'，读回 '" + $readBack + "'。")
         }
         Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; title = $p.title; readBack = $readBack } }
     }
@@ -6566,12 +6595,17 @@ return }
             if ($shape.Adjustments.Count -lt 1) { Output-Json @{ success = $false; error = "this shape exposes no adjustment handle, so roundness cannot be applied" }; return }
             $shape.Adjustments.Item(1) = $p.roundness
             # 读回：圆角是形状的调整手柄，文本框这类形状也「有」手柄但改了通常看不出效果，
-            # 所以不假装校验通过，而是把读回值报出去、不一致就告警（FIXES 80）。
+            # 所以不假装校验通过，而是把读回值报出去、不一致就判短欠（FIXES 80 → R11）。
             try { $appliedRoundness = [double]$shape.Adjustments.Item(1) } catch { $appliedRoundness = $null }
+            # A5（2026-10-07 定性）：WPS 演示的 PPT `Adjustments` 实测是**空壳** —— 连 VBScript 的标准
+            # PROPERTYPUT 写法（`shp.Adjustments(1) = 0.4`，与 VBA 同款）都改不动：before=1 / after=1，
+            # 而且**报 set-ok**（静默忽略）。.Item()= / (1)= / 反射 InvokeMember 四种写法同样无效。
+            # 所以这个参数在 WPS 上**不可用**，文案要把这一点说清，免得调用方以为是参数写法问题。
+            $a5 = "圆角半径在 WPS 演示里无法通过自动化设置（实测标准赋值/点号/反射三种写法都改不动 Adjustments(1)，恒为 1）：这个参数在 WPS 上不可用。需要圆角请直接用圆角矩形（type: 5）的默认圆角，或改用形状尺寸/缩放组合。"
             if ($null -eq $appliedRoundness) {
-                Add-WpsWarning "圆角半径已写入，但读不回来（这个形状可能不支持圆角）"
+                Add-WpsShortfall ($a5 + "（本次读回失败：请求 " + $p.roundness + "）")
             } elseif ([math]::Abs($appliedRoundness - [double]$p.roundness) -gt 0.001) {
-                Add-WpsWarning ("圆角半径写进去了但读回不一致（请求 " + $p.roundness + "，读回 " + $appliedRoundness + "）")
+                Add-WpsShortfall ($a5 + "（本次请求 " + $p.roundness + "，读回 " + $appliedRoundness + "）")
             }
         }
         if ($p.fillColor) {
