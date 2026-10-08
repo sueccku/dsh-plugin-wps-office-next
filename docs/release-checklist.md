@@ -96,7 +96,7 @@ npm run verify:package                 # 打包产物运行期冒烟：装一遍
 # $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
 ```
 
-真机部分（**可选但建议**，需要在跑着 WPS 的机器上）：
+真机部分（**发版前必跑**，需要在跑着 WPS 的机器上；没有 WPS 的机器可豁免，但要在发布记录里写明「本次未跑真机」）：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 整轮 + 回收无头 WPS 孤儿
@@ -301,7 +301,7 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes "$(Select-String -Path CHANGEL
 ## 8. 每次发版的固定顺序
 
 1. 改版本号（`package.json` + `mcp/package.json` + 两个 lockfile），写 CHANGELOG 与 README pin
-2. §1 静态门禁全绿（+ 建议的真机）
+2. §1 静态门禁全绿 **+ 真机整轮全绿**（R9：必跑；无 WPS 环境时在发布记录里写明豁免）
 3. §2 打包对账 → §3 收包验证
 4. `npm publish`
 5. §5 全新 profile 安装验收 → 真实 profile 安装 → 重启验证
