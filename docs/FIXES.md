@@ -2,6 +2,10 @@
 
 对应 baseline/known-defects.md 的编号，记录本仓库相对上游 a825336 的修复。
 每条都要求有可复跑的验证，不接受“看起来对”。
+> **2026-10-07 文档清理**：本文是**历史记录**，行文中提到的 `docs/stabilization-plan.md`、`docs/CONTRACT-excel.md`、
+> `docs/bug-hunt-orders.md`、`docs/pending-bugs.md` 与 `baseline/upstream-0.1.0/` 已在文档清理中删除；
+> **链接保留原样（不改历史）**，它们的结论已分别落到 `docs/HANDOFF.md` §10（工具与测试陷阱）、
+> §3.1（开口决策）与本文自身的条目里。
 
 ## 已修复
 
