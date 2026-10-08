@@ -178,7 +178,7 @@ check("seeded a Word comment", ok(wac), text(wac).replace(/\s+/g, " ").slice(0, 
 const wdc = await action("deleteComment", { index: 1 });
 // FIXES 93（W1-2）：同上 —— 断言预览**就是**那条批注的原文。
 // 注意：Word 侧读回的批注正文带一个段落标记（\r），Excel 侧不带 —— 逐条 trim 后再精确比对，
-// 既钉住内容，又不把"段落标记"这个实现细节写死（两者的不一致记在 docs/bug-hunt-orders.md）。
+// 既钉住内容，又不把"段落标记"这个实现细节写死（两者的不一致见 docs/HANDOFF.md §10 的工具与测试陷阱）。
 check(
   "deleteComment reports exactly the comment text it removed",
   !!(wdc.data && wdc.data.impact && Array.isArray(wdc.data.impact.preview) &&

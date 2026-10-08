@@ -19,9 +19,14 @@
 | --- | --- | --- |
 | 1 | [HANDOFF.md](HANDOFF.md)（本文） | 现状、决策登记表、契约管线、纪律 |
 | 2 | [current-numbers.md](current-numbers.md) | **所有现值的唯一来源**（自动生成 + CI 对账）。别用正则自己数 |
-| 3 | [FIXES.md](FIXES.md) 的 84–91 号 | 最近一轮做了什么、踩过哪些坑（含"字段名不匹配""静默失配"这类反复出现的模式） |
-| 4 | [stabilization-plan.md](stabilization-plan.md) | 稳定性加固的既定纪律（预算红线、账本只许缩、只读核对优先） |
-| 5 | [tool-roadmap.md](tool-roadmap.md) | 还剩哪些规划项没做 |
+| 3 | [FIXES.md](FIXES.md) 的 **92–102** 号 | 最近一轮做了什么、踩过哪些坑（含"假成功""字段名对不上""静默丢失"这类反复出现的模式） |
+| 4 | 本文 §10「纪律与已踩过的坑」 | 预算红线、账本只许缩、只读核对优先，以及本轮新增的工具/测试陷阱 |
+| 5 | [release-checklist.md](release-checklist.md) | 发版前必跑的门禁与发布后验收步骤 |
+
+> **2026-10-07 文档清理**：删掉了四份已完成使命的文档（`stabilization-plan.md`、`tool-roadmap.md`、
+> `CONTRACT-excel.md`、`pending-bugs.md`）与一轮工单台账（`bug-hunt-orders.md`），
+> 以及两个无调用方的上游分析脚本与 `baseline/` 下 239 KB 的一次性快照。
+> 其中**有长期价值的内容已迁入本文**（§10 的工具/测试陷阱）。历史修复记录一律在 `FIXES.md`。
 
 ### 0.2 再做只读核对（确认真实状态与本文一致，**再动手**）
 
@@ -42,7 +47,7 @@ node scripts/doctor.mjs                                     # 环境自检，末
 
 ### 0.3 需要时再跑整轮回归
 
-跑完整测试（**48 个文件**，多数驱动真实 WPS，约 15 分钟）：
+跑完整测试（**49 个文件**，多数驱动真实 WPS，约 15 分钟）：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 跑完会刷新 test/summary.json
@@ -88,7 +93,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 **本机当前状态（新会话请看这里）**：
 
-- `desktop` profile 里装的**仍是 0.6.2**（**未升级到 0.6.3**：走真实用户路径升 profile 会动到你正在用的环境，需你点头后执行）（`…/profiles/desktop/node_modules/dsh-plugin-wps-office-next/package.json` → `0.6.2`），
+- **2026-10-07：用户为了开发环境纯净，已把插件从 DSH 里卸载** —— 所以现在 profile 里**没有**本插件的副本（这也是为什么按旧路径找不到 `node_modules/dsh-plugin-wps-office-next`）。`desktop` profile 与 `web` profile 目录仍在。要再装：`dsh plugin --profile desktop add dsh-plugin-wps-office-next@0.6.3`（装完需重启 DSH 才生效）（`…/profiles/desktop/node_modules/dsh-plugin-wps-office-next/package.json` → `0.6.2`），
   与其他 profile（`web`）之外的临时 profile 都已删除。**你若在 DSH 里用插件，跑的就是本 HEAD 这版行为**。
 - 但**仓库工作区是权威**：改完源码要重新 `tsc` + 跑管线，装出来的副本不会自动跟着变（除了 `desktop` 依赖的是本地路径时）。
 
@@ -311,7 +316,7 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
 
 > **「断言数」的口径说明（2026-10-04 重写）**：上表那个数**不再靠推算** —— 它就是 `scripts/run-tests.ps1` 跑完
-> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（当前 1085 = 1085 通过 + 0 失败/48 个文件 —— FIXES 92 之后整轮首次全绿）。
+> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（当前 1253 = 1253 通过 + 0 失败/49 个文件 —— FIXES 92 之后整轮首次全绿）。
 > 想刷新：跑一次整轮，再 `node scripts/gen-numbers.mjs`。
 >
 > **别用"数 `check(` 出现次数"去核对它**：静态点名与运行时合计**不是一回事** —— 差额来自**循环里重复执行的 `check()`**
@@ -548,6 +553,32 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - **别在会话里一边调 WPS 一边跑测试**：宿主是**单实例**的，你自己的探针/诊断调用会占住租约，把测试挡在门外（错误是中文的「另一个 DSH 会话…」）。
   跑测试前先释放自己的宿主（杀 `wps-com-host.ps1` + 删租约文件），跑完再继续。
 
+**工具与测试陷阱（2026-10-07 并入；原 `docs/bug-hunt-orders.md`，该文件已删）**
+
+- **断言读工具自己的回读文案 = 自证。** 第 3 批给 26 个测试文件补「以磁盘产物为准」的核对时，**第一条新断言就红了**
+  （`excel-page-setup` 的缩放）：工具回报「90%」，而存盘后的 xlsx 里连 `scale` 都没有。两个真 bug（FIXES 97/98）
+  都是从「只断言调用没报错」的那类断言后面挖出来的 —— **参数名对上 ≠ 效果落地**。
+- **断言「某保护应当生效」之前，先断言被保护的状态真的存在。** W1-7 探针第一版只 `createDocument` 就断言
+  「实例应当仍在」，跑出 `apps=0`、看着像重大 bug；是 `Saved === "False"` 那句前提检查证明**是我的前提错了**
+  （WPS 里空文档的 `Saved` 就是 `True`，只有写入过内容才算脏）。
+- **加断言/oracle 本身会改变被测环境。** 多插一次 `save_as` 就让后面的 `refresh_links` 报出「1 条外部链接」，
+  把一条无关断言弄红 —— 需要无副作用的核对时改用**裸 COM**。
+- **`test/lib/oracle.mjs` 的三个坑**：① ProgID 分应用（Word=`Kwps.Application` / 表格=`Ket.Application` /
+  演示=`Kwpp.Application`，拿错会 `MK_E_UNAVAILABLE`）；② 读取失败必须返回 **`null`**，不能返回空数组 ——
+  否则 `before=[] / after=[]` 会**静默通过**（第一版跑出两条假 PASS）；③ 别用 `ConvertTo-Json` 序列化嵌套数组
+  （PowerShell 会变成 `{value:[...],Count:N}`），手工拼 JSON 才稳。
+- **别在一个 shell 里背靠背手跑多个 WPS 测试文件**：前一个测试的宿主还没退干净，后一个就被单实例租约挡住
+  （实测连着跑三个文件得到 52/53、24/35、23/36 的**假失败**；单独跑与整轮 `run-tests.ps1` 都全绿）。
+- **读 xlsx 里的表（ListObject）别走 openpyxl 的 `ws.tables`**（本机实测拿不到东西），直接解析 zip 里的
+  `xl/tables/*.xml`；而且**用 ElementTree 而不是正则**（正则里的反斜杠会被多层模板字符串吃掉）。同理，
+  `read` 工具默认只给 2000 行，从大文件提取文本**必须按行偏移读**，否则静默拿到空串。
+- **账本类门禁的键必须从源文件程序化提取。** `silent-catch` 的账本以整条 `try { … } catch { }` 文本为键，
+  改了 try 体就得更新键；手抄转义会被多层字符串吃掉，而第一版因读取被截断、提取为空，**把账本三行替换成了空**。
+- **按命令行过滤进程会匹配到自己这条命令**：`CommandLine -like '*wps-com-host.ps1*'` 不加 `Name -eq 'powershell.exe'`
+  限定会把自己的 shell 杀掉（实测把 DSH 的作业运行器搞崩）。收尾清理「我们起的实例」要用**记录的 PID 精确杀**，
+  别用会波及用户文档的 `$w.Quit()`。
+- **「删掉了」要以文件为准。** `unlist_list_object` / `convert_table_to_text` / `delete_named_range` 这类删除动作，
+  必须验证**文件里真的没有**（`xl/tables/*.xml`、`<w:tbl>`、`xl/workbook.xml` 里的定义名），只验证工具回报是不够的。
 **PowerShell / WPS 实测坑（都已踩过并修复，别再踩）**
 - 生成的 `.ps1` 必须带 **UTF-8 BOM**，否则中文乱码。`host/wps-com-host.ps1` 本轮加了中文错误文案，
   **因此它现在必须保持 BOM**（`host/wps-actions.ps1` 由生成器写 BOM）。

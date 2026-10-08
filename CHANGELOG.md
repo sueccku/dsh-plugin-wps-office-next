@@ -36,7 +36,8 @@
   断言改为**以磁盘产物为准**（openpyxl 读 xlsx、python-docx 读 docx、直读 OOXML part、裸 COM 读真值），
   不再只验证工具自己的回读文案。**本轮挖出的每个真缺陷都出自「只断言调用没报错」的那类断言。**
 - 第 3 批测试补强按「破坏力 × 调用频次」逐个复核 40 个测试文件：26 个补真值核对、14 个判定无缺口。
-- 新增 `docs/bug-hunt-orders.md`（工单与陷阱清单）与 `docs/pending-bugs.md`（证据记录）。
+- 修复过程中的**工具与测试陷阱**已并入 `docs/HANDOFF.md` §10（原 `docs/bug-hunt-orders.md` / `docs/pending-bugs.md`
+  两份过程文档随后在文档清理中删除，其结论都已落到 HANDOFF 或 FIXES，不再单独立档）。
 
 ## 0.6.2（假成功与数据破坏收口 · 广告面重平衡 · 文档数字进 CI 对账）
 

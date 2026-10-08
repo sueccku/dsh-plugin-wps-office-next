@@ -4,7 +4,8 @@
 > 而不是回一个「成功」却没有依据。
 > 本文件是 S3 的验收物：**动作 / 影响范围 / 是否回传统计 / 是否抑制弹窗 / 对应测试**。
 > 清单数据来源：2026-09-16 对 `mcp/scripts/wps-com.ps1` 的实测枚举（不是记忆）。
-> 相关设计见 `docs/stabilization-plan.md` 的 S3，实现记录见 `docs/FIXES.md` 第 53 / 54 / 55 条。
+> 相关设计与纪律见 `docs/HANDOFF.md` §10，实现记录见 `docs/FIXES.md` 第 53 / 54 / 55 条。
+> （`docs/stabilization-plan.md` 已在 2026-10-07 文档清理中删除，其纪律已并入 HANDOFF。）
 
 ## 机制
 
