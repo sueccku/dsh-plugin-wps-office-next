@@ -129,7 +129,8 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 - **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 **84 / 47,630** —— 2026-10-04 按真实调用数据重平衡后，FIXES 90）。
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
-- **D4 废弃名处理**：18 个旧工具名**保留一个周期**作为 dispatch 别名；12 个 builtin 直接删除。
+- **D4 废弃名处理**：~~18 个旧工具名保留一个周期作为 dispatch 别名；12 个 builtin 直接删除。~~
+  **已被 v0.5.0 线决策推翻**：18 个废弃名与其别名表**已清掉**（`ALIAS_DEBT = 0`，FIXES 77）；12 个 builtin 的删除照旧。
 - **环境边界**：仅 Windows + COM；最低 **WPS 12.1 x64**；文档中文。（「仅 GitHub 发布」已由 2026-10-02 的发行决策取代，见下）
 - **S1 落地决策（新增，实测依据见 FIXES 52）**：打开加密文件一律传**非空哨兵密码**
   （`$script:WpsNoPassword`，在桥头部）——空串等于「没给密码」，弹框照旧、会话照旧卡死。
@@ -171,19 +172,6 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
   ② 本机 `dsh plugin add <tarball>` **照常装成功**（pnpm 1.1s、exit 0、`dump-config` 两个 id 都在、
   装出来的副本 287 文件 / 3.03 MB、`doctor` 打印 `DOCTOR OK`）—— 即平台约束不会挡住正常安装路径；
   ③ 根 `package-lock.json` 的 `packages[""]` 已同步镜像这两个字段，保持 lockfile 与 package.json 一致。
-- **发布状态：已上架（2026-10-02 18:26 北京时间 / 10:26 UTC）**。用户走 npm 的浏览器授权（路线 1）完成 OTP，
-  `dsh-plugin-wps-office-next@0.6.0` 已在 registry.npmjs.org 上，`dist-tags.latest = 0.6.0`、maintainer `sueccku`、
-  `fileCount = 287`、`unpackedSize = 3,177,016`、integrity `sha512-rKZKMg/…Z5cuKUyCiPPnQ==`
-  —— **与本地 dry-run 打印的 shasum/integrity 完全一致**，发出去的就是核对过的那个产物。
-- **发布后验收（已做）**：全新隔离 profile `wpsnpmver` + 空 npm 缓存，`dsh plugin add dsh-plugin-wps-office-next`
-  从 registry 拉取 → 2.5 秒、exit 0 → profile manifest 记成 `"dsh-plugin-wps-office-next": "^0.6.0"` 且
-  `dsh.profile.bundles` 自动包含 → `--dump-config` 两个 id 都在 → 装出来的副本 **287 文件 / 3.03 MB**、
-  `os=win32 cpu=x64`、无 `mcp/node_modules` → 从副本跑 `doctor` 打印 **`DOCTOR OK`**。验收 profile 已删除。
-- **pnpm 的一个提示（记录备查）**：新包触发 pnpm 的 `minimumReleaseAge` 保护，它自动往
-  `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude` 加了一行 `dsh-plugin-wps-office-next@0.6.0`；
-  安装照常成功，不是错误。
-- **后来都做完了**：`desktop` profile 已由用户自行升级到 `0.6.1` 并重启 DSH；真机调用也已通过**真实 MCP 工具**
-  验证（见下一条）。
 
 ---
 
@@ -200,6 +188,9 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 
 | 轮次 | # | 问题 | 结论 | 落地 |
 | --- | --- | --- | --- | --- |
+> **2026-10-07 瘦身**：删掉「任务调度」与「已完成任务」两类条目
+> （A1 / A6 / A2 / B1–B4 / L1 / L2 / L9 / 本轮 D1 / D5 / D7 / D8 / D9 / D13 / D20–D23）——
+> 它们的产出都记在 `FIXES.md` 88–91。本表从此**只保留仍然生效的决策与约束**，别在这里找「做过什么」。
 | 加固期 | D1 | 广告预算上限 | ≤ 100 工具 / ≤ 60,000 字节 | FIXES 68 |
 | 加固期 | D2 | Word 长尾做不做减法 | 全都要 | P3 |
 | 加固期 | D3 | PPT 收敛范围 | 删媒体/SmartArt/讲义/3D/美化族，留版式/主题/尺寸/母版/节 | P4 |
@@ -210,13 +201,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | 0.5.x | D17 | 未工具化 action 账本 | A：删 4 个重复/死代码 + 补 2 个真缺口（7 → 2） | FIXES 80 |
 | 0.6.0 | D2 / D3 / D4 / D5 | 打包载荷 / 首发版本 / 源与凭证 / 流程 | A / A / B / A：`files` 改显式子路径、首发 0.6.0、`publishConfig.registry` 入库且凭证不入库、只维护文档检查单（无 `prepublishOnly`、无发布 CI） | [release-checklist.md](release-checklist.md) 开头 |
 | 0.6.0 | D18 | 对外发布 | 由 B（只准备不发布）**改为 A**（上架 npm；首发 0.6.0 坏、0.6.1 修好） | FIXES 84 |
-| **本轮**<br>2026-10-03 | **D1** | 下一步做哪一件 | **A 工程/文档收尾**（B 进 CI、C 广告面重平衡、D 弱覆盖补测、E 产品扩张 均未启动） | 提交 `471b48d` |
-| **本轮** | **D5** | 这 3 个文档改动怎么处理 | **A**：只提交明确路径并推 `origin/main` | `471b48d` |
 | **本轮** | **D6** | `verify-package` 是否进 CI | **B**：加 `npm run verify:package` + CI gate（实测 12.4 秒、11/11、不需要 WPS）——**接进去的第一分钟就抓到 FIXES 85** | CI `verify:package` gate |
-| **本轮** | **D13** | `npm run` 下脚本必挂怎么办 | **A**（自动，无需另拍板）：既然是 D6-B 的门禁自身不可用，就修到可用——剥掉 npm 注入的环境再跑子 npm；直接调用 / `npm run` / 污染环境三种跑法全绿 | FIXES 85 |
-| **本轮** | **D7** | 检查单的包体积期望值 | **A**：当场重测（`290 / 290 / 580KB / 3.04MB`）+ 注明会漂移 | release-checklist §2 |
-| **本轮** | **D8** | `param-contract` 长时挂起 | **A**：先定性 —— 重跑正常（**秒级完成、257 对、A/B/C/D 全 0**），**未能复现**；挂起原因未定 | 见「挂起」栏 |
-| **本轮** | **D9** | 75 个工具只有最弱断言（`any`） | **挂起**：先记着不做，**下一轮由我提醒**；再做时在 A（按域补真场景测试）/ B（只补最易错 5–8 个）之间选 | 未开工 |
 | **本轮** | **D10** | 历史阶段数字（816/842/856） | **B**：保留原样，只加「当时的读数」标注（不改历史） | `docs/PROGRESS.md` 10 处 |
 | **本轮** | **D11** | 与 DSH 自带离线 office 技能的边界 | **A**：只保留文档提醒，**不**改技能提示词（FIXES 82 已有共存提醒） | 无需改动 |
 | **本轮** | **D12** | 决策记录放哪 | **A**：写进本文件这一节（`docs/` 入库、跨会话可见） | 本节 |
@@ -226,20 +211,6 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | **本轮** | **D17** | `insert_text` 的 style 与 `new_paragraph` | **A**：style 落到刚插入的范围；`new_paragraph` 进键表并用真段落标记 | FIXES 86 |
 | **本轮** | **D18** | 诊断与自验 | **C**：`affectedText` 改前置快照 + 回报受影响段落 + `get_paragraphs` 给字符坐标 | FIXES 86 |
 | **本轮** | **D19** | 回归测试与弱断言 | **B**：新增 31 项回归；报告点名的 4 条从 `any` 升到 `ok` | FIXES 86 |
-| **本轮** | **D20** | 交付节奏 | 当时选 **B 攒批**（不单独发 0.6.2）；**后由用户改为发布**：攒的 FIXES 86–91 已随 **v0.6.2**（2026-10-04）发布 | FIXES 90/91 + v0.6.2 |
-| **本轮** | **D21** | D9 挂起项 | **A**：**转正**——`any` 弱断言放行过真实的假成功，优先按域推进 | **已完成**：`any` 71 → 0（FIXES 89） |
-| **本轮**<br>2026-10-04 | **D22** | 遗留清单里先做哪些 | **用户点名 A1 + A6 + A2 + B1**（当时 C 类"看证据+说明"与发版节奏未表态；**发版已在 2026-10-04 完成**，见 §2） | FIXES 90 |
-| **本轮** | **D23** | B 类收尾的批 | **用户点名 B1–B4 全做**（B1 已在 FIXES 90 完成，本轮补 B2/B3/B4） | FIXES 91 |
-| **本轮** | **A1（原 D1-C）** | 广告面重平衡 | **已做**：按真实调用数据把 15 个高频隐藏工具提到广告面，**69 → 84**（46,867 字节 / 预算 60,000）；**没换出任何工具**（零调用是语料偏置，不足为据） | FIXES 90 |
-| **本轮** | **A6** | `find_replace` 不移动选区 / `range:"all"` 只有 `set_font` 收 | **已做**：新增 `selectFound`（默认 false，不动用户光标）；`apply_style.range` 与 `set_font` 对齐为 `{start,end}` 或 `"all"`，并让参数形状校验支持类型数组 | FIXES 90 |
-| **本轮** | **A2** | PPT 版式 × 占位符没测清楚 | **已做**：真机扫出 6 个版式的占位符矩阵，据此修掉 3 个真缺陷（副标题判类型 2 应为 4、正文判 7 应为 2、`add_slide` 与 `set_slide_layout` 键名两套） | FIXES 90 |
-| **本轮** | **B1** | `known-defects.md` 状态过期 | **已做**：S1 → fixed；C7 残余精确到"目的地解析"，并写明不修的理由 | FIXES 90 |
-| **本轮**<br>2026-10-04 | **B2** | FIXES 验证表是旧快照 | **已做**：标注为"FIXES 63 快照 + 现值看哪里"，表头改"项数（当时）"（不毁历史证据） | FIXES 91 |
-| **本轮** | **B3** | `PROGRESS.md` 阶段数字是历史值 | **已做**：最终数字一节标注为 v0.4.0 快照并指向现值；其余 26 处保持原样（D10-B） | FIXES 91 |
-| **本轮** | **B4** | 文档数字没有单一来源（漂过 5 次） | **已做**：`gen-numbers.mjs` 从**真实 tools/list** + spec + 宿主键表算数、写 `docs/current-numbers.md`、逐项核对 README/HANDOFF 声明值；CI 加 `--check` + 生成物对账；`run-tests.ps1` 出 `test/summary.json` | FIXES 91 |
-| **遗留轮**<br>2026-10-03 | **L1** | 71 个工具只有最弱断言（`any`） | **已做（用户选 A：按域全补）**：71 → **0**；过程中挖出并修掉 **12 个真缺陷**（Excel 2 / Word 1 / PPT 9），全是"回 success 但结果不对" | FIXES 89 |
-| **遗留轮** | **L2** | 英文样式名不可用 | **已修**：工具层翻译（Heading 1→标题 1 等）+ 空格归一化 + 失败文案带下一步 | FIXES 88 + 28 项纯函数单测 |
-| **遗留轮** | **L9** | `set_active_target` 校验失败仍回成功 | **已修**：两处失败改 `success: false`（锁照记，但不再谎报「校验通过」） | FIXES 88 + 真机回归 3 项 |
 
 **挂起项（明确不做、但要记得）**
 
@@ -542,52 +513,3 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
   全是「回了 success 但结果不对」（字段名不匹配、占位符类型判错、参数被静默忽略）。
   所以：**断言要读回真值，不能只断言 `success`**。最弱的 `check(x.status === "ok")` 放行过真实的假成功；
   「`any`（只验没挂住）」这种断言等于没测（FIXES 86 的用户报告就是这么漏出去的）。
-- **验收别人的产出要跑，不要读。** 发版前那次独立审计抓到的问题（README 指向不存在的 tag、生成器里写死的数字、
-  我自己写的注释让静态解析器误判），**全都没有任何门禁会叫** —— 只有"真的去执行/核对"才能发现。
-- **账本**（`ALIAS_DEBT` / `UNTOOLED_ACTIONS` / `EXPECTED_ACTIONS` / `BUDGET`）**涨即失败**，缩小要显式改。
-- **杀掉后台作业 ≠ 杀掉它的子进程**（2026-10-03 实测，代价半小时）：`run-tests.ps1` 被中断后，它的主进程变成了**孤儿**，
-  继续在循环里逐个启动 `test/*.test.mjs`；于是「刚跑通的回归测试」反复报**单实例租约被占**（写着别人的 `hostPid`/`clientPid`），
-  看起来像自己的改动坏了。**排查任何"租约被占"，先查这两个**：`Get-CimInstance Win32_Process | ? { $_.CommandLine -like "*run-tests.ps1*" }`
-  与 `… -like "*.test.mjs*"`（node）、`… -like "*wps-com-host.ps1*"`（宿主）。清理顺序：先杀 run-tests 主进程，再杀测试 node 与宿主，
-  最后删 `%USERPROFILE%\.wps-office-mcp\com-host.json`。
-- **别在会话里一边调 WPS 一边跑测试**：宿主是**单实例**的，你自己的探针/诊断调用会占住租约，把测试挡在门外（错误是中文的「另一个 DSH 会话…」）。
-  跑测试前先释放自己的宿主（杀 `wps-com-host.ps1` + 删租约文件），跑完再继续。
-
-**工具与测试陷阱（2026-10-07 并入；原 `docs/bug-hunt-orders.md`，该文件已删）**
-
-- **断言读工具自己的回读文案 = 自证。** 第 3 批给 26 个测试文件补「以磁盘产物为准」的核对时，**第一条新断言就红了**
-  （`excel-page-setup` 的缩放）：工具回报「90%」，而存盘后的 xlsx 里连 `scale` 都没有。两个真 bug（FIXES 97/98）
-  都是从「只断言调用没报错」的那类断言后面挖出来的 —— **参数名对上 ≠ 效果落地**。
-- **断言「某保护应当生效」之前，先断言被保护的状态真的存在。** W1-7 探针第一版只 `createDocument` 就断言
-  「实例应当仍在」，跑出 `apps=0`、看着像重大 bug；是 `Saved === "False"` 那句前提检查证明**是我的前提错了**
-  （WPS 里空文档的 `Saved` 就是 `True`，只有写入过内容才算脏）。
-- **加断言/oracle 本身会改变被测环境。** 多插一次 `save_as` 就让后面的 `refresh_links` 报出「1 条外部链接」，
-  把一条无关断言弄红 —— 需要无副作用的核对时改用**裸 COM**。
-- **`test/lib/oracle.mjs` 的三个坑**：① ProgID 分应用（Word=`Kwps.Application` / 表格=`Ket.Application` /
-  演示=`Kwpp.Application`，拿错会 `MK_E_UNAVAILABLE`）；② 读取失败必须返回 **`null`**，不能返回空数组 ——
-  否则 `before=[] / after=[]` 会**静默通过**（第一版跑出两条假 PASS）；③ 别用 `ConvertTo-Json` 序列化嵌套数组
-  （PowerShell 会变成 `{value:[...],Count:N}`），手工拼 JSON 才稳。
-- **别在一个 shell 里背靠背手跑多个 WPS 测试文件**：前一个测试的宿主还没退干净，后一个就被单实例租约挡住
-  （实测连着跑三个文件得到 52/53、24/35、23/36 的**假失败**；单独跑与整轮 `run-tests.ps1` 都全绿）。
-- **读 xlsx 里的表（ListObject）别走 openpyxl 的 `ws.tables`**（本机实测拿不到东西），直接解析 zip 里的
-  `xl/tables/*.xml`；而且**用 ElementTree 而不是正则**（正则里的反斜杠会被多层模板字符串吃掉）。同理，
-  `read` 工具默认只给 2000 行，从大文件提取文本**必须按行偏移读**，否则静默拿到空串。
-- **账本类门禁的键必须从源文件程序化提取。** `silent-catch` 的账本以整条 `try { … } catch { }` 文本为键，
-  改了 try 体就得更新键；手抄转义会被多层字符串吃掉，而第一版因读取被截断、提取为空，**把账本三行替换成了空**。
-- **按命令行过滤进程会匹配到自己这条命令**：`CommandLine -like '*wps-com-host.ps1*'` 不加 `Name -eq 'powershell.exe'`
-  限定会把自己的 shell 杀掉（实测把 DSH 的作业运行器搞崩）。收尾清理「我们起的实例」要用**记录的 PID 精确杀**，
-  别用会波及用户文档的 `$w.Quit()`。
-- **「删掉了」要以文件为准。** `unlist_list_object` / `convert_table_to_text` / `delete_named_range` 这类删除动作，
-  必须验证**文件里真的没有**（`xl/tables/*.xml`、`<w:tbl>`、`xl/workbook.xml` 里的定义名），只验证工具回报是不够的。
-**PowerShell / WPS 实测坑（都已踩过并修复，别再踩）**
-- 生成的 `.ps1` 必须带 **UTF-8 BOM**，否则中文乱码。`host/wps-com-host.ps1` 本轮加了中文错误文案，
-  **因此它现在必须保持 BOM**（`host/wps-actions.ps1` 由生成器写 BOM）。
-- **不要用 `Get-Content -Raw` + `Set-Content -Encoding UTF8` 改含中文的 UTF-8 无 BOM 文件**
-  （`.mjs` / 桥源码）：PS 5.1 会按 ANSI 读入、写成乱码，本轮把一个测试文件的 `密码|加密` 正则毁过一次。
-  要么用编辑工具，要么 `[System.IO.File]::ReadAllText/WriteAllText` 并显式指定编码。
-- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（**7381 行、78 个 `^function `**；生成物 `host/wps-actions.ps1` 是 79 个 ——
-  以 `scripts/build-host-actions.ps1` 打印的 `functions=79` 为准，它数的是生成物）；改完要重新生成 host 并对账。
-- PS 逗号优先级高于 `+`：`$m[$a + $r, $b + $c]` 会被解析错，必须加括号。
-- `return $range` 会把多格 Range 展开成数组——要写 `return ,$range`。
-- `Worksheet.Scenarios` 是 PSMethod（`$s.Scenarios()`）。
-- ListObject 的几何信息在 `Delete()` / `Add()` 之后是**陈旧的**，必须先重新解析。
