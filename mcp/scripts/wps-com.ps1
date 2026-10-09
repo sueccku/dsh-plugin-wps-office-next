@@ -1,9 +1,13 @@
 # Input: Action 名称与 JSON 参数
 # Output: WPS COM 调用结果 JSON
-# Pos: Windows COM 桥接脚本。一旦我被修改，请更新我的头部注释（Updated: 2026-05-26 15:30:00 CST），以及所属文件夹的md。
+# Pos: Windows COM 桥接脚本。一旦我被修改，请更新我的头部注释（Updated: 2026-10-09 21:00:00 CST），以及所属文件夹的md。
 # WPS COM Bridge - PowerShell script for WPS COM operations
 # Full implementation for Excel, Word, PPT, and common conversions
-# Usage: powershell -File wps-com.ps1 -Action <action> -Params <json>
+# Usage: NOT directly runnable. This file is the INPUT of scripts/build-host-actions.ps1; it is UTF-8
+#        without BOM and contains Chinese, and Windows PowerShell 5.1 reads a BOM-less file as
+#        ANSI/GBK, so `powershell -File wps-com.ps1 ...` dies on parse errors (measured on this file,
+#        FIXES 105). At runtime the resident host dot-sources the generated host/wps-actions.ps1,
+#        which does carry a BOM. To exercise one action by hand, dot-source that generated file.
 
 param(
     [string]$Action,
@@ -96,10 +100,15 @@ function Get-WpsApp([string]$kind) {
     if ($null -eq $progId) { return $null }
     # A registered instance is ALWAYS preferred, and looking for it must not start anything:
     # GetActiveObject is a pure Running Object Table lookup.
+    # FIXES 104: no kind is exempt from being shown. This block used to carry an Excel-only exception,
+    # inherited from the old per-kind getter that never made its instance visible; Ket.Application
+    # activates with Visible=$false, so Excel ran with a real yet hidden main window while every tool
+    # still reported success. WPS accepts the property (Word and PPT already relied on it), so the
+    # exception bought nothing.
     try {
         $active = [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId)
         if ($null -ne $active -and (Test-WpsAppUsable $active $kind)) {
-            if ($kind -ne 'excel') { try { $active.Visible = $true } catch { } }
+            try { $active.Visible = $true } catch { }
             Set-Variable -Name $cacheName -Scope Script -Value $active
             return $active
         }
@@ -116,7 +125,7 @@ function Get-WpsApp([string]$kind) {
     try {
         $created = New-Object -ComObject $progId
         if ($null -ne $created -and (Test-WpsAppUsable $created $kind)) {
-            if ($kind -ne 'excel') { try { $created.Visible = $true } catch { } }
+            try { $created.Visible = $true } catch { }
             Set-Variable -Name $cacheName -Scope Script -Value $created
             if ($null -eq $script:WpsAppOwned) { $script:WpsAppOwned = @{} }
             $script:WpsAppOwned[$kind] = $true
@@ -125,6 +134,32 @@ function Get-WpsApp([string]$kind) {
         }
     } catch { }
     return $null
+}
+
+function Get-WpsAppRegistered([string]$kind) {
+    # FIXES 104: read-only lookup for status reporting. Get-WpsApp's second path is New-Object
+    # -ComObject, which really starts a WPS process, so a plain status query could launch Word/PPT by
+    # itself (the ownership record showed apps=[word,excel] after a session that never used Word).
+    # This path returns only an instance that already exists: the process cache or the ROT.
+    $cacheName = 'WpsAppCache_' + $kind
+    $cached = Get-Variable -Name $cacheName -Scope Script -ErrorAction SilentlyContinue
+    if ($null -ne $cached -and (Test-WpsAppUsable $cached.Value $kind)) { return $cached.Value }
+    $progId = @{ excel = 'Ket.Application'; ppt = 'Kwpp.Application'; word = 'Kwps.Application' }[$kind]
+    if ($null -eq $progId) { return $null }
+    try {
+        $active = [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId)
+        if ($null -ne $active -and (Test-WpsAppUsable $active $kind)) { return $active }
+    } catch { return $null }
+    return $null
+}
+
+function Get-WpsAppVisible($app, [string]$label) {
+    # FIXES 104: a hidden instance still passes Test-WpsAppUsable (that only checks the collection),
+    # so a caller had no way to learn that the window it expects is not on screen. Report it.
+    $visible = $null
+    try { $visible = [bool]$app.Visible } catch { Add-WpsWarning ($label + '：读不到 Visible 属性（' + $_.Exception.Message + '）') }
+    if ($visible -eq $false) { Add-WpsWarning ($label + ' 实例在运行，但主窗口不可见（Visible=false）：桌面上看不到它，工具调用仍会成功') }
+    return $visible
 }
 
 function Close-WpsAppsStartedByUs {
@@ -283,6 +318,7 @@ function Format-WpsErrorText([string]$text, [string]$action) {
     if ($t -eq 'WPS Excel not running') { $zh = 'WPS 表格没有在运行'; $hint = '先启动 WPS 表格并打开一个工作簿，或用 wps_status 查看连接状态' }
     elseif ($t -eq 'WPS Word not running') { $zh = 'WPS 文字没有在运行'; $hint = '先启动 WPS 文字并打开一个文档，或用 wps_status 查看连接状态' }
     elseif ($t -eq 'WPS PPT not running') { $zh = 'WPS 演示没有在运行'; $hint = '先启动 WPS 演示并打开一个演示文稿，或用 wps_status 查看连接状态' }
+    elseif ($t -eq 'No WPS application running') { $zh = '当前没有任何 WPS 应用在运行'; $hint = 'wps_status 只报告已存在的实例、不会替你启动 WPS；用任意 wps_* 工具打开或新建文档时 WPS 会被启动' }
     elseif ($t -eq 'No active workbook') { $zh = '当前没有打开的工作簿'; $hint = '先用 wps_excel_open_workbook 或 wps_excel_create_workbook 打开或新建一个' }
     elseif ($t -eq 'No active document') { $zh = '当前没有打开的文档'; $hint = '先用 wps_word_open_document 或 wps_word_create_document 打开或新建一个' }
     elseif ($t -eq 'No active presentation' -or $t -eq 'no presentation is open') { $zh = '当前没有打开的演示文稿'; $hint = '先用 wps_ppt_open_presentation 或 wps_ppt_create_presentation 打开或新建一个' }
@@ -1198,34 +1234,39 @@ switch ($Action) {
     }
 
     "getAppInfo" {
-        $excel = Get-WpsExcel
+        # FIXES 104: a status query must not start anything, so this uses the read-only lookup and
+        # also reports whether the instance it found actually has a window on screen.
+        $excel = Get-WpsAppRegistered 'excel'
         if ($null -ne $excel) {
             $hasSelection = $false
             try { $hasSelection = ($null -ne $excel.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             $ver = ""; try { $ver = [string]$excel.Version } catch { }
             $bld = ""; try { $bld = [string]$excel.Build } catch { }
             $real = Get-WpsAppRealVersion $excel 'et.exe'
-            Output-Json @{ success = $true; data = @{ appType = "excel"; appName = $excel.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real } }
+            $visible = Get-WpsAppVisible $excel 'WPS 表格'
+            Output-Json @{ success = $true; data = @{ appType = "excel"; appName = $excel.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real; visible = $visible } }
             exit
         }
-        $word = Get-WpsWord
+        $word = Get-WpsAppRegistered 'word'
         if ($null -ne $word) {
             $hasSelection = $false
             try { $hasSelection = ($null -ne $word.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             $ver = ""; try { $ver = [string]$word.Version } catch { }
             $bld = ""; try { $bld = [string]$word.Build } catch { }
             $real = Get-WpsAppRealVersion $word 'wps.exe'
-            Output-Json @{ success = $true; data = @{ appType = "word"; appName = $word.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real } }
+            $visible = Get-WpsAppVisible $word 'WPS 文字'
+            Output-Json @{ success = $true; data = @{ appType = "word"; appName = $word.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real; visible = $visible } }
             exit
         }
-        $ppt = Get-WpsPpt
+        $ppt = Get-WpsAppRegistered 'ppt'
         if ($null -ne $ppt) {
             $hasSelection = $false
             try { $hasSelection = ($null -ne $ppt.ActiveWindow.Selection) } catch { Add-WpsWarning $_.Exception.Message }
             $ver = ""; try { $ver = [string]$ppt.Version } catch { }
             $bld = ""; try { $bld = [string]$ppt.Build } catch { }
             $real = Get-WpsAppRealVersion $ppt 'wpp.exe'
-            Output-Json @{ success = $true; data = @{ appType = "ppt"; appName = $ppt.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real } }
+            $visible = Get-WpsAppVisible $ppt 'WPS 演示'
+            Output-Json @{ success = $true; data = @{ appType = "ppt"; appName = $ppt.Name; hasSelection = $hasSelection; version = $ver; build = $bld; fileVersion = $real; visible = $visible } }
             exit
         }
         Output-Json @{ success = $false; error = "No WPS application running" }

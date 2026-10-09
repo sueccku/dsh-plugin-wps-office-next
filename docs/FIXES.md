@@ -2859,6 +2859,201 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
 
 ---
 
+## 107. 一键 e2e 在「从装了插件的 DSH 会话里起终端」时会红四条（FIXES 87 的同一根因，这次补到 e2e 上）
+
+**现象（2026-10-09 发版前实测）**：`node scripts/e2e.mjs --setup --profile wpse2e` 跑完，8 项子任务在文件层面**全部通过**
+（独立 COM 复核：汇总表、簇状柱形图、ListObject、条件格式、横向 A4、页脚域、打印标题全对），但 4 条检查红：
+
+```
+FAIL leak probe understood every answer            COM host exited (code=4294770…)
+FAIL used wps_status
+FAIL drove WPS through the plugin                  0 wps_* calls
+FAIL created the Word document with a plugin tool  none
+```
+
+**根因**：headless 运行继承了调用者环境里的 `WPS_OFFICE_MCP_ENTRY` / `WPS_OFFICE_HOST_SCRIPT`，值指向
+`…\.dsh\profiles\desktop\node_modules\dsh-plugin-wps-office-next\…` —— 而那份副本**已经不存在**（插件早已从 desktop
+profile 卸载）。`plugin.js` 发布入口用的是 `process.env.X = process.env.X || 默认值`：**「已设置但错误」的值会赢过默认值**，
+于是这次运行的 MCP server 入口是个不存在的路径，WPS 工具面整个为空。模型只能绕道直连插件自带的 `mcp/dist/index.js`
+完成同一批 `wps_*` 调用 —— 那些调用在 DSH 里记为 `pwsh`，四条「用了插件工具」的检查因此注定失败。`leak probe` 同理：
+它 spawn 的是仓库里的 MCP server，而该 server 读到的 `WPS_OFFICE_HOST_SCRIPT` 也是坏路径。
+
+**修法**（`scripts/e2e.mjs`）：新增 `stripWpsEnv()`，在三处子进程环境里剔掉这两个变量 —— headless 任务、`runDsh`
+（setup / dump-config 等）、以及 leak probe 自己起的 MCP server。e2e 要测的是**装进 `--profile` 的那份副本**，所以必须让
+`plugin.js` 自己算路径，而不是让继承值劫持。与 FIXES 87 在 `scripts/run-tests.ps1` 里的处置同源。
+
+**验证**：修完**不清理调用者环境**重跑（即仍在带毒会话里）→ **E2E OK 29/29**。
+
+**为什么不改 `plugin.js`**：`env || 默认值` 是「显式设置优先」的有意契约（用户可以把入口指到自己的副本）；真正的缺陷在
+**测试工具继承了一个不该继承的环境**。为迁就测试环境去改产品语义，代价和风险都不划算。
+
+---
+## 106. 测试/开发环境的 WPS 残留：判据从「窗口标题」换成 PID 基线，并收掉 WPS 自己的云服务
+
+**背景（FIXES 65）**：测试文件最后**硬杀** MCP 客户端，Windows 的 job object 把整棵树带走，常驻宿主来不及退出
+它启动的 WPS 实例 —— 每跑一个文件就多几个孤儿。`scripts/run-tests.ps1` 从那时起在每个文件之后按「窗口标题为空」
+收一遍。
+
+**旧判据错在哪**：
+
+1. FIXES 104 让 Excel 实例的主窗口真的可见之后，持有窗口的帧进程**有标题**，这条判据再也命中不了它；
+2. 它本来就只是「孤儿」的近似：任何没有标题的 WPS 进程都会被 `Stop-Process -Force`，哪怕完全不是测试起的。
+
+**新判据：PID 基线差集**（全程不碰 COM，卡死的 WPS 拖不住整轮；对比 FIXES 102 那条无超时的
+`Invoke-WpsOrphanReclaim`，它不能放在每个文件的关键路径上）：
+
+- 开跑前活着的 WPS 进程**一律不动** —— 那可能是你自己的 WPS，套件也可能正在复用那个实例；
+- 之后出现的都是本次运行里某个宿主动起来的，**有窗口没窗口都算**；
+- 结尾做最多 3 轮「杀新 → 等 1.2 秒 → 再判」，让惰性启动的 helper 也落网；`ORPHANS_LEFT=0` 从此真的表示
+  「本次启动的东西一个都不剩」；
+- 新增 `-AllWps`：跑前跑后连基线一起清，供这台专用测试机使用。**刻意不做环境变量开关** —— 一个会强杀所有
+  WPS 进程的模式，必须出现在你实际敲的那条命令里，而不是被环境继承（用户拍板：默认安全，危险动作显式）。
+
+**顺带挖出的东西：历史每一轮那个永久的 `ORPHANS_LEFT=1`，是 WPS 自己的云服务。** 实测一次 COM 启动的实例是一整个家族：
+
+```
+wps:28780  ppid=1588(svchost)      <- 帧进程，DCOM 经 svchost 拉起（这就是 job object 够不到它的原因）
+  et:25636  ppid=28780(wps)
+  wpscloudsvr:37624 ppid=28780(wps)
+    wps:9456  ppid=37624(wpscloudsvr)
+      wps:29196 / wps:30184
+```
+
+`wpscloudsvr` **会在约 1 秒内把被杀掉的 worker 重新拉起**；而一次**成功**的回收之后（`Kwps.Application` 已从 ROT 消失、
+归属记录已清），它和它的两个 worker 依然活着。结论：只收 `et/wps/wpp` 永远到不了 0；把 `wpscloudsvr` 一起收，
+机器才真的干净（实测：杀 7 个 → 6 秒后仍为 0）。
+
+**产品侧不动**：`Invoke-WpsOrphanReclaim` 仍然只 `Quit()` 记录在案的那几个 kind、不碰服务进程 —— 在一台 WPS 本来
+就开着的机器上，杀云服务是错的。粗活留给开发/测试层（`-AllWps`）。
+
+**新增 `scripts/reap-wps.ps1`**（开发循环用）：默认**只列不杀**；`-All` 清全家（含 `wpscloudsvr`）；`-Since <DateTime>`
+只收某时刻之后起的。覆盖「只跑了一个测试文件」「手工驱动宿主」这些 `run-tests.ps1` 管不到的场景。它刻意写成
+**纯 ASCII**：手写 `.ps1` 含中文就得带 BOM（FIXES 92 的教训），ASCII 则完全免疫编码问题；字节约定已登记进 `scripts/lint.mjs`。
+
+**两个实测踩到的实现陷阱（已写进脚本注释）**：
+
+- 脚本里不能有局部变量叫 `$all`：`[switch]$All` 会与它**成为同一个变量**（PowerShell 变量名大小写不敏感），
+  给 `[switch]` 赋数组会在运行时抛异常；
+- 判断 `-Since` 有没有传，必须问 `$PSBoundParameters`，不能拿未绑定的 `[datetime]` 与 `[datetime]::MinValue` 比较
+  —— 否则「只列不杀」会变成「真的杀」（第一版同时踩了这两个，靠真机跑才发现）。
+
+**同名缺陷的另一处收口：`test/orphan-reclaim.test.mjs`**。它「下一次会话回收孤儿」的断言用 `Get-Process wps,et,wpp`
+的**原始计数**当判据，于是上面那个云服务家族让它永远到不了 0 —— 这条在**纯净 HEAD 上也一直是红的**
+（worktree 对照实验确认与本轮改动无关，是既有的判据缺陷）。现在：新增 `appInstanceCount()`，把 `wpscloudsvr` 及其后代
+从「我们的实例」里摘出去；并补一条**更直接**的断言：回收后 `Kwps.Application` 必须已经从 ROT 里消失（实测 `gone`）。
+断言数因此 17 → 18。
+
+**验证**：整轮 `scripts/run-tests.ps1 -AllWps` → **TOTAL PASS=1257 FAIL=0 FILES=49 REAPED=271 ORPHANS_LEFT=0**
+（开跑前 `AllWps: cleared 2 pre-existing WPS process(es)`）；`orphan-reclaim` **18/18**；`reap-wps.ps1` 三种模式手工验证
+（默认只列不杀、`-Since` 只收新的、`-All` 清到 0）。
+
+**流程陷阱（写下来给下一个人）**：`scripts/run-tests.ps1` 含中文、必须带 BOM，而**行内编辑后 BOM 会掉**。掉了之后
+PS 5.1 把中文注释按 GBK 读、吞掉紧随其后的 `$summaryRows = @()`，于是 `test/summary.json` 的 `perFile` 只剩第一行
+—— FIXES 92 那个老毛病原样复现了一次（整轮的 TOTAL 仍然正确，只有 `perFile` 塌成 1 行，很容易看漏）。
+**改完这个文件必须先跑 `node scripts/lint.mjs`**（它专门盯这条），再跑整轮。
+
+**顺带（本轮跑契约管线时发现）**：`docs/tool-coverage.md` 里 `wps_word_insert_text` 的覆盖文件数与 HEAD 的测试输入已经
+对不上（在纯净 HEAD worktree 上重生成同样会变，属既有漂移），本次一并重新生成。
+
+---
+## 105. `wps_common_get_app_info` 把桥的字段丢掉一半；桥头还写着一条用不了的用法
+
+**现象**：这个工具永远只回两行（`版本:` / `构建号:`）—— 问它「WPS 是什么版本、窗口是不是真的看得见」是问不出来的。
+
+**根因**：桥的 `getAppInfo` 返回 7 个字段（`appType / appName / hasSelection / version / build / fileVersion / visible`），
+而工具层 handler 声明的类型是 `{success, message, version?, build?, platform?, activeDocument?}` —— 其中
+`platform / activeDocument / message` **桥从来不返回**，那三行是永远不会执行的死代码（与 FIXES 101 同型）；
+`appType / appName / hasSelection / fileVersion / visible` 则被整段丢掉。这个工具不在广告面（`advertised: false`），
+但模型会经 `wps_call` 显式调它，用户报告 §6.3 也点名要求它暴露 `visible`。
+
+**修法**：handler 按桥的真实字段逐项打印 —— 应用名 + 类型（表格/文字/演示）、`版本`（注明是 Office 兼容值）、
+`文件版本`（exe 真实版本，版本下限比的就是它）、`构建号`、`当前选区`、`主窗口可见`；字段读不到就整行不打印，
+不编默认值。类型也改成桥的真实返回形状。
+
+**测试**：`word-common-coverage` 里那条 `length > 5` 的弱断言（正是它让字段丢光也不红）升级为：必须出现
+`应用:`、`文件版本: <数字>`、`主窗口可见: (是|否)` 三行且不含 `undefined`。真机 **53/53 通过**，实测输出：
+
+```
+WPS应用信息：
+应用: Microsoft Word（文字）
+版本: 12.0（Office 兼容值，真实版本看下面一行）
+文件版本: 12.1.0.28488（exe 的真实版本，版本下限比的是它）
+构建号: 12.1.0.28488
+当前选区: 有
+主窗口可见: 是
+```
+
+**顺带修掉桥头的假用法**：`mcp/scripts/wps-com.ps1` 头部写着 `# Usage: powershell -File wps-com.ps1 -Action ...`，
+但该文件**无 BOM 且含中文**，而 Windows PowerShell 5.1 把无 BOM 文件按 ANSI/GBK 读 —— 中文字节被曲解后会吃掉
+字符串引号，直接执行必然 parse error（在 HEAD 的原始副本上实测：`-Action ping` 即报错）。这不是新问题，运行时也
+本来不走这条路：宿主 dot-source 的是**带 BOM 的生成物** `host/wps-actions.ps1`。注释已改成写明这一点。
+
+**同一轮补上工具描述**：它原本还写着「返回当前打开的文档信息 / 返回运行平台信息」两句 —— 桥从不返回这两样。
+改成照实描述：应用类型与名称；`版本` 是 Office 兼容值、`文件版本` 才是 exe 的真实版本；当前是否有选区；
+**主窗口是否可见**；只报告已经存在的实例、不会为了取信息去启动 WPS。描述进 `spec/` 与技能参考表，因此按契约管线
+整跑（`build-host-actions` → `tsc` → `extract-spec` → `tsc` → `gen-tool-surface` → `gen-skill-tools` →
+`gen-tool-coverage` → `gen-numbers`），改动一并入库。
+
+---
+## 104. Excel 窗口全程隐藏（用户报告）+ 只读的状态查询会拉起应用
+
+**来源**：用户提交的缺陷报告 `wps-office-next-bug-report-excel-window-hidden.md`（2026-10-08，对 0.6.2 的真机取证）。
+
+**根因**：`Get-WpsApp` 统一三种应用的取用路径时，给 Word/PPT 加了「取到就设为可见」，却把 Excel 单独排除 ——
+判据写成「只有非 Excel 才设可见」的例外（两处：ROT 复用与新建各一处）。
+`Ket.Application` 经 COM 激活时 `Visible=$false`，于是插件拉起的 WPS 表格实例**主窗口存在但不可见**：写入、格式、
+另存为全部成功，用户桌面上却什么都没有。这不是回归 —— 统一之前的 `Get-WpsExcel` 同样从不设置可见性，
+320dc78（FIXES 19 那轮）把它固化成了一条写死的例外，commit message、FIXES、README、CHANGELOG 里都没有理由。
+
+**为什么是静默的**：`Test-WpsAppUsable` 只看集合是否为 `$null`，不看可见性；`getAppInfo` 也不返回 `visible`。
+一个「窗口全隐藏」的实例被判为完全可用，调用方拿到的全是 `success: true`，无从发现。
+
+**修法**（改 `mcp/scripts/wps-com.ps1`，再重新生成 `host/wps-actions.ps1`）：
+
+1. 两处都改成无条件 `try { ... Visible = $true } catch { }`，三种应用一视同仁；
+2. 新增 `Get-WpsAppVisible`，把 `visible` 放进 `getAppInfo` 的 `data`（即 `wps_status.appInfo.visible`），
+   并在 `Visible=false` 时记一条 warning（「实例在运行，但主窗口不可见」）；
+3. 顺带修掉报告 §8 的同源问题：`getAppInfo` 改用新增的**只读** `Get-WpsAppRegistered`（缓存 → ROT，绝不 `New-Object`）。
+   此前状态查询会走 `Get-WpsApp` 的新建分支**真的启动** WPS —— `~/.wps-office-mcp/owned-apps.json` 里的
+   `apps:["word","excel"]` 就是这么来的：那次会话从没调用过任何 Word 工具；同时给 `No WPS application running`
+   补了三段式文案（此前它落到「确认操作对象存在、名称或序号正确」那条通用提示上，对状态查询是误导）；
+4. `test/silent-catch.test.mjs` 的两条账本键同步改成改后的原文（账本按行文本钉死，改了源码不改账本会红）。
+
+### 真机验证（本机 WPS 12.1.0.28488）
+
+**干净实例 A/B**（先关掉当日遗留的 5 个自动化进程，两边都从零启动）：
+
+| 指标 | 旧代码（`HEAD` 的生成物） | 新代码 |
+| --- | --- | --- |
+| 取到实例后 `Application.Visible` | `False` | **`True`** |
+| 主窗口 | `XLMAIN visible=False title=[WPS Office]` | **`XLMAIN visible=True title=[工作簿1 - WPS Office]`** |
+| `createWorkbook` | ok（工作簿1） | ok（工作簿1） |
+| `closeWorkbook` | ok，剩余工作簿 0 | ok，剩余工作簿 0 |
+| 启动的进程数 | 2（et + 1 个 wps） | 5（et + 4 个 wps，多出来的是窗口/框架进程） |
+
+旧代码那一行与报告 §4.2 的 `EnumWindows` 结果逐字段一致 —— 根因确认。
+
+**只读状态查询不再拉起应用**：对已存在的隐藏实例，`getAppInfo` 前后进程数不变（5 → 5）；对 ROT 里没有的 kind，
+`Get-WpsAppRegistered` 返回 `$null` 且同样不新增进程（仍是 5）。
+
+**端到端（整轮真机）**：`scripts/run-tests.ps1` → **TOTAL PASS=1256 FAIL=0 FILES=49 · ALL TEST FILES GREEN**
+（含真实 WPS 的表格/文字/演示全族 49 个文件；`ORPHANS_LEFT=1`，与本机历史 0–2 的范围一致）。
+`test/summary.json` 由这一轮重新写出。
+CI 静态门禁全绿：`lint`（176 文件 0 违规）、`lint-com-boundary`、`verify --static`（19 项）、`param-contract`、
+`spec-reproduction`（15 项）、`gen-numbers --check`（20 项声明值）与 12 个静态单测文件；重新生成
+`host/wps-actions.ps1` 后 `git diff` 只含本次改动。
+
+**报告 §7 那条「未复现」现象的定性**：验证中当日遗留的 et 实例（22:12 启动、被报告会话反复注入过）变成半死：
+`Workbooks.Item` 读不出名字、Sheets 枚举为 0、`Add` 抛 `DISP_E_EXCEPTION`、`Close` 报 `RPC_E_CALL_REJECTED`。
+干净实例 A/B 后判定**与该实例被放置过久有关，不是「置 Visible」造成的** —— 新代码在全新建的实例上
+create → 可见 → close 全程正常。
+
+**残留（已由 FIXES 106 解决）**：`scripts/run-tests.ps1` 当时仍按「窗口标题为空」判定孤儿，而 Excel 窗口可见后
+持有窗口的帧进程有标题、不再落入该判据。FIXES 106 把判据换成 PID 基线差集，并把 `wpscloudsvr` 一并收掉。
+`CHANGELOG.md` 属发布轮，本次未动。
+
+---
+
 ## 103. R11：「部分成功」不再回 `success: true` —— 用一条不变量消灭「假成功」（**取代 D16 的政策**）
 
 **背景**：D16 当年定的政策是「格式类动作写入后读回，对不上就出 warnings，但**不改 `success` 语义**」。

@@ -80,7 +80,7 @@ exports.operations = [
         "tool": "wps_common_get_app_info",
         "action": "getAppInfo",
         "app": "common",
-        "summary": "获取WPS应用的基本信息。\n\n使用场景：\n- \"WPS是什么版本\"\n- \"查看WPS信息\"\n- \"获取应用状态\"\n\n特点：\n- 返回WPS版本号、构建信息\n- 返回当前打开的文档信息\n- 返回运行平台信息",
+        "summary": "获取当前 WPS 应用的基本信息。\n\n使用场景：\n- \"WPS是什么版本\"\n- \"查看WPS信息\"\n- \"WPS 窗口是不是真的能看见\"\n- \"获取应用状态\"\n\n特点：\n- 返回应用类型与名称（表格 / 文字 / 演示）\n- 返回版本：「版本」是 Office 兼容值；「文件版本」才是 exe 的真实版本，版本下限比的是它\n- 返回当前是否有选区，以及主窗口是否可见\n- 只报告已经存在的实例，不会为了取信息而启动 WPS",
         "params": {},
         "effect": "read",
         "advertised": false,

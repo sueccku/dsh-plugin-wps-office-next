@@ -99,7 +99,7 @@ npm run verify:package                 # 打包产物运行期冒烟：装一遍
 真机部分（**发版前必跑**，需要在跑着 WPS 的机器上；没有 WPS 的机器可豁免，但要在发布记录里写明「本次未跑真机」）：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 整轮 + 回收无头 WPS 孤儿
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 整轮 + 按 PID 基线回收本次启动的 WPS（专用机加 -AllWps）
 node scripts\e2e.mjs --setup --timeout 420 --profile wpse2e                  # 一键端到端
 node scripts\accept-install.mjs                                              # 全新 profile 安装验收
 ```

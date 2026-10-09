@@ -54,6 +54,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # �
 node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbers.md（两步都要）
 ```
 
+这台专用测试机建议加 **`-AllWps`**：跑前跑后把 `et/wps/wpp/wpscloudsvr` 全部清掉（含 WPS 自己的云服务），
+机器才真的回到 0 个进程；**不加**这个开关时，本次运行之前就活着的 WPS 进程一律不动（FIXES 106）。
+只跑了单个测试文件、想收拾现场：`powershell -NoProfile -File scripts\reap-wps.ps1 -All`。
+
 ---
 
 ## 1. 一句话现状
@@ -67,7 +71,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | --- | --- | --- |
 | 注册工具 / 广告面 | **268 / 84**（47,630 字节，预算上限 60,000） | [current-numbers.md](current-numbers.md) |
 | 桥 action / 参数契约 | **263 / 257 对**（A/B/C/D 四类静默失效均为 0） | 同上 |
-| 测试 | **1256 项 / 49 个文件（整轮全绿）** | 同上（来自 `test/summary.json`） |
+| 测试 | **1257 项 / 49 个文件（整轮全绿）** | 同上（来自 `test/summary.json`） |
 | 本机整轮回归 | 见 `test/summary.json` | `confirm-dialog` 那条曾长期红：看门狗把**全机**的 Qt 窗口（本机是微信）当成 WPS 弹框，属测试口径问题、不是代码缺陷。**已修（FIXES 92 / P1）**：先做基线，只报新增窗口 |
 
 **历史阶段（都是当时的读数，别当现值）**：S1–S9 加固分四波落地，`v0.3.0`（09-16）→ `v0.4.0`（09-19）→
@@ -294,9 +298,9 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 | 注册动作 | **263** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
 | 对外工具 | **84**（80 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
 | 广告面字节 | **47,630** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
-| 全量 schema | 159,167 字节（268 工具，≈45,476 tokens） | 同上 |
+| 全量 schema | 159,433 字节（268 工具，≈45,552 tokens） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **1256 断言 / 49 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
+| 测试 | **1257 断言 / 49 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3、FIXES 106 +1） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |

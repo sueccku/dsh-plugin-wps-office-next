@@ -48,7 +48,7 @@ const files = textFiles();
 // 每条 = [路径, 是否要 BOM, 是否要 CRLF]。\`scripts/*.ps1\` 按本目录既有约定是 **LF**
 // （\`build-host-actions.ps1\` 也是 LF，且 \`.gitattributes\` 写着 \`* -text\`「never rewrite line endings」），
 // 所以对它**只强制 BOM**，不动行尾；host/ 与 mcp/scripts/ 下的是 CRLF。
-for (const [rel, wantBom, wantCrlf] of [['mcp/scripts/wps-com.ps1', false, true], ['host/wps-com-host.ps1', true, true], ['scripts/run-tests.ps1', true, false]]) {
+for (const [rel, wantBom, wantCrlf] of [['mcp/scripts/wps-com.ps1', false, true], ['host/wps-com-host.ps1', true, true], ['scripts/run-tests.ps1', true, false], ['scripts/reap-wps.ps1', false, false]]) {
   const buf = readFileSync(join(ROOT, rel));
   const hasBom = buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf;
   if (hasBom !== wantBom) bad('ps1-bom', join(ROOT, rel), 'BOM=' + hasBom + ' 期望 ' + wantBom);

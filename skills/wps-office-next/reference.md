@@ -22,7 +22,7 @@
 | wps_common_save_as | 直达 | 将当前文档另存为指定路径和格式。 |
 | wps_common_ping | wps_call | 检测WPS应用连接状态。 |
 | wps_common_wire_check | wps_call | 检查与WPS加载项之间的通信线路状态。 |
-| wps_common_get_app_info | wps_call | 获取WPS应用的基本信息。 |
+| wps_common_get_app_info | wps_call | 获取当前 WPS 应用的基本信息。 |
 | wps_common_get_selected_text | wps_call | 获取当前文档中选中的文本内容。 |
 | wps_common_set_selected_text | wps_call | 替换当前文档中选中的文本内容。 |
 

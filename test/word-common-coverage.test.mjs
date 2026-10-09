@@ -143,7 +143,13 @@ const proof = text(await call("wps_word_proofread_basic", { text: "这是一段�
 check("proofread_basic returns a readable verdict", proof.length > 10 && !/undefined/.test(proof), proof.replace(/\s+/g, " ").slice(0, 90));
 // ---- L1（FIXES 89）：通用工具的弱断言，也补上真实结果检查 -------------------------------------
 const appInfo = text(await call("wps_common_get_app_info", {}));
-check("common_get_app_info reports a real app or version", appInfo.length > 5 && !/undefined/.test(appInfo), appInfo.replace(/\s+/g, " ").slice(0, 90));
+// FIXES 105: 这条以前只要求「长度 > 5」—— 于是把桥的字段整段丢掉的 handler 也能过（它只打印版本/构建号）。
+// 现在必须真的出现应用名、真实版本（fileVersion）与窗口可见性三行；handler 读不到就不打印，缺一行即红。
+check(
+  "common_get_app_info reports the app, its real version and window visibility",
+  /应用:/.test(appInfo) && /文件版本: \d/.test(appInfo) && /主窗口可见: (是|否)/.test(appInfo) && !/undefined/.test(appInfo),
+  appInfo.replace(/\s+/g, " ").slice(0, 140)
+);
 const wire = text(await call("wps_common_wire_check", {}));
 check("common_wire_check reports the wiring state", wire.length > 5 && !/undefined/.test(wire), wire.replace(/\s+/g, " ").slice(0, 90));
 // 选中文本读取：没有选中内容时也必须给可读结果（不能是 undefined）

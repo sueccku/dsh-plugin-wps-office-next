@@ -273,7 +273,7 @@
 | `wps_word_insert_page_numbers` | Word | `insertPageNumbers` | ✅ | bespoke | word-produce.test.mjs |
 | `wps_word_insert_section_break` | Word | `insertSectionBreak` |  | bespoke | word-common-coverage.test.mjs |
 | `wps_word_insert_table` | Word | `insertTable` |  | bespoke | destructive-guard.test.mjs, word-deep.test.mjs |
-| `wps_word_insert_text` | Word | `insertText` | ✅ | bespoke | contract-gaps.test.mjs, excel-contract-fixes.test.mjs, file-ops.test.mjs, +7 |
+| `wps_word_insert_text` | Word | `insertText` | ✅ | bespoke | contract-gaps.test.mjs, excel-contract-fixes.test.mjs, file-ops.test.mjs, +8 |
 | `wps_word_mail_merge` | Word | `mailMerge` | ✅ | bespoke | word-longtail.test.mjs |
 | `wps_word_merge_table_cells` | Word | `mergeTableCells` |  | bespoke | word-deep.test.mjs |
 | `wps_word_open_document` | Word | `openDocument` | ✅ | bespoke | encrypted-preflight.test.mjs, open-safety.test.mjs |

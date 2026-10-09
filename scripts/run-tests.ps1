@@ -1,15 +1,35 @@
-﻿# Run every test/*.test.mjs and reap the headless WPS instances a test file leaves behind.
+﻿# Run every test/*.test.mjs and reap the WPS instances a test file leaves behind.
 #
 # Why the reaping exists (FIXES 65): on Windows Node puts every spawned child into a job object and
 # tears the whole tree down when that child is killed. The test files end by hard-killing the MCP
 # server, so the resident COM host dies with it and never reaches its own cleanup; whatever WPS
 # application it started is orphaned (measured: one Word document = 3-5 wps.exe processes, ~10 per
-# full run). Those orphans are headless - no visible document window - and nothing in the suite reuses
-# them, so after each file we close the ones whose window title is empty. A real WPS window you have
-# open has a title and is never touched.
+# full run).
 #
-# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1 [-Filter <wildcard>] [-KeepOrphans]
-param([string]$Filter = '', [switch]$KeepOrphans)
+# What counts as ours (FIXES 106): a PID baseline, not the window title.
+#   - Everything alive when the run starts belongs to someone else (you, or a DSH session that already
+#     holds a WPS instance) and is NEVER killed - the suite may well be reusing it.
+#   - Anything that appears later was started by a resident host inside this run, so it is ours, with
+#     or without a window. The old "no window title" rule only approximated that: it missed every
+#     instance that shows a window (every Excel instance, now that FIXES 104 makes the window visible)
+#     and it would kill a window-less WPS process that was never ours.
+#   - -AllWps also clears the baseline before and after the run. That is what a dedicated test machine
+#     wants; on a machine where you keep your own WPS open, leave it off. There is deliberately NO
+#     environment-variable switch for it: a mode that force-kills every WPS process must be visible in
+#     the command line you actually ran, not inherited from ambient state.
+#   - The set is et/wps/wpp PLUS wpscloudsvr, WPS's own cloud service. Measured here: one instance
+#     started through COM is a family - wps.exe (frame, started by svchost/DCOM, which is exactly why
+#     the job object never reaches it), et.exe/wpp.exe, wpscloudsvr, and wpscloudsvr's wps.exe workers -
+#     and wpscloudsvr restarts a killed worker within about a second. Reaping only et/wps/wpp therefore
+#     always leaves one process behind (the ORPHANS_LEFT=1 in every historical run): WPS's service, not
+#     a test orphan. Killing wpscloudsvr with the rest reaches a real zero.
+#   - Nothing here touches COM, so a wedged WPS (modal dialog, RPC_E_CALL_REJECTED) can never hang the
+#     suite - contrast Invoke-WpsOrphanReclaim, whose COM calls have no timeout (FIXES 102).
+#
+# Sibling tool: scripts\reap-wps.ps1 cleans a machine by hand (single-file runs, wedged instances).
+#
+# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1 [-Filter <wildcard>] [-KeepOrphans] [-AllWps]
+param([string]$Filter = '', [switch]$KeepOrphans, [switch]$AllWps)
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
@@ -22,16 +42,32 @@ Set-Location $root
 $env:WPS_OFFICE_MCP_ENTRY = [System.IO.Path]::Combine($root, 'mcp', 'dist', 'index.js')
 $env:WPS_OFFICE_HOST_SCRIPT = [System.IO.Path]::Combine($root, 'host', 'wps-com-host.ps1')
 
-function Get-Orphans {
-    Get-Process wps,et,wpp -ErrorAction SilentlyContinue |
-        Where-Object { [string]$_.MainWindowTitle -eq '' }
+function Get-WpsProcesses { @(Get-Process et,wps,wpp,wpscloudsvr -ErrorAction SilentlyContinue) }
+# PIDs alive before the run. Anything outside this set was started by the suite, so it is ours.
+$script:BaselinePids = @{}
+function Set-WpsBaseline {
+    $script:BaselinePids = @{}
+    foreach ($p in (Get-WpsProcesses)) { $script:BaselinePids[[int]$p.Id] = $true }
 }
+function Get-NewWps { @((Get-WpsProcesses) | Where-Object { -not $script:BaselinePids.ContainsKey([int]$_.Id) }) }
 function Clear-Orphans {
     if ($KeepOrphans) { return 0 }
-    $o = @(Get-Orphans)
-    foreach ($p in $o) { try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch { } }
-    return $o.Count
+    $new = @(Get-NewWps)
+    foreach ($p in $new) { try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch { } }
+    return $new.Count
 }
+function Clear-AllWps {
+    $all = @(Get-WpsProcesses)
+    foreach ($p in $all) { try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch { } }
+    return $all.Count
+}
+
+if ($AllWps) {
+    $cleared = Clear-AllWps
+    if ($cleared -gt 0) { "AllWps: cleared $cleared pre-existing WPS process(es) before the run" }
+    Start-Sleep -Milliseconds 600
+}
+Set-WpsBaseline
 $files = Get-ChildItem (Join-Path $root 'test') -Filter '*.test.mjs' | Sort-Object Name
 if ($Filter) { $files = $files | Where-Object { $_.Name -like $Filter } }
 $totalPass = 0; $totalFail = 0; $reaped = 0; $badFiles = @()
@@ -51,7 +87,19 @@ foreach ($f in $files) {
     $summaryRows += [ordered]@{ file = $f.Name; pass = $p; fail = $x; exit = $LASTEXITCODE }
     if ($LASTEXITCODE -ne 0 -or $x -gt 0) { $badFiles += $f.Name }
 }
-$left = @(Get-Orphans).Count
+# Authoritative final reading: kill what is new, give lazily starting/exiting helpers a moment to show
+# up, kill again - so ORPHANS_LEFT=0 really means "nothing this run started is still alive".
+for ($i = 0; $i -lt 3; $i++) {
+    $null = Clear-Orphans
+    Start-Sleep -Milliseconds 1200
+    if (@(Get-NewWps).Count -eq 0) { break }
+}
+$left = @(Get-NewWps).Count
+if ($AllWps) {
+    $null = Clear-AllWps
+    Start-Sleep -Milliseconds 800
+    $left = @(Get-WpsProcesses).Count
+}
 ""
 "TOTAL PASS=$totalPass FAIL=$totalFail FILES=$($files.Count) REAPED=$reaped ORPHANS_LEFT=$left"
 if ($badFiles.Count -gt 0) { 'BAD FILES: ' + ($badFiles -join ', ') } else { 'ALL TEST FILES GREEN' }

@@ -318,17 +318,19 @@ export const wireCheckHandler: ToolHandler = async (
 
 export const getAppInfoDefinition: ToolDefinition = {
   name: 'wps_common_get_app_info',
-  description: `获取WPS应用的基本信息。
+  description: `获取当前 WPS 应用的基本信息。
 
 使用场景：
 - "WPS是什么版本"
 - "查看WPS信息"
+- "WPS 窗口是不是真的能看见"
 - "获取应用状态"
 
 特点：
-- 返回WPS版本号、构建信息
-- 返回当前打开的文档信息
-- 返回运行平台信息`,
+- 返回应用类型与名称（表格 / 文字 / 演示）
+- 返回版本：「版本」是 Office 兼容值；「文件版本」才是 exe 的真实版本，版本下限比的是它
+- 返回当前是否有选区，以及主窗口是否可见
+- 只报告已经存在的实例，不会为了取信息而启动 WPS`,
   category: ToolCategory.COMMON,
   inputSchema: {
     type: 'object',
@@ -337,27 +339,36 @@ export const getAppInfoDefinition: ToolDefinition = {
   },
 };
 
+// 桥返回哪几个字段，这里就报哪几个（mcp/scripts/wps-com.ps1 的 getAppInfo 分支）—— FIXES 105。
+// 此前 handler 只读 version/build，另外声明了 platform/activeDocument/message 三个**桥从不返回**的
+// 字段：那三行永远不会打印，而 appType/appName/hasSelection/fileVersion/visible 被整段丢掉
+// （同一类缺陷的另一次发作见 FIXES 101）。读不到就整行不打印，不编默认值。
+const APP_KIND_LABELS: Record<string, string> = { excel: '表格', word: '文字', ppt: '演示' };
+
 export const getAppInfoHandler: ToolHandler = async (
   _args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
   try {
     const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
+      appType?: string;
+      appName?: string;
+      hasSelection?: boolean;
       version?: string;
       build?: string;
-      platform?: string;
-      activeDocument?: string;
+      fileVersion?: string;
+      visible?: boolean | null;
     }>('getAppInfo', {});
 
     if (response.success && response.data) {
       const data = response.data;
       const lines: string[] = ['WPS应用信息：'];
-      if (data.version) lines.push(`版本: ${data.version}`);
+      const kind = data.appType ? APP_KIND_LABELS[data.appType] || data.appType : '';
+      if (data.appName || kind) lines.push(`应用: ${data.appName || '(名字读不到)'}${kind ? '（' + kind + '）' : ''}`);
+      if (data.version) lines.push(`版本: ${data.version}（Office 兼容值，真实版本看下面一行）`);
+      if (data.fileVersion) lines.push(`文件版本: ${data.fileVersion}（exe 的真实版本，版本下限比的是它）`);
       if (data.build) lines.push(`构建号: ${data.build}`);
-      if (data.platform) lines.push(`平台: ${data.platform}`);
-      if (data.activeDocument) lines.push(`当前文档: ${data.activeDocument}`);
-      if (data.message) lines.push(data.message);
+      if (typeof data.hasSelection === 'boolean') lines.push(`当前选区: ${data.hasSelection ? '有' : '无'}`);
+      if (typeof data.visible === 'boolean') lines.push(`主窗口可见: ${data.visible ? '是' : '否（实例在运行，但桌面上看不到它）'}`);
 
       return {
         id: uuidv4(),

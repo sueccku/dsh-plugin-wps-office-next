@@ -486,6 +486,19 @@ function expandToolNames(toolCalls) {
   return names.filter((entry) => entry && entry.startsWith('wps_'));
 }
 
+// FIXES 87 的同一根因，这次补到 e2e（FIXES 107）：从**装了插件的 DSH 会话**里起终端时，plugin.js 会把
+// WPS_OFFICE_MCP_ENTRY / WPS_OFFICE_HOST_SCRIPT 指到 profile 里那份副本；若那份副本已不存在（例如已从
+// desktop profile 卸载），继承来的「已设置但错误」的值会赢过 plugin.js 自己的默认值（它是 `env || 默认`），
+// 于是这次 headless 运行的 MCP 工具面整个为空 —— e2e 会红四条，而交付物其实没问题（2026-10-09 实测：
+// 模型只能绕道直连插件自带 server，八项子任务全过，但四条「用了插件工具」的检查注定失败）。
+// e2e 要测的是装进 --profile 的那份副本，所以这两个变量必须从子进程环境里剔掉，让 plugin.js 自己算路径。
+function stripWpsEnv(base) {
+  const env = Object.assign({}, base || process.env);
+  delete env.WPS_OFFICE_MCP_ENTRY;
+  delete env.WPS_OFFICE_HOST_SCRIPT;
+  return env;
+}
+
 // Session logs, traces and reports are read by Windows PowerShell 5.1 as often as by an editor, and
 // it only honours UTF-8 when a BOM is present.
 function writeUtf8Bom(path, text) { writeFileSync(path, '﻿' + text, 'utf8'); }
@@ -494,7 +507,7 @@ function writeUtf8Bom(path, text) { writeFileSync(path, '﻿' + text, 'utf8'); }
 
 function mcpCalls(calls) {
   return new Promise((resolvePromise) => {
-    const child = spawn(process.execPath, [join(ROOT, 'mcp', 'dist', 'index.js')], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+    const child = spawn(process.execPath, [join(ROOT, 'mcp', 'dist', 'index.js')], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: stripWpsEnv() });
     const pending = new Map();
     let buf = '';
     let id = 0;
@@ -546,7 +559,7 @@ function parseOpenCount(text) {
 const opts = parseArgs(process.argv.slice(2));
 const dsh = resolveDshLauncher(opts.dshBin);
 if (!dsh) die('could not locate DSH (neither node_modules/@deepseek-ai/dsh/lib/bin.js nor the packaged desktop runtime); pass --dsh-bin <path> or set DSH_BIN');
-const runDsh = (args, runOpts) => runSync(dsh.command, dsh.args.concat(args), Object.assign({}, runOpts, { env: Object.assign({}, process.env, dsh.env) }));
+const runDsh = (args, runOpts) => runSync(dsh.command, dsh.args.concat(args), Object.assign({}, runOpts, { env: stripWpsEnv(Object.assign({}, process.env, dsh.env)) }));
 info('dsh entry: ' + dsh.label);
 
 if (opts.setup) {
@@ -603,6 +616,9 @@ const task = [
 // the caller's environment opted in; otherwise the model would reach WPS through run_code instead.
 const runEnv = Object.assign({}, process.env, { DSH_PERMISSION_MODE: 'danger-full-access' });
 delete runEnv.DSH_TOOLS_MODE;
+// FIXES 107：把继承来的插件路径变量剔掉（见 stripWpsEnv 的注释）。
+delete runEnv.WPS_OFFICE_MCP_ENTRY;
+delete runEnv.WPS_OFFICE_HOST_SCRIPT;
 const startedAt = Date.now();
 const stdoutPath = join(runDir, 'run.stdout.txt');
 const stderrPath = join(runDir, 'run.stderr.txt');

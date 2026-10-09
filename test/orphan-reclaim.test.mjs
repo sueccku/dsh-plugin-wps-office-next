@@ -19,6 +19,28 @@ const RECORD = join(homedir(), ".wps-office-mcp", "owned-apps.json");
 
 function ps(cmd) { return String(spawnSync("powershell", ["-NoProfile", "-Command", cmd], { encoding: "utf8" }).stdout || "").trim(); }
 function appCount() { return parseInt(ps("Get-Process wps,et,wpp -ErrorAction SilentlyContinue | Measure-Object | ForEach-Object { $_.Count }") || "0", 10) || 0; }
+// FIXES 106: a WPS instance started through COM is a whole family - the frame wps.exe (started by
+// svchost/DCOM), et.exe/wpp.exe, and WPS's own cloud service wpscloudsvr with its wps.exe workers.
+// That service SURVIVES Quit() and keeps its workers alive: measured right after a successful reclaim,
+// Kwps.Application is already gone from the ROT while wpscloudsvr + 2 workers are still running (and
+// wpscloudsvr restarts a killed worker within ~1s). Those are not the orphan we reclaim, so the
+// "our instance is gone" assertions must not count them - the old raw count could never reach 0.
+function appInstanceCount() {
+  if (appCount() === 0) return 0;   // fast path: nothing WPS-ish at all
+  const rows = (ps("Get-CimInstance Win32_Process | Where-Object { @('wps','et','wpp','wpscloudsvr') -contains ($_.Name -replace '\\.exe$','') } | ForEach-Object { ($_.Name -replace '\\.exe$','') + ' ' + $_.ProcessId + ' ' + $_.ParentProcessId }") || "")
+    .split(/\r?\n/).map((l) => l.trim().split(/\s+/)).filter((r) => r.length === 3)
+    .map(([name, pid, ppid]) => ({ name, pid, ppid }));
+  const byId = new Map(rows.map((r) => [r.pid, r]));
+  const serviceOwned = (row) => {
+    let cur = row;
+    for (let hop = 0; hop < 10 && cur; hop++) {
+      if (cur.name === 'wpscloudsvr') return true;
+      cur = byId.get(cur.ppid);
+    }
+    return false;
+  };
+  return rows.filter((r) => r.name !== 'wpscloudsvr' && !serviceOwned(r)).length;
+}
 function killAll() { ps("Get-Process wps,et,wpp -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue"); }
 function recordText() { try { return readFileSync(RECORD, "utf8"); } catch { return ""; } }
 
@@ -62,9 +84,13 @@ check("the force-killed session left the instance behind", orphaned > 0, "apps="
 const b = startClient();
 await b.ready;
 await ping(b);
-let left = appCount();
-for (let i = 0; i < 20 && left > 0; i++) { await sleep(1000); left = appCount(); }
+let left = appInstanceCount();
+for (let i = 0; i < 20 && left > 0; i++) { await sleep(1000); left = appInstanceCount(); }
 check("the next session reclaims the orphan", left === 0, "apps=" + left);
+// The direct evidence that the reclaim did its job: the application left the running-object table.
+// (The process count alone cannot show it - WPS's cloud service keeps its own workers alive.)
+const rotAfter = ps("try { [void][System.Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application'); 'present' } catch { 'gone' }");
+check("the reclaimed application is gone from the ROT", /gone/.test(rotAfter), rotAfter);
 check("the record is cleared after reclaiming", !existsSync(RECORD), recordText().slice(0, 120) || "cleared");
 b.child.kill();
 await sleep(2500);

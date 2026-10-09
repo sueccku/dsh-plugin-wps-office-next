@@ -290,7 +290,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 |---|---|---|---|---|
 | minimal | 4 | 1,353 | 387 | 仅 4 个门面工具 |
 | **standard（默认）** | **84** | **47,630** | **≈13,609** | 门面 + 80 个精选工具 |
-| full | 268 | 159,167 | 45,476 | 全量，保留完整描述 |
+| full | 268 | 159,433 | 45,552 | 全量，保留完整描述 |
 
 注册目录 **268** 个工具：Excel 118 / Word 59 / PPT 77 / 通用 14（含门面）。
 
@@ -378,7 +378,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1256 项 / 49 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 84 工具 / 47,630 字节（内部预算上限 100 / 60,000）；注册工具 268、桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
+当前数字：测试 **1257 项 / 49 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 84 工具 / 47,630 字节（内部预算上限 100 / 60,000）；注册工具 268、桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十二个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `deprecated` / `style-names`）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
