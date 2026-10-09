@@ -62,10 +62,11 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 ## 1. 一句话现状
 
-**已发布 `v0.6.3`（2026-10-07）**：npm `dist-tags.latest = 0.6.3`，`fileCount = 296`、shasum 与本地 dry-run 逐字符一致（详见 §2）。
-这一版收口了 **6 个「回成功但没生效 / 设置存不住」类缺陷**（FIXES 92–102）。最要紧的四条：
-**参数名写错不再被静默忽略**（跨全部 268 个工具）、`set_border` 用 schema 里的 `outline` 时静默空转、
-打印缩放的两个静默丢失、以及**会话退出可能挂起数小时**的 `ready` 时序缺陷（`param-contract` 那次 2 小时挂起的根因）。
+**已发布 `v0.7.0`（2026-10-09）**：npm `dist-tags.latest = 0.7.0`，`fileCount = 295`、shasum/integrity 与本地 dry-run 逐字符一致（详见 §2）。
+这一版收口了**用户报告的 Excel 实例主窗口全程隐藏**（FIXES 104），以及同源的 `getAppInfo` 只读化与
+`wps_common_get_app_info` 丢字段（FIXES 105）。最要紧的两条：**插件拉起的 WPS 表格窗口现在真的看得见**、
+**`wps_status` 只报告已存在的实例、不再顺手启动 Word/PPT**。工程侧把测试/开发环境的 WPS 残留回收换成 PID 基线
+（FIXES 106），并修掉一键 e2e 在带毒环境下的四条假红（FIXES 107）。
 
 | 指标 | 现值 | 权威来源 |
 | --- | --- | --- |
@@ -88,9 +89,9 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | 分支 / HEAD | `main`（以 `git describe --tags` / `git log --oneline -1` 为准）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、`v0.6.2`、**`v0.6.3`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
-| Releases | **Latest = v0.6.2**（2026-10-04，正文取自 CHANGELOG 的 0.6.2 段）：`gh release create v0.6.2 …` 已执行 |
-| 包 | `dsh-plugin-wps-office-next@0.6.3` —— **2026-10-07 已上架 npmjs，`dist-tags.latest = 0.6.3`**（`fileCount = 296`、`shasum = 0054109e5c5e0df3a891a2711a9c6d49ef6ce911`、`integrity = sha512-KOwvToukeqkfA…WdT/Jmh+iFuMQ==`，与本地 dry-run 逐字符一致）。历史：0.6.2 于 2026-10-04 上架（本次发布**不需要 OTP**：本机 token 已可免 2FA 发布，`PUT → 202`，约 2 分钟后 registry 上可见）。实测元数据：`fileCount=296`、`unpackedSize=3,294,700`、`shasum=3d9f2c3a…`、`integrity=sha512-agvvryjeImdzt…jAIKLAwGfqC8w==`（与本地 `npm publish` 打印的逐字符一致）。在架版本 `["0.6.1","0.6.2"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、`v0.6.2`、`v0.6.3`、**`v0.7.0`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
+| Releases | **Latest = v0.7.0**（2026-10-09）：`gh release create v0.7.0 …` 已执行；上一版 v0.6.3 的 Release 建于 2026-10-08 |
+| 包 | `dsh-plugin-wps-office-next@0.7.0` —— **2026-10-09 已上架 npmjs，`dist-tags.latest = 0.7.0`**（`fileCount = 295`、`shasum = e16a7847d3173989cdc500eeb17960a7e20ef01e`、`integrity = sha512-0CxtyTZXx6HoPe4is+Mfr0fE2GPEc9YFqkGlUdliz9hzifIqbJocAYwP9IUB3FuDLf12cDpNBVz7cpJf8x1vIw==`，与本地 dry-run 逐字符一致；**本次发布不需要 OTP**）。历史：0.6.3 于 2026-10-07 上架（`fileCount = 296`、`shasum = 0054109e5c5e0df3a891a2711a9c6d49ef6ce911`）。历史：0.6.2 于 2026-10-04 上架（本次发布**不需要 OTP**：本机 token 已可免 2FA 发布，`PUT → 202`，约 2 分钟后 registry 上可见）。实测元数据：`fileCount=296`、`unpackedSize=3,294,700`、`shasum=3d9f2c3a…`、`integrity=sha512-agvvryjeImdzt…jAIKLAwGfqC8w==`（与本地 `npm publish` 打印的逐字符一致）。在架版本 `["0.6.1","0.6.2"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
 **工作区**：**干净**（`git status --porcelain` 无输出，与 `origin/main` 一致）。
@@ -101,7 +102,9 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
   与其他 profile（`web`）之外的临时 profile 都已删除。**你若在 DSH 里用插件，跑的就是本 HEAD 这版行为**。
 - 但**仓库工作区是权威**：改完源码要重新 `tsc` + 跑管线，装出来的副本不会自动跟着变（除了 `desktop` 依赖的是本地路径时）。
 
-**发布后验收（2026-10-07 实测，v0.6.3）**：全新一次性 profile `wpsnpm63` 从 registry 装 `@0.6.3` → **version = 0.6.3、`DOCTOR OK`**，验收 profile 已删除；registry 侧 `dist-tags.latest = 0.6.3`、`fileCount = 296`、shasum/integrity 与 dry-run 一致。
+**发布后验收（2026-10-09 实测，v0.7.0）**：全新一次性 profile `wpsnpm07` 从 registry 装 `@0.7.0` → **version = 0.7.0、295 文件、`DOCTOR OK`**，`--dump-config` 两个 id 都在，验收 profile 已删除；registry 侧 `dist-tags.latest = 0.7.0`、`fileCount = 295`、`integrity` 与本地 dry-run 逐字符一致。**发布本身不需要 OTP**（本机 token 已可免 2FA 发布）。
+
+**历史验收（2026-10-07，v0.6.3）**：全新一次性 profile `wpsnpm63` 从 registry 装 `@0.6.3` → **version = 0.6.3、`DOCTOR OK`**，验收 profile 已删除；registry 侧 `dist-tags.latest = 0.6.3`、`fileCount = 296`、shasum/integrity 与 dry-run 一致。
 
 **历史验收（2026-10-04，v0.6.2）**：全新 profile 装 `@0.6.2` → **296 文件、`doctor` OK**、`--dump-config` 两个 id 都在。
 
@@ -427,9 +430,9 @@ This file is being treated as an ES module because it has a '.js' file extension
 
 ### 8.2 发布状态（2026-10-04 实测）
 
-- **在架版本：`0.6.1` + `0.6.2` + `0.6.3`，`dist-tags.latest = 0.6.3`**（2026-10-07 发布）；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），
+- **在架版本：`0.6.1` + `0.6.2` + `0.6.3` + `0.7.0`，`dist-tags.latest = 0.7.0`**（2026-10-09 发布）；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），
   但 **CHANGELOG 保留那次事故的记录**（不要删）。
-- 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、86–91→v0.6.2、**92–102→v0.6.3**。
+- 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、86–91→v0.6.2、92–102→v0.6.3、**104–107→v0.7.0**。
 - 早期版本里写过的「还没发布到 npm」「npm 上只有 0.6.1」之类说法都已过期——发布事实一律看 §2。
 
 计划之外、审计出来的可选工作（文档同步是其中 P0 项，本轮已做）：
