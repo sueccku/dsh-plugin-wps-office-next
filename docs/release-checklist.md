@@ -114,7 +114,9 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 }
 ```
 
-**期望值**（**2026-10-09 当场实测，0.7.0 候选**）：`entryCount=295  packed=642.3KB (657750 B)  unpacked=3.21MB (3369965 B)`。
+**期望值**（**2026-10-11 当场实测，0.8.0 候选**）：`entryCount=293  packed=685.1KB (701525 B)  unpacked=3.34MB (3500272 B)`。
+（上一版 0.7.0 实测 `entryCount=295`；差 −2 = 删掉 4 个孤儿构建产物 `mcp/dist/tools/ppt/data-viz.*`、新增 2 个脚本
+`scripts/lib/static-tests.mjs` / `scripts/run-static-tests.mjs`。）
 
 > **更硬的一步：与 npm 上那一版逐文件对比**，它不受"手抄数字"影响：
 >

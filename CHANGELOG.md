@@ -2,6 +2,52 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.8.0（Word 分节族三件套 · 邮件合并从「假成功」重写 · 广告面 84 → 95）
+
+> **建议升级，尤其是用 WPS 文字做分节排版、长文档与批量通知的场景。** 本版收口了三个「看着成功、其实没写进去」
+> 的 Word 缺陷（整篇转横向、段落单位、邮件合并），补齐分节族三件套与 WO-001 的四个 Word 缺口，并按六轮真机
+> 走查的调用数据把广告面从 84 个扩到 95 个。逐条证据见 [docs/FIXES.md](docs/FIXES.md) 第 108–113 条。
+
+### 补上的能力
+
+- **Word 分节族三件套**（FIXES 113）：
+  - `wps_word_set_page_setup` 新增 `section`（只对第几节生效，不填则第 1 节）与 `paperSize`；
+  - `wps_word_insert_page_numbers` 新增 `numberStyle`（阿拉伯 / 罗马 / 字母）与 `restartSection`（本节从 1 重新开始 / 续前节）；
+  - `wps_word_set_table_format` 新增 `headerRepeat`（把第 1 行设为跨页重复的标题行）。
+  - 注意：`PageNumbers.StartingNumber` 在 WPS 里是**只读**的，「从第 N 页起」写不进去 —— 这类请求会**如实报失败**，不假装成功。
+- **WO-001 的四个 Word 缺口**（FIXES 109）：新增 `wps_word_get_page_setup`（读方向 / 纸张 / 四边距 / 页面宽高）与
+  `wps_word_get_header_footer`（读页眉页脚文本与域清单）；`wps_word_insert_page_numbers {includeTotal:true}` 追加
+  `NUMPAGES` 域，得到「第 X 页 / 共 Y 页」；`wps_word_generate_toc {action:"insert"|"update"}` 可只刷新已有目录。
+  另外把 `wps_word_set_page_setup` 从隐藏面提到广告面（此前是「读得到、写要绕 `wps_call`」的反向不对称）。
+- **广告面 84 → 95**（FIXES 112）：按 S1/S4/S6 六轮真机走查的调用轨迹取证，准入阈值 =「跨 ≥2 轮出现，或单轮被调用 ≥5 次」。
+  本版新上广告面的 11 个工具：`wps_excel_clear_range` / `copy_range` / `delete_rows` / `evaluate_formula` /
+  `freeze_panes` / `set_column_width` / `set_sheet_appearance` / `unmerge_cells`、`wps_word_get_page_setup` /
+  `replace_range` / `set_page_setup`。注册工具 **268 → 270**，桥 action **263 → 265**，广告面 schema 54,673 字节（上限 60,000）。
+
+### 用户可见的修复
+
+- **「整篇转横向」本来是坏的**（静默，FIXES 113）：`setPageSetup` 原来写 `$doc.PageSetup` 且**方向先于纸张** ——
+  这个顺序下设置纸张会把横向重置回纵向，接口却回 `success`。现在先设纸张、再设方向，方向生效并如实回报。
+- **邮件合并整条链路此前是假成功**（P0，FIXES 110）：字段从不落到占位符、母版正文被字段码顶掉，却一路回 success；
+  已重写为「按占位符替换 + 逐行渲染」，新增 `splitDir`（拆分到目录）与 `outputPath`；同轮修掉 `fileNameField`
+  指向不参与替换的列时恒取空的问题（P1）。
+- **Word 段落的字符缩进与行距倍数口径错误**（FIXES 108）：现在按真实单位写入并读回。
+- **工作表名不存在时不再抛裸 COM 错误**（FIXES 111）：多工作簿合并场景改为中文诊断 —— 哪本工作簿、缺哪张表、现有哪几张。
+
+### 工程与文档
+
+- **静态测试门禁改造**：新增 `npm run test:static`（= `scripts/run-static-tests.mjs`），「不需要 WPS 的测试文件」
+  清单的**唯一来源**是 `scripts/lib/static-tests.mjs`，CI 与本地整轮读同一份 —— 此前清单手写在 `ci.yml` 里，
+  新增一个不需要 WPS 的测试文件不会自动进 CI，门禁会静默变薄。
+- **本次发版只跑了相关文件**（按 [AGENTS.md](AGENTS.md) §2 由用户选择范围）：`word-*` 9 个文件 **303 项**、
+  `ppt-shape-position` **15 项**、`advertised-surface` **26 项**全绿，0 孤儿残留；不需要 WPS 的静态管线 **19 步全绿**
+  （tsc + dist 对账、宿主重生成对账、四个生成器重生成对账、lint、spec 复现、verify --static、参数契约、verify:package、
+  test:static、文档数字对账）。**真机整轮按 AGENTS.md §1 未跑**。
+- 场景与规则入库：`docs/scenarios/` 的 S1–S7 场景卡与真机走查报告、`docs/work-orders/WO-001`、
+  项目工作规则 [AGENTS.md](AGENTS.md)（测试时机等以它为准）。
+- 死文件与草稿清理：删掉 4 个孤儿构建产物 `mcp/dist/tools/ppt/data-viz.*`、`.tmp/` 与 `spec-diff.txt`；
+  `test/.artifacts/` 只保留 `scenario-s1…s7` 的真机证据。
+
 ## 0.7.0（Excel 窗口不再隐藏 · 状态查询不再替你启动 WPS · 测试/开发环境回收重做）
 
 > **建议升级，尤其是用 WPS 表格的场景。** 0.6.3 之后收到一份用户缺陷报告：插件拉起 WPS 表格后，实例的主窗口
