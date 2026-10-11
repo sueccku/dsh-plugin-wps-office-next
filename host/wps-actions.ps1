@@ -4767,7 +4767,7 @@ return }
     }
 
     "mailMerge" {
-        # 2026-10-12（场景 S5 走查）：旧实现把字段插到 Get-MainTextRange 给出的**当前选区**再
+        # 2026-10-11（场景 S5 走查）：旧实现把字段插到 Get-MainTextRange 给出的**当前选区**再
         # MailMerge.Execute()。实测（probe1/probe3/probe4）它只做到「回 success:false」以外的一切：
         # 正文被字段码顶掉（母版正文变成 «Dept»）、模板里的占位符从不被替换、合并结果里数据落在
         # 错误的位置，而且合并后的新文档是打开的，ActiveDocument 却可能还指着母版 —— 既不是母版

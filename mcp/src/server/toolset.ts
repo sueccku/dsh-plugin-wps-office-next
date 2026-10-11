@@ -4,7 +4,7 @@
  * Pos: Single place where the model-facing tool surface is curated.
  *      Every registered tool stays callable through the wps_call dispatcher; only the
  *      advertised subset costs tokens on every request.
- *      D4（2026-10-12）：广告面按真实走查的调用数据从 86 扩到 95（依据写在 STANDARD_TOOLS 的 D4 注释块里）。
+ *      D4（2026-10-11）：广告面按真实走查的调用数据从 86 扩到 95（依据写在 STANDARD_TOOLS 的 D4 注释块里）。
  *      一旦我被修改，请更新我的头部注释。
  */
 import { ToolDefinition } from '../types/tools';
@@ -70,7 +70,7 @@ export const STANDARD_TOOLS: string[] = [
   'wps_excel_set_sheet_print_titles',
   'wps_excel_get_cell_info',
   'wps_excel_sort_range',
-  // D4（2026-10-12，场景 S6 走查后用户拍板）：把真实走查里**被需要、却只能用 wps_help + wps_call 两步绕进来**的
+  // D4（2026-10-11，场景 S6 走查后用户拍板）：把真实走查里**被需要、却只能用 wps_help + wps_call 两步绕进来**的
   // 高频隐藏工具提到广告面。取证口径：S1/S4/S6 六轮真机轨迹里经 wps_call / wps_batch 触达的隐藏工具，
   // 按「跨轮次出现的场景数 → 调用总次数」排序（复算脚本 test/.artifacts/scenario-s6/tools/rank-hidden-tools.mjs、
   // 预算测算 plan-ad-surface.mjs）。准入阈值：**跨 ≥2 轮出现，或单轮被调用 ≥5 次**。
