@@ -75,10 +75,15 @@ for (const file of walk(join(ROOT, 'mcp/src'))) {
   });
 }
 
-// 4) 每个测试文件必须自己决定退出码，否则失败不会传播
+// 4) 每个测试文件必须自己决定退出码，否则失败不会传播。
+//    用共用 harness 的 finish() 也算 —— 它内部就是 process.exit（见 test/lib/harness.mjs），
+//    而且这样新测试就不必再抄一遍 results/收尾（P4）。
 for (const name of readdirSync(join(ROOT, 'test'))) {
   if (!name.endsWith('.test.mjs')) continue;
-  if (!/process\.exit\(/.test(readFileSync(join(ROOT, 'test', name), 'utf8'))) bad('test-exit-code', join(ROOT, 'test', name), '没有 process.exit(...)');
+  const src = readFileSync(join(ROOT, 'test', name), 'utf8');
+  if (!/process\.exit\(/.test(src) && !/from ['"]\.\/lib\/harness\.mjs['"]/.test(src)) {
+    bad('test-exit-code', join(ROOT, 'test', name), '既没有 process.exit(...) 也没有用 harness 的 finish()');
+  }
 }
 
 // 5) 弹出式对话框的静态门禁（FIXES 70）：可能弹框的调用必须先关 DisplayAlerts 并在 finally 还原，

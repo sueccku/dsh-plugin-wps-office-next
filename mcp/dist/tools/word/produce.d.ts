@@ -2,6 +2,9 @@ import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /** 页码 */
 export declare const insertPageNumbersDefinition: ToolDefinition;
 export declare const insertPageNumbersHandler: ToolHandler;
+/** 读页眉页脚（含域） */
+export declare const getHeaderFooterDefinition: ToolDefinition;
+export declare const getHeaderFooterHandler: ToolHandler;
 /** 分栏 */
 export declare const setColumnsDefinition: ToolDefinition;
 export declare const setColumnsHandler: ToolHandler;

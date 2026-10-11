@@ -38,7 +38,7 @@ for (const n of names) {
 }
 
 console.log('registered tools: ' + names.length + '   driven by a test/e2e: ' + covered.length + '   (' + Math.round((covered.length / names.length) * 100) + '%)');
-console.log('  tiers: bespoke=' + tiers.bespoke.length + ' (ratchet >= ' + TIER_LEDGER.bespoke + ')  matrix ok/error=' + tiers.matrixOk.length + '  matrix any-only=' + tiers.matrixAny.length + ' (ratchet <= ' + TIER_LEDGER.matrixAny + ')  not driven=' + tiers.notDriven.length);
+console.log('  tiers: bespoke=' + tiers.bespoke.length + ' (ratchet >= ' + TIER_LEDGER.bespoke + ')  matrix ok/error=' + tiers.matrixOk.length + ' (ratchet <= ' + TIER_LEDGER.matrixOk + ')  matrix any-only=' + tiers.matrixAny.length + ' (ratchet <= ' + TIER_LEDGER.matrixAny + ')  not driven=' + tiers.notDriven.length);
 for (const a of [...apps.keys()].sort()) {
   const g = apps.get(a);
   console.log('  ' + a.padEnd(10) + String(g.covered).padStart(3) + ' / ' + String(g.total).padEnd(3) + (g.uncovered.length ? '  missing ' + g.uncovered.length : ''));
@@ -53,12 +53,13 @@ if (process.argv.includes('--check')) {
   const problems = [];
   if (covered.length < RATCHET) problems.push('driven ' + covered.length + ' < ' + RATCHET);
   if (tiers.bespoke.length < TIER_LEDGER.bespoke) problems.push('bespoke ' + tiers.bespoke.length + ' < ' + TIER_LEDGER.bespoke);
+  if (tiers.matrixOk.length > TIER_LEDGER.matrixOk) problems.push('matrix-ok-only ' + tiers.matrixOk.length + ' > ' + TIER_LEDGER.matrixOk);
   if (tiers.matrixAny.length > TIER_LEDGER.matrixAny) problems.push('matrix-any-only ' + tiers.matrixAny.length + ' > ' + TIER_LEDGER.matrixAny);
   if (problems.length) {
     console.error('\nS4 FAIL: ' + problems.join('; '));
     process.exit(1);
   }
-  console.log('\nS4 COVERAGE OK (driven ' + covered.length + ', bespoke ' + tiers.bespoke.length + ', matrix-any-only ' + tiers.matrixAny.length + ')');
+  console.log('\nS4 COVERAGE OK (driven ' + covered.length + ', bespoke ' + tiers.bespoke.length + ', matrix-ok-only ' + tiers.matrixOk.length + ', matrix-any-only ' + tiers.matrixAny.length + ')');
 }
 
 if (process.argv.includes('--live')) {

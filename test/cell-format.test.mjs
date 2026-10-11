@@ -1,6 +1,10 @@
 // Excel cell formatting regression: the whole format object used to be discarded by the bridge.
 // Run: node test/cell-format.test.mjs
 import { spawn } from "node:child_process";
+import { mkdirSync, rmSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+// P3：格式以前只用插件自己的 getCellInfo 读回（读写同源）。现在存盘后由 openpyxl 读**文件**。
+import { xlsx } from "./lib/oracle.mjs";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -60,6 +64,23 @@ check("no bleed to A2", !(a2.font && a2.font.bold === true) && Number(a2.font &&
 // an empty format must fail loudly, not report a fake success
 const r3 = await call("wps_excel_set_cell_format", { range: "C1", format: {} });
 check("empty format fails loudly", !ok(r3) && text(r3).includes("no supported format property"), text(r3).slice(0, 110));
+
+// ---- 独立 oracle（P3）：格式必须**落到磁盘**，不能只看插件自己的 getCellInfo ----
+const CF = resolve("test/.artifacts/cell-format.xlsx");
+rmSync(CF, { force: true });                       // 先删旧产物：残留文件不能替失败背书
+mkdirSync(dirname(CF), { recursive: true });
+const savedFmt = await call("wps_common_save_as", { outputPath: CF, format: "xlsx" });
+check("workbook saved for independent verification", ok(savedFmt), text(savedFmt).slice(0, 100));
+const diskA1 = xlsx(CF, "A1", "Sheet1");
+check("the file really carries the formatted A1 value", !!diskA1 && diskA1.values[0][0] === "a", JSON.stringify(diskA1 && diskA1.values));
+check("the file says A1 is bold", !!diskA1 && diskA1.bold[0][0] === true, JSON.stringify(diskA1 && diskA1.bold));
+check("the file says A1 is italic", !!diskA1 && diskA1.italic[0][0] === true, JSON.stringify(diskA1 && diskA1.italic));
+check("the file says A1 is 14pt Arial", !!diskA1 && Number(diskA1.sizes[0][0]) === 14 && diskA1.names[0][0] === "Arial", JSON.stringify(diskA1 && [diskA1.sizes[0][0], diskA1.names[0][0]]));
+check("the file says A1 kept the percent number format", !!diskA1 && String(diskA1.formats[0][0]).includes("0.00%"), JSON.stringify(diskA1 && diskA1.formats[0][0]));
+check("the file says A1 is centred and wrapped", !!diskA1 && diskA1.align[0][0] === "center" && diskA1.wrap[0][0] === true, JSON.stringify(diskA1 && [diskA1.align[0][0], diskA1.wrap[0][0]]));
+check("the file says A1 has red text", !!diskA1 && String(diskA1.colors[0][0]).toUpperCase().includes("FF0000"), JSON.stringify(diskA1 && diskA1.colors[0][0]));
+const diskB2 = xlsx(CF, "B2", "Sheet1");
+check("the flat-property formatting is in the file too", !!diskB2 && diskB2.bold[0][0] === true && Number(diskB2.sizes[0][0]) === 20, JSON.stringify(diskB2 && [diskB2.bold[0][0], diskB2.sizes[0][0]]));
 
 // Close everything this test opened. The close actions are dialog-safe now (see
 // test/close-safety.test.mjs), so a scratch run leaves no documents behind for the next one.

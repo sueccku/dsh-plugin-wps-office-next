@@ -146,12 +146,12 @@
     },
     "appType": {
      "type": "string",
-     "description": "要转换的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档",
      "enum": [
       "excel",
       "word",
       "ppt"
-     ]
+     ],
+     "description": "要转换的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档"
     }
    },
    "required": [
@@ -175,12 +175,12 @@
     },
     "appType": {
      "type": "string",
-     "description": "要导出的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档",
      "enum": [
       "excel",
       "word",
       "ppt"
-     ]
+     ],
+     "description": "要导出的应用；不填则按 Excel→Word→PPT 选第一个正在运行的文档"
     }
    },
    "required": []
@@ -305,12 +305,12 @@
     },
     "sparklineType": {
      "type": "string",
-     "description": "迷你图类型，默认 line",
      "enum": [
       "line",
       "column",
       "winloss"
-     ]
+     ],
+     "description": "迷你图类型，默认 line"
     },
     "markers": {
      "type": "boolean",
@@ -612,14 +612,14 @@
     },
     "function": {
      "type": "string",
-     "description": "汇总函数，默认 sum",
      "enum": [
       "sum",
       "count",
       "average",
       "max",
       "min"
-     ]
+     ],
+     "description": "汇总函数，默认 sum"
     },
     "topRow": {
      "type": "boolean",
@@ -1121,14 +1121,14 @@
     },
     "format": {
      "type": "string",
-     "description": "图片格式，默认 PNG",
      "enum": [
       "PNG",
       "JPG",
       "JPEG",
       "GIF",
       "BMP"
-     ]
+     ],
+     "description": "图片格式，默认 PNG"
     },
     "sheet": {
      "type": "string",
@@ -1156,14 +1156,14 @@
     },
     "format": {
      "type": "string",
-     "description": "图片格式，默认 PNG",
      "enum": [
       "PNG",
       "JPG",
       "JPEG",
       "GIF",
       "BMP"
-     ]
+     ],
+     "description": "图片格式，默认 PNG"
     },
     "sheet": {
      "type": "string",
@@ -2587,7 +2587,6 @@
     },
     "function": {
      "type": "string",
-     "description": "汇总方式，默认 sum",
      "enum": [
       "sum",
       "average",
@@ -2598,7 +2597,8 @@
       "stdDev",
       "var",
       "none"
-     ]
+     ],
+     "description": "汇总方式，默认 sum"
     },
     "sheet": {
      "type": "string",
@@ -2658,7 +2658,7 @@
  },
  {
   "name": "wps_excel_set_outline_levels",
-  "description": "控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇总行在上还是下、汇总列在左还是右。使用场景：分组之后把���细收起来只留汇总。",
+  "description": "控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇总行在上还是下、汇总列在左还是右。使用场景：分组之后把明细收起来只留汇总。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -2672,19 +2672,19 @@
     },
     "summaryRow": {
      "type": "string",
-     "description": "汇总行在明细的上方还是下方",
      "enum": [
       "above",
       "below"
-     ]
+     ],
+     "description": "汇总行在明细的上方还是下方"
     },
     "summaryColumn": {
      "type": "string",
-     "description": "汇总列在明细的左侧还是右侧",
      "enum": [
       "left",
       "right"
-     ]
+     ],
+     "description": "汇总列在明细的左侧还是右侧"
     },
     "sheet": {
      "type": "string",
@@ -2742,12 +2742,12 @@
    "properties": {
     "visible": {
      "type": "string",
-     "description": "可见性，默认不变；veryHidden 在界面上无法恢复，脚本可恢复",
      "enum": [
       "visible",
       "hidden",
       "veryHidden"
-     ]
+     ],
+     "description": "可见性，默认不变；veryHidden 在界面上无法恢复，脚本可恢复"
     },
     "tabColor": {
      "type": "string",
@@ -2805,15 +2805,14 @@
    "properties": {
     "orientation": {
      "type": "string",
-     "description": "纸张方向，默认纵向",
      "enum": [
       "portrait",
       "landscape"
-     ]
+     ],
+     "description": "纸张方向，默认纵向"
     },
     "paperSize": {
      "type": "string",
-     "description": "纸张大小，默认不变（当前多为 A4）",
      "enum": [
       "A4",
       "A3",
@@ -2822,7 +2821,8 @@
       "letter",
       "legal",
       "tabloid"
-     ]
+     ],
+     "description": "纸张大小，默认不变（当前多为 A4）"
     },
     "topMargin": {
      "type": "number",
@@ -3481,14 +3481,14 @@
    "properties": {
     "preset": {
      "type": "string",
-     "description": "整页预设动画；给了它就忽略 effect",
      "enum": [
       "fadeIn",
       "flyIn",
       "zoomIn",
       "wipeIn",
       "appear"
-     ]
+     ],
+     "description": "整页预设动画；给了它就忽略 effect"
     },
     "effect": {
      "type": "string",
@@ -3496,20 +3496,20 @@
     },
     "effectKind": {
      "type": "string",
-     "description": "效果类别，默认 entrance",
      "enum": [
       "entrance",
       "emphasis"
-     ]
+     ],
+     "description": "效果类别，默认 entrance"
     },
     "trigger": {
      "type": "string",
-     "description": "触发方式，默认 onClick",
      "enum": [
       "onClick",
       "withPrevious",
       "afterPrevious"
-     ]
+     ],
+     "description": "触发方式，默认 onClick"
     },
     "duration": {
      "type": "number",
@@ -4002,14 +4002,14 @@
     },
     "format": {
      "type": "string",
-     "description": "图片格式，默认 PNG",
      "enum": [
       "PNG",
       "JPG",
       "JPEG",
       "GIF",
       "BMP"
-     ]
+     ],
+     "description": "图片格式，默认 PNG"
     },
     "width": {
      "type": "number",
@@ -4854,14 +4854,14 @@
     },
     "borderStyle": {
      "type": "string",
-     "description": "边框线型",
      "enum": [
       "solid",
       "dash",
       "dot",
       "dash_dot",
       "dash_dot_dot"
-     ]
+     ],
+     "description": "边框线型"
     },
     "gradientColor1": {
      "type": "string",
@@ -4916,7 +4916,11 @@
     },
     "shapeIndex": {
      "type": "number",
-     "description": "形状索引（从1开始）"
+     "description": "形状索引（从1开始）。与 shapeName 二选一，优先用 shapeName。"
+    },
+    "shapeName": {
+     "type": "string",
+     "description": "形状名称（来自 wps_ppt_get_shapes）。与 shapeIndex 二选一；名称含空格时按 get_shapes 原样传。"
     },
     "left": {
      "type": "number",
@@ -4937,7 +4941,6 @@
    },
    "required": [
     "slideIndex",
-    "shapeIndex",
     "left",
     "top"
    ]
@@ -5526,7 +5529,6 @@
    "properties": {
     "type": {
      "type": "string",
-     "description": "控件类型，默认 richText（富文本）",
      "enum": [
       "richText",
       "plainText",
@@ -5535,7 +5537,8 @@
       "dropDownList",
       "datePicker",
       "picture"
-     ]
+     ],
+     "description": "控件类型，默认 richText（富文本）"
     },
     "title": {
      "type": "string",
@@ -5596,11 +5599,11 @@
     },
     "kind": {
      "type": "string",
-     "description": "加行还是加列，默认 row",
      "enum": [
       "row",
       "column"
-     ]
+     ],
+     "description": "加行还是加列，默认 row"
     },
     "count": {
      "type": "number",
@@ -5720,11 +5723,11 @@
     },
     "kind": {
      "type": "string",
-     "description": "删行还是删列，默认 row",
      "enum": [
       "row",
       "column"
-     ]
+     ],
+     "description": "删行还是删列，默认 row"
     },
     "lineIndex": {
      "type": "number",
@@ -5835,6 +5838,14 @@
     "includePageNumbers": {
      "type": "boolean",
      "description": "是否包含页码，默认true"
+    },
+    "action": {
+     "type": "string",
+     "description": "insert（默认，新插一个目录）或 update（只刷新已有目录，不新增）。没有目录时 update 会如实报错并提示改用 insert",
+     "enum": [
+      "insert",
+      "update"
+     ]
     }
    },
    "required": []
@@ -6129,7 +6140,7 @@
  },
  {
   "name": "wps_word_insert_page_numbers",
-  "description": "给某一节的页眉或页脚插入页码。使用场景：文档要打印，页脚右下角要有页码。页码是域，页数变化会自动更新。",
+  "description": "给**某一节**的页眉或页脚插入页码。\n\n使用场景：\n- \"页脚右下角要有页码\" —— 页码是域，页数变化会自动更新\n- \"目录那节用罗马数字、技术方案那节从 1 重新开始\" —— numberStyle + restartSection\n- \"第 X 页 / 共 Y 页\" —— includeTotal 打开后再插一个 NUMPAGES 域\n\n注意：\n- **只影响点名的那一节**；多节文档要逐节调用。\n- numberStyle 支持 arabic / upperRoman / lowerRoman / upperLetter / lowerLetter。\n- restartSection=1 表示\"本节从 1 重新开始\"，0 表示\"接着上一节数\"。**起始编号写不进去**\n  （WPS 的 PageNumbers.StartingNumber 是只读的，写 1 回读仍是 0），所以只能\"从 1 重开\"，\n  不能\"从第 7 页起\"——请求这种会被明确记进 warnings，不会假装成功。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -6139,24 +6150,56 @@
     },
     "position": {
      "type": "string",
-     "description": "放页脚还是页眉，默认 footer",
      "enum": [
       "footer",
       "header"
-     ]
+     ],
+     "description": "放页脚还是页眉，默认 footer"
     },
     "alignment": {
      "type": "string",
-     "description": "对齐方式，默认 right",
      "enum": [
       "left",
       "center",
       "right"
-     ]
+     ],
+     "description": "对齐方式，默认 right"
     },
     "showFirstPage": {
      "type": "boolean",
      "description": "是否在首页显示，默认 true"
+    },
+    "includeTotal": {
+     "type": "boolean",
+     "description": "是否同时插入总页数（NUMPAGES 域），形成\"第 X 页 / 共 Y 页\"，默认 false"
+    },
+    "numberStyle": {
+     "type": "string",
+     "enum": [
+      "arabic",
+      "upperRoman",
+      "lowerRoman",
+      "upperLetter",
+      "lowerLetter"
+     ],
+     "description": "页码编号格式，默认不动（arabic / upperRoman / lowerRoman / upperLetter / lowerLetter）"
+    },
+    "restartSection": {
+     "type": "boolean",
+     "description": "true = 本节页码从 1 重新开始；false = 接着上一节数（续前节）。默认不动"
+    }
+   }
+  }
+ },
+ {
+  "name": "wps_word_get_header_footer",
+  "description": "读取某一节的页眉与页脚：文本内容与其中的域（页码、总页数等）。使用场景：改页眉页脚之前先看现在写的是什么；核对页码域到底进文件没有。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "section": {
+     "type": "number",
+     "description": "第几节（从 1 开始）；不填则用第 1 节"
     }
    }
   }
@@ -6231,17 +6274,29 @@
  },
  {
   "name": "wps_word_mail_merge",
-  "description": "邮件合并：以当前文档为母版，接一个数据文件（CSV），把指定字段插到光标处，再按每一行数据生成一个新文档（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。",
+  "description": "邮件合并：以当前文档为母版，接一个数据文件（CSV），把表格里的值填到母版的占位符处；默认合并成一份新文档，给了 splitDir 就每个数据行单独存一份（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。占位符在模板里写成 ⟨字段名⟩（也认 {{字段名}} / «字段名»）。",
   "inputSchema": {
    "type": "object",
    "properties": {
     "dataFile": {
      "type": "string",
-     "description": "数据文件路径（CSV，第一行是字段名）"
+     "description": "数据文件路径（CSV，UTF-8，第一行是字段名）"
     },
     "fields": {
      "type": "array",
-     "description": "要插入的字段名列表，按顺序插到光标处，例如 Name、City；不填则只打开数据源不插字段"
+     "description": "要替换的字段名列表，按顺序填到对应占位符，例如 Name、Dept；不填则用 CSV 表头里的全部字段"
+    },
+    "splitDir": {
+     "type": "string",
+     "description": "给了这个目录就每个数据行单独生成一份 docx 存进去（文件名用 fileNameField，缺省用第一个字段）；不给则合并成一份新文档"
+    },
+    "fileNameField": {
+     "type": "string",
+     "description": "splitDir 模式下决定文件名的字段名（取该列的值），或一段带 {列名} 占位符的模板，例如 通知书_{部门}_{姓名}_{工号}；缺省用第一个字段"
+    },
+    "outputPath": {
+     "type": "string",
+     "description": "单文档模式下的保存路径（.docx）；不给则新文档留在内存里，由调用方自己另存"
     }
    },
    "required": [
@@ -6482,17 +6537,44 @@
   }
  },
  {
-  "name": "wps_word_set_page_setup",
-  "description": "设置文档页面布局，包括页面方向和边距。\n\n使用场景：\n- \"把页面改成横向\"\n- \"设置上下边距为2厘米\"\n- \"调整页面为A4横向，边距2cm\"",
+  "name": "wps_word_get_page_setup",
+  "description": "读取某一节的页面设置：纸张方向、纸张大小、页边距（磅）与页面宽高。使用场景：\n- \"现在页边距是多少\"\n- 改页面设置之前先看一眼，改完再核对生效了没有",
   "inputSchema": {
    "type": "object",
    "properties": {
+    "section": {
+     "type": "number",
+     "description": "第几节（从 1 开始）；不填则用第 1 节"
+    }
+   }
+  }
+ },
+ {
+  "name": "wps_word_set_page_setup",
+  "description": "设置**某一节**的页面布局：页面方向、纸张大小、页边距。\n\n使用场景：\n- \"把页面改成横向\"\n- \"设置上下边距为2厘米\"\n- \"调整页面为A4横向，边距2cm\"\n- \"第3节改成横向A3，前面的节不动\"（多节混合版式的标书/施工方案）\n\n注意：\n- 只影响**点名的那一节**（不填 section 就是第 1 节）。要\"整篇都改\"得逐节调用，或者先看有几节。\n- **横向必须和纸张一起给**（orientation + paperSize）。只给 orientation 时 WPS 会把纸张变成\"自定义\"，\n  不再是 A4/A3；桥内部会先设纸张、再设方向——顺序反了方向会被静默吃回去（S7 实测）。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "section": {
+     "type": "number",
+     "description": "第几节（从 1 开始）；不填则用第 1 节。节数用 wps_word_get_header_footer 或 get_page_setup 逐节探"
+    },
     "orientation": {
      "type": "string",
-     "description": "页面方向: \"portrait\"(纵向) 或 \"landscape\"(横向)",
+     "description": "页面方向: \"portrait\"(纵向) 或 \"landscape\"(横向)；建议与 paperSize 同时给",
      "enum": [
       "portrait",
       "landscape"
+     ]
+    },
+    "paperSize": {
+     "type": "string",
+     "description": "纸张大小：A4 / A3 / Letter / Legal",
+     "enum": [
+      "A4",
+      "A3",
+      "Letter",
+      "Legal"
      ]
     },
     "topMargin": {
@@ -6523,13 +6605,13 @@
    "properties": {
     "alignment": {
      "type": "string",
-     "description": "对齐方式：left / center / right / justify（其它值会被拒绝）",
      "enum": [
       "left",
       "center",
       "right",
       "justify"
-     ]
+     ],
+     "description": "对齐方式：left / center / right / justify（其它值会被拒绝）"
     },
     "lineSpacing": {
      "type": "number",
@@ -6597,7 +6679,7 @@
  },
  {
   "name": "wps_word_set_table_format",
-  "description": "设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色。使用场景：把裸表格弄成带框线、表头有底色、宽度合适的正式表格。",
+  "description": "设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色、表头行跨页重复。\n\n使用场景：\n- \"把裸表格弄成带框线、表头有底色、宽度合适的正式表格\"\n- \"这张表跨页了，表头要每页重复\" —— headerRepeat",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -6615,15 +6697,19 @@
     },
     "autoFit": {
      "type": "string",
-     "description": "按内容自适应或按页面宽度自适应",
      "enum": [
       "content",
       "window"
-     ]
+     ],
+     "description": "按内容自适应或按页面宽度自适应"
     },
     "headerShading": {
      "type": "string",
      "description": "表头行底纹色，十六进制如 #D9E2F3"
+    },
+    "headerRepeat": {
+     "type": "boolean",
+     "description": "表头行是否跨页重复（第 1 行设为重复标题行）"
     }
    }
   }

@@ -45,7 +45,7 @@
 | wps_ppt_set_slide_footer | wps_call | 一次设置演示文稿的页脚三件套：幻灯片编号、页脚文字、日期时间，以及日期的显示格式。 |
 | wps_ppt_set_slide_background | wps_call | 设置幻灯片背景，支持多种背景类型。 |
 | wps_ppt_set_background_color | wps_call | 设置幻灯片背景为指定颜色。 |
-| wps_ppt_set_background_image | wps_call | 设置幻灯片背景为指定图片。 |
+| wps_ppt_set_background_image | wps_call | 设置幻灯片背景为��定图片。 |
 | wps_ppt_duplicate_shape | wps_call | 复制幻灯片中的指定形状。 |
 | wps_ppt_set_shape_z_order | wps_call | 设置形状在幻灯片中的层级顺序（Z轴排列）。 |
 | wps_ppt_set_shape_effect | wps_call | 给形状设置视觉效果：阴影、边框、渐变填充、填充透明度；只改给出来的项，其余保持原样。 |

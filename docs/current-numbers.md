@@ -1,44 +1,45 @@
 # 当前数字（自动生成，勿手改）
 
 > 由 `node scripts/gen-numbers.mjs` 生成；CI 跑 `--check` 核对文档里的声明值。
-> 需要「跑测试才知道」的数字（断言数）来自 `test/summary.json`（由 `scripts/run-tests.ps1` 每次整轮写出，不入库）。
+> 本文件只放**从干净检出就能复现**的数字。需要「跑测试才知道」的断言数**不在本文件** ——
+> 它随本机是否跑过整轮而变，只写进 `test/numbers-report.json`（本机产物，.gitignore，CI 不核对）。
 
 | 项 | 值 | 来源 |
 | --- | --- | --- |
-| 广告面工具 | **84 / 268** | spec/advertised.json + spec/tool-definitions.json |
-| 广告面 schema 字节 | **47,630（≈13,609 tokens）** | 真实 tools/list 载荷 |
+| 广告面工具 | **95 / 270** | spec/advertised.json + spec/tool-definitions.json |
+| 广告面 schema 字节 | **54,673（≈15,621 tokens）** | 真实 tools/list 载荷 |
 | minimal 档 | **4 工具 / 1,353 字节** | 同上 |
-| full 档 | **268 工具 / 159,433 字节** | 同上 |
-| 桥 action | **263** | mcp/scripts/wps-com.ps1 的 case 块（与 verify.mjs 同口径） |
-| 其中带键表 | **262** | host/wps-actions.ps1 键表 |
-| 桥参数键 | **1000** | 同上 |
-| 带键表的 action | **261** | spec/action-keys.json |
+| full 档 | **270 工具 / 163,687 字节** | 同上 |
+| 桥 action | **265** | mcp/scripts/wps-com.ps1 的 case 块（与 verify.mjs 同口径） |
+| 其中带键表 | **264** | host/wps-actions.ps1 键表 |
+| 桥参数键 | **1008** | 同上 |
+| 带键表的 action | **263** | spec/action-keys.json |
 | 未工具化 action | **2（getActivePresentation / getActiveWorkbook）** | 键表 − spec |
-| 测试文件 | **49** | test/*.test.mjs |
-| 测试断言 | **1257（失败 0）** | test/summary.json（该行不含跑测时间戳：会让 CI 对账误报） |
+| 测试文件 | **58** | test/*.test.mjs |
+
+> 「测试文件」数的是目录里现有的 `test/*.test.mjs`；README / HANDOFF 写的「N 个文件」是
+> **最近一次整轮实际跑到的**数 —— 新增文件但还没跑整轮时，两者本来就该不同。
 
 ## 声明值核对
 
 | 位置 | 文档里写的 | 实际 | 结果 |
 | --- | --- | --- | --- |
-| README badge advertised | 84 | 84 | ✅ |
-| README badge registered | 268 | 268 | ✅ |
-| README standard tools | 84 | 84 | ✅ |
-| README standard bytes | 47630 | 47630 | ✅ |
-| README standard tokens | 13609 | 13609 | ✅ |
+| README badge advertised | 95 | 95 | ✅ |
+| README badge registered | 270 | 270 | ✅ |
+| README standard tools | 95 | 95 | ✅ |
+| README standard bytes | 54673 | 54673 | ✅ |
+| README standard tokens | 15621 | 15621 | ✅ |
 | README minimal tools | 4 | 4 | ✅ |
 | README minimal bytes | 1353 | 1353 | ✅ |
-| README full tools | 268 | 268 | ✅ |
-| README full bytes | 159433 | 159433 | ✅ |
-| README install guide advertisedTools | 84 | 84 | ✅ |
-| README status sample advertisedTools | 84 | 84 | ✅ |
-| README detail summary | 84 | 84 | ✅ |
-| README registered catalogue | 268 | 268 | ✅ |
-| README current advertised | 84 | 84 | ✅ |
-| README current bytes | 47630 | 47630 | ✅ |
-| README test assertions | 1257 | 1257 | ✅ |
-| README test files | 49 | 49 | ✅ |
-| HANDOFF test assertions | 1257 | 1257 | ✅ |
-| HANDOFF test files | 49 | 49 | ✅ |
-| HANDOFF advertised | 84 | 84 | ✅ |
+| README full tools | 270 | 270 | ✅ |
+| README full bytes | 163687 | 163687 | ✅ |
+| README install guide advertisedTools | 95 | 95 | ✅ |
+| README status sample advertisedTools | 95 | 95 | ✅ |
+| README detail summary | 95 | 95 | ✅ |
+| README registered catalogue | 270 | 270 | ✅ |
+| README current advertised | 95 | 95 | ✅ |
+| README current bytes | 54673 | 54673 | ✅ |
+| HANDOFF advertised | 95 | 95 | ✅ |
 
+> 与测试计数有关的那几条声明只在**本机存在 `test/summary.json`** 时核对，**不属于 CI 核对范围**；
+> 现值看 `test/summary.json` / `test/numbers-report.json`（跑完整轮后按 README / HANDOFF 的口径刷新）。

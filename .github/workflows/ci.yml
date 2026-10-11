@@ -65,14 +65,6 @@ jobs:
       - name: Committed coverage matrix must match
         run: git diff --exit-code -- docs/tool-coverage.md
 
-      # FIXES 91（B4）：文档里的数字只有一个来源。生成器从真实 tools/list + spec + 宿主键表算，
-      # 并核对 README / HANDOFF 的声明值；两件事一起做（重生成 + 对账），对不上就非零退出。
-      - name: Documented numbers must match the generated snapshot
-        run: node scripts/gen-numbers.mjs --check
-
-      - name: Committed numbers snapshot must match
-        run: git diff --exit-code -- docs/current-numbers.md
-
       - name: Project lint (byte conventions, tabs, console, test exit codes, modal-dialog guards)
         run: npm run lint
 
@@ -94,17 +86,18 @@ jobs:
       - name: Packaged tarball installs and the MCP server boots (FIXES 84 gate)
         run: npm run verify:package
 
-      - name: Static unit tests (DSH entry, host protocol, single-instance lease, watchdog, silent-catch ledger, argument shape guard, encrypted-file preflight, removed aliases, modal-dialog gate, Word style-name aliases)
-        run: |
-          node test/plugin.test.mjs
-          node test/com-host.test.mjs
-          node test/host-lease.test.mjs
-          node test/watchdog.test.mjs
-          node test/silent-catch.test.mjs
-          node test/install-selfcheck.test.mjs
-          node test/arg-shape-guard.test.mjs
-          node test/wps-version.test.mjs
-          node test/encrypted-preflight.test.mjs
-          node test/alerts-gate.test.mjs
-          node test/deprecated.test.mjs
-          node test/style-names.test.mjs
+      # 清单的**唯一来源**是 scripts/lib/static-tests.mjs。以前这里是一份手写列表：新增一个不需要 WPS 的
+      # 测试文件不会自动进 CI，门禁就静默变薄了。
+      - name: Static unit tests (WPS-free files listed in scripts/lib/static-tests.mjs)
+        run: node scripts/run-static-tests.mjs
+
+      # FIXES 91（B4）：文档里的数字只有一个来源。生成器从真实 tools/list + spec + 宿主键表算，
+      # 并核对 README / HANDOFF 的声明值；对不上就非零退出。
+      #
+      # **刻意放在最后**：记账类失败不该把上面的测试门禁整段 skipped —— 2026-10-10 的实测就是这道
+      # gate 从上线起连续 8 次 CI 全红，后面的静态测试一次都没跑过。
+      - name: Documented numbers must match the generated snapshot
+        run: node scripts/gen-numbers.mjs --check
+
+      - name: Committed numbers snapshot must match
+        run: git diff --exit-code -- docs/current-numbers.md

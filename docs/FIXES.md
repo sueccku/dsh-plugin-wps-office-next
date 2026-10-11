@@ -2859,6 +2859,386 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
 
 ---
 
+## 113. S7 D1+D2：Word 分节族三件套（分节页面设置 / 页码格式与分节重编号 / 表头跨页重复）+ 一个静默丢方向的顺序缺陷
+
+**来源**：场景 S7 真机走查（[报告](scenarios/S7-真机走查报告.md) §4.1/§4.2）。用户拍板「D1 三条全补、D2 补上」。
+
+S7 的成品 30/30 硬判据全过，但**不是插件工具做出来的**：模型读桥源码 + 两次探针实测后确认插件缺三条必需能力，
+改用 WPS 自身 COM 接口（`Kwps.Application`）完成改写，并在答复第一段如实披露。能力缺口本身不是"错实现"
+（调用时如实报 `未知参数`），而是**做不了**——所以这一轮把它们做出来。
+
+### 先探针，再写码（probe-d1 / d1b / d1c，`test/.artifacts/scenario-s7/tools/`）
+
+三条能力都在真机 COM 上量过才动手，因为本仓库有多处"空壳属性"前科（水印 Shapes、`BuiltInDocumentProperties`、
+`Shape.Adjustments`、`Slicers`）：
+
+| 能力 | 探针读数 | 结论 |
+|---|---|---|
+| 分节页面设置 | `Sections(i).PageSetup` 逐节写、逐节回读，**互不影响** | 可做 |
+| 页码编号格式 | `PageNumbers.NumberStyle` 写 4 回读 4（小写罗马），存盘重开仍在 | 可做 |
+| 分节重编号 | `PageNumbers.RestartNumberingAtSection` true/false 都生效 | 可做 |
+| **页码起始号** | `PageNumbers.StartingNumber` 写 1 **回读永远 0** | **只读，做不了**（如实记进 README） |
+| 表头跨页重复 | `Rows(1).HeadingFormat = true` → 回读 `-1`，存盘重开仍 `-1` | 可做 |
+
+**探针顺手挖出一个更严重的既有缺陷（静默）**：`setPageSetup` 原来写的是 `$doc.PageSetup`（全篇生效）
+且**顺序是 Orientation 先、PaperSize 后**。实测这个顺序下 `PaperSize` 赋值会把 `Orientation`
+**重置回纵向**——`orient=1` → `paper=6` 的净结果是"纵向 A3"，横向被吃掉且**回 `success`**。
+也就是说旧实现连"整篇转横向"都是坏的（不只是"不能按节"）。反序（PaperSize → Orientation → 边距）实测稳定。
+
+### 修复
+
+- `mcp/scripts/wps-com.ps1`
+  - `setPageSetup`：目标改为 `$doc.Sections.Item($p.section).PageSetup`（默认第 1 节）；写序改为
+    **paperSize → orientation → margins**；回读全部四项边距 + 方向 + 纸张 + 页面宽高 + `sectionCount`；
+    请求了却没生效的项用 **`Add-WpsShortfall`**（→ 工具层判 `success=false`），不再可能假成功。
+    纸张判据**按实际尺寸判，不按枚举号判**：WPS 给"横向 A3"回读的是 `PaperSize=41`（自定义），
+    尺寸 1190.7×842pt 完全正确——拿枚举号 6 去比会把成功判成失败（"名义值 vs 实际值"陷阱）。
+  - `insertPageNumbers`：新增 `numberStyle`（arabic / upperRoman / lowerRoman / upperLetter / lowerLetter）
+    与 `restartSection`（true=从 1 重开 / false=续前节）；非法值明确报错；`numberStyle` 回读不一致记 shortfall；
+    回读里带 `startingNumberSupported=false` 如实告诉调用方"起始号做不了"。
+  - `setTableFormat`：新增 `headerRepeat` → `Rows(1).HeadingFormat`，写后回读，不一致记 shortfall；回读带 `headerRepeat`。
+- `mcp/src/tools/word/format.ts` / `produce.ts` / `deep.ts`：三个工具的 schema + 描述同步
+  （`section` / `paperSize` / `numberStyle` / `restartSection` / `headerRepeat`），**并写明边界**
+  （横向要与纸张同给、起始编号不支持、"只给 section 就是读该节现状"）。
+  D2 的 `paperSize` 桥里一直支持、只是 schema 里没有（与 WO-001 同族的不对称），这次补上。
+- `mcp/src/spec/operations.ts`：三处 spec 同步（生成物链：`gen-tool-surface` / `gen-skill-tools` / `gen-tool-coverage`）。
+
+### 验证
+
+- `node test/word-section-layout.test.mjs`（**新增**，真机，26 项）：**修复前 3 红（L2 那组）→ 修复后 26/26 绿**。
+  先红后绿是**实测**的：把桥的顺序临时退回旧写法重跑 → 恰好只有 L2 的 3 条红，且报的是
+  `partial: 请求的方向 landscape 没有生效，回读是 portrait`（**如实报 shortfall，不是假成功**）；改回后 26/26 绿。
+  覆盖：按节设置只动点名那一节（邻居字节级不变）/ 横向 A3 真的横着 / 第 1 节边距写—读闭环 /
+  节号越界报错里带"全文共 4 节" / 罗马数字从 1 重开 / 续前节 / 非法 `numberStyle` 被拒 /
+  落盘 footer 里 PAGE+NUMPAGES 域 / `headerRepeat` 落盘 `w:tblHeader` 且能改回去。
+- `node test/word-page-setup-gaps.test.mjs`（既有 WO-001 回归，真机）：**23/23 绿**（老路径"不给 section 改第 1 节"没被破坏）。
+- 静态门禁：`cd mcp; npx tsc` OK；`build-host-actions.ps1` 重建（新参数自动进 `ActionParamKeys`：
+  `insertPageNumbers` +2、`setPageSetup` +2、`setTableFormat` +1）；`gen-tool-surface` / `gen-skill-tools` /
+  `gen-tool-coverage` / `gen-numbers` 全部重生成；`npm run lint` 204 文件 0 违规；`verify.mjs --static` 19 项；
+  `param-contract` A/B/C/D 四类静默失效**均为 0**（新参数被识别，无"schema 有、桥不读"）；`gen-numbers --check` 20 项声明值一致。
+- 广告面**不变（95 / 270）**：这一轮只加参数、不加工具，schema 字节 54,273 → **54,673**（README 两处声明值已同步）。
+
+### 附带修掉的两个"同源"缺陷（都是本轮跑门禁时暴露的）
+
+**① 测试装置的 stdio 收帧把中文读坏（`test/lib/harness.mjs` + `test/spec-reproduction.test.mjs`）**
+
+补完参数后 `spec-reproduction` 报 **2 红**：`wps_ppt_set_background_image` / `wps_excel_set_outline_levels`
+的描述与活面对不上，活面那侧带 **U+FFFD**（`指`→2 个替换字符、`明`→3 个）。定位过程（很值得记，
+因为它看起来极像"产品坏了"）：
+
+| 实验 | 结果 |
+| --- | --- |
+| 子进程自己把描述**写文件** | `fffd=0`（干净） |
+| 同一份 `mcp/dist` 走 **MCP stdio 管道** | `fffd=2 / 3` |
+| 抓服务器 stdout 的**原始字节** | `efbfbd`（U+FFFD 的 UTF-8）出现 **0 次**，两条描述在线上都是干净的 |
+| 同款 spawn，**字符串式缓冲** vs **字节式分帧** | 字符串式 `fffd=2/3`；字节式 `fffd=0/0` |
+
+**根因**：`d.toString('utf8')` 是**按 chunk 解码**，多字节 UTF-8 字符被切在两个 data 事件之间时就变成 U+FFFD。
+服务端一直是对的，坏的是**读法**。影响面：harness 里所有"断言文本含中文 / JSON 里含中文"的用例都可能偶发假红，
+而且**错误信息本身也被改坏**，定位更难。
+
+**修复**：两处都改成**按字节收帧**（Buffer 累积 → 找 `0x0a` → 整帧 `toString('utf8')`）。
+`spec-reproduction` 随即 **16/16 绿**，冻结判据保持**逐字节严格比对**，没有加任何"容错折叠"。
+中途试过的"传输层坏点白名单 + 两侧折叠"补丁已**撤掉**（根因查清后不需要，且折叠会削弱判据）。
+
+**② `mcp/src/spec/operations.ts` 里 3 个历史坏字符**
+
+`wps_excel_set_outline_levels` 的 summary 写着 `分组之后把<U+FFFD><U+FFFD><U+FFFD>细收起来`，
+正确是「把**明细**收起来」。冻结的 `spec/tool-definitions.json` 在 HEAD 里也冻着同样 3 个坏字符
+（它是"忠实复现活面"的，包括坏字符）。已按码点修回 `明`，`mcp/dist` 重建后一致。
+
+---
+
+**（本轮未跑整轮回归；未提交、未推送 —— 按 AGENTS.md §1/§2 与用户指示。）**
+
+---
+
+## 112. R14（S6 的 D4）：按六轮真机轨迹把 9 个高频隐藏工具提到广告面（86 → 95）
+
+**来源**：场景 S6 真机走查（[报告](scenarios/S6-真机走查报告.md) §4.2 / §6 D4）。用户拍板「高频隐藏工具进广告面」。
+两轮真机都实测到同一件事：模型直接调 `mcp__wps-office-next__wps_excel_freeze_panes` →
+`unknown tool`（该工具**存在**、`wps_call` 可达），白花一次调用再重试。S1 报告 §4.3 早就把这类工具列为
+「真实任务需要却不在广告面」，这轮它从"多绕一步"升级成**一次硬失败**。
+
+### 取证口径（可复算）
+
+`test/.artifacts/scenario-s6/tools/rank-hidden-tools.mjs`：把 S1（两轮）、S4（两轮）、S6（两轮）共六轮真机
+轨迹里**经 `wps_call` / `wps_batch` 触达**的隐藏工具按「跨轮次出现的场景数 → 调用总次数」排序：
+
+| 工具 | 总次数 | 跨几轮 |
+| --- | ---: | ---: |
+| `wps_excel_evaluate_formula` | 55 | 4 |
+| `wps_excel_set_column_width` | 29 | 2 |
+| `wps_word_replace_range` | 21 | 1 |
+| `wps_excel_copy_range` | 16 | 1 |
+| `wps_excel_set_sheet_appearance` | 16 | 1 |
+| `wps_excel_unmerge_cells` | 9 | 2 |
+| `wps_excel_delete_rows` | 9 | 2 |
+| `wps_excel_freeze_panes` | 7 | 4 |
+| `wps_excel_clear_range` | 5 | 4 |
+
+**准入阈值**：跨 ≥2 轮出现，**或**单轮被调用 ≥5 次 —— 上表 9 个全部满足，其余 9 个（`paste_range` 2、
+`set_print_area` 2、`word_find_in_document` 2、`hide_column` 2、`word_insert_table` 1、`word_insert_header` 1、
+`remove_duplicates` 1、`update_chart` 1、`delete_chart` 1）**本轮不动**，留待下次用调用数据再评估。
+阈值与全部候选的字节代价写在 `plan-ad-surface.mjs` 里（同一份脚本可重算预算）。
+
+### 改了什么
+
+- `mcp/src/spec/operations.ts`：9 条 `"advertised": false → true`（广告面的**权威定义**在这里，逐条标志）；
+- `mcp/src/server/toolset.ts`：`STANDARD_TOOLS` 同步补进这 9 个（两者必须一致，`spec-reproduction` 会比对）；
+- 生成物：`spec/advertised.json`、`spec/tool-definitions.json`、`skills/*/SKILL.md` 的"直接广告的 N 个"块、
+  `docs/tool-coverage.md`、`docs/current-numbers.md`、README 徽章/档位表/安装指引的 `advertisedTools`；
+- 文档声明值：README 与 HANDOFF 里写死的 86 / 49,803 / 14,229 全部改成 95 / 54,273 / 15,507（`gen-numbers --check` 20 条全过）。
+
+### 预算（D1 红线 100 / 60,000）
+
+| | 之前 | 之后 |
+| --- | ---: | ---: |
+| 广告面工具 | 86 | **95**（上限 100，余 5 个位） |
+| schema 字节 | 49,803 | **54,273**（上限 60,000，余 5,727） |
+| ≈tokens | 14,229 | 15,507 |
+
+### 回归：`test/advertised-surface.test.mjs`（26 项，真机）
+
+不只查 `tools/list` 里"名字在不在"，而是**按名字直接调用**每一个并核对效果：
+
+- `evaluate_formula` → `=SUM(C2:C4)` 真的回 **250**；
+- `copy_range` → 目标区域真的拿到值（`甲 / 120.5 …`）；
+- `delete_rows` → 表真的上移（"待删"没了、"保留"上来了）；
+- `clear_range` → 目标格真的空了（`D1 是空的，没有数据`）；
+- `unmerge_cells`、`freeze_panes`、`set_column_width`、`set_sheet_appearance` → 直接调用即成功；
+- `word_replace_range` → `原文: "ABCDE" 修改为: "一二三"`，文档文本真的变成 `一二三FGHIJ`；
+- 同时钉住预算（95 ≤ 100、54,273 ≤ 60,000）与「live tools/list == `spec/advertised.json`」。
+
+---
+
+## 111. 场景 S6 真机走查：多工作簿合并 28/28 通过；工作表名不存在时报裸 COM `Invalid index`（已修）+ 两条记录
+
+**来源**：场景 S6 真机走查（[S6-真机走查报告](scenarios/S6-真机走查报告.md)、[场景卡](scenarios/S6-multi-branch-expense-merge.md)）。
+README 第 73 行承诺的「把这个文件夹里所有 .xlsx 的第一张工作表合并成一张总表」此前**零场景覆盖**，
+而且**没有任何一个场景在"多个工作簿同时打开"的条件下跑过** —— `baseline/known-defects.md` C7 的残余正落在这里
+（`copySheet` 目的工作簿 / `transpose` 落点，FIXES 90 记为 known limitation）。
+
+### 已修 · P2：sheet 名字不存在时，模型拿到的是裸 COM `Invalid index`
+
+**复现**（真机 attempt 1 / attempt 2 各一次，同一形状）：打开《华南-广州分公司_费用明细_9月.xlsx》（表名 `Sheet1`）后，
+用 `read_range { sheet: "费用明细" }` 去读 —— 那是别家工作簿里的表名：
+
+| | 结果 |
+| --- | --- |
+| 修复前 | `读取数据出错: Invalid index. (异常来自 HRESULT:0x8002000B (DISP_E_BADINDEX))（动作：getRangeData）下一步：确认操作对象存在、名称或序号正确，并且 WPS 处于可操作状态后重试。` |
+| 修复后 | `读取数据出错: 工作簿『工作簿2』里没有工作表『费用明细』；这本工作簿现有工作表：Sheet1、Data。（动作：getRangeData）下一步：用 wps_excel_get_sheet_list 或 wps_excel_get_open_workbooks 确认工作簿与工作表名字（多工作簿时先确认操作的是哪一本）` |
+
+**根因**：`Get-WorksheetByParam` / `Resolve-Worksheet` 把用户的字符串直接丢给 `$wb.Sheets.Item($name)`，
+名字对不上就是 COM 异常原文；`Format-WpsErrorText` 也没有 `Invalid index` 的文案分支，于是套上通用的
+「确认操作对象存在、名称或序号正确」——多工作簿场景里这条建议**帮不上忙**（该改的是表名）。
+
+**修法**（`mcp/scripts/wps-com.ps1`，生成物已同步重建）：新增 `Get-WorksheetByNameOrIndex`，
+先按名字（`OrdinalIgnoreCase`）与 1 基序号在工作簿里自查一遍：命中就返回原对象（语义不变），
+查不到才抛中文错误，写明**哪本工作簿、缺哪张表、这本现有哪几张**；列不出工作表时退回原 `Item()` 行为。
+`Format-WpsErrorText` 另加两条分支（自报的「没有工作表」给专用 hint + `Invalid index` 的中文兜底）。
+
+**顺带的真实收益**：以前 `sheet: "2"`（数字字符串）也会直接 `Invalid index`，现在按序号解析，
+与"名字/序号都接受"的既有契约一致（回归里单列一条断言）。
+
+**回归**：`test/excel-sheet-resolve.test.mjs`（15 项，真机）。
+**先红后绿**：`test/.artifacts/scenario-s6/tools/make_prefix_host.py` 把两处调用还原成
+`$wb.Sheets.Item(...)` 并去掉本轮新增的两条文案分支，再用 `S6_PREFIX_HOST` 指向该副本跑同一文件 ——
+**7/15 红**（错误文本 4 项 + 序号 3 项）→ 修复后 **15/15 绿**。
+
+### 记录（未改代码）· 隐藏工具被直接调用时，错误不指向 `wps_call`
+
+两轮真机都实测到：模型直接调 `mcp__wps-office-next__wps_excel_freeze_panes` → `unknown tool`。
+该工具**存在**（`wps_call` 可达，两轮都成功用上了），只是不在 86 个广告工具里。
+「冻结首行」正是 S1 报告 §4.3 列出的 11 个"真实任务需要但不在广告面"的工具之一 ——
+这一轮它从"多绕一步"变成**一次硬失败 + 一次重试**。错误文本由 DSH 的 MCP 客户端产生，桥改不了；
+可选处置是把它与同类高频项放进广告面（当前 86/100、49,803/60,000 字节），属产品面决策，本轮**不动**。
+
+### 记录（未改代码）· 图表导出失败：原因就是"目录不存在"，提示指对了方向
+
+两轮真机各失败一次：`export_chart_as_image { outputPath: "D:\s6-run\_check\chart1.png" }` →
+`导出图表失败：… HRESULT E_FAIL（动作：exportChartAsImage）下一步：确认 outputPath 的目录存在且可写…`。
+attempt 2 的轨迹显示模型随后**先建了 `_check` 目录再重试**，后 4 次导出全部成功，并用 `read_image` 目视复核了图表（10 次读图），
+收尾又自己把 `_check` 删掉。也就是说：这不是缺陷，是「提示 → 照着做 → 成功」这条链路的**正向读数**，
+`skills/wps-excel/SKILL.md` 里"导出图片依赖剪贴板、无人值守时可能失败"那条仍然成立（它确实会失败，只是原因可读）。
+
+### 方法学 · attempt 1 作废：测试装置自己把答案摆在了模型面前
+
+attempt 1（28/28 硬判据全过）**不算数**：模型从 `D:\dsh\a` 启动，顺着 prompt 里的
+`test\.artifacts\scenario-s6\input\` 往上翻，读了**场景卡**（含冻结真值表、两个陷阱的期望值、"预期判红"清单），
+还发现并比对了 `selfcheck\known-good\`——那是一份**完全正确的汇总文件**。
+attempt 2 把运行根目录搬到仓库之外（`D:\s6-run`），fixture / 真值 / 核验器 / 自检集全部移出工作区，
+prompt 只指向运行目录：**27/28**（唯一红是核验器自身对 `datetime` 日期的误判，已修）→ **28/28**。
+**教训**：真机走查的运行根目录与"答案库"不能在同一棵树里；判分资产必须与运行目录分离。
+
+---
+
+## 110. 场景 S5 真机走查：邮件合并整条链路是假的（P0）+ `fileNameField` 指向不参与替换的列时被无视（P1）
+
+**来源**：场景 S5 真机走查（[S5-真机走查报告](scenarios/S5-真机走查报告.md)、[场景卡](scenarios/S5-word-batch-notices.md)）。
+README 头号卖点「拿一张 CSV 表，一次生成几十份文档，母版不动」此前**只有 3 条断言、且只查工具自述文本**，没有任何场景压过。
+
+### P0 · `wps_word_mail_merge`：没有替换任何数据，还破坏了母版正文
+
+裸 COM 插桩探针（`test/.artifacts/scenario-s5/tools/probe-mailmerge3.ps1`，可重跑）逐条读数：
+
+| 观测 | 旧实现 |
+| --- | --- |
+| `MailMerge.Fields.Add` 之后 | **正文被字段码顶掉**：母版正文只剩 `«Dept»`（7 字符），模板原文全丢 |
+| 模板占位符 | **从不被替换**（`工号：⟨工号⟩` 原样保留在合并结果里） |
+| 数据落点 | 字段值堆在**上一条记录的末尾**（`2026年10月12日` 之后紧跟 `制造中心（一车间）王磊`） |
+| 记录数 | 3 条数据产出 **4 份**内容；`FirstRecord=1,LastRecord=1` 拿到的是**空**记录 |
+| 工具回报 | **success**（"已按数据源合并到一个新文档（原文档未改动）"） |
+
+**根因**：字段被插到 `Get-MainTextRange` 给出的**当前选区**（WPS 对折叠选区的处理会顶掉该处正文），
+而 WPS 的 `MailMerge.Execute()` 并不把这样插进去的字段当模板合并域来替换；整条链路没有任何产出校验。
+
+**修法**（`mcp/scripts/wps-com.ps1` 的 `mailMerge`）：字段 → 占位符**按名字匹配**（`⟨字段名⟩` / `{{字段名}}` / `«字段名»`，
+`Name`/`Dept` 保留常见中文译名兜底），用 `Find/Replace` 落到占位符处；CSV 由桥自己按 RFC4180-lite 读（UTF-8 / 容 BOM / 支持引号）；
+新增 **`splitDir`**（每行一份直接存盘 —— "一次生成几十份文档"的真实用法）与 **`outputPath`**；
+找不到占位符 / 有字段没替换成功 → `Add-WpsWarning`（R11 把 `success` 翻成 `false`），不再静默产出"看起来成功、其实没有数据"的文档。
+
+### P1 · `fileNameField` 指一个不参与替换的列时永远取空 → 文件全叫 `row1.docx`
+
+**来源**：真机第 1 轮**模型自己在回答里报上来的**（它传 `fileNameField: "文件名"`，一个只用于命名、拼好的列）。
+**根因**：取值表是按 **`fields`** 建的，不是按 CSV 表头；列不在 `fields` 里 → 查表恒为空 → 回落 `rowN` 兜底。
+**修法**：`$rowValue` 按**表头**建全列映射；`fileNameField` 顺带支持 **`{列名}` 模板**（`通知书_{部门}_{姓名}_{工号}`）。
+
+### 验收
+
+| 项 | 读数 |
+| --- | --- |
+| 桥路径（MCP driver 直连插件） | `splitDir` 一次写出 **24/24 份**；抽 5 份（含两个同名王磊、缺部门、缺基数）逐字段正确 |
+| 三种命名 | 列名（`工号`）/ 列名（`文件名`，不在 fields 里）/ `{列名}` 模板 —— 全部正确 |
+| 合订版 | 24 块 / 23 个分页符 / 顺序 == 名单顺序 / 无占位符残留 / 落款 24 次 |
+| 母版 | sha256 未变（真机两轮 + 桥路径） |
+| 真机两轮 | **24 项硬 + 6 项软全过**（第 1 轮模型靠自己改名补救 P1；第 2 轮一次到位） |
+
+### 回归
+
+`test/word-longtail.test.mjs` 的邮件合并断言 **3 → 48 项**：改为**读落盘的 docx**（不再只看自述文本）、
+无占位符文档必须被拒、占位符必须替换干净、母版内容不得被改、`splitDir` 两种命名路径、UTF-8 BOM 中文表头、收尾无遗留文档。
+顺手修掉该测试自己的两处**假指控**：`zipScan` 未命中时返回真值对象（`!zipScan(...)` 永远为假）、
+拿 docx 二进制 sha256 当"母版没被动过"的判据（`save_as` 会重写 docx 包）。空 catch 账本 +4（35 → 39）。
+
+**生成物**：`host/wps-actions.ps1` 重生成；`spec/*.json`、技能参考表、`docs/tool-coverage.md`、`docs/current-numbers.md` 重生成；
+广告面 schema 字节 **49,200 → 49,803**（README 跟随）。桥 action 数不变（265）。
+
+---
+
+## 109. WO-001：Word 侧四个缺口补齐（读页面设置 / 读页眉页脚 / 更新目录 /「共 Y 页」）+ 修出两个隐性缺陷
+
+**来源**：场景 S4 跨三件套真机走查的发现 F5/F6（[S4-真机走查报告](scenarios/S4-真机走查报告.md) §7.3），
+立项为 [WO-001](work-orders/WO-001-word-gaps-from-s4.md)。用户决策：**四项都做、`wps_word_get_page_setup` 进广告面、
+S4 的 D7 升硬、S2 的 H3 结案**。四条能力先用裸 COM 探针实测可行才动手（`test/.artifacts/scenario-s4/tools/probe-word-gaps.ps1`）。
+
+**新增能力**（桥 action **263 → 265**，注册工具 **268 → 270**，广告面 **84 → 86**）：
+
+| 工具 | 分档 | 内容 |
+| --- | --- | --- |
+| `wps_word_get_page_setup` | **广告面** | 读某节的方向 / 纸张 / 四边距（磅）/ 页面宽高，键名与单位跟 `set_page_setup` **对称** |
+| `wps_word_set_page_setup` | **广告面（本轮由隐藏面提升，用户追加决策）** | 原本只有 `wps_call` 够得到 —— 工单里把它误记成"已在广告面"，实施时才发现成了"读广告、写隐藏"的反向不对称。set/get 现在同侧 |
+| `wps_word_get_header_footer` | 隐藏面（`wps_call`） | 读某节页眉页脚文本 + 域清单（PAGE / NUMPAGES / OTHER），尾部段落标记已归一 |
+| `wps_word_insert_page_numbers {includeTotal:true}` | 已广告工具加参数 | 页码域后追加 `NUMPAGES` 域，形成「第 X 页 / 共 Y 页」 |
+| `wps_word_generate_toc {action:"insert"\|"update"}` | 已广告工具加参数 | update 只刷新已有目录、不新增；没有目录时如实报错并提示改用 insert |
+
+> **广告面有两处声明，必须同时改**：`mcp/src/spec/operations.ts` 的 `advertised` 与 `mcp/src/server/toolset.ts` 的 `STANDARD_TOOLS`。
+> 只改后者时 `gen-tool-surface` 仍按 85 生成 `spec/advertised.json`，`spec-reproduction` 的 "advertised set is reproduced" 立刻报红（本轮实测踩到）。
+
+### 9-1 · 这份 WPS 的 `HeaderFooter.Range` 会解析到「当前激活的页眉/页脚故事」（严重）
+
+**复现**（真机二分实验：4 种插入法各落一次盘，见 `tools/probe-numpages4.ps1` / `probe-numpages5.ps1`）：
+在 `wps_word_create_document` 新建的文稿上往 `$section.Footers.Item(1).Range` 写，**NUMPAGES 100% 落进 `word/header1.xml`**，
+而 `PageNumbers.Add` 落页脚却是对的 —— 同一个 `$container`，两条路径去的地方不一样。
+
+| 插入方法 | 落盘部件 | 文本顺序 |
+| --- | --- | --- |
+| `$container.Range`，每次重新取（原实现） | ❌ 页眉 | — |
+| 先读一次 `.Range.Text` 再写 | ❌ 页眉 | — |
+| `$container.Range.Paragraphs.Item(1).Range` | ✅ 页脚 | ❌ 反了 |
+| **`View.SeekView = 10` 切到页脚故事 + `Selection`** | ✅ 页脚 | ✅ 正确 |
+
+**修法**：走 `View.SeekView` + `Selection` 这条文档化路径；`totalPagesFields` 用 `WholeStory()` 后数域回读
+（**不能用 `$container.Range.Fields.Count`** —— 它会数到页眉上去）。代价：`includeTotal` 需要 WPS 有活动窗口；
+插不进去时按 R11 回 `success:false` 并说明"页码已插入、总页数没插上"，不假装成功。
+
+### 9-2 · `set_page_setup` 先设边距再设方向，会把边距**整体旋转**（隐性，严重）
+
+**复现**（裸 COM，`tools/probe-pagesetup-order.ps1`）：
+
+| 顺序 | 读回（设 T=56 L=72，转横向） |
+| --- | --- |
+| 先边距、后方向（原实现） | `T=72 B=90 L=72 R=56` —— **要求的上边距跑到了右边** |
+| 先方向、后边距 | `T=56 B=90 L=72 R=72` ✓ |
+
+**叠加缺陷**：桥回读用的键是 `marginTop/marginBottom/...`，而 handler 读的是 `topMargin/...` —— **一个边距都没回报出来**，
+调用方只看到"页面布局设置成功！页面方向: 横向"，两个缺陷互相掩护。两处一起修：方向/纸张先设、边距后设；
+回读改用公开键名，并**始终回报四个边距 + 方向 + 纸张**（方向一变边距会跟着挪，只回报传入项根本看不出来）。
+
+**验证**：`test/word-page-setup-gaps.test.mjs` —— 真机 **23/23**（写—读闭环、`includeTotal` 落页脚且两个域都带缓存值、
+目录 update、越界 / 无目录两条错误路径）；静态门禁全绿（含静默账本 35/35、覆盖率棘轮 bespoke 263、预算门禁 85/100）。
+场景收口：S4 的 **D7 由软升硬**、S2 的 **H3 结案**。
+
+---
+
+## 108. 场景 S2 真机走查：Word 段落的**字符缩进**与**行距倍数**两个单位缺陷（都已修）
+
+**来源**：用户选定场景卡 `docs/scenarios/S2-word-report-finalization.md`（Word 单文档深度：《项目验收报告》定稿）后跑真机走查。
+完整证据、逐条判据与两轮读数见 `docs/scenarios/S2-真机走查报告.md`。
+两处都是「**回 success 但落盘的不是要求的东西**」，且**两轮真机的模型都自己撞上并绕开了**（所以产物最终正确 —— 属隐性错误）。
+
+### 8-1 · `firstLineIndent` / `leftIndent` / `rightIndent` 把"字符数"当"厘米"（严重）
+
+**契约**（`mcp/src/tools/word/content.ts`）：三个参数都写"**字符数**，如 2 表示缩进 2 个字符"。
+
+**复现（真机、不经插件自述）**：`wps_word_set_paragraph{firstLineIndent:2,leftIndent:1,rightIndent:1}` →
+落盘 `<w:ind w:left="567" w:right="567" w:firstLine="1134"/>`：1134 缇 = 56.7 磅 = **2 厘米**，
+按小四（12pt）折算约 **4.7 字符**。裸 COM 读回 `FirstLineIndent=56.7 / LeftIndent=28.35`。
+独立验证器把这条判红（场景 18 项硬判据里唯一未过的一项：T2）。
+
+**根因**：`$para.FirstLineIndent = [double]$p.firstLineIndent * 28.35`（`mcp/scripts/wps-com.ps1` 的 setParagraph）。
+COM 的 `ParagraphFormat.*Indent` 单位是**磅**，`× 28.35` 是厘米→磅 —— 与 schema 的"字符"差着数量级。
+同一文件里 `setPageSetup` 的页边距就专门注释过"不能当厘米乘 28.35"，段落缩进这处漏了。
+
+**修法（先测后改）**：裸 COM 探针确认 WPS 支持字符单位属性并落盘为 `w:firstLineChars`：
+
+| 探针 | 落盘 |
+| --- | --- |
+| `ParagraphFormat.CharacterUnitFirstLineIndent = 2` | `<w:ind w:firstLine="480" w:firstLineChars="200"/>`（随字号缩放 ← 正解） |
+| `ParagraphFormat.FirstLineIndent = 24` | `<w:ind w:firstLine="480"/>`（固定磅值，不随字号） |
+
+于是三个参数改用 `CharacterUnitFirstLineIndent / CharacterUnitLeftIndent / CharacterUnitRightIndent`，
+取不到时退回"按当前字号折算磅值"。修复后落盘 `<w:ind w:firstLine="480" w:firstLineChars="200"/>`。
+
+### 8-2 · `lineSpacing` 的"倍数"被写成"固定值"
+
+**契约**：`lineSpacing` —— "行间距**倍数**（正数），如 1.5、2"。
+
+**复现（裸 COM，同一次调用链路）**：`LineSpacingRule = 4`（wdLineSpaceExactly）+ `1.5*12` →
+落盘 `<w:spacing w:line="360" w:lineRule="exact"/>`：用户要"1.5 倍"，拿到"固定值 18 磅"，
+WPS 界面显示"固定值"，字号一变行距就错。对照：`LineSpacingRule = 5`（multiple）→ `<w:lineRule="auto"/>`。
+
+**根因**：`$para.LineSpacingRule = 4`（setParagraph）。同一个桥里兄弟动作 `setLineSpacing` 用的是 5，
+**只有 setParagraph 走偏**。
+
+**修法**：改为 `LineSpacingRule = 5`，与 `setLineSpacing` 对齐。修复前的真机（attempt 1）里，模型先调 setParagraph、
+自己读 XML/裸 COM 发现落成"固定值"，再改用 `wps_word_set_line_spacing` 重做（9 次调用）；
+修复后的真机（attempt 2）**只调 setParagraph** 就落出 `<w:lineRule="auto"/>` —— 修复在真实工具链上得到确认。
+
+### 验证
+
+- `node test/word-paragraph-units.test.mjs`（**新增 13 项**）：**修复前 9/13 红**
+  （`w:lineRule="exact"` 命中、无 `*Chars`、裸 COM 读回 `56.7|28.35|4|18`）→ **修复后 13/13 绿**
+  （`w:lineRule="auto"`、`w:firstLineChars="200"`、`w:leftChars="100"`、`w:rightChars="100"`、裸 COM `21|10.5|1|18`）。
+- `host/wps-actions.ps1` 已用 `scripts/build-host-actions.ps1` 重新生成（CI 断言两者一致）。
+- `node test/silent-catch.test.mjs`：新增代码里的空 catch 被台账抓到（2 项红）→ 改成**有兜底赋值的 catch**
+  （不往台账里塞条目），复跑 8/8 绿。
+- 整轮 `scripts/run-tests.ps1`：**`TOTAL PASS=1283 FAIL=0 FILES=51` / `ALL TEST FILES GREEN`**；
+  `npm run lint` 182 文件 0 违规；`node scripts/verify.mjs --static` 19 项通过。
+- 场景重跑（修复后 `attempt 2`）：独立验证器 **18/18 硬判据 + 4/4 软判据全过**，初稿 sha256 未变。
+
+---
+
 ## 107. 一键 e2e 在「从装了插件的 DSH 会话里起终端」时会红四条（FIXES 87 的同一根因，这次补到 e2e 上）
 
 **现象（2026-10-09 发版前实测）**：`node scripts/e2e.mjs --setup --profile wpse2e` 跑完，8 项子任务在文件层面**全部通过**
@@ -3803,3 +4183,101 @@ null 值表达式 / 报错行号与源码对不上）全部由此解释。
 - 契约管线按 §4 的顺序整跑：`build-host-actions.ps1`（`switch_cases=263 functions=79`，生成物 BOM 正确）
   → `tsc` → `extract-spec`（268 operations、`unresolved: []`）→ `tsc` → `gen-tool-surface` →
   `gen-skill-tools` → `gen-tool-coverage`（268 工具 / 0 untested）→ `gen-numbers`；**spec 与技能参考表零漂移**。
+
+---
+
+### P0 · PPT 几何写入没走 COM 边界助手：**任何小数坐标/尺寸都设不进去**（S3 场景走查，2026-10-11）
+
+**症状**：`wps_ppt_set_shape_position` 对 `left/top/width/height` 传带小数的值必失败，回
+`设置形状位置失败: 指定的转换无效。（动作：setShapePosition）下一步：确认操作对象存在、名称或序号正确…`
+—— 文案把根因指向"对象/序号不对"，真实原因是**类型**。整数坐标、整数尺寸都正常，
+所以"把图片放到 1/3 处""按 `get_shapes` 回读的坐标微调"（回读值就是 `167.75` 这种）这类最常见的用法全废。
+
+**根因**：宿主把参数 `$req.params | ConvertTo-Json -Compress` 再在动作里 `ConvertFrom-Json`。
+**PS 5.1 的这条往返把带小数的 JSON 数字解析成 `System.Decimal`**（整数是 `Int32`），而动作里写的是直接赋值
+`$shape.Left = $p.left` → `Decimal` 赋给 COM 的 Single 属性抛 `InvalidCastException`。
+这正是同一文件 §"COM boundary helpers" 注释警告过的那类错误：**每个被写的 COM 成员都必须走 `Set-ComValue`**
+（它 `ConvertTo-ComValue` 归一化成 `[double]` 并每次重新绑定），这 5 处是漏网存量。
+
+**修复**（`mcp/scripts/wps-com.ps1`，经 `scripts/build-host-actions.ps1` 生成 `host/wps-actions.ps1`）：
+
+| 动作 | 修复前 | 处数 |
+| --- | --- | --- |
+| `setShapePosition` | `$shape.Left/Top/Width/Height = $p.*` | 4 → `Set-ComValue` |
+| `setPptTableFormat` | 同上（带 `$applied +=`） | 4 → `Set-ComValue` |
+| `setImageStyle` | `$shape.Left/Top/Width/Height/Rotation = $p.*` | 5 → `Set-ComValue` |
+| `insertImage`（Word） | `$shape.Width/Height/ScaleWidth/ScaleHeight = $p.*` | 4 → `Set-ComValue` |
+| `replacePptImage` | `$pic.Rotation = $rot` | 1 → `Set-ComValue` |
+
+**新门禁**：`scripts/lint-com-boundary.mjs` 规则 D `geometry-write` ——
+`.(Left|Top|Width|Height|Rotation|ScaleWidth|ScaleHeight) = $…` 一律红（显式 `[double]` 强转与 `Set-ComValue` 合法，注释不算），
+接入 `npm run lint`。门禁自检 `test/com-boundary-gate.test.mjs` 进 `STATIC_TESTS`（CI 会跑）。
+
+### 验证
+
+- **真机复现（不经模型）**：`node test/.artifacts/scenario-s3/tools/repro-set-shape-position.mjs <deck>`
+  —— `left:100,top:100` 成功；`left:100.5` / `top:100.5` / `width:400.5` / `left:54,top:167.75` 全部
+  `指定的转换无效`；`left:100.0,top:100.0`（整数值）成功 → 触发条件是"值是不是整数"，不是"是哪个形状"。
+- **根因堆栈（PS 5.1 `-STA` 点源桥脚本）**：`test/.artifacts/scenario-s3/tools/probe-action-ps51.ps1` 打出
+  `类型 left=Decimal` → `System.InvalidCastException: Specified cast is not valid.`
+  `at host/wps-actions.ps1:6759 (= mcp/scripts/wps-com.ps1:6517)`；整数那条 types 是 `Int32`、成功。
+- **回归（先红后绿）**：`node test/ppt-shape-position.test.mjs`（真机，需要 WPS）
+  —— 修复前 **3 项红**（`setShapePosition`、`setPptTableFormat` 两个真缺陷 + 我自己写错的一条用例），
+  修复后 **15/15 绿**；其中 4 条是**裸 COM 读回**（`100.5 / 120.25 / 300.5 / 90.75`），证明真的落盘。
+- `node test/com-boundary-gate.test.mjs`：**16/16**，含"把真实桥里任意一处改回原写法必须变红"。
+- `node scripts/lint.mjs`：**190 文件 0 违规**；`npm run test:static`：**13/13**；
+  `node scripts/verify.mjs --static`：19 项；`node test/spec-reproduction.test.mjs`：16 项；
+  `cd mcp; npx tsc`：0 错；`gen-numbers --check`：20 项声明值一致（testFiles 51 → 53）。
+- 场景侧证据：`docs/scenarios/S3-真机走查报告.md`（attempt 1 的 33/33 硬判据、attempt 2 的 30/33 与页序对照）。
+
+---
+
+### P3 · 页码越界把 WPS 的 E_FAIL 漏给用户；`slideIndex=0` 还会静默改错页（S3 走查 O-3，2026-10-11）
+
+**症状**：11 页的文稿问 `get_slide_info {slideIndex:12}` →
+
+`获取幻灯片信息失败: 对 COM 组件的调用返回了错误 HRESULT E_FAIL。（动作：getSlideInfo）下一步：确认操作对象存在、名称或序号正确…`
+
+—— 根因只是页码越界，却被引导去查"对象/名称/序号"。**红先复跑时还抓到更糟的一条**：`slideIndex: 0`
+不报错，**静默落到第 1 页**（回 success、改错页），`move_slide {fromIndex:99}` 同样漏 E_FAIL。
+
+**修复**：
+
+| 位置 | 改法 |
+| --- | --- |
+| `mcp/scripts/wps-com.ps1` | 新增 `Test-WpsSlideIndexInRange($Action,$Params)`：只对"确需操作已打开文稿某一页"的动作（`ActionParamKeys[$Action]` 含 `slideIndex`/`fromIndex`）生效；只查已存在实例（FIXES 104，不拉起 WPS）；拿不到文稿就不拦。语义 = **整数、1 起、上界=当前页数**。只校验 `slideIndex`/`fromIndex`（`toIndex`/`targetIndex` 是"目标槽位"，末端一格在某些动作里合法） |
+| 同上 | `Format-WpsErrorText` 给这类消息配**可执行的下一步**（`先用 wps_ppt_get_slide_count 确认页数…`），不再套用"确认对象/名称/序号" |
+| `scripts/build-host-actions.ps1` | 把守卫注入派发前（与既有的"未知参数"门禁同一处），并输出 `slide_index_guard=` 诊断 |
+
+### P3 · `set_shape_position` 的名字定位走不通；`set_image_style` 里 4 行几何写入是死代码（S3 走查 O-4）
+
+**症状**：技能文档说形状可以按 `shapeIndex` / `shapeName` / `name` 三种方式定位，
+但 `wps_ppt_set_shape_position` 的 schema 把 `shapeIndex` 标成必填、且没有 `shapeName` 属性 ——
+按名称定位的参数在工具层就被丢掉，报 `Missing required parameter: shapeIndex`，桥里的名称分支**永远走不到**。
+反向的一处：`wps_ppt_set_image_style` 的 schema 只有 `slideIndex/imageIndex/style`，
+桥里却读 `$p.left/$p.top/$p.width/$p.height` —— 那 4 行**发不过来**（硬发也会被 unknown parameter 挡下）。
+
+**修复**：
+
+- `mcp/src/tools/ppt/shape-basic.ts`：新增可选 `shapeName`，`shapeIndex` 移出 `required`，
+  handler 透传 `shapeName`，成功文案按名称/序号分别显示；
+  桥改为 `shapeName → name → shapeIndex` 选形状，都没有则回 `shapeIndex or shapeName required`。
+- `mcp/scripts/wps-com.ps1`：删掉 `setImageStyle` 里 4 行死几何写入；
+  `style.rotation` 是活的（nested container 合并），保留且仍走 `Set-ComValue`。
+
+**附带**：`skills/wps-ppt/SKILL.md`「常用流程」新增第 7 条**页序终检**（S3 的 O-1：`add_slide` 追加到末尾、
+`move_slide`/`delete_slide` 让后面页号整体前移 → 连续移动很容易把两页调换；真机上工具全回 success、
+模型自述页序正确，文件里第 8/9 页实际互换）。要求收尾前逐页回读标题与目标顺序比对，
+并写明页码参数 1 起、上界=当前页数。
+
+### 验证
+
+- `node test/ppt-slide-index.test.mjs`（真机）：**修复前 6/12 红 → 修复后 12/12 绿**。
+  关键读数：越界回 `演示文稿里没有第 99 页：当前共 2 页（页码从 1 开始）。`（无 E_FAIL）、
+  `slideIndex:0` 回 `幻灯片页码从 1 开始：收到 0。`、非整数回 `必须是整数`、
+  `shapeName:"标题 1"`（含空格）定位成功并真的落盘 `(40, 60)`、只给 `shapeIndex` 仍然可用。
+- `node test/error-wording.test.mjs`（真机，错误文案契约）：**31/31 绿**（新 hint 未破坏 26 条抽样与幂等）。
+- `node test/ppt-shape-position.test.mjs`（真机，P0 回归）：**15/15 绿**（选择器改动后复跑）。
+- `npm run lint`：192 文件 0 违规；`scripts/verify.mjs --static` 19 项；`param-contract` 通过；
+  `spec-reproduction` 16 项；`npm run test:static` 13/13；`npm run verify:package` 11 项 OK。
+- `node scripts/gen-numbers.mjs --check`：20 项声明值一致（README full 档 schema 字节 159,433 → 159,636 —— 新增的 `shapeName` 属性）。

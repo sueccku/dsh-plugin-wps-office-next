@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）
 
 > 用途：把当前工作、进展、现状与下一步整理成**自包含**的一页，让一个**全新对话**无需回看历史即可接手。
-> 核实时间：2026-10-04（**v0.6.2 发布后重核**；本文所有数字均从仓库/命令实测，非记忆）。
+> 核实时间：2026-10-11（**文档整理轮**：§5 与 README 的现值按 [current-numbers.md](current-numbers.md) 重核；本文所有数字均从仓库/命令实测，非记忆）。
 > 现值数字统一看 [current-numbers.md](current-numbers.md)（自动生成 + CI 对账）。
 > 本文是工作文档，不随包发布（`docs/` 不在 `package.json` 的 `files` 白名单内）。
 
@@ -19,14 +19,15 @@
 | --- | --- | --- |
 | 1 | [HANDOFF.md](HANDOFF.md)（本文） | 现状、决策登记表、契约管线、纪律 |
 | 2 | [current-numbers.md](current-numbers.md) | **所有现值的唯一来源**（自动生成 + CI 对账）。别用正则自己数 |
-| 3 | [FIXES.md](FIXES.md) 的 **92–102** 号 | 最近一轮做了什么、踩过哪些坑（含"假成功""字段名对不上""静默丢失"这类反复出现的模式） |
+| 3 | [FIXES.md](FIXES.md) 的 **103–113** 号 | 最近几轮做了什么、踩过哪些坑（含"假成功""字段名对不上""静默丢失"这类反复出现的模式） |
 | 4 | 本文 §10「纪律与已踩过的坑」 | 预算红线、账本只许缩、只读核对优先，以及本轮新增的工具/测试陷阱 |
-| 5 | [release-checklist.md](release-checklist.md) | 发版前必跑的门禁与发布后验收步骤 |
+| 5 | [release-checklist.md](release-checklist.md) | 发版门禁与发布后验收步骤（**测试时机以 [../AGENTS.md](../AGENTS.md) 为准**） |
 
-> **2026-10-07 文档清理**：删掉了四份已完成使命的文档（`stabilization-plan.md`、`tool-roadmap.md`、
-> `CONTRACT-excel.md`、`pending-bugs.md`）与一轮工单台账（`bug-hunt-orders.md`），
-> 以及两个无调用方的上游分析脚本与 `baseline/` 下 239 KB 的一次性快照。
+> **2026-10-07 文档清理**：删掉了四份已完成使命的文档（`stabilization-plan.md`、`CONTRACT-excel.md`、
+> `pending-bugs.md`、`baseline/upstream-0.1.0/SUMMARY.md`）与一轮工单台账（`bug-hunt-orders.md`），
+> 以及两个无调用方的上游分析脚本与 `baseline/` 下的一次性快照。
 > 其中**有长期价值的内容已迁入本文**（§10 的工具/测试陷阱）。历史修复记录一律在 `FIXES.md`。
+> （注：`docs/tool-roadmap.md` **没有**被删——它仍在库中，并被 README 的文档地图引用。）
 
 ### 0.2 再做只读核对（确认真实状态与本文一致，**再动手**）
 
@@ -47,7 +48,10 @@ node scripts/doctor.mjs                                     # 环境自检，末
 
 ### 0.3 需要时再跑整轮回归
 
-跑完整测试（**49 个文件**，多数驱动真实 WPS，约 15 分钟）：
+> **按需执行（2026-10-10 / R13）**：普通修改后**不跑**整轮；只有准备 push 到 GitHub 时**先问用户**，
+> 用户说「跑」才跑。下面的命令保留原样，供"用户说要跑"时使用。详见 [../AGENTS.md](../AGENTS.md)。
+
+跑完整测试（**51 个文件**，多数驱动真实 WPS，约 15 分钟）：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 跑完会刷新 test/summary.json
@@ -70,13 +74,40 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 | 指标 | 现值 | 权威来源 |
 | --- | --- | --- |
-| 注册工具 / 广告面 | **268 / 84**（47,630 字节，预算上限 60,000） | [current-numbers.md](current-numbers.md) |
-| 桥 action / 参数契约 | **263 / 257 对**（A/B/C/D 四类静默失效均为 0） | 同上 |
-| 测试 | **1257 项 / 49 个文件（整轮全绿）** | 同上（来自 `test/summary.json`） |
+| 注册工具 / 广告面 | **270 / 95**（54,673 字节，预算上限 60,000；D4 于 2026-10-12 从 86 扩到 95；S7 修 D1+D2 只加参数、不加工具） | [current-numbers.md](current-numbers.md) |
+| 桥 action / 参数契约 | **265 / 259 对**（A/B/C/D 四类静默失效均为 0） | 同上 |
+| 测试 | **1283 项 / 51 个文件（整轮全绿）** | 同上（来自 `test/summary.json`） |
 | 本机整轮回归 | 见 `test/summary.json` | `confirm-dialog` 那条曾长期红：看门狗把**全机**的 Qt 窗口（本机是微信）当成 WPS 弹框，属测试口径问题、不是代码缺陷。**已修（FIXES 92 / P1）**：先做基线，只报新增窗口 |
 
+> **未发布的工作区改动（2026-10-12，场景 S5 走查）**：`wps_word_mail_merge` 整条链路此前是**假成功**
+> （字段从不落到占位符、母版正文被字段码顶掉、却回 success），已重写为「按占位符替换 + 逐行渲染」并新增
+> `splitDir` / `outputPath`；同轮修掉 `fileNameField` 指向非替换列时恒取空的问题。**FIXES 110**，
+> 报告见 [S5-真机走查报告](scenarios/S5-真机走查报告.md)。静态门禁全绿；**真机整轮按 AGENTS.md §1 没跑**。
+
+> **未发布的工作区改动（2026-10-12，场景 S6 走查）**：多工作簿合并（7 个工作簿同开）真机走查，
+> attempt 2 **28/28 硬判据全过**；查出并修掉 **1 个 P2**（sheet 名不存在时报裸 COM `Invalid index`
+> → 中文诊断「哪本工作簿 / 缺哪张表 / 现有哪几张」，回归 `test/excel-sheet-resolve.test.mjs` 先红 7/15、后绿 15/15）。
+> attempt 1 **判无效**：运行根目录在仓库内，模型读到场景卡（含冻结真值）与 `selfcheck/known-good`（一份正确产物）；
+> 已把判分资产移出工作区、运行根目录改到 `D:\s6-run`。**FIXES 111**，
+> 报告见 [S6-真机走查报告](scenarios/S6-真机走查报告.md)。静态门禁全绿；**真机整轮按 AGENTS.md §1 没跑**（只跑了新增的回归文件）。
+
+> **未发布的工作区改动（2026-10-12，D4 / R14 广告面扩张）**：按 S1/S4/S6 六轮真机轨迹把 9 个高频隐藏工具
+> 提到广告面（阈值：跨 ≥2 轮出现或单轮 ≥5 次），**86 → 95**（54,273 / 60,000 字节）。
+> 回归 `test/advertised-surface.test.mjs`（26 项真机，按名字直接调用并核对效果）。**FIXES 112**。
+> 静态门禁全绿（lint 202 文件 0 违规 / verify --static 19 / spec-reproduction 16 / test:static 13 / verify:package 11 / gen-numbers 20 条声明值）。
+
+> **未发布的工作区改动（2026-10-11，场景 S7 走查 / 用户拍板 D1+D2）**：Word **分节族三件套**补齐 ——
+> `wps_word_set_page_setup` 加 `section` + `paperSize`、`wps_word_insert_page_numbers` 加 `numberStyle` + `restartSection`、
+> `wps_word_set_table_format` 加 `headerRepeat`。**探针先量后写**（`test/.artifacts/scenario-s7/tools/probe-d1*.ps1`）：
+> 三条能力都是活属性；`PageNumbers.StartingNumber` 是**只读**（起始编号做不了，已写进 README）。
+> 探针顺手挖出一个**静默缺陷**：`setPageSetup` 原来写 `$doc.PageSetup` 且 **Orientation 先于 PaperSize** ——
+> 这个顺序下 PaperSize 会把横向重置回纵向、还回 `success`（即"整篇转横向"本来就是坏的）。
+> 新回归 `test/word-section-layout.test.mjs`（26 项真机）**先红后绿**：临时退回旧顺序时恰好 L2 那 3 条红、
+> 且报 `partial: 请求的方向 landscape 没有生效`；既有 `word-page-setup-gaps.test.mjs` 23/23 仍绿。
+> **FIXES 113**，报告见 [S7-真机走查报告](scenarios/S7-真机走查报告.md)。广告面不变（95），schema 字节 54,273 → **54,673**。
+
 **历史阶段（都是当时的读数，别当现值）**：S1–S9 加固分四波落地，`v0.3.0`（09-16）→ `v0.4.0`（09-19）→
-`v0.5.0`–`v0.5.4`（10-02）→ `v0.6.0`（上架 npm，因漏发 `mcp/package.json` 而坏）→ `v0.6.1`（修好分发）→ `v0.6.2`（本版）。
+`v0.5.0`–`v0.5.4`（10-02）→ `v0.6.0`（上架 npm，因漏发 `mcp/package.json` 而坏）→ `v0.6.1`（修好分发）→ `v0.6.2`（10-04）→ `v0.6.3`（10-07）→ `v0.7.0`（10-09，本版）。
 各阶段的原始读数保留在 [PROGRESS.md](PROGRESS.md)（已标注为历史快照）。
 
 ---
@@ -91,14 +122,14 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、`v0.6.2`、`v0.6.3`、**`v0.7.0`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
 | Releases | **Latest = v0.7.0**（2026-10-09）：`gh release create v0.7.0 …` 已执行；上一版 v0.6.3 的 Release 建于 2026-10-08 |
-| 包 | `dsh-plugin-wps-office-next@0.7.0` —— **2026-10-09 已上架 npmjs，`dist-tags.latest = 0.7.0`**（`fileCount = 295`、`shasum = e16a7847d3173989cdc500eeb17960a7e20ef01e`、`integrity = sha512-0CxtyTZXx6HoPe4is+Mfr0fE2GPEc9YFqkGlUdliz9hzifIqbJocAYwP9IUB3FuDLf12cDpNBVz7cpJf8x1vIw==`，与本地 dry-run 逐字符一致；**本次发布不需要 OTP**）。历史：0.6.3 于 2026-10-07 上架（`fileCount = 296`、`shasum = 0054109e5c5e0df3a891a2711a9c6d49ef6ce911`）。历史：0.6.2 于 2026-10-04 上架（本次发布**不需要 OTP**：本机 token 已可免 2FA 发布，`PUT → 202`，约 2 分钟后 registry 上可见）。实测元数据：`fileCount=296`、`unpackedSize=3,294,700`、`shasum=3d9f2c3a…`、`integrity=sha512-agvvryjeImdzt…jAIKLAwGfqC8w==`（与本地 `npm publish` 打印的逐字符一致）。在架版本 `["0.6.1","0.6.2"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 包 | `dsh-plugin-wps-office-next@0.7.0` —— **2026-10-09 已上架 npmjs，`dist-tags.latest = 0.7.0`**（`fileCount = 295`、`shasum = e16a7847d3173989cdc500eeb17960a7e20ef01e`、`integrity = sha512-0CxtyTZXx6HoPe4is+Mfr0fE2GPEc9YFqkGlUdliz9hzifIqbJocAYwP9IUB3FuDLf12cDpNBVz7cpJf8x1vIw==`，与本地 dry-run 逐字符一致；**本次发布不需要 OTP**）。历史：0.6.3 于 2026-10-07 上架（`fileCount = 296`、`shasum = 0054109e5c5e0df3a891a2711a9c6d49ef6ce911`）。历史：0.6.2 于 2026-10-04 上架（本次发布**不需要 OTP**：本机 token 已可免 2FA 发布，`PUT → 202`，约 2 分钟后 registry 上可见）。实测元数据：`fileCount=296`、`unpackedSize=3,294,700`、`shasum=3d9f2c3a…`、`integrity=sha512-agvvryjeImdzt…jAIKLAwGfqC8w==`（与本地 `npm publish` 打印的逐字符一致）。在架版本 `["0.6.1","0.6.2","0.6.3","0.7.0"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
-**工作区**：**干净**（`git status --porcelain` 无输出，与 `origin/main` 一致）。
+**工作区**：**以 `git status --porcelain` 为准**（本节不写死状态）。2026-10-11 文档整理时工作区**不干净**：除了已提交的 v0.7.0，还有一批**未提交的源码/生成物改动**与**未入库的新文件**（`AGENTS.md`、`docs/scenarios/`、`docs/work-orders/`、`scripts/lib/static-tests.mjs`、`scripts/run-static-tests.mjs`、若干 `test/*.test.mjs` 与 `test/lib/harness.mjs`、`test/baseline.json`）——注意 `.github/workflows/ci.yml` 已经引用 `scripts/run-static-tests.mjs`，**这批文件必须与工作区改动一起提交**，否则干净检出上的 CI 会红。
 
 **本机当前状态（新会话请看这里）**：
 
-- **2026-10-07：用户为了开发环境纯净，已把插件从 DSH 里卸载** —— 所以现在 profile 里**没有**本插件的副本（这也是为什么按旧路径找不到 `node_modules/dsh-plugin-wps-office-next`）。`desktop` profile 与 `web` profile 目录仍在。要再装：`dsh plugin --profile desktop add dsh-plugin-wps-office-next@0.6.3`（装完需重启 DSH 才生效）（`…/profiles/desktop/node_modules/dsh-plugin-wps-office-next/package.json` → `0.6.2`），
+- **2026-10-07：用户为了开发环境纯净，已把插件从 DSH 里卸载** —— 所以现在 profile 里**没有**本插件的副本（这也是为什么按旧路径找不到 `node_modules/dsh-plugin-wps-office-next`）。`desktop` profile 与 `web` profile 目录仍在。要再装：`dsh plugin --profile desktop add dsh-plugin-wps-office-next@0.7.0`（装完需重启 DSH 才生效）（`…/profiles/desktop/node_modules/dsh-plugin-wps-office-next/package.json` → 以实际安装版本为准），
   与其他 profile（`web`）之外的临时 profile 都已删除。**你若在 DSH 里用插件，跑的就是本 HEAD 这版行为**。
 - 但**仓库工作区是权威**：改完源码要重新 `tsc` + 跑管线，装出来的副本不会自动跟着变（除了 `desktop` 依赖的是本地路径时）。
 
@@ -134,7 +165,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 
 ### 3.2 长期决策（不要再翻案）
 
-- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 **84 / 47,630** —— 2026-10-04 按真实调用数据重平衡后，FIXES 90）。
+- **D1 广告预算**：对外工具 ≤ **100 个**、schema ≤ **60,000 字节**（2026-09-30 第三次上抬，FIXES 68；当前用量 **95 / 54,673** —— 见 [current-numbers.md](current-numbers.md)）。
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
 - **D4 废弃名处理**：~~18 个旧工具名保留一个周期作为 dispatch 别名~~ —— **已被 v0.5.0 线决策推翻**（18 个废弃名与其别名表已清掉，`ALIAS_DEBT = 0`，FIXES 77）；12 个 builtin 的删除照旧。
@@ -152,10 +183,11 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 - **废弃名清理**：v0.5.0 里**清掉** 18 个废弃工具名与 `ALIAS_DEBT`（P1-4 目标 0），作为一次明确的
   breaking 变更处理，技能文档与 README 同步。这一条**推翻**上面 D4 的「保留一个周期」——窗口已过。
 - **npm 发行（已被 2026-10-02 取代）**：当时只**准备**发布链路，**暂不真正发布**（D18 = B）。
-- **真机整轮回归（2026-10-07 / R9 改为必跑）**：~~不作为发版前必跑项~~ → **发版前必跑**。
+- **真机整轮回归（2026-10-07 / R9）**：~~不作为发版前必跑项~~ → 当时改为 **发版前必跑**。
   理由（实测）：本项目缺陷主体是「假成功 / 静默丢失」类，**静态门禁一个都抓不到** ——
-  FIXES 97/98/99/100/101/102 六个全是真机整轮才暴露的。没有 WPS 的机器可豁免，
-  但**必须在发布记录里写明「本次未跑真机」**。
+  FIXES 97/98/99/100/101/102 六个全是真机整轮才暴露的。
+  **⚠️ 2026-10-10 已被 R13 取代**：不再默认跑，改为「普通修改后不跑 + push/发版前先问用户」
+  （见 [../AGENTS.md](../AGENTS.md) §1/§2/§4）。
 - **广告预算**：见更新后的 D1（100 / 60,000，FIXES 68）。
 
 ### 2026-10-02 发行决策（用户拍板，**推翻上一条的「暂不真正发布」**）
@@ -229,10 +261,12 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | **2026-10-07** | **R6** | `tool-roadmap.md` 留不留 | **A**：**保留** + 状态标注（18 处源码注释引用它作排期依据） | `52f6f1a` |
 | **2026-10-07** | **R7** | 清理提交是否 push | **B**：**暂不 push**（本地领先 origin） | 待定 |
 | **2026-10-07** | **R8** | 决策账本是否瘦身 | **A**：删「任务调度/已完成任务」条目，只留仍生效的决策与约束 | `a2e166f` |
-| **2026-10-07** | **R9** | 真机整轮要不要设为发版必跑 | **改为必跑**（原来只是「可选但建议」）：静态门禁抓不到「假成功」类缺陷 | 检查单 §1/§8 |
+| **2026-10-07** | **R9** | 真机整轮要不要设为发版必跑 | ~~**改为必跑**（原来只是「可选但建议」）：静态门禁抓不到「假成功」类缺陷~~ → **已被 R13 取代（2026-10-10）** | 检查单 §1/§8 → [../AGENTS.md](../AGENTS.md) |
 | **2026-10-07** | **R10** | `PROGRESS.md` 的历史数字怎么处理 | **折叠**（整段收进 `<details>`，正文只留阶段结论表）；历史证据不删 | `docs/PROGRESS.md` |
 | **2026-10-07** | **R12** | A3（产品扩张 / 跨应用工作流）怎么办 | **A：维持现状** —— 不做任何开发，把「等场景」写成**显式唤醒规则**（谁 × 什么文件 × 要什么产出 × 现在手工怎么做）；并确认 A3 只覆盖「产品扩张」（「跨应用工作流」已有结论：不进桥、走技能配方，roadmap 类别 C） | 本节 + §8.1 |
 | **2026-10-07** | **R11** | 「部分成功」能不能继续回 `success: true` | **不能**。建立不变量 **`success === true` ⟺ 要求的事全部生效**：新增 `shortfalls` 通道（区别于咨询性的 `warnings`），桥/生成器/工具层三层改判，13 处「请求没达成」已归类。**取代 D16 的「不改 success 语义」** | FIXES 103 |
+| **2026-10-10** | **R13** | 普通修改后要不要跑完整/回归测试 | **改为按需**：普通修改后**不跑**完整测试与回归测试；**每次 push 到 GitHub 前先问用户**，用户说「跑」才跑；不需要 WPS 的静态门禁照常跑。**取代 R9** | [../AGENTS.md](../AGENTS.md)、README 质量门禁、检查单 §1/§8 |
+| **2026-10-12** | **R14**（= S6 的 D4） | 高频隐藏工具要不要进广告面 | **进**：按 S1/S4/S6 六轮真机轨迹取证，准入阈值 =「**跨 ≥2 轮真实走查出现，或单轮被调用 ≥5 次**」，**86 → 95**（54,273 / 60,000 字节，仍留 5 个位 / 5,727 字节余量）。最硬依据：`wps_excel_freeze_panes` 在 S6 attempt 1 被直呼时拿 `unknown tool`（一次硬失败 + 一次重试）。复算脚本 `test/.artifacts/scenario-s6/tools/rank-hidden-tools.mjs` + `plan-ad-surface.mjs`；回归 `test/advertised-surface.test.mjs`（26 项真机） | FIXES 112、[S6 报告](scenarios/S6-真机走查报告.md) |
 
 > **编号纪律（2026-10-07 起）**：历史轮用 D1–D23，发布轮又撞了一次（例如历史 D15 = Word `range` 契约，发布轮 D15 = 提交方式）。
 > 从 R 系列起**新决策一律用 `R<n>` 或带日期的编号**，别再往 D 系列里加号。
@@ -243,7 +277,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | --- | --- | --- |
 | D9（本轮） | 96 个工具没有专门测试、其中 **75 个只断言「没挂住」**（[tool-coverage.md](tool-coverage.md)：PPT 77 里 32、Excel 118 里 23、Word 59 里 15） | **已转正（D21-A）**：用户报告证明 `any` 放行过真实的假成功（`wps_word_replace_range` 越界删数据）。**已做完**：L1 把 71 个 `any` 全部补成真场景断言（`any` = 0，FIXES 89） |
 | D8 残余 / A4 | `param-contract` 那次 2 小时挂起 | ✅ **已定性并已修（FIXES 102）**：**不是偶然故障**。宿主先发 `ready`、之后才跑孤儿回收，而回收里全是对遗留 WPS 的**无超时 COM 调用**；客户端（`param-contract`）的 `invoke` 也没有超时、没有 `exit` 处理 → 遗留实例一卡住就无限等。已把 `ready` 挪到回收之后（让启动兜底覆盖这段），并加静态+行为两条断言钉住顺序 |
-| ~~D1-C~~ | 广告面重平衡 | **已做**（FIXES 90）：按 §8 的真实调用数据把 15 个高频隐藏工具提到广告面，69 → 84；**没有换出任何工具** |
+| ~~D1-C~~ | 广告面重平衡 | **已做**（FIXES 90）：按 §8 的真实调用数据把 15 个高频隐藏工具提到广告面，69 → 84；**没有换出任何工具**。**后续**：WO-001 加到 86、**R14（2026-10-12）再按场景轨迹加到 95**（FIXES 112） |
 | ~~D1-D~~ | 弱覆盖补测 | **已做**（FIXES 89）：71 个最弱断言 → 0，过程中修掉 12 个"回 success 但结果不对"的缺陷 |
 | D1-E（本轮） | 产品扩张 / 跨应用工作流 | **仍挂起**：缺明确的目标客户与场景；没有场景就做等于猜需求。唤醒条件：用户给出具体场景 |
 
@@ -251,7 +285,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 
 三层，桥是唯一真源：
 
-1. `mcp/scripts/wps-com.ps1` —— **桥，真源**（263 个动作分派；纯 CRLF、**无 BOM**）。
+1. `mcp/scripts/wps-com.ps1` —— **桥，真源**（265 个动作分派；纯 CRLF、**无 BOM**）。
 2. `host/wps-actions.ps1` —— **生成物**（`scripts/build-host-actions.ps1`），**UTF-8 BOM**，
    目标是与重新生成的结果字节一致。
 3. `mcp/src/` —— TS 工具面（MCP server）。
@@ -298,22 +332,26 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 
 | 指标 | 值 | 权威来源 |
 | --- | --- | --- |
-| 注册动作 | **263** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
-| 对外工具 | **84**（80 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
-| 广告面字节 | **47,630** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
-| 全量 schema | 159,433 字节（268 工具，≈45,552 tokens） | 同上 |
+| 注册动作 | **265** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
+| 对外工具 | **95**（91 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
+| 广告面字节 | **54,673** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
+| 全量 schema | 163,687 字节（270 工具） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **1257 断言 / 49 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3、FIXES 106 +1） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
+| 测试 | **1283 断言 / 51 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3、FIXES 106 +1、2026-10-10 去重回归 +13） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
-| 参数契约 | **257** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
-| FIXES | 1～102 号 | `docs/FIXES.md` |
+| 参数契约 | **259** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
+| FIXES | 1～113 号 | `docs/FIXES.md` |
 
-按能力域：Excel 118 / Word 59 / PPT **77** / 通用 14（含 4 个门面 + 转换）＝ 注册 268。
+按能力域：Excel 118 / Word 61 / PPT 77 / 通用 9 / 内置 5（含 4 个门面 + 转换）＝ 注册 270。
 
 > **「断言数」的口径说明（2026-10-04 重写）**：上表那个数**不再靠推算** —— 它就是 `scripts/run-tests.ps1` 跑完
-> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（当前 1253 = 1253 通过 + 0 失败/49 个文件 —— FIXES 92 之后整轮首次全绿）。
+> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（FIXES 92 之后整轮首次全绿；当前读数 **1283 = 1283 通过 + 0 失败 / 51 个文件**，2026-10-10）。
 > 想刷新：跑一次整轮，再 `node scripts/gen-numbers.mjs`。
+> **这一行不再写进 `docs/current-numbers.md`**（2026-10-10）：断言数只有跑过整轮才算得出来，写进入库快照
+> 会让 CI 的 `--check` 在干净检出上永远 drift。它现在只在本机的 `test/summary.json` /
+> `test/numbers-report.json` 里，属于**本地核对**、不在 CI 核对范围内；下限由 `test/baseline.json`
+> 与 `run-tests.ps1` 收尾一起守着（P6）。
 >
 > **别用"数 `check(` 出现次数"去核对它**：静态点名与运行时合计**不是一回事** —— 差额来自**循环里重复执行的 `check()`**
 > （同一个调用点在循环里跑 N 次就贡献 N 个断言）。**这里故意不再写具体数字**：它已经漂过 782 / 918 / 928 / 922 四次，
@@ -347,7 +385,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
    历史上 **7 个「从来没工作过」的缺陷（FIXES 38 / 39 / 43，按正文逐条数共 7 处）全部落在无测试覆盖的路径上**。
    **S4 已完成**：覆盖率 **267/267**（当时；现在 **268/268**，ratchet 进 `spec-reproduction`，只许涨），`scripts/smoke-tools.mjs`
    出矩阵并可 `--live` 只读冒烟。**2026-10-04 收官（FIXES 89 + 90：D21-A / L1-A / D1-C）**：268 个工具里
-**最弱断言（`any`）为 0**，广告面 **84 个**（按真实调用数据从 69 重平衡而来） —— 之前那 71 个 `any` 已按域全部补成真场景断言，
+**最弱断言（`any`）为 0**，广告面 **95 个**（FIXES 90 按真实调用数据从 69 重平衡到 86；WO-001 又加了 `wps_word_get_page_setup`；**D4（2026-10-12，场景 S6 走查）再按六轮真机轨迹把 9 个高频隐藏工具提到广告面**） —— 之前那 71 个 `any` 已按域全部补成真场景断言，
 过程中挖出并修掉 **12 个真缺陷**（详见 FIXES 89，全是"回 success 但结果不对/字段是空的"）。
 **这就是弱断言的代价**：只验"没挂住"会把"调用返回了"当成"事情做成了"。
 5. **静默失败**：空 catch 走账本（**S5 已完成**，FIXES 59）：桥 34 + 宿主 6 全部登记，新增即红（`test/silent-catch.test.mjs`）。
@@ -386,14 +424,14 @@ This file is being treated as an ES module because it has a '.js' file extension
   让这份边界声明不再是隐含的。
 - 新增 **`scripts/verify-package.mjs`**：`npm pack` → 装进临时目录 → **真的把 MCP server 拉起来**做一次
   JSON-RPC 握手 → 断言 `tools/list` 广告的工具数与 `spec/advertised.json` 一致（当时写死 69，FIXES 90 起改为
-  从生成物读，现为 **84**）、`wps_status` 在列。**不需要 WPS**。
+  从生成物读，现为 **95**）、`wps_status` 在列。**不需要 WPS**。
   这个脚本先在临时目录里**复现了 0.6.0 的崩溃**，再用同样的方式确认修复 —— 已写进
   `docs/release-checklist.md` §3.1 作为**发布前必跑**。
 - 版本推进到 **0.6.1**；`CHANGELOG.md` 的 0.6.0 条目被打上「这一版是坏的」标记。
 - 另加 **`scripts/probe-installed.mjs`**：对**已安装的副本**做同样的握手并真调一次 `wps_status`（需要 WPS），
   用于发布后与排错时分辨「包坏了」还是「环境没起 WPS」。
 
-**0.6.1 的验收（2026-10-02 13:1x）** — *历史记录：其中"广告 69 个工具"是**当时**的数字，现值看 [current-numbers.md](current-numbers.md)（84）。*
+**0.6.1 的验收（2026-10-02 13:1x）** — *历史记录：其中"广告 69 个工具"是**当时**的数字，现值看 [current-numbers.md](current-numbers.md)（95）。*
 
 - registry：`dist-tags.latest = 0.6.1`，integrity `sha512-jcztFCKPkhTpSPEPmnFcWNQeShNA707cy911D0uBoy26QROIEPoop2M7YdrL/0yOfPoimGbZUJ0v7fUued3T2A==`
   —— 与本地 dry-run 打印的**逐字符一致**；`fileCount = 289`、`unpackedSize = 3,187,511`。
@@ -404,7 +442,7 @@ This file is being treated as an ES module because it has a '.js' file extension
   原因已实测并记进 `docs/release-checklist.md` §0：Granular **没勾** Bypass → `EOTP`；Granular **勾了** Bypass →
   npm 直接 `403`（*Granular access tokens that bypass two-factor authentication may not perform this action*）；
   且授权 URL 与发起命令的**进程**绑定，非交互终端里 npm 不等待、直接退出。
-  **结论**：`unpublish` / `deprecate` 只能由人在交互终端跑。现在 registry 上**只剩 `0.6.1`**（`latest`）。
+  **结论**：`unpublish` / `deprecate` 只能由人在交互终端跑。当时 registry 上**只剩 `0.6.1`**（`latest`；现值见 §2）。
 - **真实用户路径已验收（最终确认）**：`desktop` profile 已是 `0.6.1`（289 文件、`mcp/package.json` 在、
   `type = commonjs`），用户重启 DSH 后，**通过真实 MCP 工具调用** `wps_status` 返回
   `connected: true` / `advertisedTools: 69` / `registeredTools: 268` / `latencyMs: 695`（WPS 12.1.0.28488）。
@@ -492,7 +530,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
   `scripts/e2e.mjs` 两种装法都认（`resolveDshLauncher()`），找不到时用 `--dsh-bin <lib/bin.js>` 显式指定。
   `DSH_HOME = C:\Users\qwer\.dsh`。
 - GUI：本会话通过 `http://127.0.0.1:19387` 交互（端口以实际启动为准，不要照抄旧值）。
-  **现存 profile 只有 `desktop`（在用）与 `web`**；`wpsdoc2` / `wpse2e*` / `wpsnpm*` / `wps-acceptance` 都是历史临时 profile，
+  **现存 profile 有 `desktop`（在用）、`web` 与 `wpse2e`**（后者是 e2e 用的临时 profile，装着 0.7.0；`wpsdoc2` / `wpsnpm*` / `wps-acceptance` 都是历史临时 profile，
   每次用完都删掉了（若要再建，用完要 `dsh plugin --profile <name> remove dsh-plugin-wps-office-next`
   **（必须带包名，不带会报 `ERR_PNPM_MUST_REMOVE_SOMETHING`）**，再删 profile 目录。`node scripts/e2e.mjs --clean`
   只清产物、不动 profile。
@@ -589,8 +627,8 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - **不要用 `Get-Content -Raw` + `Set-Content -Encoding UTF8` 改含中文的 UTF-8 无 BOM 文件**
   （`.mjs` / 桥源码）：PS 5.1 会按 ANSI 读入、写成乱码，本轮把一个测试文件的 `密码|加密` 正则毁过一次。
   要么用编辑工具，要么 `[System.IO.File]::ReadAllText/WriteAllText` 并显式指定编码。
-- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（**7381 行、78 个 `^function `**；生成物 `host/wps-actions.ps1` 是 79 个 ——
-  以 `scripts/build-host-actions.ps1` 打印的 `functions=79` 为准，它数的是生成物）；改完要重新生成 host 并对账。
+- `mcp/scripts/wps-com.ps1` 现在是**纯 CRLF、无 BOM**（**8173 行、88 个 `^function `**；生成物 `host/wps-actions.ps1` 是 89 个 ——
+  以 `scripts/build-host-actions.ps1` 打印的 `functions=89` 为准，它数的是生成物）；改完要重新生成 host 并对账。
 - PS 逗号优先级高于 `+`：`$m[$a + $r, $b + $c]` 会被解析错，必须加括号。
 - `return $range` 会把多格 Range 展开成数组——要写 `return ,$range`。
 - `Worksheet.Scenarios` 是 PSMethod（`$s.Scenarios()`）。

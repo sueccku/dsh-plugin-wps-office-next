@@ -32,7 +32,9 @@
     "gen:numbers": "node scripts/gen-numbers.mjs",
     "check:numbers": "node scripts/gen-numbers.mjs --check",
     "lint": "node scripts/lint.mjs",
-    "verify:package": "node scripts/verify-package.mjs"
+    "verify:package": "node scripts/verify-package.mjs",
+    "test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1",
+    "test:static": "node scripts/run-static-tests.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

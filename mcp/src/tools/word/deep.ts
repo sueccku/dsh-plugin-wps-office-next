@@ -358,7 +358,11 @@ export const splitTableCellHandler: ToolHandler = async (args: Record<string, un
 /** 表格：样式 */
 export const setTableFormatDefinition: ToolDefinition = {
   name: 'wps_word_set_table_format',
-  description: '设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色。使用场景：把裸表格弄成带框线、表头有底色、宽度合适的正式表格。',
+  description: `设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色、表头行跨页重复。
+
+使用场景：
+- "把裸表格弄成带框线、表头有底色、宽度合适的正式表格"
+- "这张表跨页了，表头要每页重复" —— headerRepeat`,
   category: ToolCategory.DOCUMENT,
   inputSchema: {
     type: 'object',
@@ -368,22 +372,24 @@ export const setTableFormatDefinition: ToolDefinition = {
       borders: { type: 'boolean', description: '是否显示全部边框' },
       autoFit: { type: 'string', enum: ['content', 'window'], description: '按内容自适应或按页面宽度自适应' },
       headerShading: { type: 'string', description: '表头行底纹色，十六进制如 #D9E2F3' },
+      headerRepeat: { type: 'boolean', description: '表头行是否跨页重复（第 1 行设为重复标题行）' },
     },
   },
 };
 
 export const setTableFormatHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ table?: number; applied?: string[]; style?: string; rows?: number; columns?: number }>(
+    const response = await wpsClient.executeMethod<{ table?: number; applied?: string[]; style?: string; rows?: number; columns?: number; headerRepeat?: boolean }>(
       'setTableFormat',
-      { table: args.table, style: args.style, borders: args.borders, autoFit: args.autoFit, headerShading: args.headerShading },
+      { table: args.table, style: args.style, borders: args.borders, autoFit: args.autoFit, headerShading: args.headerShading, headerRepeat: args.headerRepeat },
       WpsAppType.WRITER
     );
     if (!response.success) return deepFail('设置表格外观失败', response.error);
     const d = response.data || {};
     const applied = d.applied || [];
     const head = applied.length ? '表 ' + String(d.table) + ' 已更新（' + applied.join(', ') + '）' : '表 ' + String(d.table) + ' 没有变化';
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: head + '；' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' }] };
+    const repeat = d.headerRepeat ? '；表头行跨页重复已开' : '';
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: head + '；' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' + repeat }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return deepFail('设置表格外观出错', errMsg);

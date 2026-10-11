@@ -6,7 +6,7 @@
 // test/spec-reproduction.test.mjs and reported by scripts/smoke-tools.mjs.
 // Run: node test/ppt-coverage.test.mjs
 import { spawn, spawnSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 // FIXES 95（W1-4）：这个文件 53 条断言里绝大多数是"覆盖矩阵"式烟测（调用没挂住就算过）。
 // 这里补一组**以文件为准**的核对：存盘后读 pptx 的页数与工具汇报对照、文本框/形状文字是否真的落盘、
@@ -16,6 +16,7 @@ import { pngInfo, pptxText, zipScan } from "./lib/oracle.mjs";
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const imgPath = resolvePath("test/.artifacts/pptcov.png");
 const exportPath = resolvePath("test/.artifacts/pptcov-export.png");
+rmSync(exportPath, { force: true });   // P4：旧产物不能替失败背书
 writeFileSync(imgPath, Buffer.from(PNG, "base64"));
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
@@ -337,6 +338,81 @@ check("file carries the slide content the test wrote", pptBody.includes("正文�
 check("file carries the replace marker the test wrote", pptBody.includes("REPLMARKER-TWO"), pptBody.slice(0, 110));
 const png = pngInfo(exportPath);
 check("the exported slide image has real dimensions", png.exists && png.png && png.width >= 800 && png.height >= 600, JSON.stringify(png));
+
+// ---- L2（P3）：矩阵里"只断言调用成功"的 PPT 工具，补上以**文件 / 裸 COM** 为准的断言 ------------
+const shapeCount = (i) => Number(com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); [string]$p.ActivePresentation.Slides.Item(" + i + ").Shapes.Count").trim());
+const slideCount = () => Number(com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); [string]$p.ActivePresentation.Slides.Count").trim());
+
+// 备注：写进去 → 读回来 → 并且真的落进文件
+const L2NOTE = "L2-NOTE-" + Date.now();
+check("wps_ppt_set_slide_notes runs", ok(await call("wps_ppt_set_slide_notes", { slideIndex: 1, notes: L2NOTE })), "");
+const notesBack = text(await call("wps_ppt_get_slide_notes", { slideIndex: 1 }));
+check("wps_ppt_get_slide_notes reads back the note that was just written", notesBack.includes(L2NOTE), notesBack.replace(/\s+/g, " ").slice(0, 110));
+await call("wps_common_save_as", { outputPath: PPC, format: "pptx" });
+const noteScan = zipScan(PPC, L2NOTE, "ppt/");
+check("the note is really in the saved pptx", !!noteScan && noteScan.count >= 1, JSON.stringify(noteScan));
+
+// 形状：改尺寸/删除用裸 COM 核坐标与数量。
+// ⚠️ 实测（2026-10-10，本机 WPS 12.1）：`Shape.Duplicate()` **裸 COM 直接调也不增加 Shapes.Count**
+//    （返回的 ShapeRange 名叫 default，计数不变）；`Slide.MoveTo()` 同样。所以这两个动作只断言
+//    "工具如实回报了它做了什么"，**不要**拿计数/顺序去判 —— 那是平台行为，不是插件缺陷。
+const dupRes = await call("wps_ppt_duplicate_shape", { slideIndex: 1, shapeIndex: 1 });
+const dupText = text(dupRes).replace(/\s+/g, " ");
+check("wps_ppt_duplicate_shape reports the copy it was asked to make", ok(dupRes) && /复制成功|已复制|Duplicate/i.test(dupText) && /第 1 页/.test(dupText), dupText.slice(0, 100));
+const posProbe = "$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); $s = $p.ActivePresentation.Slides.Item(1).Shapes.Item(1); [string]$s.Left + ',' + [string]$s.Top + ',' + [string]$s.Width + ',' + [string]$s.Height";
+const posBefore = com(posProbe).trim();
+check("wps_ppt_set_shape_position runs", ok(await call("wps_ppt_set_shape_position", { slideIndex: 1, shapeIndex: 1, left: 200, top: 160, width: 300, height: 200 })), "");
+const posAfter = com(posProbe).trim();
+check("wps_ppt_set_shape_position really moved/resized the shape", posAfter.length > 0 && posAfter !== posBefore, posBefore + " -> " + posAfter);
+const shapesBeforeDel = shapeCount(1);
+check("wps_ppt_delete_shape runs", ok(await call("wps_ppt_delete_shape", { slideIndex: 1, shapeIndex: 1 })), "");
+const shapesAfterDel = shapeCount(1);
+check("wps_ppt_delete_shape really removed a shape", shapesAfterDel === shapesBeforeDel - 1, shapesBeforeDel + " -> " + shapesAfterDel);
+
+// 图片：删掉一张必须让形状数 -1；没有图片时不许假装成功
+const shapesBeforeImg = shapeCount(1);
+const delImg = await call("wps_ppt_delete_ppt_image", { slideIndex: 1, imageIndex: 1 });
+const shapesAfterImg = shapeCount(1);
+check("wps_ppt_delete_ppt_image either removes an image or says there is none", (ok(delImg) && shapesAfterImg === shapesBeforeImg - 1) || (!ok(delImg) && shapesAfterImg === shapesBeforeImg), "shapes " + shapesBeforeImg + " -> " + shapesAfterImg + " ok=" + ok(delImg));
+
+// 切换文稿：名字必须**从当前打开列表里现取** —— 前面已经 save_as 过一次，ActivePresentation.Name
+// 变成了 ppt-coverage.pptx，测试开头抓到的 presName 已过期（这是我第一版的错误，真机跑才暴露）。
+const listNow = text(await call("wps_ppt_get_open_presentations", {}));
+const lineNow = listNow.split(/\r?\n/).find((l) => /^\s*\d+\./.test(l)) || "";
+const nameNow = (lineNow.replace(/^\s*\d+\.\s*/, "").split(/\s+路径:|\s*\|/)[0] || "").trim();
+const swRes = await call("wps_ppt_switch_presentation", { name: nameNow });
+check("wps_ppt_switch_presentation runs on the presentation that is actually open", ok(swRes) && nameNow.length > 0, text(swRes).replace(/\s+/g, " ").slice(0, 100));
+const activeName = com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); [string]$p.ActivePresentation.Name").trim();
+check("wps_ppt_switch_presentation left a named presentation active", activeName.length > 0, "active=" + activeName + " want=" + nameNow);
+
+// 页面尺寸：默认 4:3 是 720pt 宽；设成 1280x720 之后必须**不再**是默认值
+const sizeNow = com("$p = [Runtime.InteropServices.Marshal]::GetActiveObject('KWpp.Application'); [string]$p.ActivePresentation.PageSetup.SlideWidth + 'x' + [string]$p.ActivePresentation.PageSetup.SlideHeight").trim();
+const [sw, sh] = sizeNow.split("x").map(Number);
+check("wps_ppt_set_slide_size really changed the page size", Number.isFinite(sw) && Number.isFinite(sh) && sw !== 720 && sw > 0 && sh > 0, sizeNow);
+
+// 移动整页：同一个平台限制（裸 COM MoveTo 也不改顺序），所以断言工具如实回报了 from/to。
+const moveRes = await call("wps_ppt_move_slide", { fromIndex: 1, toIndex: 2 });
+const moveText = text(moveRes).replace(/\s+/g, " ");
+check("wps_ppt_move_slide reports the move it was asked to make", ok(moveRes) && /第 1 页/.test(moveText) && /第 2 页/.test(moveText), moveText.slice(0, 100));
+await call("wps_ppt_move_slide", { fromIndex: 2, toIndex: 1 });
+
+// 导出图片：先删旧文件，再要求它重新写出真尺寸的 png
+rmSync(exportPath, { force: true });
+const reExport = await call("wps_ppt_export_slide_as_image", { slideIndex: 1, outputPath: exportPath });
+const rePng = pngInfo(exportPath);
+check("wps_ppt_export_slide_as_image rewrites a real image on demand", ok(reExport) && rePng.exists && rePng.png && rePng.width >= 800, JSON.stringify(rePng));
+
+// 两个"必须明确失败"的入口：失败原因要指向那个不存在的文件
+const themeFail = await call("wps_ppt_set_slide_theme", { theme: resolvePath("test/.artifacts/nope.thmx") });
+check("wps_ppt_set_slide_theme names the missing file when it fails", !ok(themeFail) && /nope\.thmx|不存在|not found|无法|失败/i.test(text(themeFail)), text(themeFail).replace(/\s+/g, " ").slice(0, 110));
+const insertFail = await call("wps_ppt_insert_slides_from_file", { path: resolvePath("test/.artifacts/nope.pptx") });
+check("wps_ppt_insert_slides_from_file names the missing file when it fails", !ok(insertFail) && /nope\.pptx|不存在|not found|无法|失败/i.test(text(insertFail)), text(insertFail).replace(/\s+/g, " ").slice(0, 110));
+
+// 删除整页：页数必须 -1（放最后，不影响上面的断言）
+const slidesBefore = slideCount();
+check("wps_ppt_delete_slide runs", ok(await call("wps_ppt_delete_slide", { slideIndex: 1 })), "");
+const slidesAfter = slideCount();
+check("wps_ppt_delete_slide really removed a slide", slidesAfter === slidesBefore - 1, slidesBefore + " -> " + slidesAfter);
 
 // teardown
 for (const [method, appType] of [["closePresentation", "wpp"]]) {

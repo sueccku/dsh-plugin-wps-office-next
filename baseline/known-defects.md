@@ -62,6 +62,6 @@ copied from the fix log.
 - The **bridge source** `mcp/scripts/wps-com.ps1` is pure CRLF **without** BOM; the **generated** `host/wps-actions.ps1`
   and the hand-written `host/wps-com-host.ps1` carry a **UTF-8 BOM** (PowerShell 5.1 misreads Chinese without it).
   `[Console]::OutputEncoding=UTF8` is load-bearing in both.
-- The **263 COM actions** are the valuable asset; the MVP rewires transport and surface, not the actions.
-  (The generator enforces source == generated == expected, and `scripts/verify.mjs` asserts 263 three ways.
-  It was 267 before FIXES 80 deleted four duplicate/dead actions.)
+- The **265 COM actions** are the valuable asset; the MVP rewires transport and surface, not the actions.
+  (The generator enforces source == generated == expected, and `scripts/verify.mjs` asserts 265 three ways.
+  Count history: 267 before FIXES 80 deleted four duplicate/dead actions → 263, then later fixes (FIXES 104–113) added two more → 265.)

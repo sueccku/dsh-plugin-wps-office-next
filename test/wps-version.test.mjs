@@ -3,13 +3,14 @@
 // Run: node test/wps-version.test.mjs
 import { createRequire } from "node:module";
 import path from "node:path";
+// P4：改用共用 harness（新测试的样板；老文件按需增量迁移）。
+import { createReport } from "./lib/harness.mjs";
 
 const require = createRequire(import.meta.url);
 const { MIN_WPS_MAJOR, MIN_WPS_MINOR, parseWpsVersion, wpsVersionTooOld, wpsCompatibilityWarning } =
   require(path.resolve("mcp/dist/utils/wps-version.js"));
 
-const results = [];
-function check(name, ok, detail) { results.push({ name, ok }); console.log((ok ? "PASS " : "FAIL ") + name + (detail ? "  " + detail : "")); }
+const { check, finish } = createReport("WPS VERSION TESTS");
 
 check("supported floor is 12.1", MIN_WPS_MAJOR === 12 && MIN_WPS_MINOR === 1, MIN_WPS_MAJOR + "." + MIN_WPS_MINOR);
 check("a real version parses into numbers", JSON.stringify(parseWpsVersion("12.1.0.28488")) === "[12,1,0,28488]", JSON.stringify(parseWpsVersion("12.1.0.28488")));
@@ -27,6 +28,4 @@ check("the warning names the version and the floor", warn.includes("11.8.2") && 
 check("a supported version has no warning", wpsCompatibilityWarning("WPS 文字", "12.1.0.28488") === undefined, String(wpsCompatibilityWarning("WPS 文字", "12.1.0.28488")));
 check("an unreadable version has no warning", wpsCompatibilityWarning("WPS 表格", "") === undefined, "");
 
-const failed = results.filter((r) => !r.ok).length;
-console.log(failed === 0 ? "WPS VERSION TESTS OK (" + results.length + ")" : "WPS VERSION TESTS FAILED (" + failed + "/" + results.length + ")");
-process.exit(failed === 0 ? 0 : 1);
+finish();

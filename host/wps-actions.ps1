@@ -323,6 +323,10 @@ function Format-WpsErrorText([string]$text, [string]$action) {
     elseif ($t -eq 'No active document') { $zh = '当前没有打开的文档'; $hint = '先用 wps_word_open_document 或 wps_word_create_document 打开或新建一个' }
     elseif ($t -eq 'No active presentation' -or $t -eq 'no presentation is open') { $zh = '当前没有打开的演示文稿'; $hint = '先用 wps_ppt_open_presentation 或 wps_ppt_create_presentation 打开或新建一个' }
     elseif ($t -eq 'table not found on this sheet') { $zh = '这张工作表上没有找到该表格'; $hint = '先用 wps_excel_get_list_objects 确认表名或序号' }
+    elseif ($t -match '里没有工作表') { $hint = '用 wps_excel_get_sheet_list 或 wps_excel_get_open_workbooks 确认工作簿与工作表名字（多工作簿时先确认操作的是哪一本）' }
+    elseif ($t -match 'Invalid index|DISP_E_BADINDEX') { $zh = '工作表名或序号不存在（WPS 报 Invalid index）'; $hint = '先用 wps_excel_get_sheet_list 确认工作表名字或序号，再重试' }
+    # O-3（S3 走查）：页码越界/非法以前只会套上"确认对象/序号"这条误导性建议，给一条真能用的下一步。
+    elseif ($t -match '演示文稿里没有第|幻灯片页码从 1 开始|幻灯片页码必须是整数|起始页从 1 开始|起始页必须是整数') { $hint = '先用 wps_ppt_get_slide_count 确认页数；页码从 1 开始、上界就是当前页数' }
     elseif ($t -match '(required|Required|Missing)') { $hint = '补上缺少的必填参数后重试' }
     $core = if ($null -ne $zh) { $zh } else { $t }
     $raw = if ($null -ne $zh -and $t -ne $zh) { '（原始信息：' + $t + '）' } else { '' }
@@ -580,11 +584,33 @@ function Get-PropOrNull($p, [string]$name) {
     if ($null -eq $prop) { return $null }
     return $prop.Value
 }
+function Get-WorksheetByNameOrIndex($wb, $name) {
+    # S6 走查：sheet 名字对不上时，WPS 抛的是裸 COM「Invalid index (DISP_E_BADINDEX)」，模型看不出
+    # 是"表名写错了"还是"工作簿不对/状态异常"。这里先自己按名字（不分大小写）与序号查一遍，
+    # 把"哪本工作簿、缺哪张表、这本里现有哪几张"讲清楚；查不动时退回原行为，不改语义。
+    if ($null -eq $wb) { throw ("当前没有活动工作簿，无法定位工作表『" + [string]$name + "』") }
+    $target = [string]$name
+    $names = @()
+    $found = $null
+    try {
+        foreach ($s in $wb.Sheets) {
+            $names += [string]$s.Name
+            if ($null -eq $found -and [string]::Equals([string]$s.Name, $target, [System.StringComparison]::OrdinalIgnoreCase)) { $found = $s }
+        }
+    } catch {
+        return $wb.Sheets.Item($name)
+    }
+    if ($null -ne $found) { return $found }
+    $asInt = 0
+    if ([int]::TryParse($target, [ref]$asInt) -and $asInt -ge 1 -and $asInt -le $names.Count) { return $wb.Sheets.Item($asInt) }
+    throw ("工作簿『" + [string]$wb.Name + "』里没有工作表『" + $target + "』；这本工作簿现有工作表：" + ($names -join '、') + "。")
+}
+
 function Resolve-Worksheet($excel, $wb, $p, [switch]$RequireName) {
     # Upstream tools spell the sheet parameter differently per tool (sheet/name/oldName).
     foreach ($key in @('sheet','name','oldName')) {
         $value = Get-PropOrNull $p $key
-        if ($null -ne $value -and "$value" -ne "") { return $wb.Sheets.Item($value) }
+        if ($null -ne $value -and "$value" -ne "") { return Get-WorksheetByNameOrIndex $wb $value }
     }
     if ($RequireName) { return $null }
     # C7：没有指定工作表时落在活动工作表上；多工作簿同时打开时目标会随窗口焦点漂移。
@@ -619,6 +645,75 @@ function Resolve-InputFilePath($value) {
     }
     if (-not (Test-Path -LiteralPath $candidate)) { return $null }
     return $candidate
+}
+
+function Read-CsvDataRows([string]$path) {
+    # Minimal RFC4180-ish reader for the mail-merge data source: UTF-8 (BOM tolerated), quoted
+    # fields, CRLF or LF. Deliberately own code: the bridge must not Import-Csv (culture/encoding
+    # surprises) and the merge itself needs the rows in order, not a Word DataSource round-trip.
+    $text = ""
+    try { $text = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8) } catch { return $null }
+    if ($text.Length -gt 0 -and [int][char]$text[0] -eq 0xFEFF) { $text = $text.Substring(1) }
+    $rows = New-Object System.Collections.ArrayList
+    $cells = New-Object System.Collections.ArrayList
+    $sb = New-Object System.Text.StringBuilder
+    $inQuotes = $false
+    $chars = $text.ToCharArray()
+    for ($i = 0; $i -lt $chars.Length; $i++) {
+        $ch = $chars[$i]
+        if ($inQuotes) {
+            if ($ch -eq '"') {
+                if ($i + 1 -lt $chars.Length -and $chars[$i + 1] -eq '"') { [void]$sb.Append('"'); $i++ }
+                else { $inQuotes = $false }
+            } else { [void]$sb.Append($ch) }
+            continue
+        }
+        if ($ch -eq '"') { $inQuotes = $true; continue }
+        if ($ch -eq ',') { [void]$cells.Add($sb.ToString()); [void]$sb.Clear(); continue }
+        if ($ch -eq "`r") { continue }
+        if ($ch -eq "`n") {
+            [void]$cells.Add($sb.ToString()); [void]$sb.Clear()
+            [void]$rows.Add(@($cells.ToArray()))
+            [void]$cells.Clear()
+            continue
+        }
+        [void]$sb.Append($ch)
+    }
+    if ($sb.Length -gt 0 -or $cells.Count -gt 0) {
+        [void]$cells.Add($sb.ToString())
+        [void]$rows.Add(@($cells.ToArray()))
+    }
+    $out = @()
+    foreach ($row in $rows) {
+        $isBlank = $true
+        foreach ($cell in $row) { if ("$cell".Trim() -ne "") { $isBlank = $false; break } }
+        if (-not $isBlank) { $out += ,@($row) }
+    }
+    return ,$out
+}
+
+function Set-MailMergeValue($target, [string]$token, [string]$value) {
+    # 用 Find/Replace 而不是 MailMerge.Fields.Add：后者实测会把字段码插到选区、并让 Execute()
+    # 产出一份正文被换掉的文档（场景 S5 走查 probe1/probe3）。Replace 的语义与「字段落在占位符处」一致。
+    $f = $target.Find
+    $f.ClearFormatting()
+    $f.Replacement.ClearFormatting()
+    $f.Text = $token
+    $f.Replacement.Text = $value
+    $f.Forward = $true
+    $f.Wrap = 0
+    $f.MatchCase = $false
+    return [bool]$f.Execute([ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, 2)
+}
+
+function Close-WordDocQuietly($word, $doc) {
+    # 邮件合并会为「每一行」临时建一份文档（S5 场景可能几十份）：循环里直接 Close(0) 一旦碰上脏文档/
+    # 只读文档就会弹保存框，无人值守时卡死 —— 统一关掉告警再关文档（lint-alerts 的硬门禁）。
+    if ($null -eq $doc) { return }
+    $prevAlerts = $null
+    try { $prevAlerts = Set-WpsAlertsSuppressed $word 'word' } catch { }
+    try { $doc.Close(0) } catch { }
+    try { Restore-WpsAlerts $word $prevAlerts } catch { }
 }
 
 function Format-WpsInputPathError([string]$value, [string]$kind) {
@@ -690,7 +785,7 @@ function Get-WorksheetByParam($excel, $p) {
     $name = Get-PropOrNull $p 'sheet'
     if ($null -ne $name -and "$name" -ne "") {
         $wb = $excel.ActiveWorkbook
-        if ($null -ne $wb) { return $wb.Sheets.Item($name) }
+        if ($null -ne $wb) { return Get-WorksheetByNameOrIndex $wb $name }
     }
     # C7：没指定 sheet 时落在活动工作表上；多工作簿同时打开时目标会随窗口焦点漂移。
     $openCount = 0
@@ -858,6 +953,50 @@ function Test-WpsActionParamKeys($Action, $Params, $Accepted) {
             " | accepted: " + ((@($Accepted) | Sort-Object) -join ', '))
 }
 
+function Test-WpsSlideIndexInRange($Action, $Params) {
+    # O-3（S3 真机走查）：页码越界以前把 WPS 的 E_FAIL 原样漏给用户，文案还引导去查
+    # "对象/名称/序号是否正确"；实测更糟的是 slideIndex=0 会**静默落到第 1 页**（改错页却回成功）。
+    # 这里在派发前统一挡：只处理"确需操作已打开文稿某一页"的动作。
+    #   只校验 slideIndex 与 fromIndex —— 它们语义上必须是**已存在**的页；
+    #   toIndex/targetIndex 是"目标槽位"，末端一格在某些动作里是合法的，留给动作自己判。
+    if ($null -eq $Params -or $null -eq $Action) { return $null }
+    $accepted = $script:ActionParamKeys[$Action]
+    if ($null -eq $accepted) { return $null }
+    $checks = @()
+    foreach ($key in @('slideIndex', 'fromIndex')) {
+        if ($accepted -notcontains $key) { continue }
+        $value = Get-PropOrNull $Params $key
+        if ($null -eq $value -or "$value" -eq '') { continue }
+        $checks += , @($key, $value)
+    }
+    if ($checks.Count -eq 0) { return $null }
+    # 只查已存在的实例（FIXES 104：状态类检查不拉起 WPS）；拿不到文稿就不拦，交给动作自己报错。
+    $ppt = Get-WpsAppRegistered 'ppt'
+    if ($null -eq $ppt) { return $null }
+    $pres = $null
+    try {
+        $pres = if ($Params.presentationName) { $ppt.Presentations.Item([string]$Params.presentationName) } else { $ppt.ActivePresentation }
+    } catch { return $null }
+    if ($null -eq $pres) { return $null }
+    $count = 0
+    try { $count = [int]$pres.Slides.Count } catch { return $null }
+    $labels = @{ slideIndex = '幻灯片页码'; fromIndex = '起始页' }
+    foreach ($pair in $checks) {
+        $label = $labels[$pair[0]]
+        $idx = 0
+        if (-not [int]::TryParse("$($pair[1])", [ref]$idx)) {
+            return ($label + "必须是整数：收到 '" + "$($pair[1])" + "'。")
+        }
+        if ($idx -lt 1) {
+            return ($label + "从 1 开始：收到 " + $idx + "。")
+        }
+        if ($count -gt 0 -and $idx -gt $count) {
+            return ("演示文稿里没有第 " + $idx + " 页：当前共 " + $count + " 页（页码从 1 开始）。")
+        }
+    }
+    return $null
+}
+
 function Get-WordMatchCount($doc, [string]$findText, [bool]$matchCase, [bool]$matchWholeWord) {
     # Word exposes no match-count API, so walk the document with Find. Wrap is set to wdFindStop
     # and the loop is bounded: a WPS quirk must not be able to hang the resident host.
@@ -934,6 +1073,34 @@ function Convert-ColumnLetterToNumber([string]$letters) {
         $sum = ($sum * 26) + ([int][char]$ch - [int][char]'A' + 1)
     }
     return $sum
+}
+
+function Get-NonEmptyRowCount($range) {
+    # Rows inside the addressed range that still hold any value.
+    # Range.Rows.Count is address-based and does NOT shrink after RemoveDuplicates
+    # (measured on WPS 12.1: 132 before and after deleting 69 rows), so it cannot be used for counts.
+    # Returns $null when the values cannot be read, so the caller reports "unknown" instead of 0.
+    try {
+        $values = $range.Value2
+        if ($null -eq $values) { return 0 }
+        if ($values -isnot [Array]) { if ("$values" -ne "") { return 1 } else { return 0 } }
+        $rowFrom = $values.GetLowerBound(0)
+        $rowTo = $values.GetUpperBound(0)
+        $colFrom = $values.GetLowerBound(1)
+        $colTo = $values.GetUpperBound(1)
+        if ((($rowTo - $rowFrom + 1) * ($colTo - $colFrom + 1)) -gt 500000) { return $null }
+        $rows = 0
+        for ($i = $rowFrom; $i -le $rowTo; $i++) {
+            for ($j = $colFrom; $j -le $colTo; $j++) {
+                $cell = $values[$i, $j]
+                if ($null -ne $cell -and "$cell" -ne "") { $rows++; break }
+            }
+        }
+        return $rows
+    } catch {
+        Add-WpsWarning "could not read range values for counting: $($_.Exception.Message)"
+        return $null
+    }
 }
 
 function Convert-ColumnNumberToLetter([int]$col) {
@@ -1320,7 +1487,7 @@ $script:ActionParamKeys = @{
     'findReplace' = @('find', 'findText', 'matchCase', 'matchWholeWord', 'replace', 'replaceAll', 'replaceMode', 'replaceText', 'selectFound')
     'findReplaceExcel' = @('find', 'findText', 'matchCase', 'matchWholeWord', 'range', 'replace', 'replaceText', 'sheet')
     'freezePanes' = @('cell', 'column', 'freeze', 'row', 'sheet')
-    'generateTOC' = @('includePageNumbers', 'levels', 'position')
+    'generateTOC' = @('action', 'includePageNumbers', 'levels', 'position')
     'getActiveDocument' = @()
     'getActivePresentation' = @('presentationName')
     'getActiveWorkbook' = @()
@@ -1342,12 +1509,14 @@ $script:ActionParamKeys = @{
     'getExcelContext' = @('sheet')
     'getFormula' = @('cell', 'sheet')
     'getFormulaAudit' = @('cell', 'clearArrows', 'sheet', 'showDependents', 'showPrecedents')
+    'getHeaderFooter' = @('section')
     'getListObjects' = @('sheet')
     'getNamedRanges' = @()
     'getNotes' = @()
     'getOpenDocuments' = @()
     'getOpenPresentations' = @()
     'getOpenWorkbooks' = @()
+    'getPageSetup' = @('section')
     'getPivotTables' = @('sheet')
     'getPptTableCell' = @('col', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName')
     'getRangeData' = @('range', 'sheet')
@@ -1381,7 +1550,7 @@ $script:ActionParamKeys = @{
     'insertImage' = @('height', 'imagePath', 'scale', 'width')
     'insertIndex' = @()
     'insertPageBreak' = @('type')
-    'insertPageNumbers' = @('alignment', 'position', 'section', 'showFirstPage')
+    'insertPageNumbers' = @('alignment', 'includeTotal', 'numberStyle', 'position', 'restartSection', 'section', 'showFirstPage')
     'insertPptChart' = @('chartType', 'height', 'left', 'presentationName', 'slideIndex', 'title', 'top', 'type', 'width')
     'insertPptImage' = @('height', 'imagePath', 'left', 'presentationName', 'slideIndex', 'top', 'width')
     'insertPptTable' = @('cols', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'top', 'width')
@@ -1391,7 +1560,7 @@ $script:ActionParamKeys = @{
     'insertTable' = @('cols', 'data', 'rows')
     'insertText' = @('new_paragraph', 'position', 'style', 'text')
     'lockCells' = @('locked', 'range', 'sheet')
-    'mailMerge' = @('dataFile', 'fields')
+    'mailMerge' = @('dataFile', 'fields', 'fileNameField', 'outputPath', 'splitDir')
     'mergeCells' = @('across', 'range', 'sheet')
     'mergeTableCells' = @('endColumn', 'endRow', 'startColumn', 'startRow', 'table')
     'moveSheet' = @('name', 'oldName', 'position', 'sheet')
@@ -1438,13 +1607,13 @@ $script:ActionParamKeys = @{
     'setFontColor' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setFormula' = @('col', 'formula', 'range', 'row', 'sheet')
     'setHyperlink' = @('cell', 'screenTip', 'sheet', 'subAddress', 'text', 'textToDisplay', 'url')
-    'setImageStyle' = @('border', 'cropBottom', 'cropLeft', 'cropRight', 'cropTop', 'height', 'imageIndex', 'left', 'name', 'opacity', 'presentationName', 'rotation', 'shadow', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'top', 'width')
+    'setImageStyle' = @('border', 'cropBottom', 'cropLeft', 'cropRight', 'cropTop', 'imageIndex', 'name', 'opacity', 'presentationName', 'rotation', 'shadow', 'shapeIndex', 'shapeName', 'slideIndex', 'style')
     'setLineSpacing' = @('lineSpacing', 'paragraphIndex')
     'setListObjectTotals' = @('column', 'function', 'sheet', 'show', 'table')
     'setMasterBackground' = @('background', 'color', 'colors', 'imagePath', 'presentationName', 'type')
     'setNumberFormat' = @('format', 'name', 'oldName', 'range', 'sheet')
     'setOutlineLevels' = @('columnLevels', 'rowLevels', 'sheet', 'summaryColumn', 'summaryRow')
-    'setPageSetup' = @('bottomMargin', 'leftMargin', 'orientation', 'paperSize', 'rightMargin', 'topMargin')
+    'setPageSetup' = @('bottomMargin', 'leftMargin', 'orientation', 'paperSize', 'rightMargin', 'section', 'topMargin')
     'setParagraph' = @('alignment', 'firstLineIndent', 'leftIndent', 'lineSpacing', 'range', 'rightIndent', 'spaceAfter', 'spaceBefore')
     'setPptChartData' = @('chartIndex', 'chartName', 'data', 'presentationName', 'slideIndex')
     'setPptChartStyle' = @('chartIndex', 'chartName', 'hasLegend', 'presentationName', 'slideIndex', 'style', 'title')
@@ -1456,7 +1625,7 @@ $script:ActionParamKeys = @{
     'setSelectedText' = @('text')
     'setShapeEffect' = @('borderColor', 'borderEnabled', 'borderStyle', 'borderWidth', 'gradientColor1', 'gradientColor2', 'name', 'presentationName', 'shadowBlur', 'shadowColor', 'shadowEnabled', 'shadowOffsetX', 'shadowOffsetY', 'shadowTransparency', 'shapeIndex', 'slideIndex', 'transparency')
     'setShapeFill' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
-    'setShapePosition' = @('height', 'left', 'name', 'presentationName', 'shapeIndex', 'slideIndex', 'top', 'width')
+    'setShapePosition' = @('height', 'left', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'top', 'width')
     'setShapeStyle' = @('fillColor', 'lineColor', 'lineWidth', 'name', 'presentationName', 'roundness', 'shapeIndex', 'slideIndex')
     'setShapeText' = @('name', 'presentationName', 'shapeIndex', 'slideIndex', 'text')
     'setShapeZOrder' = @('name', 'order', 'presentationName', 'shapeIndex', 'slideIndex', 'zOrder')
@@ -1475,7 +1644,7 @@ $script:ActionParamKeys = @{
     'setSlideTitle' = @('presentationName', 'slideIndex', 'title')
     'setSlideTransition' = @('duration', 'presentationName', 'slideIndex', 'sound', 'transition')
     'setTableCell' = @('column', 'row', 'table', 'text')
-    'setTableFormat' = @('autoFit', 'borders', 'headerShading', 'style', 'table')
+    'setTableFormat' = @('autoFit', 'borders', 'headerRepeat', 'headerShading', 'style', 'table')
     'setTextBoxStyle' = @('alignment', 'bold', 'color', 'fontName', 'fontSize', 'italic', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'textboxIndex')
     'setTextBoxText' = @('name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'text', 'textboxIndex')
     'setTextColor' = @('color', 'range')
@@ -1547,6 +1716,8 @@ try { $p = $Params | ConvertFrom-Json } catch { $p = @{} }
     $p = Expand-WpsNestedParams $Action $p
     $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]
     if ($null -ne $__paramError) { Output-Json @{ success = $false; error = $__paramError }; return }
+    $__slideError = Test-WpsSlideIndexInRange $Action $p
+    if ($null -ne $__slideError) { Output-Json @{ success = $false; error = $__slideError }; return }
 switch ($Action) {
 
     # ==================== Common ====================
@@ -2911,22 +3082,41 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
-        $originalCount = $range.Rows.Count
+        $totalCols = $range.Columns.Count
         $cols = @()
         if ($p.columns -and $p.columns.Count -gt 0) {
             foreach ($col in $p.columns) {
-                if ($col -is [int]) { $cols += $col }
+                if ("$col" -match '^\d+$') { $cols += [int]"$col" }
                 else {
+                    # Letters are sheet-absolute (A = 1); RemoveDuplicates wants a range-relative index.
                     $num = Convert-ColumnLetterToNumber([string]$col)
-                    if ($num) { $cols += $num }
+                    if ($num) { $cols += ($num - $range.Column + 1) }
                 }
             }
         }
-        if ($cols.Count -eq 0) { $cols = @(1) }
+        if ($cols.Count -eq 0) {
+            # Documented contract: omitting columns means "judge by every column in the range".
+            # (The old default was @(1), i.e. deduplicate by the first column only - data loss.)
+            $cols = @(1..$totalCols)
+        }
+        $bad = @($cols | Where-Object { $_ -lt 1 -or $_ -gt $totalCols })
+        if ($bad.Count -gt 0) {
+            Output-Json @{ success = $false; error = "columns out of range: $($bad -join ', ') (range $($p.range) has $totalCols column(s))" }
+return }
         $hasHeader = if ($null -ne $p.hasHeader) { [int]([bool]$p.hasHeader) } else { 1 }
+        $originalCount = Get-NonEmptyRowCount $range
+        if ($null -eq $originalCount) { $originalCount = $range.Rows.Count }
         $range.RemoveDuplicates($cols, $hasHeader)
-        $remainingCount = $range.Rows.Count
+        $remainingCount = Get-NonEmptyRowCount $range
+        if ($null -eq $remainingCount) {
+            Add-WpsWarning "removeDuplicates succeeded but the remaining row count could not be read; removedCount is not reported"
+            Output-Json @{ success = $true; data = @{ originalCount = $originalCount; removedCount = $null; remainingCount = $null } }
+return }
         $removedCount = $originalCount - $remainingCount
+        if ($removedCount -lt 0) {
+            Add-WpsWarning "removeDuplicates counted more rows than the range holds; counts are unreliable"
+            $removedCount = 0
+        }
         Output-Json @{ success = $true; data = @{ originalCount = $originalCount; removedCount = $removedCount; remainingCount = $remainingCount } }
     }
 
@@ -4180,11 +4370,22 @@ return }
                 for ($c = 1; $c -le [int]$t.Columns.Count; $c++) { $t.Cell(1, $c).Shading.BackgroundPatternColor = $color }
                 $applied += "headerShading"
             }
+            # S7 D1 第三条：表头行跨页重复。S7 实测（probe-d1：写 true 回读 -1，存盘重开仍 -1）是活属性。
+            if ($null -ne $p.headerRepeat) {
+                $want = [bool]$p.headerRepeat
+                $t.Rows.Item(1).HeadingFormat = $want
+                $got = $false
+                try { $got = [bool]$t.Rows.Item(1).HeadingFormat } catch { $got = $false }
+                if ($got -ne $want) { Add-WpsShortfall ("请求的表头跨页重复 " + $want + " 没有生效，回读是 " + $got) }
+                $applied += "headerRepeat"
+            }
         } catch {
             Output-Json @{ success = $false; error = $_.Exception.Message }; return }
         $style = ""
         try { $style = [string]$t.Style.NameLocal } catch { $style = "" }
-        Output-Json @{ success = $true; data = @{ table = $index; applied = $applied; style = $style; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count } }
+        $headerRepeat = $false
+        try { $headerRepeat = [bool]$t.Rows.Item(1).HeadingFormat } catch { $headerRepeat = $false }
+        Output-Json @{ success = $true; data = @{ table = $index; applied = $applied; style = $style; rows = [int]$t.Rows.Count; columns = [int]$t.Columns.Count; headerRepeat = $headerRepeat } }
     }
 
     "convertTableToText" {
@@ -4233,10 +4434,84 @@ return }
         $position = "footer"
         $container = $section.Footers.Item(1)
         if ($p.position -and "$($p.position)".ToLower() -eq "header") { $position = "header"; $container = $section.Headers.Item(1) }
+        # S7 实测（probe-d1b / probe-d1c，2026-10-11）：编号格式与"分节重开"是**能做的** ——
+        #   PageNumbers.NumberStyle（0=阿拉伯 4=小写罗马 3=大写罗马 …）与
+        #   PageNumbers.RestartNumberingAtSection（true=本节从 1 重开 / false=续前节）都是活属性。
+        # 但 PageNumbers.StartingNumber **写不进去**（写 1、回读永远 0）—— 所以只能"从 1 重开"，
+        # 不能"从第 7 页起"。请求了别的起始号就如实记 shortfall，不假装成功。
+        $numberStyleNames = @{ 0 = "arabic"; 1 = "upperRoman"; 2 = "lowerRoman"; 3 = "upperLetter"; 4 = "lowerLetter" }
+        $numberStyleMap = @{ arabic = 0; upperroman = 1; lowerroman = 2; upperletter = 3; lowerletter = 4 }
+        $styleApplied = $null
+        $restartApplied = $null
+        $currentNumberStyle = $null
+        try { $currentNumberStyle = [int]$container.PageNumbers.NumberStyle } catch { $currentNumberStyle = $null }
+        if ($null -ne $p.numberStyle) {
+            $want = $numberStyleMap["$($p.numberStyle)".ToLower()]
+            if ($null -eq $want) {
+                Output-Json @{ success = $false; error = ("numberStyle must be one of arabic / upperRoman / lowerRoman / upperLetter / lowerLetter (got " + $p.numberStyle + ")") }
+return }
+            try { $container.PageNumbers.NumberStyle = $want } catch { Output-Json @{ success = $false; error = ("设置页码编号格式失败：" + $_.Exception.Message) }; return }
+            try { $styleApplied = $numberStyleNames[[int]$container.PageNumbers.NumberStyle] } catch { $styleApplied = $null }
+            if ("$styleApplied" -ne "$($p.numberStyle)".ToLower()) {
+                Add-WpsShortfall ("请求的页码编号格式 " + $p.numberStyle + " 没有生效，回读是 " + $styleApplied)
+            }
+        }
+        if ($null -ne $p.restartSection) {
+            $startRaw = "$($p.restartSection)"
+            if ($startRaw -match '^(?i)(true|false)$') { $restartWant = ($startRaw -match '^(?i)true$') }
+            elseif ($startRaw -eq "1") { $restartWant = $true }
+            elseif ($startRaw -eq "0") { $restartWant = $false }
+            else {
+                Output-Json @{ success = $false; error = ("restartSection must be 1 / 0 / true / false (got " + $p.restartSection + ")；本 WPS 的 PageNumbers.StartingNumber 是只读的，只支持「本节从 1 重开」或「续前节」") }
+return }
+            if ($restartWant -and $sectionIndex -eq 1) {
+                # 第 1 节本来就没有"前一节"可续；WPS 对这个赋值不报错但语义为空。如实告诉调用方。
+                Add-WpsWarning "restartSection 对第 1 节没有意义（前面没有可续的节）"
+            }
+            try { $container.PageNumbers.RestartNumberingAtSection = $restartWant } catch { Output-Json @{ success = $false; error = ("设置分节重开失败：" + $_.Exception.Message) }; return }
+            try { $restartApplied = [bool]$container.PageNumbers.RestartNumberingAtSection } catch { $restartApplied = $null }
+            if ($null -ne $restartApplied -and $restartApplied -ne $restartWant) {
+                Add-WpsShortfall ("请求的 restartSection=" + $restartWant + " 没有生效，回读是 " + $restartApplied)
+            }
+        }
         try { $container.PageNumbers.Add($alignment, $firstPage) | Out-Null } catch { Output-Json @{ success = $false; error = $_.Exception.Message }; return }
         $count = 0
         try { $count = [int]$container.PageNumbers.Count } catch { $count = 0 }
-        Output-Json @{ success = $true; data = @{ section = $sectionIndex; position = $position; alignment = $alignmentName; showFirstPage = $firstPage; pageNumbers = $count } }
+        # WO-001：PageNumbers 只给"第 X 页"；总页数没有对应物，得自己往页脚/页眉末尾插一个
+        # NUMPAGES 域。顺序是「页码 / 共 <NUMPAGES> 页」。Fields.Add 的 -1 是 wdFieldEmpty。
+        $includeTotal = $false
+        if ($null -ne $p.includeTotal) { $includeTotal = [bool]$p.includeTotal }
+        $totalFields = 0
+        if ($includeTotal) {
+            try {
+                # WO-001 实测：这份 WPS 里 HeaderFooter.Range 会解析到"当前激活的页眉/页脚故事"，
+                # 直接往 $container.Range 上写有 4/4 的概率落到**页眉**（真机二分实验，见工单）。
+                # 走 view/selection 这条文档化路径才稳定：切到本节的页脚故事 → 故事末尾写 → 切回正文。
+                $seekView = if ($position -eq "header") { 9 } else { 10 }
+                $view = $word.ActiveWindow.ActivePane.View
+                $view.SeekView = $seekView
+                $selection = $word.Selection
+                $selection.EndKey(6) | Out-Null            # wdStory
+                $selection.TypeText(" / 共 ")
+                $selection.Fields.Add($selection.Range, -1, "NUMPAGES", $true) | Out-Null
+                $selection.TypeText(" 页")
+                # 回读也用同一条可靠路径：选中整个故事再数域，别用会指向页眉的 $container.Range。
+                $selection.WholeStory()
+                $fieldTotal = [int]$selection.Fields.Count
+                $totalFields = 0
+                $unreadable = 0
+                for ($i = 1; $i -le $fieldTotal; $i++) {
+                    try { if ("$($selection.Fields.Item($i).Code.Text)" -match "NUMPAGES") { $totalFields++ } } catch { $unreadable++ }
+                }
+                if ($unreadable -gt 0) { Add-WpsWarning ("有 " + $unreadable + " 个域的代码读不出来，总页数域计数（totalPagesFields）可能偏小") }
+                $view.SeekView = 0                         # wdSeekMainDocument
+            } catch {
+                # R11：用户点名要了总页数却没插进去，就不能回 success —— 把"页码已插入"这个部分结果说清楚。
+                try { $word.ActiveWindow.ActivePane.View.SeekView = 0 } catch { }
+                Output-Json @{ success = $false; error = ("页码已插入，但总页数域（NUMPAGES）插入失败：" + $_.Exception.Message + "（动作：insertPageNumbers）") }
+return }
+        }
+        Output-Json @{ success = $true; data = @{ section = $sectionIndex; position = $position; alignment = $alignmentName; showFirstPage = $firstPage; pageNumbers = $count; includeTotal = $includeTotal; totalPagesFields = $totalFields; numberStyle = $(if ($null -ne $styleApplied) { $styleApplied } elseif ($null -ne $currentNumberStyle) { $numberStyleNames[$currentNumberStyle] } else { $null }); restartSection = $restartApplied; startingNumberSupported = $false } }
     }
 
     "setColumns" {
@@ -4492,6 +4767,18 @@ return }
     }
 
     "mailMerge" {
+        # 2026-10-12（场景 S5 走查）：旧实现把字段插到 Get-MainTextRange 给出的**当前选区**再
+        # MailMerge.Execute()。实测（probe1/probe3/probe4）它只做到「回 success:false」以外的一切：
+        # 正文被字段码顶掉（母版正文变成 «Dept»）、模板里的占位符从不被替换、合并结果里数据落在
+        # 错误的位置，而且合并后的新文档是打开的，ActiveDocument 却可能还指着母版 —— 既不是母版
+        # 不动，也没法按人拆分。现在的语义改清楚了：
+        #   * 字段落到**占位符**处（占位符可在模板里写 ⟨字段名⟩ / {{字段名}} / «字段名»，找不到时按
+        #     ASCII 字段名的常见中文译名兜底，例如 Name→⟨姓名⟩）；
+        #   * 默认只合并到一份新文档（母版不动），并把新文档**存到 outputPath**（不给就停在内存里，
+        #     由调用方自己另存）；
+        #   * 给了 splitDir 就**每个数据行一份文档**直接存盘 —— 这是「一次生成几十份文档」的真实用法。
+        # 字段或占位符找不到时**不猜**：登记 shortfall（R11 会把 success 翻成 false），不再静默产出一份
+        # 看起来成功、实际没有数据的文档。
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = Get-ActiveWordDocument $word
@@ -4500,30 +4787,165 @@ return }
         $path = Resolve-InputFilePath $p.dataFile
         if ($null -eq $path) { Output-Json @{ success = $false; error = (Format-WpsInputPathError $p.dataFile 'data file') }; return }
         $fields = @()
-        if ($null -ne $p.fields) { $fields = @($p.fields) }
+        if ($null -ne $p.fields) { $fields = @($p.fields | Where-Object { "$_" -ne "" }) }
         $original = [string]$doc.Name
-        $inserted = 0
-        try {
-            $doc.MailMerge.MainDocumentType = 0
-            $doc.MailMerge.OpenDataSource($path)
-            $target = Get-MainTextRange $word $doc
-            foreach ($field in $fields) {
-                $doc.MailMerge.Fields.Add($target, [string]$field) | Out-Null
-                $inserted = $inserted + 1
+
+        $rows = Read-CsvDataRows $path
+        if ($null -eq $rows) { Output-Json @{ success = $false; error = ("cannot read data file: " + $path) }; return }
+        if ($rows.Count -eq 0) { Output-Json @{ success = $false; error = "data file has no data rows" }; return }
+        $header = $rows[0]
+        $dataRows = @()
+        for ($r = 1; $r -lt $rows.Count; $r++) { $dataRows += ,@($rows[$r]) }
+        if ($dataRows.Count -eq 0) { Output-Json @{ success = $false; error = "data file has a header but no data rows" }; return }
+        # 字段名 → 模板里的占位符。显式给了字段名就只认它；没给就按表头全上。
+        if ($fields.Count -eq 0) { $fields = @($header | ForEach-Object { "$_" }) }
+        $KNOWN_PLACEHOLDERS = @{
+            'Name' = @('⟨姓名⟩', '{{姓名}}', '«姓名»')
+            'Dept' = @('⟨部门⟩', '{{部门}}', '«部门»')
+        }
+        $colIndex = @{}
+        for ($c = 0; $c -lt $header.Count; $c++) { $colIndex["$($header[$c])"] = $c }
+
+        $missingPlaceholders = @()
+        $placeholderMap = @{}
+        foreach ($field in $fields) {
+            $fname = "$field"
+            $tokens = @("⟨$fname⟩", "{{$fname}}", "«$fname»")
+            if ($KNOWN_PLACEHOLDERS.ContainsKey($fname)) { $tokens = @($tokens + $KNOWN_PLACEHOLDERS[$fname]) }
+            $hit = ""
+            foreach ($t in $tokens) {
+                if ($doc.Content.Text -like "*$t*") { $hit = $t; break }
             }
-            $doc.MailMerge.Destination = 0
-            $doc.MailMerge.Execute()
-        } catch {
-            Output-Json @{ success = $false; error = $_.Exception.Message }; return }
-        $merged = Get-ActiveWordDocument $word
-        $name = ""
-        try { $name = [string]$merged.Name } catch { $name = "" }
+            if ($hit -eq "") { $missingPlaceholders += $fname } else { $placeholderMap[$fname] = $hit }
+        }
+        if ($missingPlaceholders.Count -gt 0) {
+            Add-WpsWarning ("模板里找不到这些字段的占位符，未做替换: " + ($missingPlaceholders -join ', ') + "。占位符请写成 ⟨字段名⟩ 或 {{字段名}}")
+        }
+        if ($placeholderMap.Count -eq 0) {
+            Output-Json @{ success = $false; error = "no placeholder found in the active document; write them as ⟨字段名⟩ or {{字段名}}" }
+return }
+        # 一行 CSV → 字段名到值的映射。键是**表头**（不是 $fields）：S5 走查实测模型会用
+        # fileNameField 指向一个只用于命名、不参与替换的列（例如预拼好的「文件名」列），
+        # 只按 $fields 建表会让那一列永远取不到值，于是文件全叫 row1.docx…（已修）。
+        $rowValue = {
+            param($dataRow)
+            $map = @{}
+            for ($c = 0; $c -lt $header.Count; $c++) {
+                $key = "$($header[$c])"
+                $map[$key] = if ($c -lt $dataRow.Count) { "$($dataRow[$c])" } else { "" }
+            }
+            return $map
+        }
+
+        if ($null -ne $p.splitDir) {
+            # ---- 每个数据行一份文档，直接存盘（母版不动）----
+            $dir = "$($p.splitDir)"
+            if (-not [System.IO.Path]::IsPathRooted($dir)) { $dir = [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $dir)) }
+            if (-not (Test-Path -LiteralPath $dir)) { [void](New-Item -ItemType Directory -Force -Path $dir) }
+            $nameField = if ($p.fileNameField) { "$($p.fileNameField)" } else { "$($fields[0])" }
+            $written = @()
+            $failed = @()
+            for ($r = 0; $r -lt $dataRows.Count; $r++) {
+                $row = @($dataRows[$r])
+                $values = & $rowValue $row
+                $work = $word.Documents.Add()
+                try {
+                    $work.Content.FormattedText = $doc.Content.FormattedText
+                } catch {
+                    $failed += ("row " + ($r + 1) + ": cannot copy template body: " + $_.Exception.Message)
+                    Close-WordDocQuietly $word $work
+                    continue
+                }
+                $unreplaced = @()
+                foreach ($field in $fields) {
+                    $fname = "$field"
+                    if (-not $placeholderMap.ContainsKey($fname)) { continue }
+                    if (-not (Set-MailMergeValue $work.Content $placeholderMap[$fname] $values[$fname])) { $unreplaced += $fname }
+                }
+                # 文件名：fileNameField 既可以是「一个列的列名」（取该列的值），也可以是一段带
+                # {列名} 占位符的模板（例如 通知书_{部门}_{姓名}_{工号}）—— 后者在数据源没有预拼好
+                # 文件名列时更实用。
+                $rawName = "$($values[$nameField])"
+                if ($rawName -eq "" -and $nameField -match '\{') {
+                    $rawName = "$nameField"
+                    foreach ($key in @($values.Keys)) {
+                        $rawName = $rawName -replace ('\{' + [regex]::Escape($key) + '\}'), "$($values[$key])"
+                    }
+                }
+                if ("$rawName".Trim() -eq "" -or $rawName -match '\{[^}]*\}') { $rawName = "row" + ($r + 1) }
+                $safe = ("$rawName" -replace '[\\/:*?"<>|\r\n\t]', '_').Trim()
+                if ($safe.Length -gt 60) { $safe = $safe.Substring(0, 60) }
+                $outFile = Join-Path $dir ($safe + ".docx")
+                $n = 1
+                while (Test-Path -LiteralPath $outFile) {
+                    $outFile = Join-Path $dir ($safe + "_" + $n + ".docx")
+                    $n = $n + 1
+                }
+                try {
+                    $work.SaveAs2($outFile, 16) | Out-Null
+                    $written += $outFile
+                    if ($unreplaced.Count -gt 0) { Add-WpsWarning ("第 " + ($r + 1) + " 行有字段没替换成功: " + ($unreplaced -join ', ')) }
+                } catch {
+                    $failed += ("row " + ($r + 1) + ": " + $_.Exception.Message)
+                }
+                Close-WordDocQuietly $word $work
+            }
+            Output-Json @{ success = $true; data = @{
+                mode = "splitByRecord"; sourceDocument = $original; records = $dataRows.Count
+                outputDir = $dir; files = @($written); written = $written.Count; failed = @($failed)
+                fields = @($fields); fileNameField = $nameField
+                message = ("已按数据源生成 " + $written.Count + " 份文档（母版未改动）")
+            } }
+return }
+        # ---- 默认：合并到一份新文档（每个数据行一份通知书，顺序拼接，行间分页）----
+        # 逐行渲染再拼接，而不是在一份文档里反复替换：后者第二行起就找不到占位符（第一行已经把它
+        # 换掉了），只能产出「第一行有数据、其余全是模板」的假合并 —— probe 与首次实现都踩了这个。
+        $merged = $word.Documents.Add()
+        $unreplaced = @()
+        $rendered = 0
+        for ($r = 0; $r -lt $dataRows.Count; $r++) {
+            $row = @($dataRows[$r])
+            $values = & $rowValue $row
+            $work = $word.Documents.Add()
+            try { $work.Content.FormattedText = $doc.Content.FormattedText } catch {
+                Close-WordDocQuietly $word $work
+                continue
+            }
+            foreach ($field in $fields) {
+                $fname = "$field"
+                if (-not $placeholderMap.ContainsKey($fname)) { continue }
+                if (-not (Set-MailMergeValue $work.Content $placeholderMap[$fname] $values[$fname])) { $unreplaced += ("row" + ($r + 1) + ":" + $fname) }
+            }
+            $insertAt = $merged.Content
+            $insertAt.Collapse(0)
+            if ($rendered -gt 0) {
+                try { $insertAt.InsertBreak(7) } catch { }
+            }
+            try { $insertAt.FormattedText = $work.Content.FormattedText } catch {
+                Add-WpsWarning ("第 " + ($r + 1) + " 行没能拼进合订文档: " + $_.Exception.Message)
+            }
+            $rendered = $rendered + 1
+            Close-WordDocQuietly $word $work
+        }
+        if ($unreplaced.Count -gt 0) { Add-WpsWarning ("有字段没替换成功: " + ($unreplaced -join ', ')) }
+        $savedPath = ""
+        if ($p.outputPath) {
+            $outFull = [string]$p.outputPath
+            if (-not [System.IO.Path]::IsPathRooted($outFull)) { $outFull = [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $outFull)) }
+            $outParent = [System.IO.Path]::GetDirectoryName($outFull)
+            if ($outParent -and -not (Test-Path -LiteralPath $outParent)) { [void](New-Item -ItemType Directory -Force -Path $outParent) }
+            try { $merged.SaveAs2($outFull, 16) | Out-Null; $savedPath = $outFull } catch {
+                Add-WpsWarning ("合并文档没能存到 " + $outFull + ": " + $_.Exception.Message)
+            }
+        }
         $preview = ""
         try { $preview = ([string]$merged.Content.Text).Trim() } catch { $preview = "" }
         if ($preview.Length -gt 200) { $preview = $preview.Substring(0, 200) + "..." }
         Output-Json @{ success = $true; data = @{
-            mergedDocument = $name; sourceDocument = $original; fields = $fields; fieldsInserted = $inserted; preview = $preview
-            message = "已按数据源合并到一个新文档（原文档未改动）"
+            mode = "singleDocument"; mergedDocument = [string]$merged.Name; sourceDocument = $original
+            records = $dataRows.Count; notices = $rendered; fields = @($fields); fieldsInserted = $placeholderMap.Count
+            outputPath = $savedPath; preview = $preview
+            message = ("已把 " + $dataRows.Count + " 行数据合并到一份新文档（" + $rendered + " 份通知书，母版未改动）")
         } }
     }
 
@@ -4659,10 +5081,13 @@ return }
         }
         if ($null -eq $shape -or -not $shape.HasTable) { Output-Json @{ success = $false; error = "Table not found" }; return }
         $applied = @()
-        if ($null -ne $p.left) { $shape.Left = $p.left; $applied += "left" }
-        if ($null -ne $p.top) { $shape.Top = $p.top; $applied += "top" }
-        if ($null -ne $p.width) { $shape.Width = $p.width; $applied += "width" }
-        if ($null -ne $p.height) { $shape.Height = $p.height; $applied += "height" }
+        # S3 回归：几何写入必须走 Set-ComValue。宿主会对参数做 ConvertTo-Json -> ConvertFrom-Json
+        # 往返，PS 5.1 把带小数的数字变成 System.Decimal，直接赋给 COM 的 Single 属性会抛
+        # InvalidCastException（"指定的转换无效"），于是"任何小数坐标/尺寸都设不进去"。
+        if ($null -ne $p.left) { Set-ComValue $shape 'Left' $p.left; $applied += "left" }
+        if ($null -ne $p.top) { Set-ComValue $shape 'Top' $p.top; $applied += "top" }
+        if ($null -ne $p.width) { Set-ComValue $shape 'Width' $p.width; $applied += "width" }
+        if ($null -ne $p.height) { Set-ComValue $shape 'Height' $p.height; $applied += "height" }
         # 作用域：给了 row+col 就是那一格；只给 row 是整行；都没给但有样式键就是整张表。
         $cells = @()
         $scope = "none"
@@ -5229,6 +5654,22 @@ return }
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $action = if ($p.action) { "$($p.action)".ToLower() } else { "insert" }
+        # WO-001：update 只刷新已有目录，不新插一份。没有目录时如实报错，并给出下一步。
+        if ($action -eq "update") {
+            $tocTotal = 0
+            try { $tocTotal = [int]$doc.TablesOfContents.Count } catch { $tocTotal = 0 }
+            if ($tocTotal -lt 1) {
+                Output-Json @{ success = $false; error = "文档里没有目录，无法刷新。下一步：改用 action='insert' 生成一个目录。（动作：generateTOC）" }
+return }
+            $updated = 0
+            $entries = 0
+            for ($i = 1; $i -le $tocTotal; $i++) {
+                try { $doc.TablesOfContents.Item($i).Update(); $updated++ } catch { Output-Json @{ success = $false; error = ("刷新第 " + $i + " 个目录失败：" + $_.Exception.Message + "（动作：generateTOC）") }; return }
+                try { $entries += [int]$doc.TablesOfContents.Item($i).Range.Paragraphs.Count } catch { Add-WpsWarning "目录已刷新，但条目数读不出来（$($_.Exception.Message)）—— entries 按已读到的部分计" }
+            }
+            Output-Json @{ success = $true; data = @{ action = "update"; tablesOfContents = $tocTotal; updated = $updated; entries = $entries } }
+return }
         $position = if ($p.position) { $p.position } else { "start" }
         $levels = if ($p.levels) { [int]$p.levels } else { 3 }
         $includePageNumbers = if ($null -ne $p.includePageNumbers) { [bool]$p.includePageNumbers } else { $true }
@@ -5242,7 +5683,7 @@ return }
         if ($tocCount -lt 1) {
             Output-Json @{ success = $false; error = "生成目录失败：调用后文档里没有目录（TablesOfContents = 0）。（动作：generateTOC）下一步：先给标题段落套上「标题 1/2/3」样式再生成目录。" }
 return }
-        Output-Json @{ success = $true; data = @{ levels = $levels; position = $position; includePageNumbers = $includePageNumbers; tablesOfContents = $tocCount } }
+        Output-Json @{ success = $true; data = @{ action = "insert"; levels = $levels; position = $position; includePageNumbers = $includePageNumbers; tablesOfContents = $tocCount } }
     }
 
     "getDocumentText" {
@@ -5578,15 +6019,43 @@ return }
             if ($ls -le 0) {
                 Output-Json @{ success = $false; error = "lineSpacing 必须是正数（倍数），收到的是 $($p.lineSpacing)。（动作：setParagraph）下一步：1=单倍、1.5=1.5 倍、2=两倍。" }
 return }
-            $para.LineSpacingRule = 4
+            # S2 真机走查：schema 写的是"倍数"，旧实现却用 LineSpacingRule=4（wdLineSpaceExactly），
+            # 落盘成 <w:lineRule="exact"/> —— 用户要 1.5 倍，拿到"固定值 18 磅"：字号一变行距就错，
+            # WPS 界面里显示成"固定值"。倍数必须用 5（wdLineSpaceMultiple），与 setLineSpacing 一致。
+            $para.LineSpacingRule = 5
             $para.LineSpacing = $ls * 12
             $touched += ("lineSpacing=" + $ls)
         }
         if ($null -ne $p.spaceBefore) { $para.SpaceBefore = $p.spaceBefore; $touched += "spaceBefore" }
         if ($null -ne $p.spaceAfter) { $para.SpaceAfter = $p.spaceAfter; $touched += "spaceAfter" }
-        if ($null -ne $p.firstLineIndent) { $para.FirstLineIndent = [double]$p.firstLineIndent * 28.35; $touched += "firstLineIndent" }
-        if ($null -ne $p.leftIndent) { $para.LeftIndent = [double]$p.leftIndent * 28.35; $touched += "leftIndent" }
-        if ($null -ne $p.rightIndent) { $para.RightIndent = [double]$p.rightIndent * 28.35; $touched += "rightIndent" }
+        # S2 真机走查：schema 写的是"字符数"，旧实现 * 28.35（厘米→磅）—— 要"2 字符"落盘成 2 厘米
+        # = 1134 缇 ≈ 4.7 字符（小四）。WPS 的 CharacterUnit*Indent 就是字符单位，落盘成
+        # <w:firstLineChars="200">（随字号缩放）——这才是"2 个字符"的正确表示。
+        # 字符属性不可用时退回"按字号折算磅值"（1 字符 ≈ 当前字号磅数）。
+        $charPt = 12.0
+        try {
+            $fs = [double]$range.Font.Size
+            if ($fs -gt 0 -and $fs -lt 200) { $charPt = $fs }
+        } catch {
+            # 读不到字号（混合字号/空选区）就按小四折算；写成赋值而不是空 catch，
+            # 免得 silent-catch 台账多出一条没人解释的空捕捉。
+            $charPt = 12.0
+        }
+        if ($null -ne $p.firstLineIndent) {
+            $chars = [double]$p.firstLineIndent
+            try { $para.CharacterUnitFirstLineIndent = $chars } catch { $para.FirstLineIndent = $chars * $charPt }
+            $touched += ("firstLineIndent=" + $chars + "字符")
+        }
+        if ($null -ne $p.leftIndent) {
+            $lchars = [double]$p.leftIndent
+            try { $para.CharacterUnitLeftIndent = $lchars } catch { $para.LeftIndent = $lchars * $charPt }
+            $touched += ("leftIndent=" + $lchars + "字符")
+        }
+        if ($null -ne $p.rightIndent) {
+            $rchars = [double]$p.rightIndent
+            try { $para.CharacterUnitRightIndent = $rchars } catch { $para.RightIndent = $rchars * $charPt }
+            $touched += ("rightIndent=" + $rchars + "字符")
+        }
         # FIXES 94（W6-1）：一个属性都没给就回"段落格式已设置"是**假成功** —— 它什么都没做。
         if ($touched.Count -eq 0) {
             Output-Json @{ success = $false; error = "没有任何要设置的属性：alignment / lineSpacing / spaceBefore / spaceAfter / firstLineIndent / leftIndent / rightIndent 至少要给一个。（动作：setParagraph）下一步：给出要改的属性，例如 {alignment:'center'} 或 {lineSpacing:1.5}。" }
@@ -5594,12 +6063,94 @@ return }
         Output-Json @{ success = $true; data = @{ applied = $touched } }
     }
 
+    "getHeaderFooter" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $sectionIndex = if ($null -ne $p.section) { [int]$p.section } else { 1 }
+        if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) { Output-Json @{ success = $false; error = "section out of range" }; return }
+        $section = $doc.Sections.Item($sectionIndex)
+        $payload = @{ section = $sectionIndex }
+        foreach ($pair in @(@("header", $section.Headers.Item(1)), @("footer", $section.Footers.Item(1)))) {
+            $kind = $pair[0]
+            $container = $pair[1]
+            $text = ""
+            try { $text = [string]$container.Range.Text } catch { $text = "" }
+            # 页眉页脚文本尾部带段落标记（\r），有的构建还带 \a / 垂直制表 —— 回给模型前统一去掉。
+            $text = $text.TrimEnd([char]13, [char]10, [char]7, [char]11)
+            $fields = @()
+            $count = 0
+            try { $count = [int]$container.Range.Fields.Count } catch { $count = 0 }
+            for ($i = 1; $i -le $count; $i++) {
+                $code = ""
+                try { $code = [string]$container.Range.Fields.Item($i).Code.Text } catch { $code = "" }
+                # WO-001：只归一成三种可读类型，别把整段域代码直接糊给模型。
+                $type = "OTHER"
+                if ($code -match "NUMPAGES") { $type = "NUMPAGES" } elseif ($code -match "PAGE") { $type = "PAGE" }
+                $fields += @{ type = $type; code = $code.Trim() }
+            }
+            $payload[$kind + "Text"] = $text
+            $payload[$kind + "FieldCount"] = $count
+            $payload[$kind + "Fields"] = $fields
+        }
+        Output-Json @{ success = $true; data = $payload }
+    }
+
+    "getPageSetup" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $sectionIndex = if ($null -ne $p.section) { [int]$p.section } else { 1 }
+        if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) { Output-Json @{ success = $false; error = "section out of range" }; return }
+        # WO-001：与 setPageSetup 读的是同一批属性，单位也一致（磅），这样"写—读"能直接对账。
+        $ps = $doc.Sections.Item($sectionIndex).PageSetup
+        $sizeNames = @{ 7 = "A4"; 6 = "A3"; 1 = "Letter"; 5 = "Legal" }
+        $paper = $null
+        try { $paper = [int]$ps.PaperSize } catch { $paper = $null }
+        $paperName = $null
+        if ($null -ne $paper) { if ($sizeNames.ContainsKey($paper)) { $paperName = $sizeNames[$paper] } else { $paperName = $paper } }
+        $data = @{
+            section = $sectionIndex
+            orientation = $(if ([int]$ps.Orientation -eq 1) { "landscape" } else { "portrait" })
+            paperSize = $paperName
+            pageWidth = [math]::Round([double]$ps.PageWidth, 1)
+            pageHeight = [math]::Round([double]$ps.PageHeight, 1)
+            topMargin = [math]::Round([double]$ps.TopMargin, 1)
+            bottomMargin = [math]::Round([double]$ps.BottomMargin, 1)
+            leftMargin = [math]::Round([double]$ps.LeftMargin, 1)
+            rightMargin = [math]::Round([double]$ps.RightMargin, 1)
+        }
+        Output-Json @{ success = $true; data = $data }
+    }
+
     "setPageSetup" {
         $word = Get-WpsWord
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
-        $ps = $doc.PageSetup
+        # S7 实测（probe-d1b / probe-d1c，2026-10-11）：
+        #   ① 目标必须是**某一节的** PageSetup，不是 $doc.PageSetup —— 后者全文档生效，
+        #      多节混合纸张/方向（标书最常见的排版）根本做不出来。
+        #   ② 顺序不能反：**先 PaperSize、再 Orientation**。反之（旧实现就是这个顺序）时
+        #      PaperSize 赋值会把 Orientation 重置回纵向 —— 实测 orient=1→paper=6 的净结果是
+        #      "纵向 A3"，横向被静默吃掉。旧注释"方向与纸张必须先设"只说对了一半。
+        #   ③ 换方向确实会把已有边距整体旋转（top↔left 互换），所以边距仍放在最后设。
+        $sectionIndex = if ($null -ne $p.section) { [int]$p.section } else { 1 }
+        if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) {
+            Output-Json @{ success = $false; error = ("section " + $sectionIndex + " out of range; the document has " + $doc.Sections.Count + " section(s)") }
+return }
+        $ps = $doc.Sections.Item($sectionIndex).PageSetup
+        if ($null -ne $p.paperSize) {
+            $sizeMap = @{ A4 = 7; A3 = 6; Letter = 1; Legal = 5 }
+            $size = $sizeMap["$($p.paperSize)"]
+            if ($null -eq $size) { $size = 7 }
+            $ps.PaperSize = $size
+        }
+        if ($null -ne $p.orientation) {
+            $ps.Orientation = if ("$($p.orientation)".ToLower() -eq "landscape") { 1 } else { 0 }
+        }
         # The tool schema documents points, so the values are used as points (they used to be
         # multiplied by 28.35 as if they were centimetres, which pushed them out of range).
         if ($null -ne $p.topMargin) {
@@ -5622,25 +6173,52 @@ return }
             if ($null -eq $margin) { Output-Json @{ success = $false; error = ("rightMargin must be 0-1584 points (got " + $p.rightMargin + ")") }; return }
             $ps.RightMargin = $margin
         }
+        # 回读**全部四个边距 + 方向 + 纸张**，而不只是"传进来的那几个"：方向一变边距会跟着挪，
+        # 只回报传入项就看不出这件事（WO-001 之前这里连键名都对不上，一个边距都没回报出来）。
+        $sizeNames = @{ 7 = "A4"; 6 = "A3"; 1 = "Letter"; 5 = "Legal" }
+        $paper = $null
+        try { $paper = [int]$ps.PaperSize } catch { $paper = $null }
+        $paperName = $null
+        if ($null -ne $paper) { if ($sizeNames.ContainsKey($paper)) { $paperName = $sizeNames[$paper] } else { $paperName = $paper } }
+        $applied = @{
+            orientation = $(if ([int]$ps.Orientation -eq 1) { "landscape" } else { "portrait" })
+            paperSize = $paperName
+            pageWidth = [math]::Round([double]$ps.PageWidth, 1)
+            pageHeight = [math]::Round([double]$ps.PageHeight, 1)
+            topMargin = [math]::Round([double]$ps.TopMargin, 1)
+            bottomMargin = [math]::Round([double]$ps.BottomMargin, 1)
+            leftMargin = [math]::Round([double]$ps.LeftMargin, 1)
+            rightMargin = [math]::Round([double]$ps.RightMargin, 1)
+        }
+        # R11：请求了却没生效的项要显式说出来（S7 实测：写 Orientation 之后若又写 PaperSize 会把
+        # 方向吃回去）。用 shortfall 而不是 warning —— 这是"你要求的事没做到"，工具层据此把 success
+        # 判成 false，只回一个"看起来对"的 settings 就是假成功。
         if ($null -ne $p.orientation) {
-            $ps.Orientation = if ($p.orientation -eq "landscape") { 1 } else { 0 }
+            $wantOrient = if ("$($p.orientation)".ToLower() -eq "landscape") { "landscape" } else { "portrait" }
+            if ($applied.orientation -ne $wantOrient) { Add-WpsShortfall ("请求的方向 " + $wantOrient + " 没有生效，回读是 " + $applied.orientation) }
         }
         if ($null -ne $p.paperSize) {
-            $sizeMap = @{ A4 = 7; A3 = 6; Letter = 1; Legal = 5 }
-            $size = $sizeMap[$p.paperSize]
-            if ($null -eq $size) { $size = 7 }
-            $ps.PaperSize = $size
+            # **按实际尺寸判，不按枚举号判**：S7 实测 WPS 给"横向 A3"回读的是 PaperSize=41（"自定义"），
+            # 而尺寸 1190.7x842 完全正确。拿枚举号 6 去比就等于把成功判成失败（本项目反复出现的
+            # "名义值 vs 实际值"陷阱）。这里允许尺寸是"命名纸张"的纵向或横向写法。
+            $wantPaper = "$($p.paperSize)"
+            $paperDims = @{ A4 = @(595.3, 841.9); A3 = @(841.9, 1190.7); Letter = @(612.0, 792.0); Legal = @(612.0, 1008.0) }
+            $dims = $paperDims[$wantPaper]
+            $sizeOk = $false
+            if ($null -ne $dims) {
+                $w = [double]$applied.pageWidth
+                $h = [double]$applied.pageHeight
+                $tol = 3.0
+                $sizeOk = (( [math]::Abs($w - $dims[0]) -le $tol -and [math]::Abs($h - $dims[1]) -le $tol ) -or
+                           ( [math]::Abs($w - $dims[1]) -le $tol -and [math]::Abs($h - $dims[0]) -le $tol ))
+            } else {
+                $sizeOk = ("$paperName" -eq $wantPaper)
+            }
+            if (-not $sizeOk) {
+                Add-WpsShortfall ("请求的纸张 " + $wantPaper + " 没有生效：回读 " + $applied.pageWidth + "x" + $applied.pageHeight + "pt（枚举 " + $paperName + "）")
+            }
         }
-        # Read the values back so the caller can verify what actually took effect, and so the tool
-        # does not have to treat a missing payload as a failure.
-        $applied = @{}
-        if ($null -ne $p.orientation) { $applied.orientation = $(if ([int]$ps.Orientation -eq 1) { "landscape" } else { "portrait" }) }
-        if ($null -ne $p.topMargin) { $applied.marginTop = [int]$ps.TopMargin }
-        if ($null -ne $p.bottomMargin) { $applied.marginBottom = [int]$ps.BottomMargin }
-        if ($null -ne $p.leftMargin) { $applied.marginLeft = [int]$ps.LeftMargin }
-        if ($null -ne $p.rightMargin) { $applied.marginRight = [int]$ps.RightMargin }
-        if ($null -ne $p.paperSize) { $applied.paperSize = $p.paperSize }
-        Output-Json @{ success = $true; data = @{ settings = $applied } }
+        Output-Json @{ success = $true; data = @{ section = $sectionIndex; sectionCount = [int]$doc.Sections.Count; settings = $applied } }
     }
 
     "insertPageBreak" {
@@ -5973,9 +6551,10 @@ return }
         if (-not $path) { Output-Json @{ success = $false; error = "path required" }; return }
         $range = $word.Selection.Range
         $shape = $doc.InlineShapes.AddPicture($path, $false, $true, $range)
-        if ($p.width) { $shape.Width = $p.width }
-        if ($p.height) { $shape.Height = $p.height }
-        if ($p.scale) { $shape.ScaleWidth = $p.scale; $shape.ScaleHeight = $p.scale }
+        # S3 回归：同上——小数的宽高/缩放会以 Decimal 到达，必须走 Set-ComValue。
+        if ($p.width) { Set-ComValue $shape 'Width' $p.width }
+        if ($p.height) { Set-ComValue $shape 'Height' $p.height }
+        if ($p.scale) { Set-ComValue $shape 'ScaleWidth' $p.scale; Set-ComValue $shape 'ScaleHeight' $p.scale }
         Output-Json @{ success = $true; data = @{ width = $shape.Width; height = $shape.Height } }
     }
 
@@ -6680,11 +7259,18 @@ return }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
         $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
         $slide = $pres.Slides.Item($slideIndex)
-        $shape = $slide.Shapes.Item($(if ($p.name) { $p.name } else { $p.shapeIndex }))
-        if ($null -ne $p.left) { $shape.Left = $p.left }
-        if ($null -ne $p.top) { $shape.Top = $p.top }
-        if ($null -ne $p.width) { $shape.Width = $p.width }
-        if ($null -ne $p.height) { $shape.Height = $p.height }
+        # O-4：schema 现在也收 shapeName（此前只认必填 shapeIndex，桥里的名称分支根本走不到）。
+        $sel = if ($null -ne $p.shapeName -and "$($p.shapeName)" -ne "") { $p.shapeName }
+               elseif ($null -ne $p.name -and "$($p.name)" -ne "") { $p.name }
+               else { $p.shapeIndex }
+        if ($null -eq $sel) { Output-Json @{ success = $false; error = "shapeIndex or shapeName required" }; return }
+        $shape = $slide.Shapes.Item($sel)
+        # S3 回归：见 setPptTableFormat 处的注释。直接赋值时小数参数（Decimal）会抛
+        # InvalidCastException，且错误文案误导成"对象/序号不对"。
+        if ($null -ne $p.left) { Set-ComValue $shape 'Left' $p.left }
+        if ($null -ne $p.top) { Set-ComValue $shape 'Top' $p.top }
+        if ($null -ne $p.width) { Set-ComValue $shape 'Width' $p.width }
+        if ($null -ne $p.height) { Set-ComValue $shape 'Height' $p.height }
         Output-Json @{ success = $true; data = @{ name = $shape.Name; left = $shape.Left; top = $shape.Top; width = $shape.Width; height = $shape.Height } }
     }
 
@@ -6742,7 +7328,7 @@ return }
         $impact = @{ kind = "image"; name = $oldName; detail = "旧图已被替换" }
         $old.Delete()
         $pic = $slide.Shapes.AddPicture($newPath, $false, $true, $l, $t, $w, $h)
-        try { $pic.Rotation = $rot } catch { Add-WpsWarning $_.Exception.Message }
+        try { Set-ComValue $pic 'Rotation' $rot } catch { Add-WpsWarning $_.Exception.Message }
         Output-Json @{ success = $true; data = @{ name = $pic.Name; left = $l; top = $t; width = $w; height = $h; path = $newPath; impact = $impact } }
     }
 
@@ -6756,11 +7342,11 @@ return }
         $pictureIndex = Resolve-PictureIndex $slide $p
         if ($null -eq $pictureIndex) { Output-Json @{ success = $false; error = "no picture matched imageIndex/shapeIndex/name" }; return }
         $shape = $slide.Shapes.Item($pictureIndex)
-        if ($null -ne $p.left) { $shape.Left = $p.left }
-        if ($null -ne $p.top) { $shape.Top = $p.top }
-        if ($null -ne $p.width) { $shape.Width = $p.width }
-        if ($null -ne $p.height) { $shape.Height = $p.height }
-        if ($null -ne $p.rotation) { $shape.Rotation = $p.rotation }
+        # O-4（S3 走查）：这个工具的 schema 只有 slideIndex/imageIndex/style，left/top/width/height
+        # 从来发不过来（硬发也会被 unknown parameter 挡下）——原来那 4 行是死代码，已删；
+        # 图片几何请用 wps_ppt_set_shape_position（它现在也收 shapeName）。
+        # rotation 是活的：style.rotation 经 nested-container 合并成 $p.rotation；小数同样要走 Set-ComValue。
+        if ($null -ne $p.rotation) { Set-ComValue $shape 'Rotation' $p.rotation }
         # style carries the border/shadow/opacity/crop vocabulary; each piece is applied or reported.
         $styleErrors = @()
         if ($null -ne $p.border) {

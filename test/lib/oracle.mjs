@@ -132,12 +132,23 @@ export function xlsx(file, range, sheetName) {
 import openpyxl
 wb = openpyxl.load_workbook(${JSON.stringify(file)}, data_only=False)
 ws = wb[${sheetName ? JSON.stringify(sheetName) : "wb.sheetnames[0]"}]
-cells = list(ws[${JSON.stringify(range)}])
+# 单格地址（"A1"）拿到的是 Cell 而不是元组，list() 会抛 TypeError —— 两种都接受。
+rng = ws[${JSON.stringify(range)}]
+if hasattr(rng, "value"):
+    cells = [[rng]]
+else:
+    cells = [list(r) if isinstance(r, tuple) else [r] for r in rng]
 result = {
   "sheetnames": wb.sheetnames,
   "values": [[("" if c.value is None else c.value) for c in row] for row in cells],
   "formats": [[c.number_format for c in row] for row in cells],
   "bold": [[bool(c.font.bold) for c in row] for row in cells],
+  "italic": [[bool(c.font.italic) for c in row] for row in cells],
+  "sizes": [[(c.font.size if c.font.size is not None else 0) for c in row] for row in cells],
+  "names": [[(c.font.name or "") for c in row] for row in cells],
+  "colors": [[(c.font.color.rgb if (c.font.color is not None and c.font.color.type == "rgb" and c.font.color.rgb is not None) else "") for c in row] for row in cells],
+  "align": [[(c.alignment.horizontal or "") for c in row] for row in cells],
+  "wrap": [[bool(c.alignment.wrap_text) for c in row] for row in cells],
   "conditional": [str(r) for r in ws.conditional_formatting],
 }
 `);

@@ -4,6 +4,7 @@
  * Pos: Single place where the model-facing tool surface is curated.
  *      Every registered tool stays callable through the wps_call dispatcher; only the
  *      advertised subset costs tokens on every request.
+ *      D4（2026-10-12）：广告面按真实走查的调用数据从 86 扩到 95（依据写在 STANDARD_TOOLS 的 D4 注释块里）。
  *      一旦我被修改，请更新我的头部注释。
  */
 import { ToolDefinition } from '../types/tools';
@@ -69,16 +70,38 @@ export const STANDARD_TOOLS: string[] = [
   'wps_excel_set_sheet_print_titles',
   'wps_excel_get_cell_info',
   'wps_excel_sort_range',
+  // D4（2026-10-12，场景 S6 走查后用户拍板）：把真实走查里**被需要、却只能用 wps_help + wps_call 两步绕进来**的
+  // 高频隐藏工具提到广告面。取证口径：S1/S4/S6 六轮真机轨迹里经 wps_call / wps_batch 触达的隐藏工具，
+  // 按「跨轮次出现的场景数 → 调用总次数」排序（复算脚本 test/.artifacts/scenario-s6/tools/rank-hidden-tools.mjs、
+  // 预算测算 plan-ad-surface.mjs）。准入阈值：**跨 ≥2 轮出现，或单轮被调用 ≥5 次**。
+  // 最硬的一条依据：wps_excel_freeze_panes 在 S6 attempt 1 被模型直接调用时拿到 `unknown tool`（一次硬失败 + 一次重试）。
+  // 本轮仍留在隐藏面、等下一次用调用数据再评估的：paste_range(2)、set_print_area(2)、word_find_in_document(2)、
+  // hide_column(2)、word_insert_table(1)、word_insert_header(1)、remove_duplicates(1)、update_chart(1)、delete_chart(1)。
+  'wps_excel_evaluate_formula',
+  'wps_excel_set_column_width',
+  'wps_excel_copy_range',
+  'wps_excel_set_sheet_appearance',
+  'wps_excel_unmerge_cells',
+  'wps_excel_delete_rows',
+  'wps_excel_freeze_panes',
+  'wps_excel_clear_range',
   // Word
   'wps_word_get_active_document',
   'wps_word_get_document_text',
   'wps_word_get_paragraphs',
   'wps_word_insert_text',
   'wps_word_find_replace',
+  // D4：S4 重跑里同一个工具被调用 21 次（按范围替换正文），是 Word 侧绕路最多的一条。
+  'wps_word_replace_range',
   'wps_word_apply_style',
   'wps_word_set_font',
   'wps_word_set_paragraph',
   'wps_word_generate_toc',
+  // WO-001：页面设置的读与写一起进广告面。S4 真机走查里模型要读页边距/方向却只能直呼一个不存在的
+  // 工具、最后绕开插件改 OOXML；而"把页边距改成 2cm"这类要求此前也要靠 wps_help + wps_call 两步
+  // 才够得到 set。set/get 分居广告面内外是这次补完的最后一个不对称。
+  'wps_word_get_page_setup',
+  'wps_word_set_page_setup',
   'wps_word_smart_fill_field',
   'wps_word_open_document',
   'wps_word_create_document',

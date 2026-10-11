@@ -325,7 +325,11 @@ exports.splitTableCellHandler = splitTableCellHandler;
 /** 表格：样式 */
 exports.setTableFormatDefinition = {
     name: 'wps_word_set_table_format',
-    description: '设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色。使用场景：把裸表格弄成带框线、表头有底色、宽度合适的正式表格。',
+    description: `设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色、表头行跨页重复。
+
+使用场景：
+- "把裸表格弄成带框线、表头有底色、宽度合适的正式表格"
+- "这张表跨页了，表头要每页重复" —— headerRepeat`,
     category: tools_1.ToolCategory.DOCUMENT,
     inputSchema: {
         type: 'object',
@@ -335,18 +339,20 @@ exports.setTableFormatDefinition = {
             borders: { type: 'boolean', description: '是否显示全部边框' },
             autoFit: { type: 'string', enum: ['content', 'window'], description: '按内容自适应或按页面宽度自适应' },
             headerShading: { type: 'string', description: '表头行底纹色，十六进制如 #D9E2F3' },
+            headerRepeat: { type: 'boolean', description: '表头行是否跨页重复（第 1 行设为重复标题行）' },
         },
     },
 };
 const setTableFormatHandler = async (args) => {
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setTableFormat', { table: args.table, style: args.style, borders: args.borders, autoFit: args.autoFit, headerShading: args.headerShading }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('setTableFormat', { table: args.table, style: args.style, borders: args.borders, autoFit: args.autoFit, headerShading: args.headerShading, headerRepeat: args.headerRepeat }, wps_1.WpsAppType.WRITER);
         if (!response.success)
             return deepFail('设置表格外观失败', response.error);
         const d = response.data || {};
         const applied = d.applied || [];
         const head = applied.length ? '表 ' + String(d.table) + ' 已更新（' + applied.join(', ') + '）' : '表 ' + String(d.table) + ' 没有变化';
-        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: head + '；' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' }] };
+        const repeat = d.headerRepeat ? '；表头行跨页重复已开' : '';
+        return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: head + '；' + String(d.rows) + ' 行 x ' + String(d.columns) + ' 列' + repeat }] };
     }
     catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);

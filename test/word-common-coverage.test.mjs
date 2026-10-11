@@ -2,11 +2,11 @@
 // Same contract: every entry must RETURN (never hang); "ok" must succeed, "any" may be a business error.
 // Run: node test/word-common-coverage.test.mjs
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 // FIXES 95（W1-4）：覆盖矩阵式烟测。这里补两条**以文件为准**的核对：
 // 插入的段落文字是否真的在 docx 里、插入的图片是否真的成了内嵌图形（而不是只在回报里"成功"）。
-import { docxInlineShapes, docxText } from "./lib/oracle.mjs";
+import { docxInlineShapes, docxText, zipScan } from "./lib/oracle.mjs";
 
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const imgPath = resolvePath("test/.artifacts/wordcov.png");
@@ -201,6 +201,21 @@ const wFlat = Array.isArray(wBody) ? wBody.join("|") : "";
 check("file carries both inserted paragraphs", wFlat.includes("第一段测试文本") && wFlat.includes("第二段测试文本"), wFlat.slice(0, 120));
 const shapeCount = docxInlineShapes(WD);
 check("file carries the inserted image as a real inline shape", typeof shapeCount === "number" && shapeCount >= 1, "inlineShapes=" + shapeCount);
+
+// ---- L2（P3）：矩阵里"只断言调用成功"的 Word 工具，补上以**文件真值**为准的断言 --------------
+const tcStatus = text(await call("wps_word_get_track_changes_status", {}));
+check("wps_word_get_track_changes_status reports a definite state", /已打开|已关闭|未开启|已启用|未启用/.test(tcStatus), tcStatus.replace(/\s+/g, " ").slice(0, 90));
+check("wps_word_insert_page_break runs", ok(await call("wps_word_insert_page_break", {})), "");
+check("wps_word_set_line_spacing runs", ok(await call("wps_word_set_line_spacing", { lineSpacing: 1.5 })), "");
+// 重新存一份（先删旧文件，残留产物不能替失败背书），再从 XML part 里找**具体的**记号。
+const WDL2 = resolvePath("test/.artifacts/word-common-l2.docx");
+rmSync(WDL2, { force: true });
+const savedL2 = await call("wps_common_save_as", { outputPath: WDL2 });
+check("document saved again for independent verification", ok(savedL2), text(savedL2).replace(/\s+/g, " ").slice(0, 130));
+const pageBreakScan = zipScan(WDL2, 'w:type="page"', "word/");
+check("wps_word_insert_page_break really wrote a page break into the file", !!pageBreakScan && pageBreakScan.count >= 1, JSON.stringify(pageBreakScan));
+const lineScan = zipScan(WDL2, 'w:line="360"', "word/");
+check("wps_word_set_line_spacing really wrote the 1.5-line rule into the file", !!lineScan && lineScan.count >= 1, JSON.stringify(lineScan));
 
 for (let i = 0; i < 6; i++) {
   const res = await call("wps_call", { tool: "wps_execute_method", args: { method: "closeDocument", params: { save: false }, appType: "wps" } });

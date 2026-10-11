@@ -656,7 +656,7 @@ exports.operations = [
             }
         },
         "effect": "delete",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "range"
         ],
@@ -818,7 +818,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "source",
             "destination"
@@ -1253,7 +1253,7 @@ exports.operations = [
             }
         },
         "effect": "delete",
-        "advertised": false,
+        "advertised": true,
         "required": [],
         "engine": "bridge"
     }),
@@ -1308,7 +1308,7 @@ exports.operations = [
             }
         },
         "effect": "read",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "formula"
         ],
@@ -1528,7 +1528,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -2854,7 +2854,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "column",
             "width"
@@ -3093,7 +3093,7 @@ exports.operations = [
         "tool": "wps_excel_set_outline_levels",
         "action": "setOutlineLevels",
         "app": "excel",
-        "summary": "控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇总行在上还是下、汇总列在左还是右。使用场景：分组之后把���细收起来只留汇总。",
+        "summary": "控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇总行在上还是下、汇总列在左还是右。使用场景：分组之后把明细收起来只留汇总。",
         "params": {
             "rowLevels": {
                 "type": "number",
@@ -3201,7 +3201,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -3686,7 +3686,7 @@ exports.operations = [
             }
         },
         "effect": "delete",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "range"
         ],
@@ -5734,8 +5734,11 @@ exports.operations = [
             },
             "shapeIndex": {
                 "type": "number",
-                "description": "形状索引（从1开始）",
-                "required": true
+                "description": "形状索引（从1开始）。与 shapeName 二选一，优先用 shapeName。"
+            },
+            "shapeName": {
+                "type": "string",
+                "description": "形状名称（来自 wps_ppt_get_shapes）。与 shapeIndex 二选一；名称含空格时按 get_shapes 原样传。"
             },
             "left": {
                 "type": "number",
@@ -5760,7 +5763,6 @@ exports.operations = [
         "advertised": false,
         "required": [
             "slideIndex",
-            "shapeIndex",
             "left",
             "top"
         ],
@@ -6781,6 +6783,14 @@ exports.operations = [
             "includePageNumbers": {
                 "type": "boolean",
                 "description": "是否包含页码，默认true"
+            },
+            "action": {
+                "type": "string",
+                "description": "insert（默认，新插一个目录）或 update（只刷新已有目录，不新增）。没有目录时 update 会如实报错并提示改用 insert",
+                "enum": [
+                    "insert",
+                    "update"
+                ]
             }
         },
         "effect": "write",
@@ -7142,7 +7152,7 @@ exports.operations = [
         "tool": "wps_word_insert_page_numbers",
         "action": "insertPageNumbers",
         "app": "word",
-        "summary": "给某一节的页眉或页脚插入页码。使用场景：文档要打印，页脚右下角要有页码。页码是域，页数变化会自动更新。",
+        "summary": "给某一节的页眉或页脚插入页码。使用场景：文档要打印，页脚右下角要有页码。页码是域，页数变化会自动更新。includeTotal 打开后再插一个 NUMPAGES 域，形成\"第 X 页 / 共 Y 页\"。",
         "params": {
             "section": {
                 "type": "number",
@@ -7168,10 +7178,44 @@ exports.operations = [
             "showFirstPage": {
                 "type": "boolean",
                 "description": "是否在首页显示，默认 true"
+            },
+            "includeTotal": {
+                "type": "boolean",
+                "description": "是否同时插入总页数（NUMPAGES 域），形成\"第 X 页 / 共 Y 页\"，默认 false"
+            },
+            "numberStyle": {
+                "type": "string",
+                "description": "页码编号格式：arabic / upperRoman / lowerRoman / upperLetter / lowerLetter；不填则不改",
+                "enum": [
+                    "arabic",
+                    "upperRoman",
+                    "lowerRoman",
+                    "upperLetter",
+                    "lowerLetter"
+                ]
+            },
+            "restartSection": {
+                "type": "boolean",
+                "description": "true = 本节页码从 1 重新开始；false = 接着上一节数（续前节）。默认不动。起始编号本身写不进去（WPS 的 PageNumbers.StartingNumber 是只读的）"
             }
         },
         "effect": "write",
         "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_get_header_footer",
+        "action": "getHeaderFooter",
+        "app": "word",
+        "summary": "读取某一节的页眉与页脚：文本内容与其中的域（页码、总页数等）。使用场景：改页眉页脚之前先看现在写的是什么；核对页码域到底进文件没有。",
+        "params": {
+            "section": {
+                "type": "number",
+                "description": "第几节（从 1 开始）；不填则用第 1 节"
+            }
+        },
+        "effect": "read",
+        "advertised": false,
         "engine": "bridge"
     }),
     (0, types_1.op)({
@@ -7260,16 +7304,28 @@ exports.operations = [
         "tool": "wps_word_mail_merge",
         "action": "mailMerge",
         "app": "word",
-        "summary": "邮件合并：以当前文档为母版，接一个数据文件（CSV），把指定字段插到光标处，再按每一行数据生成一个新文档（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。",
+        "summary": "邮件合并：以当前文档为母版，接一个数据文件（CSV），把表格里的值填到母版的占位符处；默认合并成一份新文档，给了 splitDir 就每个数据行单独存一份（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。占位符在模板里写成 ⟨字段名⟩（也认 {{字段名}} / «字段名»）。",
         "params": {
             "dataFile": {
                 "type": "string",
-                "description": "数据文件路径（CSV，第一行是字段名）",
+                "description": "数据文件路径（CSV，UTF-8，第一行是字段名）",
                 "required": true
             },
             "fields": {
                 "type": "array",
-                "description": "要插入的字段名列表，按顺序插到光标处，例如 Name、City；不填则只打开数据源不插字段"
+                "description": "要替换的字段名列表，按顺序填到对应占位符，例如 Name、Dept；不填则用 CSV 表头里的全部字段"
+            },
+            "splitDir": {
+                "type": "string",
+                "description": "给了这个目录就每个数据行单独生成一份 docx 存进去（文件名用 fileNameField，缺省用第一个字段）；不给则合并成一份新文档"
+            },
+            "fileNameField": {
+                "type": "string",
+                "description": "splitDir 模式下决定文件名的字段名（取该列的值），或一段带 {列名} 占位符的模板，例如 通知书_{部门}_{姓名}_{工号}；缺省用第一个字段"
+            },
+            "outputPath": {
+                "type": "string",
+                "description": "单文档模式下的保存路径（.docx）；不给则新文档留在内存里，由调用方自己另存"
             }
         },
         "effect": "write",
@@ -7431,7 +7487,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "required": [
             "startPos",
             "endPos",
@@ -7548,17 +7604,46 @@ exports.operations = [
         "engine": "bridge"
     }),
     (0, types_1.op)({
+        "tool": "wps_word_get_page_setup",
+        "action": "getPageSetup",
+        "app": "word",
+        "summary": "读取某一节的页面设置：纸张方向、纸张大小、页边距（磅）与页面宽高。使用场景：\n- \"现在页边距是多少\"\n- 改页面设置之前先看一眼，改完再核对生效了没有",
+        "params": {
+            "section": {
+                "type": "number",
+                "description": "第几节（从 1 开始）；不填则用第 1 节"
+            }
+        },
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
         "tool": "wps_word_set_page_setup",
         "action": "setPageSetup",
         "app": "word",
-        "summary": "设置文档页面布局，包括页面方向和边距。\n\n使用场景：\n- \"把页面改成横向\"\n- \"设置上下边距为2厘米\"\n- \"调整页面为A4横向，边距2cm\"",
+        "summary": "设置某一节的页面布局：页面方向、纸张大小、页边距。\n\n使用场景：\n- \"把页面改成横向\"\n- \"设置上下边距为2厘米\"\n- \"调整页面为A4横向，边距2cm\"\n- \"第3节改成横向A3，前面的节不动\"\n\n只影响点名的那一节（不填 section 就是第 1 节）。横向必须和纸张一起给：只给 orientation 时 WPS 会把纸张变成\"自定义\"，不再是 A4/A3；桥内部先设纸张、再设方向（顺序反了方向会被静默吃回去，S7 实测）。",
         "params": {
+            "section": {
+                "type": "number",
+                "description": "第几节（从 1 开始）；不填则用第 1 节"
+            },
             "orientation": {
                 "type": "string",
-                "description": "页面方向: \"portrait\"(纵向) 或 \"landscape\"(横向)",
+                "description": "页面方向: \"portrait\"(纵向) 或 \"landscape\"(横向)；建议与 paperSize 同时给",
                 "enum": [
                     "portrait",
                     "landscape"
+                ]
+            },
+            "paperSize": {
+                "type": "string",
+                "description": "纸张大小：A4 / A3 / Letter / Legal",
+                "enum": [
+                    "A4",
+                    "A3",
+                    "Letter",
+                    "Legal"
                 ]
             },
             "topMargin": {
@@ -7579,7 +7664,7 @@ exports.operations = [
             }
         },
         "effect": "write",
-        "advertised": false,
+        "advertised": true,
         "required": [],
         "engine": "bridge"
     }),
@@ -7674,7 +7759,7 @@ exports.operations = [
         "tool": "wps_word_set_table_format",
         "action": "setTableFormat",
         "app": "word",
-        "summary": "设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色。使用场景：把裸表格弄成带框线、表头有底色、宽度合适的正式表格。",
+        "summary": "设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色、表头行跨页重复。使用场景：把裸表格弄成带框线、表头有底色、宽度合适的正式表格；表格跨页时让表头每页重复。",
         "params": {
             "table": {
                 "type": "number",
@@ -7699,6 +7784,10 @@ exports.operations = [
             "headerShading": {
                 "type": "string",
                 "description": "表头行底纹色，十六进制如 #D9E2F3"
+            },
+            "headerRepeat": {
+                "type": "boolean",
+                "description": "表头行是否跨页重复（把第 1 行设为重复标题行）"
             }
         },
         "effect": "write",

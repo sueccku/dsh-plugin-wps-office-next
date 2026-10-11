@@ -3,15 +3,16 @@
 本文件由实时工具目录生成，列出全部工具，供 wps_call 派发时查名。
 “直达”表示 standard 档直接广告；“wps_call”表示需要用 wps_call 调用（先用 wps_help 取参数 schema）。
 
-## WPS 文字工具（59）
+## WPS 文字工具（61）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
 | wps_word_apply_style | 直达 | 应用Word样式到当前选中区域或指定范围。 |
 | wps_word_set_font | 直达 | 设置字体格式，包括字体名称、字号、加粗、斜体、颜色等。 |
 | wps_word_generate_toc | 直达 | 根据文档中的标题样式自动生成目录。 |
+| wps_word_set_page_setup | 直达 | 设置**某一节**的页面布局：页面方向、纸张大小、页边距。 |
+| wps_word_get_page_setup | 直达 | 读取某一节的页面设置：纸张方向、纸张大小、页边距（磅）与页面宽高。 |
 | wps_word_insert_bookmark | wps_call | 在当前光标位置或选中区域插入书签。 |
-| wps_word_set_page_setup | wps_call | 设置文档页面布局，包括页面方向和边距。 |
 | wps_word_insert_text | 直达 | 在Word文档中插入文本。 |
 | wps_word_find_replace | 直达 | 在Word文档中查找并替换文本。 |
 | wps_word_insert_table | wps_call | 在Word文档光标位置插入表格 |
@@ -37,7 +38,7 @@
 | wps_word_set_line_spacing | wps_call | 设置段落行距。 |
 | wps_word_enable_track_changes | wps_call | 开启或关闭Word文档的修订模式（Track Changes）。 |
 | wps_word_get_track_changes_status | wps_call | 获取当前文档的修订模式状态。 |
-| wps_word_replace_range | wps_call | 按字符范围精确替换Word文档中的文本。 |
+| wps_word_replace_range | 直达 | 按字符范围精确替换Word文档中的文本。 |
 | wps_word_proofread_basic | wps_call | 对中文文本进行基础校对，检测常见问题。 |
 | wps_word_get_bookmarks | wps_call | 列出文档里的全部书签（名字与位置）。 |
 | wps_word_get_comments | 直达 | 列出文档里的全部批注：序号、正文、作者、时间。 |
@@ -50,9 +51,10 @@
 | wps_word_delete_table_line | wps_call | 删除表格的第几行或第几列（从 1 开始）。 |
 | wps_word_merge_table_cells | wps_call | 把一块矩形区域合并成一个单元格：从（startRow, startColumn）到（endRow, endColumn）。 |
 | wps_word_split_table_cell | wps_call | 把一个单元格拆成 rows x columns 个小格（默认 1 x 2）。 |
-| wps_word_set_table_format | wps_call | 设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色。 |
+| wps_word_set_table_format | wps_call | 设置表格外观：表格样式名、是否显示边框、按内容或按窗口自动调整宽度、给表头行加底纹色、表头行跨页重复。 |
 | wps_word_convert_table_to_text | wps_call | 把表格转成普通文本，列之间用一个分隔符（tab/comma/paragraph，或直接给一个字符）。 |
-| wps_word_insert_page_numbers | 直达 | 给某一节的页眉或页脚插入页码。 |
+| wps_word_insert_page_numbers | 直达 | 给**某一节**的页眉或页脚插入页码。 |
+| wps_word_get_header_footer | wps_call | 读取某一节的页眉与页脚：文本内容与其中的域（页码、总页数等）。 |
 | wps_word_set_columns | wps_call | 设置分栏：栏数、栏间距、是否加分隔线。 |
 | wps_word_get_revisions | 直达 | 列出文档里的修订（插入/删除/替换等），并报告「修订跟踪」当前是否打开。 |
 | wps_word_accept_revisions | wps_call | 接受修订：给 index 只接受那一处，不填则接受全部。 |
@@ -65,4 +67,4 @@
 | wps_word_get_notes | 直达 | 列出文档里的脚注与尾注及其内容。 |
 | wps_word_insert_index | wps_call | 在文档末尾插入索引（按索引项自动生成）。 |
 | wps_word_insert_cross_reference | wps_call | 在光标处插入交叉引用（引用标题/书签/脚注等）。 |
-| wps_word_mail_merge | 直达 | 邮件合并：以当前文档为母版，接一个数据文件（CSV），把指定字段插到光标处，再按每一行数据生成一个新文档（母版不动）。 |
+| wps_word_mail_merge | 直达 | 邮件合并：以当前文档为母版，接一个数据文件（CSV），把表格里的值填到母版的占位符处；默认合并成一份新文档，给了 splitDir 就每个数据行单独存一份（母版不动）。 |

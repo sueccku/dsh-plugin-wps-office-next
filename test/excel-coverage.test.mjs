@@ -3,12 +3,12 @@
 // succeed, "error" must fail clearly, everything else may legitimately be a business error.
 // Run: node test/excel-coverage.test.mjs
 import { spawn } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, rmSync, statSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 // FIXES 95（W1-4）：这个文件是"覆盖矩阵"式烟测（调用没挂住就算过）。这里补两条**以产物为准**的核对：
 // ① 导出类工具必须写出**真尺寸**的图片（本会话开头就查过一批 1x1 的 70 字节 PNG，那种必须判死）；
 // ② 存盘后的工作簿里真的还有数据。
-import { pngInfo, xlsx } from "./lib/oracle.mjs";
+import { pngInfo, xlsx, xlsxProps, zipScan } from "./lib/oracle.mjs";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -60,6 +60,9 @@ console.log("      DEBUG bookList=" + JSON.stringify(bookList.slice(0, 80)) + " 
 
 const rangePng = resolvePath("test/.artifacts/excelcov-range.png");
 const chartPng = resolvePath("test/.artifacts/excelcov-chart.png");
+// P4：先删旧产物 —— 上一轮留下的 png 会让"导出成功"的断言在导出其实失败时也通过。
+rmSync(rangePng, { force: true });
+rmSync(chartPng, { force: true });
 
 const MATRIX = [
   // reads
@@ -179,11 +182,15 @@ check("the print area is visible in sheet settings", /\$?A\$?1\s*:\s*\$?C\$?3/.t
 const filter = await call("wps_excel_auto_filter", { range: "A1:C3" });
 check("auto_filter succeeds", ok(filter), text(filter).replace(/\s+/g, " ").slice(0, 80));
 
-// 删除重复项：先把同一行写两遍，再删，必须报出删了几行
+// 删除重复项：先把同一行写两遍，再删。这里断言**具体数字**——旧实现按区域**地址**算行数，
+// 删掉 1 行也回报「删除行数: 0」，所以只断言"文案里有'删除'二字"等于没测（实测踩过）。
 await call("wps_excel_write_range", { range: "A40", data: [[1, 2], [1, 2], [3, 4]] });
-const dedup = text(await call("wps_excel_remove_duplicates", { range: "A40:B42" }));
-check("remove_duplicates succeeds", dedup.length > 0, dedup.replace(/\s+/g, " ").slice(0, 90));
-check("remove_duplicates reports how many rows it removed", /1|删除/.test(dedup), dedup.replace(/\s+/g, " ").slice(0, 90));
+const dedupRes = await call("wps_excel_remove_duplicates", { range: "A40:B42", hasHeader: false });
+const dedup = text(dedupRes);
+check("remove_duplicates succeeds", ok(dedupRes), dedup.replace(/\s+/g, " ").slice(0, 90));
+check("remove_duplicates removed exactly 1 row and reported real counts",
+  (dedup.match(/\d+/g) || []).map(Number).slice(0, 3).join(",") === "3,1,2",
+  dedup.replace(/\s+/g, " ").slice(0, 120));
 
 // 文本分列：F 列有 "a,b"，按逗号分列后 F= a、G= b
 const t2c = await call("wps_excel_text_to_columns", { range: "F1:F3", delimiter: "," });
@@ -261,6 +268,35 @@ const XC = resolvePath("test/.artifacts/excel-coverage.xlsx");
 check("workbook saved for independent verification", ok(await call("wps_common_save_as", { outputPath: XC, format: "xlsx" })), "");
 const xc = xlsx(XC, "A1:C3");
 check("the saved workbook really carries sheet data", !!xc && Array.isArray(xc.values) && xc.values.length === 3 && JSON.stringify(xc.values).match(/\d/) !== null, JSON.stringify(xc && xc.values));
+
+// ---- L2（P3）：矩阵里"只断言调用成功"的工具，补上以**文件真值**为准的断言 ----------------------
+// 每条都用**全名**调用该工具（覆盖率分层按名字判定"有没有专门测试"），并核对真实结果。
+const E7COMMENT = "L2COMMENT-" + Date.now();
+await via("wps_execute_method", { method: "addCellComment", params: { cell: "E7", text: E7COMMENT } });
+await call("wps_common_save_as", { outputPath: XC, format: "xlsx" });
+const commentBefore = zipScan(XC, E7COMMENT, "xl/");
+check("the comment really reached the saved file before the delete", !!commentBefore && commentBefore.count >= 1, JSON.stringify(commentBefore));
+const delE7 = await call("wps_excel_delete_cell_comment", { cell: "E7" });
+check("wps_excel_delete_cell_comment succeeds", ok(delE7), text(delE7).replace(/\s+/g, " ").slice(0, 80));
+await call("wps_common_save_as", { outputPath: XC, format: "xlsx" });
+const commentAfter = zipScan(XC, E7COMMENT, "xl/");
+check("wps_excel_delete_cell_comment really removed it from the saved file", !!commentAfter && commentAfter.count === 0, JSON.stringify(commentAfter));
+
+check("wps_excel_auto_sum runs", ok(await call("wps_excel_auto_sum", { range: "A1:A3", targetCell: "A4" })), "");
+await call("wps_common_save_as", { outputPath: XC, format: "xlsx" });
+const sumCell = xlsx(XC, "A4");
+const sumVal = sumCell ? sumCell.values[0][0] : null;
+// 存的是公式还是值随 WPS 而定，所以两种都接受；但必须有其一。
+check("wps_excel_auto_sum left a real sum in A4 of the saved file", sumVal === 6 || /SUM/i.test(String(sumVal)), JSON.stringify(sumVal));
+
+const sheetsText = text(await call("wps_excel_get_sheet_list", {}));
+const diskSheets = Object.keys(xlsxProps(XC) || {});
+check("wps_excel_get_sheet_list agrees with the saved file", diskSheets.length > 0 && diskSheets.every((n) => sheetsText.includes(n)), JSON.stringify({ disk: diskSheets, tool: sheetsText.replace(/\s+/g, " ").slice(0, 90) }));
+
+rmSync(rangePng, { force: true });
+const reExport = await call("wps_excel_export_range_as_image", { range: "A1:C3", outputPath: rangePng });
+const rePng = pngInfo(rangePng);
+check("wps_excel_export_range_as_image rewrites a real png on demand", ok(reExport) && rePng.exists && rePng.png && rePng.width >= 50, JSON.stringify(rePng));
 
 for (let i = 0; i < 6; i++) {
   const res = await call("wps_call", { tool: "wps_execute_method", args: { method: "closeWorkbook", params: { save: false }, appType: "et" } });

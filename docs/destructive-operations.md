@@ -104,4 +104,4 @@ TS 侧 `mcp/src/tools/impact.ts`（跨 Excel/Word/PPT 共用）把 `impact` 压�
 node test/destructive-guard.test.mjs
 ```
 
-当前 **45 项**断言（真实 WPS）：范围类 5 + 对象类 8 + 批注/验证/Word/PPT 12，逐个验证 impact 与模型可见摘要。
+当前 **53 项**断言（真实 WPS，最近一次整轮读数，见 `test/summary.json`）：范围类 5 + 对象类 8 + 批注/验证/Word/PPT 12，逐个验证 impact 与模型可见摘要。

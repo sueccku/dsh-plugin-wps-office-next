@@ -936,7 +936,7 @@
  },
  {
   "tool": "wps_ppt_set_shape_position",
-  "signature": "ppt_set_shape_position(slideIndex*, shapeIndex*, left*, top*, width?, height?)",
+  "signature": "ppt_set_shape_position(slideIndex*, shapeIndex?, shapeName?, left*, top*, width?, height?)",
   "effect": "write"
  },
  {
@@ -1116,7 +1116,7 @@
  },
  {
   "tool": "wps_word_generate_toc",
-  "signature": "word_generate_toc(position?, levels?, includePageNumbers?)",
+  "signature": "word_generate_toc(position?, levels?, includePageNumbers?, action?)",
   "effect": "write"
  },
  {
@@ -1231,8 +1231,13 @@
  },
  {
   "tool": "wps_word_insert_page_numbers",
-  "signature": "word_insert_page_numbers(section?, position?, alignment?, showFirstPage?)",
+  "signature": "word_insert_page_numbers(section?, position?, alignment?, showFirstPage?, includeTotal?, numberStyle?, restartSection?)",
   "effect": "write"
+ },
+ {
+  "tool": "wps_word_get_header_footer",
+  "signature": "word_get_header_footer(section?)",
+  "effect": "read"
  },
  {
   "tool": "wps_word_insert_section_break",
@@ -1251,7 +1256,7 @@
  },
  {
   "tool": "wps_word_mail_merge",
-  "signature": "word_mail_merge(dataFile*, fields?)",
+  "signature": "word_mail_merge(dataFile*, fields?, splitDir?, fileNameField?, outputPath?)",
   "effect": "write"
  },
  {
@@ -1300,8 +1305,13 @@
   "effect": "write"
  },
  {
+  "tool": "wps_word_get_page_setup",
+  "signature": "word_get_page_setup(section?)",
+  "effect": "read"
+ },
+ {
   "tool": "wps_word_set_page_setup",
-  "signature": "word_set_page_setup(orientation?, topMargin?, bottomMargin?, leftMargin?, rightMargin?)",
+  "signature": "word_set_page_setup(section?, orientation?, paperSize?, topMargin?, bottomMargin?, leftMargin?, rightMargin?)",
   "effect": "write"
  },
  {
@@ -1316,7 +1326,7 @@
  },
  {
   "tool": "wps_word_set_table_format",
-  "signature": "word_set_table_format(table?, style?, borders?, autoFit?, headerShading?)",
+  "signature": "word_set_table_format(table?, style?, borders?, autoFit?, headerShading?, headerRepeat?)",
   "effect": "write"
  },
  {

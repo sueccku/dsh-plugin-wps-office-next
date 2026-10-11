@@ -15,8 +15,17 @@ import { join } from 'node:path';
 
 export const MATRIX_FILES = ['ppt-coverage.test.mjs', 'excel-coverage.test.mjs', 'word-common-coverage.test.mjs'];
 
-// 账本：涨即失败、缩要显式改（和 ALIAS_DEBT / UNTOOLED_ACTIONS 一个玩法）。
-export const TIER_LEDGER = { bespoke: 168, matrixAny: 77 };
+// 账本（三个数一起卡住中间那档）。方向：
+//   bespoke   —— 地板：不许**缩**（缩了 = 有工具丢了专门测试）
+//   matrixOk  —— 天花板：不许**涨**（涨了 = 有工具从 bespoke 滑进"只断言调用成功"）
+//   matrixAny —— 天花板：不许**涨**（最弱层，当前 0）
+// 数字变了必须显式改这里（和 ALIAS_DEBT / UNTOOLED_ACTIONS 一个玩法）。
+// 2026-10-10 按实测刷新过两次：
+//   ① 旧值 { bespoke: 168, matrixAny: 77 } 停在 FIXES 74 当时的口径，已给 72 个工具的余量（棘轮不再咬着），
+//      而且 matrixOk 当时**不受任何约束**；
+//   ② 同日 P3 给 20 个"只断言调用成功"的工具补了真值/落盘断言（240/28/0 → 260/8/0），据此收紧。
+// 剩下的 8 个 matrixOk 是刻意的账本余量以外**待办**：它们在覆盖率报告里看得见，涨一个就红。
+export const TIER_LEDGER = { bespoke: 260, matrixOk: 8, matrixAny: 0 };
 
 function stripComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');

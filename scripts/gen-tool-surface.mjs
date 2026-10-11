@@ -1,9 +1,16 @@
 // Generate the model-facing tool surface from the operation spec (P1-2).
 //
-// Input:  mcp/src/spec/*.ts, compiled to mcp/dist/spec.
+// Input:  mcp/src/spec/*.ts, compiled to mcp/dist/spec；工具自身的 description/schema 以
+//         mcp/src/tools/**（编译到 mcp/dist/tools）里注册的定义为准。
 // Output: spec/tool-definitions.json, spec/action-keys.json, spec/advertised.json, spec/signatures.json
 //         These are committed artifacts: CI regenerates them and fails on any drift, and the COM host
 //         generator reads action-keys.json instead of scraping the bridge with a hand-written table.
+//
+// 为什么以工具定义为准（而不是 op.summary）：`test/spec-reproduction.test.mjs` 拿 spec/tool-definitions.json
+// 与**活的 tools/list** 逐字节对账，而活的 surface 就是注册表里的 ToolDefinition。以前这里用 op.summary，
+// 两者一旦措辞不同（例如 `wps_ppt_set_background_image` 的描述只有工具定义里那份长的），
+// 生成物就与真实面对不上——2026-10-11 加参数时就是这么暴露出来的。现在以定义为唯一来源，
+// op.summary 只在注册表里找不到该工具时兜底。
 //
 // Run: node scripts/gen-tool-surface.mjs
 import { createRequire } from 'node:module';
@@ -12,6 +19,8 @@ import { resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const { operations } = require(resolve('mcp/dist/spec/operations.js'));
+// The live registered definitions: the model-facing surface itself.
+const { allTools } = require(resolve('mcp/dist/tools/index.js'));
 // The bridge-side compatibility tables live in the spec now, not in the host generator.
 const { paramAliases, paramContainers } = require(resolve('mcp/dist/spec/aliases.js'));
 // Keys read by the shared resolvers: the host generator needs them to work out which keys an action
@@ -19,6 +28,13 @@ const { paramAliases, paramContainers } = require(resolve('mcp/dist/spec/aliases
 const { helperKeys } = require(resolve('mcp/dist/spec/bridge-helpers.js'));
 // Actions whose parameter keys cannot be read statically. Declared, not silently skipped.
 const { dynamicParamActions } = require(resolve('mcp/dist/spec/aliases.js'));
+
+/** 注册表里每个工具的定义（name → ToolDefinition）。 */
+const liveDefinitions = new Map();
+for (const entry of allTools) {
+  const def = entry && entry.definition ? entry.definition : entry;
+  if (def && def.name) liveDefinitions.set(def.name, def);
+}
 
 function paramSchema(p) {
   if (p.schema) return p.schema;
@@ -53,11 +69,23 @@ function signatureOf(op) {
   return op.tool.replace(/^wps_/, '') + '(' + parts.join(', ') + ')';
 }
 
-const definitions = operations.map((op) => ({
-  name: op.tool,
-  description: op.summary,
-  inputSchema: inputSchemaOf(op),
-}));
+// The live definition wins (that is what the model actually sees); the operation spec only supplies
+// the fields the definition does not carry, and is the fallback for a tool nobody registered.
+const definitions = operations.map((op) => {
+  const live = liveDefinitions.get(op.tool);
+  if (live) {
+    return {
+      name: live.name,
+      description: live.description,
+      inputSchema: live.inputSchema || inputSchemaOf(op),
+    };
+  }
+  return {
+    name: op.tool,
+    description: op.summary,
+    inputSchema: inputSchemaOf(op),
+  };
+});
 
 // accepted bridge keys per action, with tool parameter names mapped onto the keys the bridge reads
 const actionKeys = {};

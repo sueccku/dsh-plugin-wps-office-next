@@ -96,9 +96,11 @@ npm run verify:package                 # 打包产物运行期冒烟：装一遍
 # $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
 ```
 
-真机部分（**发版前必跑**，需要在跑着 WPS 的机器上；没有 WPS 的机器可豁免，但要在发布记录里写明「本次未跑真机」）：
+真机部分（**按需：发版前先问用户，用户说「跑」才跑** —— R13，见 [AGENTS.md](../AGENTS.md) §2/§4；
+原 R9「发版前必跑」已于 2026-10-10 被取代。需要在跑着 WPS 的机器上；没跑时在发布记录里写明「本次未跑真机」）：
 
 ```powershell
+# 按需执行（R13）：发版前先问用户「要不要跑测试」，用户说跑才跑
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 整轮 + 按 PID 基线回收本次启动的 WPS（专用机加 -AllWps）
 node scripts\e2e.mjs --setup --timeout 420 --profile wpse2e                  # 一键端到端
 node scripts\accept-install.mjs                                              # 全新 profile 安装验收
@@ -118,8 +120,8 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 >
 > ```powershell
 > $tmp = "$env:TEMP\_packdiff"; Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $tmp | Out-Null
-> Push-Location $tmp; npm pack dsh-plugin-wps-office-next@0.6.1 --silent; tar -xzf *.tgz; Pop-Location
-> # 把 npm 0.6.1 的文件清单与本次 pack 的清单 diff：应当只剩"本次新增的文件"，且**没有移除**
+> Push-Location $tmp; npm pack dsh-plugin-wps-office-next@0.7.0 --silent; tar -xzf *.tgz; Pop-Location
+> # 把 npm 0.7.0 的文件清单与本次 pack 的清单 diff：应当只剩"本次新增的文件"，且**没有移除**
 > ```
 >
 > 2026-10-09 实测（0.7.0 vs npm 上的 0.6.3）：npm 0.6.3 = **296 文件**、本次 = **295 文件**，**新增 1、移除 2**
@@ -172,7 +174,7 @@ $b = [System.IO.File]::ReadAllBytes('mcp\scripts\wps-com.ps1')
 ### 3.1 一条命令：`node scripts\verify-package.mjs`（**发布前必跑**）
 
 它自己完成 `npm pack` → 装进临时目录 → **真的把 MCP server 拉起来做一次 JSON-RPC 握手** → 断言 `tools/list`
-广告的工具数与 `spec/advertised.json` 一致（当前 **84**，断言从生成物读、不再写死）、`wps_status` 在列。**不需要 WPS**，全程只碰临时目录。**11 个断言**全绿会打印
+广告的工具数与 `spec/advertised.json` 一致（当前 **95**，断言从生成物读、不再写死）、`wps_status` 在列。**不需要 WPS**，全程只碰临时目录。**11 个断言**全绿会打印
 `PACKAGE RUNTIME OK`（2026-10-03 实测：12.4 秒、11/11）。
 
 > **CI 也会跑它**（2026-10-03 起，D6-B）：`.github/workflows/ci.yml` 里新增 gate `npm run verify:package`——
@@ -199,7 +201,7 @@ $tmp = 'D:\dsh\_pubcheck'; New-Item -ItemType Directory -Force -Path $tmp | Out-
 Set-Location "D:\dsh\a"; npm pack --pack-destination $tmp
 Set-Location $tmp
 Set-Content package.json '{"name":"pubcheck","version":"1.0.0","private":true}' -Encoding utf8
-npm install --no-audit --no-fund --ignore-scripts ./dsh-plugin-wps-office-next-0.6.0.tgz
+npm install --no-audit --no-fund --ignore-scripts ./dsh-plugin-wps-office-next-0.7.0.tgz
 node node_modules\dsh-plugin-wps-office-next\scripts\doctor.mjs     # 末尾必须是 DOCTOR OK
 ```
 
@@ -266,7 +268,7 @@ dsh --profile desktop --dump-config | Select-String wps     # 应出现两个 id
 ```
 
 **必须重启 DSH**（插件只在启动时加载），重启后新建会话调用 `wps_status`，确认 `connected: true`、
-`advertisedTools: 84`、`registeredTools: 268`（两个数都应与 `docs/current-numbers.md` 一致）。
+`advertisedTools: 95`、`registeredTools: 270`（两个数都应与 `docs/current-numbers.md` 一致）。
 
 ## 6. GitHub 侧（与 npm 同步）
 
@@ -305,7 +307,7 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes "$(Select-String -Path CHANGEL
 ## 8. 每次发版的固定顺序
 
 1. 改版本号（`package.json` + `mcp/package.json` + 两个 lockfile），写 CHANGELOG 与 README pin
-2. §1 静态门禁全绿 **+ 真机整轮全绿**（R9：必跑；无 WPS 环境时在发布记录里写明豁免）
+2. §1 静态门禁全绿（**必跑**）；真机整轮**按需** —— 发版前先问用户，用户说跑才跑（R13；未跑时在发布记录里写明）
 3. §2 打包对账 → §3 收包验证
 4. `npm publish`
 5. §5 全新 profile 安装验收 → 真实 profile 安装 → 重启验证

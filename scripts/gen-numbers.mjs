@@ -1,12 +1,17 @@
 const CHECK = process.argv.includes('--check');
 const argv = process.argv;
 /**
- * Input : spec/*.json + mcp/dist/spec/*.js + host/wps-actions.ps1 + test/summary.json
- * Output: docs/current-numbers.md（数字的唯一权威快照，已入库）+ test/numbers-report.json
+ * Input : spec/*.json + mcp/dist/spec/*.js + host/wps-actions.ps1（+ test/summary.json，只有跑过整轮的机器才有）
+ * Output: docs/current-numbers.md（**机器无关**的权威快照，已入库）+ test/numbers-report.json（本机产物，.gitignore）
  * Pos   : 门禁层。文档里的数字以前靠手改，历史上漂了至少 5 次（918/928/949/982/1072…）。
  *         这里把能静态算出来的全部算出来（广告面、schema 字节、注册工具、桥 action、别名债务、
- *         未工具化 action、测试文件数），把必须跑测试才知道的从 test/summary.json 读，
- *         再逐项核对 README / HANDOFF 的声明值 —— 对不上就非零退出（CI 用 --check）。
+ *         未工具化 action、测试文件数），再逐项核对 README / HANDOFF 的声明值 —— 对不上就非零退出
+ *         （CI 用 --check）。
+ *
+ *         **入库文档必须机器无关**：凡是由 test/summary.json 算出来的东西（断言数，以及涉及它的
+ *         4 条声明）一律**不写进 docs/current-numbers.md** —— 否则同一份生成物在「跑过测试的机器」
+ *         与「CI」上不一样，CI 的 --check / git diff 永远红（实测：该门禁上线起连续 8 次 CI 全红）。
+ *         它们只进 gitignored 的 test/numbers-report.json，并照常参与本机退出码判定。
  *         一旦我被修改，请更新我的头部注释与 docs/HANDOFF.md 的契约管线那一节。
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
@@ -122,7 +127,9 @@ if (summary) {
   const rt = /当前数字：测试 \*\*(\d+) 项 \/ (\d+) 个文件\*\*/.exec(readme);
   if (rt) {
     claim('README test assertions', Number(rt[1]), numbers.testAssertions);
-    claim('README test files', Number(rt[2]), numbers.testFiles);
+    // 比的是**最近一次整轮实际跑到的**文件数（summary.files），不是目录里现有的文件数：
+    // 刚新增、还没被跑到的测试文件不该让 README 那句"最新一次整轮回归的读数"变成撒谎。
+    claim('README test files', Number(rt[2]), summary.files);
   }
 }
 
@@ -130,17 +137,22 @@ const handoff = read('docs/HANDOFF.md');
 const ht = /\| 测试 \| \*\*(\d+) 断言 \/ (\d+) 个测试文件\*\*/.exec(handoff);
 if (ht && summary) {
   claim('HANDOFF test assertions', Number(ht[1]), numbers.testAssertions);
-  claim('HANDOFF test files', Number(ht[2]), numbers.testFiles);
+  claim('HANDOFF test files', Number(ht[2]), summary.files);
 }
 const ha = /广告面 \*\*(\d+) 个\*\*/.exec(handoff);
 if (ha) claim('HANDOFF advertised', Number(ha[1]), numbers.advertisedTools);
+
+// 只有跑过测试的机器才算得出来的那几条声明：**不写进入库文档**（写了就会让文档随机器而变），
+// 只进 gitignored 的 numbers-report.json，并照常参与本机的退出码判定。
+const LOCAL_ONLY_CLAIMS = new Set(['README test assertions', 'README test files', 'HANDOFF test assertions', 'HANDOFF test files']);
 
 const failed = claims.filter((c) => !c.ok);
 const lines = [];
 lines.push('# 当前数字（自动生成，勿手改）');
 lines.push('');
 lines.push('> 由 `node scripts/gen-numbers.mjs` 生成；CI 跑 `--check` 核对文档里的声明值。');
-lines.push('> 需要「跑测试才知道」的数字（断言数）来自 `test/summary.json`（由 `scripts/run-tests.ps1` 每次整轮写出，不入库）。');
+lines.push('> 本文件只放**从干净检出就能复现**的数字。需要「跑测试才知道」的断言数**不在本文件** ——');
+lines.push('> 它随本机是否跑过整轮而变，只写进 `test/numbers-report.json`（本机产物，.gitignore，CI 不核对）。');
 lines.push('');
 lines.push('| 项 | 值 | 来源 |');
 lines.push('| --- | --- | --- |');
@@ -155,21 +167,21 @@ row('桥参数键', String(numbers.bridgeKeys), '同上');
 row('带键表的 action', String(numbers.actionKeyTables), 'spec/action-keys.json');
 row('未工具化 action', numbers.untooledActions + (numbers.untooledActionNames.length ? '（' + numbers.untooledActionNames.join(' / ') + '）' : ''), '键表 − spec');
 row('测试文件', String(numbers.testFiles), 'test/*.test.mjs');
-// 只有真跑过整轮的机器才有 test/summary.json（它不入库）。没有就**不写这一行** ——
-// 否则同一份生成物在「跑过测试的机器」和「CI」上会长得不一样，--check 会误报。
-// 注意：这里**不能**带上 testRunAt（每次跑整轮都会变）—— 这个文件由 CI 用 `git diff --exit-code` 对账，
-// 带时间戳就会让 CI 在每次跑完测试后误报（FIXES 91 发布后回验时发现）。只放稳定数字。
-if (numbers.testAssertions !== null) {
-  row('测试断言', numbers.testAssertions + '（失败 ' + numbers.testFailures + '）', 'test/summary.json（该行不含跑测时间戳：会让 CI 对账误报）');
-}
+// 这里**刻意没有**「测试断言」行：它只有跑过整轮才算得出来，写进入库快照就等于把"本机状态"刻进
+// 生成物 —— CI 上没有 test/summary.json，生成出来的文档必然与入库那份不同，--check 从上线起一直红。
+lines.push('');
+lines.push('> 「测试文件」数的是目录里现有的 `test/*.test.mjs`；README / HANDOFF 写的「N 个文件」是');
+lines.push('> **最近一次整轮实际跑到的**数 —— 新增文件但还没跑整轮时，两者本来就该不同。');
 lines.push('');
 lines.push('## 声明值核对');
 lines.push('');
 lines.push('| 位置 | 文档里写的 | 实际 | 结果 |');
 lines.push('| --- | --- | --- | --- |');
-for (const c of claims) lines.push('| ' + c.label + ' | ' + c.expected + ' | ' + c.actual + ' | ' + (c.ok ? '✅' : '❌') + ' |');
+// 入库文档里只放机器无关的声明；与 summary 有关的那 4 条只在 numbers-report.json 与本机退出码里体现。
+for (const c of claims) if (!LOCAL_ONLY_CLAIMS.has(c.label)) lines.push('| ' + c.label + ' | ' + c.expected + ' | ' + c.actual + ' | ' + (c.ok ? '✅' : '❌') + ' |');
 lines.push('');
-if (!summary) lines.push('> 本机没有 `test/summary.json`，涉及测试断言数的声明这次没有核对（跑一次整轮即可补上）。');
+lines.push('> 与测试计数有关的那几条声明只在**本机存在 `test/summary.json`** 时核对，**不属于 CI 核对范围**；');
+lines.push('> 现值看 `test/summary.json` / `test/numbers-report.json`（跑完整轮后按 README / HANDOFF 的口径刷新）。');
 lines.push('');
 
 // FIXES 91（发版审计发现）：`--check` 以前**照样覆写**生成物，只影响退出码 —— 于是文档把它归进
@@ -180,9 +192,14 @@ const nextReport = JSON.stringify({ numbers, claims }, null, 1) + '\n';
 const docPath = path.join(ROOT, 'docs', 'current-numbers.md');
 const reportPath = path.join(ROOT, 'test', 'numbers-report.json');
 const onDisk = (p) => { try { return readFileSync(p, 'utf8'); } catch { return null; } };
+// 只有**入库快照**才参与 drift 判定。test/numbers-report.json 是 .gitignore 的本机产物：每跑一次整轮
+// 它就会变，CI 上又根本不存在 —— 拿它当判据会让 --check 在干净检出上必红（这就是该 gate 长期失败的另一半原因）。
 const drift = [];
 if (onDisk(docPath) !== nextDoc) drift.push('docs/current-numbers.md');
-if (onDisk(reportPath) !== nextReport) drift.push('test/numbers-report.json');
+const reportOnDisk = onDisk(reportPath);
+if (reportOnDisk !== null && reportOnDisk !== nextReport) {
+  console.log('note: test/numbers-report.json 落后于当前生成值（本机产物，不入库，不影响退出码）');
+}
 
 if (CHECK) {
   console.log('check 模式：不写文件。与磁盘比对的差异：' + (drift.length ? drift.join(', ') : '(无)'));

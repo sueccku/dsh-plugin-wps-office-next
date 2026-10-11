@@ -4,6 +4,10 @@
 // position is 0-based, as the tool schemas state.
 // Run: node test/sheet-ops.test.mjs
 import { spawn } from "node:child_process";
+import { mkdirSync, rmSync } from "node:fs";
+import { dirname, resolve as resolvePath } from "node:path";
+// P3：表顺序与数字格式以前只用插件自己的 getSheetList/getCellInfo 读回。现在读**保存后的文件**。
+import { xlsx, xlsxProps } from "./lib/oracle.mjs";
 
 const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";
@@ -81,6 +85,19 @@ const nf = await call("wps_excel_set_number_format", { range: "A1", format: "0.0
 check("set_number_format with sheet", ok(nf), text(nf).replace(/\s+/g, " ").slice(0, 80));
 check("format applied on the named sheet", String((await info("A1", "Beta")).numberFormat).includes("0.00%"), "beta=" + (await info("A1", "Beta")).numberFormat);
 check("format did not leak to the active sheet", !String((await info("A1", "AlphaCopy")).numberFormat).includes("0.00%"), "active=" + (await info("A1", "AlphaCopy")).numberFormat);
+
+// ---- 独立 oracle（P3）：表顺序与数字格式必须落到磁盘 ----
+const SO = resolvePath("test/.artifacts/sheet-ops.xlsx");
+rmSync(SO, { force: true });
+mkdirSync(dirname(SO), { recursive: true });
+const soSaved = await call("wps_common_save_as", { outputPath: SO, format: "xlsx" });
+check("workbook saved for independent verification", ok(soSaved), text(soSaved).replace(/\s+/g, " ").slice(0, 90));
+const soProps = xlsxProps(SO);
+const diskOrder = soProps ? Object.keys(soProps) : [];
+const pluginOrder = await order();
+check("the file's sheet order is exactly what the plugin reported", JSON.stringify(diskOrder) === JSON.stringify(pluginOrder), JSON.stringify({ disk: diskOrder, plugin: pluginOrder }));
+const betaFmt = xlsx(SO, "A1", "Beta");
+check("the number format set on Beta is in the file", !!betaFmt && String(betaFmt.formats[0][0]).includes("0.00%"), JSON.stringify(betaFmt && betaFmt.formats[0][0]));
 
 // Close everything this test opened. The close actions are dialog-safe now (see
 // test/close-safety.test.mjs), so a scratch run leaves no documents behind for the next one.

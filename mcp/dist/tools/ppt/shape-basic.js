@@ -163,7 +163,11 @@ exports.setShapePositionDefinition = {
             },
             shapeIndex: {
                 type: 'number',
-                description: '形状索引（从1开始）',
+                description: '形状索引（从1开始）。与 shapeName 二选一，优先用 shapeName。',
+            },
+            shapeName: {
+                type: 'string',
+                description: '形状名称（来自 wps_ppt_get_shapes）。与 shapeIndex 二选一；名称含空格时按 get_shapes 原样传。',
             },
             left: {
                 type: 'number',
@@ -182,15 +186,16 @@ exports.setShapePositionDefinition = {
                 description: '高度（磅），可选',
             },
         },
-        required: ['slideIndex', 'shapeIndex', 'left', 'top'],
+        required: ['slideIndex', 'left', 'top'],
     },
 };
 const setShapePositionHandler = async (args) => {
-    const { slideIndex, shapeIndex, left, top, width, height } = args;
+    const { slideIndex, shapeIndex, shapeName, left, top, width, height } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setShapePosition', { slideIndex, shapeIndex, left, top, width, height }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('setShapePosition', { slideIndex, shapeIndex, shapeName, left, top, width, height }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
-            let text = `形状位置设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n位置: (${left}, ${top})`;
+            const shapeLabel = shapeName ? `形状: ${shapeName}` : `形状: 第 ${shapeIndex} 个`;
+            let text = `形状位置设置成功！\n幻灯片: 第 ${slideIndex} 页\n${shapeLabel}\n位置: (${left}, ${top})`;
             if (width !== undefined)
                 text += `\n宽度: ${width}`;
             if (height !== undefined)

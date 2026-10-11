@@ -28,7 +28,7 @@
 - 动作名是桥的 action（如 `openWorkbook`），模型可以直接拿它重试；
 - 文案是**幂等**的：已经带「（动作：」的不会再包一层。
 
-断言：`test/error-wording.test.mjs`（28 项：抽样 26 条必失败路径 + 动作名 + 幂等）。
+断言：`test/error-wording.test.mjs`（最近一次整轮 **31 项**：抽样必失败路径 + 动作名 + 幂等；分组明细以测试文件为准，读数见 `test/summary.json`）。
 
 ## 1c. 目标歧义警告（C7）
 

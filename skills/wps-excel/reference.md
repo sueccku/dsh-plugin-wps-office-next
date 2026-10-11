@@ -10,7 +10,7 @@
 | wps_excel_set_formula | 直达 | 在指定单元格设置Excel公式。 |
 | wps_excel_generate_formula | wps_call | 根据自然语言描述生成Excel公式。 |
 | wps_excel_diagnose_formula | wps_call | 诊断公式错误，分析原因并提供修复建议。 |
-| wps_excel_evaluate_formula | wps_call | 计算并返回公式结果（由 Excel 求值，不写入任何单元格）。 |
+| wps_excel_evaluate_formula | 直达 | 计算并返回公式结果（由 Excel 求值，不写入任何单元格）。 |
 | wps_excel_set_print_area | wps_call | 设置打印区域 |
 | wps_excel_read_range | 直达 | 读取Excel指定范围的单元格数据，返回二维数组格式的数据。 |
 | wps_excel_write_range | 直达 | 向Excel指定范围写入数据。 |
@@ -37,7 +37,7 @@
 | wps_excel_switch_sheet | 直达 | 切换到指定的工作表，使其成为活动工作表。 |
 | wps_excel_move_sheet | wps_call | 移动指定工作表到新的位置。 |
 | wps_excel_get_selection | wps_call | 获取当前Excel中选中区域的信息，包括范围地址、行列数等。 |
-| wps_excel_freeze_panes | wps_call | 冻结/取消冻结窗格。 |
+| wps_excel_freeze_panes | 直达 | 冻结/取消冻结窗格。 |
 | wps_excel_set_named_range | wps_call | 设置命名范围。 |
 | wps_excel_hide_column | wps_call | 隐藏或显示指定列。 |
 | wps_excel_auto_sum | wps_call | 对指定范围的列或行自动求和，并将结果写入目标单元格。 |
@@ -46,8 +46,8 @@
 | wps_excel_set_border | wps_call | 设置Excel单元格边框样式，支持不同粗细、位置和颜色。 |
 | wps_excel_set_number_format | 直达 | 设置Excel单元格的数字格式。 |
 | wps_excel_merge_cells | wps_call | 合并Excel指定范围的单元格。 |
-| wps_excel_unmerge_cells | wps_call | 拆分Excel中已合并的单元格，恢复为独立的单元格。 |
-| wps_excel_set_column_width | wps_call | 设置Excel指定列的列宽。 |
+| wps_excel_unmerge_cells | 直达 | 拆分Excel中已合并的单元格，恢复为独立的单元格。 |
+| wps_excel_set_column_width | 直达 | 设置Excel指定列的列宽。 |
 | wps_excel_set_row_height | wps_call | 设置Excel指定行的行高。 |
 | wps_excel_set_data_validation | wps_call | 设置Excel单元格的数据验证规则，如下拉列表、数值范围、日期范围等。 |
 | wps_excel_open_workbook | 直达 | 打开指定路径的Excel工作簿文件。 |
@@ -59,9 +59,9 @@
 | wps_excel_set_cell_value | wps_call | 设置Excel指定单元格的值。 |
 | wps_excel_get_formula | wps_call | 获取Excel指定单元格的公式。 |
 | wps_excel_get_cell_info | 直达 | 获取单元格的详细信息（值、公式、格式等）。 |
-| wps_excel_clear_range | wps_call | 清除指定范围的内容、格式或全部。 |
+| wps_excel_clear_range | 直达 | 清除指定范围的内容、格式或全部。 |
 | wps_excel_auto_filter | wps_call | 对Excel指定范围应用自动筛选。 |
-| wps_excel_copy_range | wps_call | 复制Excel指定范围到目标位置。 |
+| wps_excel_copy_range | 直达 | 复制Excel指定范围到目标位置。 |
 | wps_excel_paste_range | wps_call | 粘贴已复制的内容到指定位置。 |
 | wps_excel_fill_series | wps_call | 自动填充序列数据。 |
 | wps_excel_transpose | wps_call | 转置数据（行列互换）。 |
@@ -69,7 +69,7 @@
 | wps_excel_subtotal | wps_call | 创建分类汇总。 |
 | wps_excel_insert_rows | wps_call | 在Excel中指定位置插入一行或多行。 |
 | wps_excel_insert_columns | wps_call | 在Excel中指定位置插入一列或多列。 |
-| wps_excel_delete_rows | wps_call | 删除Excel中指定位置的一行或多行。 |
+| wps_excel_delete_rows | 直达 | 删除Excel中指定位置的一行或多行。 |
 | wps_excel_delete_columns | wps_call | 删除Excel中指定位置的一列或多列。 |
 | wps_excel_hide_rows | wps_call | 隐藏Excel中指定范围的行。 |
 | wps_excel_show_rows | wps_call | 显示Excel中已隐藏的行。 |
@@ -112,7 +112,7 @@
 | wps_excel_set_sheet_page_setup | 直达 | 设置工作表的页面：方向、纸张、页边距、缩放、是否居中、是否打印网格线与行列标题。 |
 | wps_excel_set_sheet_print_titles | 直达 | 设置打印时每页重复的行/列（打印标题）：如行 $1:$1 让表头每页都出现，列 $A:$A 让第一列每页都出现。 |
 | wps_excel_set_sheet_header_footer | 直达 | 设置打印页眉页脚。 |
-| wps_excel_set_sheet_appearance | wps_call | 设置工作表的可见性与标签色：可见 / 隐藏 / 深度隐藏（veryHidden，用户界面上无法取消隐藏），以及标签颜色（十六进制如 #FF9900）。 |
+| wps_excel_set_sheet_appearance | 直达 | 设置工作表的可见性与标签色：可见 / 隐藏 / 深度隐藏（veryHidden，用户界面上无法取消隐藏），以及标签颜色（十六进制如 #FF9900）。 |
 | wps_excel_set_outline_levels | wps_call | 控制分级显示的展开层级与汇总位置：rowLevels/columnLevels 指定行/列显示到第几级（1 表示全部折叠），summaryRow/summaryColumn 指定汇 |
 | wps_excel_reset_page_breaks | wps_call | 清除工作表上的手动分页符，恢复按内容自动分页。 |
 | wps_excel_get_formula_audit | wps_call | 审计一个单元格的公式依赖：它引用了谁（precedents）、谁引用了它（dependents）、直接引用几处，并可选在界面上画出追踪箭头。 |

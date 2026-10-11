@@ -1,7 +1,7 @@
 # dsh-plugin-wps-office-next
 
 [![ci](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml/badge.svg)](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml)
-![advertised tools](https://img.shields.io/badge/advertised%20tools-84%20%2F%20268-blue)
+![advertised tools](https://img.shields.io/badge/advertised%20tools-95%20%2F%20270-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![npm](https://img.shields.io/badge/npm-dsh--plugin--wps--office--next-CB3837)](https://www.npmjs.com/package/dsh-plugin-wps-office-next)
@@ -39,7 +39,7 @@
 - 读写正文和段落，设置字体、样式、行距、对齐
 - 查找和替换。注意「只查找」和「替换」是两个明确不同的动作，不会顺手改坏文档
 - 文档里表格的读写和编辑，增删行列、合并拆分、套样式
-- 页眉页脚、页码、分节、分栏、页面设置
+- 页眉页脚、**按节的页码格式与分节重编号**、分节、分栏、**按节的页面设置**（一节一个纸张方向）
 - 目录、书签、超链接、脚注尾注、索引、交叉引用、内容控件
 - 批注和修订的查看、接受与拒绝，以及字数统计
 - 邮件合并：拿一张 CSV 表，一次生成几十份文档，母版不动
@@ -101,7 +101,7 @@
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
    插件是在 DSH 启动时加载的，必须重启才会生效。
 6. 我重启回来后，先提醒我启动 WPS 并打开一个表格/文档，然后调用 wps_status，
-   确认返回 connected: true（此时 advertisedTools 应为 84，registeredTools 应为 268）。
+   确认返回 connected: true（此时 advertisedTools 应为 95，registeredTools 应为 270）。
 
 安装、排错与卸载的完整说明见 README 的「给 AI 的安装指引」一节：
 https://github.com/sueccku/dsh-plugin-wps-office-next#给-ai-的安装指引
@@ -135,8 +135,13 @@ AI 装完后，按它说的**完全关闭 DSH 再重新打开**。重启后新�
   - 场景管理器：`Worksheet.Scenarios` 在 COM 里被暴露成方法，语义读不干净；
   - 演示里的**圆角半径**：`Shape.Adjustments` 实测同样是空壳 —— 连 VBScript 的标准赋值
     （`shp.Adjustments(1) = 0.4`，与 VBA 同款）都改不动（`before=1 after=1`，而且**报 set-ok**，属于静默忽略）；
-    点号写法与反射（`InvokeMember SetProperty）四种写法也都无效。所以 `wps_ppt_set_shape_style` 的 `roundness`
+    点号写法与反射（`InvokeMember`、`SetProperty`）四种写法也都无效。所以 `wps_ppt_set_shape_style` 的 `roundness`
     在 WPS 上不可用，调用时会**如实报失败**（不会假装成功）。需要圆角请直接用圆角矩形（`type: 5`）的默认圆角。
+  - **页码的"起始编号"**：`PageNumbers.StartingNumber` 是只读的（写 1、回读永远 0）。所以页码支持
+    "格式"（阿拉伯 / 罗马 / 字母，`numberStyle`）和"本节从 1 重新开始 / 续前节"（`restartSection`），
+    **但不支持"从第 7 页起"**。要这种效果只能重排内容，或接受从 1 开始。
+  - **横向与纸张要一起给**：只给 `orientation: "landscape"` 而不给 `paperSize` 时，WPS 会把纸张改成
+    "自定义"（不再是 A4/A3）。两个都给就正常；插件内部**先设纸张、再设方向**（顺序反了方向会被静默吃回纵向）。
   - 还有一个隐藏的逃生舱 `wps_execute_method`（不在广告面里，技能里也不推荐），只是最后手段，不保证成功。
 
 ---
@@ -229,8 +234,8 @@ dsh --profile <profile> --dump-config | Select-String wps
 
    ```
    connected: true
-   advertisedTools: 84
-   registeredTools: 268
+   advertisedTools: 95
+   registeredTools: 270
    ```
 
 第一次调用可能慢约 1 秒（COM 宿主冷启动），之后 1–2 毫秒，属于正常。
@@ -282,17 +287,17 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 ## 它是怎么做的
 
 <details>
-<summary><b>工具面：注册 268 个，每次请求只广告 84 个</b></summary>
+<summary><b>工具面：注册 270 个，每次请求只广告 95 个</b></summary>
 
 一次请求塞几百个工具会浪费上下文。本插件把 `tools/list` 收敛为三档，由环境变量 `WPS_OFFICE_TOOLSET` 切换（默认 `standard`）：
 
 | 档位 | 工具数 | schema 字节 | 约 tokens | 内容 |
 |---|---|---|---|---|
 | minimal | 4 | 1,353 | 387 | 仅 4 个门面工具 |
-| **standard（默认）** | **84** | **47,630** | **≈13,609** | 门面 + 80 个精选工具 |
-| full | 268 | 159,433 | 45,552 | 全量，保留完整描述 |
+| **standard（默认）** | **95** | **54,673** | **≈15,621** | 门面 + 91 个精选工具 |
+| full | 270 | 163,687 | 46,401 | 全量，保留完整描述 |
 
-注册目录 **268** 个工具：Excel 118 / Word 59 / PPT 77 / 通用 14（含门面）。
+注册目录 **270** 个工具：Excel 118 / Word 61 / PPT 77 / 通用 14（含门面）。
 
 **未广告的工具完全可用**，两条路都能走：按全名直接调用，或先查后调。
 
@@ -303,7 +308,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | wps_call | 执行任意已注册但未广告的工具 |
 | wps_batch | 顺序批量执行，单次上限 50 项 |
 
-配套两道契约防线：工具层发给桥的多余参数会被拒绝并列出可接受的键；`scripts/param-contract.mjs` 零副作用地把 257 对工具/action 的参数契约对账一遍，结果写入 [docs/param-contract.md](docs/param-contract.md)。
+配套两道契约防线：工具层发给桥的多余参数会被拒绝并列出可接受的键；`scripts/param-contract.mjs` 零副作用地把 259 对工具/action 的参数契约对账一遍，结果写入 [docs/param-contract.md](docs/param-contract.md)。
 
 </details>
 
@@ -319,7 +324,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | wps_common_get_app_info | 1858ms | 2ms |
 | 读 8000 格区域 | 8000 次 COM 往返 | 15–37ms（一次 Range.Value2 加二维编组） |
 
-宿主首次调用约 1.0s（进程启动 + 263 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
+宿主首次调用约 1.0s（进程启动 + 265 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
 
 </details>
 
@@ -348,6 +353,10 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 node scripts\doctor.mjs
 ```
 
+> **测试时机以 [AGENTS.md](AGENTS.md) 为准（2026-10-10 / R13）**：普通修改后**不跑完整/回归测试**
+> （`scripts/run-tests.ps1` 整轮、`scripts/e2e.mjs`、逐文件 `test/*.test.mjs`）；只在准备 push 到 GitHub
+> **之前由用户决定**跑不跑。下面第 1–4 步是不需要 WPS 的**静态门禁，照常跑**；**第 5 步按需**。
+
 改完代码按这个顺序复跑（前几条不需要 WPS）：
 
 ```powershell
@@ -357,30 +366,36 @@ cd mcp; npx tsc; cd ..
 # 2) 由桥源码重新生成 host/wps-actions.ps1（生成前会解析校验）
 powershell -NoProfile -File scripts\build-host-actions.ps1
 
-# 3) 由操作规格重新生成 spec/*.json，再由注册表重生成 4 份 reference.md
+# 3) 由操作规格重新生成 spec/*.json，再由注册表重生成 4 份 reference.md、覆盖矩阵与现值数字
 node scripts\gen-tool-surface.mjs
 node scripts\gen-skill-tools.mjs
+node scripts\gen-tool-coverage.mjs
+node scripts\gen-numbers.mjs            # 只核对不落盘用 --check（文档数字与生成值必须一致，FIXES 91）
 
-# 4) 门禁：项目 lint、门面 / 派发 / 预算 / action 数量三方一致、参数契约对账
+# 4) 门禁：项目 lint、门面 / 派发 / 预算 / action 数量三方一致、参数契约对账、静态测试
 npm run lint
-node scripts\verify.mjs
+node scripts\verify.mjs --static        # 不带 --static 时会连 WPS 调一次 wps_status，那部分属第 5 步「按需」
 node scripts\param-contract.mjs
+node scripts\gen-numbers.mjs --check    # 文档声明值与生成值对账（不写盘）
+node test\spec-reproduction.test.mjs    # P1 验收：spec 能复现出模型看到的工具面
+npm run test:static                     # = node scripts\run-static-tests.mjs，跑 scripts\lib\static-tests.mjs 里的清单
 npm run verify:package                 # 打包产物冒烟：装一遍 + 启动 MCP server 握手（不需要 WPS）
 #    ↑ CI 也会跑（FIXES 84 的门禁）；改动 package.json 的 files 时**必须**本地跑一次
 
-# 5) 需要本机 WPS 的部分
-#    逐文件跑测试前先清掉插件自己发布的两个环境变量 —— 这个终端若是从「已装本插件」的
-#    DSH 会话里起的，它们会指向 profile 里那份副本，让 plugin.test.mjs 报一处假失败：
+# 5) 需要本机 WPS 的部分 —— **按需，不要每次改完都跑**（见 AGENTS.md §1/§2）
+#    只在准备 push 到 GitHub 且用户说「跑」时才执行。逐文件跑之前先清掉插件自己发布的
+#    两个环境变量 —— 这个终端若是从「已装本插件」的 DSH 会话里起的，它们会指向 profile 里
+#    那份副本，让 plugin.test.mjs 报一处假失败：
 #    $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
-node test\xxx.test.mjs                 # 逐文件跑
+node test\<文件名>.test.mjs             # 逐文件跑（把 <文件名> 换成 test/ 下的真实文件，如 excel-range）
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1  # 整轮 + 回收无头 WPS 孤儿
 node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫生断言）
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1257 项 / 49 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 84 工具 / 47,630 字节（内部预算上限 100 / 60,000）；注册工具 268、桥 action 263，与注册表三方一致；参数契约 257 对，四类静默失效均为 0。
+当前数字：测试 **1283 项 / 51 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 95 工具 / 54,673 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。
 
-`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十二个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `deprecated` / `style-names`）。需要真实 WPS 的测试与一键 e2e 留在本机。
+`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十三个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `com-boundary-gate` / `deprecated` / `style-names`，清单的唯一来源是 `scripts/lib/static-tests.mjs`，由 `node scripts/run-static-tests.mjs` 执行）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
 一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」，以及「归属记录不会指向已经死掉的主人」。**29 项检查、约 2–4 分钟。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
@@ -391,19 +406,43 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 
 | 路径 | 用途 |
 |---|---|
+| AGENTS.md | **项目工作规则**（测试时机等）；与 README/docs 说法冲突时以它为准 |
 | cordis.patch.yml | DSH 接线：插件入口 + MCP 客户端（serverName 为 wps-office-next） |
 | plugin.js | DSH 入口：发布包内绝对路径、注册 4 个技能 |
 | mcp/src | MCP server（TypeScript）与工具实现、参数闸门（弃用转发表已在 v0.5.0 删除） |
 | mcp/src/spec | **操作规格（唯一真源）**：工具名 ↔ 桥 action ↔ 参数/类型/必填/效果 |
 | spec/ | 由 spec 生成的产物（入库、CI 漂移检查） |
 | mcp/dist | 预构建产物（已入库，安装即用） |
-| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：263 个 COM action |
+| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：265 个 COM action |
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
 | scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口 |
-| test/ | 48 个回归测试文件（多数需要本机 WPS）；整轮用 `scripts/run-tests.ps1` 跑，收尾自动回收无头 WPS 孤儿并写出 `test/summary.json` |
+| test/ | 回归测试文件（多数需要本机 WPS；**文件数以 [docs/current-numbers.md](docs/current-numbers.md) 为准**）；整轮 `scripts/run-tests.ps1` **按需跑**（见 AGENTS.md），收尾自动回收无头 WPS 孤儿并写出 `test/summary.json` |
 | baseline/ | 早期基线快照与缺陷清单 |
-| docs/ | FIXES（修复记录）、PROGRESS（进度）、param-contract（生成的契约报告） |
+| docs/ | 交接（HANDOFF）、修复记录（FIXES）、进度（PROGRESS）、现值数字（current-numbers）、契约（param-contract / error-contract）、发布检查单、覆盖矩阵、真机场景卡（`docs/scenarios/`）与工单（`docs/work-orders/`） |
+
+</details>
+
+<details>
+<summary><b>手工诊断脚本（不参与 CI 门禁，按需手动跑）</b></summary>
+
+`scripts/` 里除 `doctor` / `verify` / `param-contract` / `run-tests.ps1` / `e2e` / 各生成器之外，还有一批**没有调用方**的诊断工具。
+它们**不参与** CI 与静态门禁，但排错时真的能用；因为 `package.json` 的 `files` 含 `scripts/`，它们也会随包发出（体积极小）。
+登记在此是为了让人知道「这些文件不是死文件」：
+
+| 脚本 | 用途 |
+|---|---|
+| `analyze-budget.mjs` | 用 `tools/list` 快照算广告面真实载荷成本、每工具边际成本与名字易混度（`node scripts/analyze-budget.mjs <snapshot.json>`） |
+| `analyze-duplicates.mjs` | 静态找出驱动同一 COM action 的重复工具及其参数形状 |
+| `analyze-param-mismatch.mjs` | 静态比对「工具发的键」与「桥读的键」；**已被 `param-contract.mjs` 覆盖**（后者进了 CI 与 AGENTS 门禁），保留作交叉核对 |
+| `bench-latency.mjs` | MCP server 端到端延迟基准（进程启动 + 逐工具往返） |
+| `com-conformance.mjs` | 本机 COM 适配器行为自查：跑一遍动作层依赖的 PowerShell COM 行为，失败说明这台机器的环境与插件假设不同 |
+| `contract-test.mjs` | 单应用工具的**动态**参数契约测试（真机 WPS，与静态的 `param-contract.mjs` 互补） |
+| `dump-handlers.mjs` | 按工具名打印其 handler 源码片段 |
+| `dump-tool-defs.mjs` | 按工具名打印其工具定义（schema） |
+| `host-probe.mjs` | 直接对 `host/wps-com-host.ps1` 做一次 JSON 行握手探针 |
+| `inspect-actions.mjs` | 从桥源码里打印指定 action 的 case 块 |
+| `snapshot-tools.mjs` | 导出 `tools/list` 快照（`npm run snapshot`） |
 
 </details>
 
@@ -422,12 +461,20 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 
 | 文档 | 内容 |
 |---|---|
+| [AGENTS.md](AGENTS.md) | **项目工作规则**（测试时机等）；与 README/docs 说法冲突时以它为准 |
 | [CHANGELOG.md](CHANGELOG.md) | 每个发布版本的用户可见变化 |
+| [docs/HANDOFF.md](docs/HANDOFF.md) | 交接文档：现状、决策登记表、下一步；**新对话从这里开始读** |
+| [docs/current-numbers.md](docs/current-numbers.md) | **所有现值的唯一来源**（自动生成，CI 对账） |
 | [docs/FIXES.md](docs/FIXES.md) | 修复记录，每条都带可复跑的验证方法与实测数字 |
 | [docs/tool-roadmap.md](docs/tool-roadmap.md) | 工具面路线图：能力审计、缺口 / 冗余清单、分阶段任务表 |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | 分阶段进度与当前状态 |
 | [docs/release-checklist.md](docs/release-checklist.md) | npm 发布检查单：发布前门禁、打包对账、收包验证、发布后验收 |
 | [docs/param-contract.md](docs/param-contract.md) | 工具 / action 参数契约对账（生成物） |
+| [docs/error-contract.md](docs/error-contract.md) | 错误与超时契约：失败 / 部分成功的回报形状与不变量 |
+| [docs/destructive-operations.md](docs/destructive-operations.md) | 破坏性操作清单：影响范围、前置守卫与对应测试 |
+| [docs/tool-coverage.md](docs/tool-coverage.md) | 工具覆盖矩阵（生成物） |
+| [docs/scenarios/](docs/scenarios/) | 7 份真机场景卡（S1–S7）与对应走查报告 |
+| [docs/work-orders/](docs/work-orders/) | 工单台账（如 WO-001：S4 暴露的 Word 缺口） |
 | [baseline/known-defects.md](baseline/known-defects.md) | 早期基线缺陷清单与逐条状态 |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 来源与许可处理 |
 
@@ -442,7 +489,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | 目标环境 | WPS 12.1+ x64 |
 | 形态 | 单一 npm 包 = DSH bundle + 自带 MCP server + 自带 COM host + 全部 skills |
 | MCP serverName | wps-office-next |
-| 默认工具面 | standard 档 84 个工具；预算上限 100 工具 / 60,000 字节 |
+| 默认工具面 | standard 档 95 个工具；预算上限 100 工具 / 60,000 字节 |
 | 传输层 | 常驻 PowerShell STA 宿主 + stdin/stdout JSON 行 |
 | 加载项 | 全部删除，零依赖 |
 | 构建产物 | 预构建产物入库，安装后开箱可用 |

@@ -868,6 +868,7 @@
   "height",
   "left",
   "shapeIndex",
+  "shapeName",
   "slideIndex",
   "top",
   "width"
@@ -1048,6 +1049,7 @@
   "selectFound"
  ],
  "generateTOC": [
+  "action",
   "includePageNumbers",
   "levels",
   "position"
@@ -1102,9 +1104,15 @@
  "insertPageBreak": [],
  "insertPageNumbers": [
   "alignment",
+  "includeTotal",
+  "numberStyle",
   "position",
+  "restartSection",
   "section",
   "showFirstPage"
+ ],
+ "getHeaderFooter": [
+  "section"
  ],
  "insertSectionBreak": [
   "breakType"
@@ -1121,7 +1129,10 @@
  ],
  "mailMerge": [
   "dataFile",
-  "fields"
+  "fields",
+  "fileNameField",
+  "outputPath",
+  "splitDir"
  ],
  "mergeTableCells": [
   "endColumn",
@@ -1165,11 +1176,16 @@
   "lineSpacing",
   "paragraphIndex"
  ],
+ "getPageSetup": [
+  "section"
+ ],
  "setPageSetup": [
   "bottomMargin",
   "leftMargin",
   "orientation",
+  "paperSize",
   "rightMargin",
+  "section",
   "topMargin"
  ],
  "setParagraph": [
@@ -1191,6 +1207,7 @@
  "setTableFormat": [
   "autoFit",
   "borders",
+  "headerRepeat",
   "headerShading",
   "style",
   "table"

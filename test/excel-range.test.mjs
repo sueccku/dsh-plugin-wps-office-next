@@ -3,6 +3,10 @@
 //  - range read is one COM call with explicit 2D marshalling (was cell-by-cell)
 // Run: node test/excel-range.test.mjs
 import { createRequire } from "node:module";
+import { mkdirSync, rmSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+// P3：范围 I/O 以前只用同一个 comHost 读回（读写同源会一起错）。现在存盘后由 openpyxl 读**文件**。
+import { xlsx } from "./lib/oracle.mjs";
 const require = createRequire(import.meta.url);
 const { comHost } = require("../mcp/dist/client/com-host.js");
 
@@ -49,9 +53,22 @@ check("2D shape is rows x cols", Array.isArray(d1) && d1.length === 2 && d1.ever
   const ms = Date.now() - t0;
   const db = big.data && big.data.data;
   check("read " + (rows * cols) + " cells in one call", big.success === true && db.length === rows && db.every((r) => Array.isArray(r) && r.length === cols), ms + "ms");
-  check("large read under 2s", ms < 2000, ms + "ms  (cell-by-cell would be ~" + (rows * cols) + " COM round trips)");
+  // 墙钟断言放宽到 10s：2s 在负载高的机器上会假红，而这条的本意只是"别退化成逐格往返"。
+  check("large read in one call, not cell-by-cell", ms < 10000, ms + "ms  (cell-by-cell would be ~" + (rows * cols) + " COM round trips)");
   // FIXES 93（W1-2）：以前只看最后一个格子 —— 中间任何一格错了都不会红。现在整块逐格比对。
 check("large read values intact", JSON.stringify(db) === JSON.stringify(block), "first mismatch at " + (() => { for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (db[r][c] !== block[r][c]) return "r" + r + "c" + c + " got " + db[r][c] + " want " + block[r][c]; return "none"; })());
+  // ---- 独立 oracle（P3）：以**保存后的文件**为准，而不是用同一个 comHost 读回 ----
+  const XL = resolve("test/.artifacts/excel-range.xlsx");
+  rmSync(XL, { force: true });                       // 先删旧产物：残留文件不能替失败背书
+  mkdirSync(dirname(XL), { recursive: true });
+  const savedBook = await comHost.invoke("saveAs", { outputPath: XL, format: "xlsx" });
+  check("workbook saved for independent verification", savedBook.success === true, JSON.stringify(savedBook).slice(0, 120));
+  const disk = xlsx(XL, "A1:B2");
+  check("the file carries the small block the plugin wrote", !!disk && JSON.stringify(disk.values) === JSON.stringify([[11, 22], [33, 44]]), JSON.stringify(disk && disk.values));
+  const diskBig = xlsx(XL, "D1:W400");
+  const dims = diskBig ? diskBig.values.length + "x" + ((diskBig.values[0] || []).length) : "null";
+  check("the file carries the whole 400x20 block", !!diskBig && diskBig.values.length === 400 && diskBig.values.every((r) => r.length === 20), dims);
+  check("the file's first and last big-block cells survived", !!diskBig && Number(diskBig.values[0][0]) === 0 && Number(diskBig.values[399][19]) === 7999, diskBig ? JSON.stringify([diskBig.values[0][0], diskBig.values[399][19]]) : "null");
 } finally {
   await comHost.invoke("closeWorkbook", { saveChanges: false });
 }

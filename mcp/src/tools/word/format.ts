@@ -335,6 +335,11 @@ export const generateTocDefinition: ToolDefinition = {
         type: 'boolean',
         description: '是否包含页码，默认true',
       },
+      action: {
+        type: 'string',
+        description: 'insert（默认，新插一个目录）或 update（只刷新已有目录，不新增）。没有目录时 update 会如实报错并提示改用 insert',
+        enum: ['insert', 'update'],
+      },
     },
     required: [],
   },
@@ -343,10 +348,11 @@ export const generateTocDefinition: ToolDefinition = {
 export const generateTocHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { position, levels, includePageNumbers } = args as {
+  const { position, levels, includePageNumbers, action } = args as {
     position?: string;
     levels?: number;
     includePageNumbers?: boolean;
+    action?: string;
   };
 
   try {
@@ -354,24 +360,43 @@ export const generateTocHandler: ToolHandler = async (
       success: boolean;
       message: string;
       levels: number;
+      action?: string;
+      tablesOfContents?: number;
+      updated?: number;
+      entries?: number;
     }>(
       'generateTOC',
       {
         position: position || 'start',
         levels: levels || 3,
         includePageNumbers: includePageNumbers !== false,
+        action: action || 'insert',
       },
       WpsAppType.WRITER
     );
 
     if (response.success && response.data) {
+      const d = response.data;
+      // update 模式不新插目录，所以不要报"插到了哪里"—— 如实回报刷新了几份、共几条条目。
+      if ((d.action || 'insert') === 'update') {
+        return {
+          id: uuidv4(),
+          success: true,
+          content: [
+            {
+              type: 'text',
+              text: `目录已刷新！\n刷新的目录数: ${d.updated ?? 0}\n条目数: ${d.entries ?? 0}`,
+            },
+          ],
+        };
+      }
       return {
         id: uuidv4(),
         success: true,
         content: [
           {
             type: 'text',
-            text: `目录生成成功！\n包含标题级别: 1-${response.data.levels}\n位置: ${position === 'cursor' ? '当前光标位置' : '文档开头'}`,
+            text: `目录生成成功！\n包含标题级别: 1-${d.levels}\n位置: ${position === 'cursor' ? '当前光标位置' : '文档开头'}`,
           },
         ],
       };
@@ -474,20 +499,35 @@ export const insertBookmarkHandler: ToolHandler = async (
  */
 export const setPageSetupDefinition: ToolDefinition = {
   name: 'wps_word_set_page_setup',
-  description: `设置文档页面布局，包括页面方向和边距。
+  description: `设置**某一节**的页面布局：页面方向、纸张大小、页边距。
 
 使用场景：
 - "把页面改成横向"
 - "设置上下边距为2厘米"
-- "调整页面为A4横向，边距2cm"`,
+- "调整页面为A4横向，边距2cm"
+- "第3节改成横向A3，前面的节不动"（多节混合版式的标书/施工方案）
+
+注意：
+- 只影响**点名的那一节**（不填 section 就是第 1 节）。要"整篇都改"得逐节调用，或者先看有几节。
+- **横向必须和纸张一起给**（orientation + paperSize）。只给 orientation 时 WPS 会把纸张变成"自定义"，
+  不再是 A4/A3；桥内部会先设纸张、再设方向——顺序反了方向会被静默吃回去（S7 实测）。`,
   category: ToolCategory.DOCUMENT,
   inputSchema: {
     type: 'object',
     properties: {
+      section: {
+        type: 'number',
+        description: '第几节（从 1 开始）；不填则用第 1 节。节数用 wps_word_get_header_footer 或 get_page_setup 逐节探',
+      },
       orientation: {
         type: 'string',
-        description: '页面方向: "portrait"(纵向) 或 "landscape"(横向)',
+        description: '页面方向: "portrait"(纵向) 或 "landscape"(横向)；建议与 paperSize 同时给',
         enum: ['portrait', 'landscape'],
+      },
+      paperSize: {
+        type: 'string',
+        description: '纸张大小：A4 / A3 / Letter / Legal',
+        enum: ['A4', 'A3', 'Letter', 'Legal'],
       },
       topMargin: {
         type: 'number',
@@ -513,20 +553,24 @@ export const setPageSetupDefinition: ToolDefinition = {
 export const setPageSetupHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { orientation, topMargin, bottomMargin, leftMargin, rightMargin } = args as {
+  const { section, orientation, paperSize, topMargin, bottomMargin, leftMargin, rightMargin } = args as {
+    section?: number;
     orientation?: string;
+    paperSize?: string;
     topMargin?: number;
     bottomMargin?: number;
     leftMargin?: number;
     rightMargin?: number;
   };
 
-  if (!orientation && topMargin === undefined && bottomMargin === undefined &&
-      leftMargin === undefined && rightMargin === undefined) {
+  // 只给 section 也算合法调用：那是"读这一节现在的页面设置"（顺手拿到全文节数），
+  // 多节文档里探节数就靠它——get_page_setup 只报自己那一节、不报总数。
+  if (!orientation && !paperSize && topMargin === undefined && bottomMargin === undefined &&
+      leftMargin === undefined && rightMargin === undefined && section === undefined) {
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '请至少指定一个页面设置属性（如 orientation、topMargin 等）' }],
+      content: [{ type: 'text', text: '请至少指定一个页面设置属性（如 orientation、paperSize、topMargin 等），或者给一个 section 来读该节现状' }],
       error: '没有指定任何页面设置属性',
     };
   }
@@ -535,19 +579,24 @@ export const setPageSetupHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
+      section?: number;
+      sectionCount?: number;
       settings: Record<string, unknown>;
     }>(
       'setPageSetup',
       // The bridge's keys are topMargin/bottomMargin/leftMargin/rightMargin; the schema keeps the
       // marginX spelling for callers.
-      { orientation, topMargin: topMargin, bottomMargin: bottomMargin, leftMargin: leftMargin, rightMargin: rightMargin },
+      { section, orientation, paperSize, topMargin: topMargin, bottomMargin: bottomMargin, leftMargin: leftMargin, rightMargin: rightMargin },
       WpsAppType.WRITER
     );
 
     if (response.success && response.data) {
       const s = response.data.settings;
       let desc = '';
+      desc += `第 ${response.data.section ?? 1} 节（全文共 ${response.data.sectionCount ?? '?'} 节）\n`;
       if (s.orientation) desc += `页面方向: ${s.orientation === 'landscape' ? '横向' : '纵向'}\n`;
+      if (s.paperSize !== undefined) desc += `纸张: ${s.paperSize}\n`;
+      if (s.pageWidth !== undefined && s.pageHeight !== undefined) desc += `页面: ${s.pageWidth}pt x ${s.pageHeight}pt\n`;
       if (s.topMargin !== undefined) desc += `上边距: ${s.topMargin}pt\n`;
       if (s.bottomMargin !== undefined) desc += `下边距: ${s.bottomMargin}pt\n`;
       if (s.leftMargin !== undefined) desc += `左边距: ${s.leftMargin}pt\n`;
@@ -583,14 +632,82 @@ export const setPageSetupHandler: ToolHandler = async (
 };
 
 /**
+ * 读取页面布局
+ * 与 set_page_setup 对称：改之前先看现状，改完再核对生效了没有。
+ */
+export const getPageSetupDefinition: ToolDefinition = {
+  name: 'wps_word_get_page_setup',
+  description: `读取某一节的页面设置：纸张方向、纸张大小、页边距（磅）与页面宽高。使用场景：
+- "现在页边距是多少"
+- 改页面设置之前先看一眼，改完再核对生效了没有`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      section: {
+        type: 'number',
+        description: '第几节（从 1 开始）；不填则用第 1 节',
+      },
+    },
+  },
+};
+
+export const getPageSetupHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { section } = args as { section?: number };
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      section?: number;
+      orientation?: string;
+      paperSize?: string | number;
+      topMargin?: number;
+      bottomMargin?: number;
+      leftMargin?: number;
+      rightMargin?: number;
+      pageWidth?: number;
+      pageHeight?: number;
+    }>('getPageSetup', { section }, WpsAppType.WRITER);
+
+    if (response.success && response.data) {
+      const d = response.data;
+      const parts = [
+        `第 ${d.section} 节页面设置：`,
+        `方向: ${d.orientation === 'landscape' ? '横向' : '纵向'}`,
+        `纸张: ${d.paperSize ?? '未知'}`,
+        `页面: ${d.pageWidth}pt x ${d.pageHeight}pt`,
+        `边距: 上 ${d.topMargin}pt / 下 ${d.bottomMargin}pt / 左 ${d.leftMargin}pt / 右 ${d.rightMargin}pt`,
+      ];
+      return { id: uuidv4(), success: true, content: [{ type: 'text', text: parts.join('\n') }] };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `读取页面设置失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `读取页面设置出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
  * 导出所有格式化相关的Tools
  */
 export const formatTools: RegisteredTool[] = [
   { definition: applyStyleDefinition, handler: applyStyleHandler },
   { definition: setFontDefinition, handler: setFontHandler },
   { definition: generateTocDefinition, handler: generateTocHandler },
-  { definition: insertBookmarkDefinition, handler: insertBookmarkHandler },
   { definition: setPageSetupDefinition, handler: setPageSetupHandler },
+  { definition: getPageSetupDefinition, handler: getPageSetupHandler },
+  { definition: insertBookmarkDefinition, handler: insertBookmarkHandler },
 ];
 
 export default formatTools;

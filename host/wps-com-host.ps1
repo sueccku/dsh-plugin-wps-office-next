@@ -156,7 +156,7 @@ if ($null -eq $script:HostMutex) {
 }
 Update-HostState 'starting'
 
-# Warm the 248-case dispatch once so the first real request is not charged for JIT parsing.
+# Warm the 265-case dispatch once so the first real request is not charged for JIT parsing.
 try { $null = Invoke-WpsAction -Action '__warmup' -Params '{}' } catch { }
 $script:WpsResult = $null
 

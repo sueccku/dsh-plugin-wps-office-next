@@ -9,7 +9,10 @@
 //   B10 replaceRange 不校验边界，越界 = 静默删掉 [start, 文末) → 现在报错；跨段删除要 confirm
 // Run: node test/word-range-format.test.mjs
 import { spawn, spawnSync } from "node:child_process";
-import { resolve as resolvePath } from "node:path";
+import { mkdirSync, rmSync } from "node:fs";
+import { dirname, resolve as resolvePath } from "node:path";
+// P3：这个文件以前只有裸 COM 的活动对象真值。现在再存一份盘、由 python-docx 读**文件本身**。
+import { docxFacts, docxText } from "./lib/oracle.mjs";
 
 // 必须显式钉住仓库里的宿主脚本：从「已装本插件」的 DSH 会话里起的终端会带着 WPS_OFFICE_HOST_SCRIPT
 // （plugin.js 发布的那份，指向 profile 里 0.6.x 的副本），那样测的就是旧宿主 —— 实测会被它的旧参数
@@ -279,6 +282,19 @@ check(
 // ---- D18-C：get_paragraphs 现在给出可用的字符坐标 ----------------------------------------------
 const paras = text(await call("wps_word_get_paragraphs", {}));
 check("get_paragraphs prints character offsets", /@\d+-\d+/.test(paras), paras.replace(/\s+/g, " ").slice(0, 110));
+
+// ---- 独立 oracle（P3）：以**保存后的文件**为准，而不是只看裸 COM 的活动对象 ----
+const WR = resolvePath("test/.artifacts/word-range-format.docx");
+rmSync(WR, { force: true });
+mkdirSync(dirname(WR), { recursive: true });
+const savedWr = await call("wps_common_save_as", { outputPath: WR, format: "docx" });
+check("document saved for independent verification", ok(savedWr), text(savedWr).replace(/\s+/g, " ").slice(0, 100));
+const wrBody = docxText(WR);
+const wrFlat = Array.isArray(wrBody) ? wrBody.join("|") : "";
+check("the file carries the marker that was inserted last", wrFlat.includes(marker), wrFlat.slice(0, 140));
+check("the file no longer carries the duplicate-text paragraph that was deleted", !wrFlat.includes(dupMarker), wrFlat.slice(0, 140));
+const wrFacts = docxFacts(WR);
+check("the file's revisions are clean (track changes were never enabled here)", !!wrFacts && wrFacts.insertions === 0 && wrFacts.deletions === 0, JSON.stringify(wrFacts && { ins: wrFacts.insertions, del: wrFacts.deletions }));
 
 // ---- 清理：关掉一次性文档（不保存），不留残留 ---------------------------------------------------
 const closed = await call("wps_word_close_document", { save: false });

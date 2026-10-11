@@ -4,6 +4,7 @@
  * Pos: Single place where the model-facing tool surface is curated.
  *      Every registered tool stays callable through the wps_call dispatcher; only the
  *      advertised subset costs tokens on every request.
+ *      D4（2026-10-12）：广告面按真实走查的调用数据从 86 扩到 95（依据写在 STANDARD_TOOLS 的 D4 注释块里）。
  *      一旦我被修改，请更新我的头部注释。
  */
 import { ToolDefinition } from '../types/tools';

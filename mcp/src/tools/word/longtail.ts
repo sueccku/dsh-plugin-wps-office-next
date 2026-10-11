@@ -216,13 +216,16 @@ export const insertCrossReferenceHandler: ToolHandler = async (args: Record<stri
 /** 邮件合并 */
 export const mailMergeDefinition: ToolDefinition = {
   name: 'wps_word_mail_merge',
-  description: '邮件合并：以当前文档为母版，接一个数据文件（CSV），把指定字段插到光标处，再按每一行数据生成一个新文档（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。',
+  description: '邮件合并：以当前文档为母版，接一个数据文件（CSV），把表格里的值填到母版的占位符处；默认合并成一份新文档，给了 splitDir 就每个数据行单独存一份（母版不动）。使用场景：一份通知模板 + 一张名单，每人一份。占位符在模板里写成 ⟨字段名⟩（也认 {{字段名}} / «字段名»）。',
   category: ToolCategory.DOCUMENT,
   inputSchema: {
     type: 'object',
     properties: {
-      dataFile: { type: 'string', description: '数据文件路径（CSV，第一行是字段名）' },
-      fields: { type: 'array', description: '要插入的字段名列表，按顺序插到光标处，例如 Name、City；不填则只打开数据源不插字段' },
+      dataFile: { type: 'string', description: '数据文件路径（CSV，UTF-8，第一行是字段名）' },
+      fields: { type: 'array', description: '要替换的字段名列表，按顺序填到对应占位符，例如 Name、Dept；不填则用 CSV 表头里的全部字段' },
+      splitDir: { type: 'string', description: '给了这个目录就每个数据行单独生成一份 docx 存进去（文件名用 fileNameField，缺省用第一个字段）；不给则合并成一份新文档' },
+      fileNameField: { type: 'string', description: 'splitDir 模式下决定文件名的字段名（取该列的值），或一段带 {列名} 占位符的模板，例如 通知书_{部门}_{姓名}_{工号}；缺省用第一个字段' },
+      outputPath: { type: 'string', description: '单文档模式下的保存路径（.docx）；不给则新文档留在内存里，由调用方自己另存' },
     },
     required: ['dataFile'],
   },
@@ -230,17 +233,30 @@ export const mailMergeDefinition: ToolDefinition = {
 
 export const mailMergeHandler: ToolHandler = async (args: Record<string, unknown>): Promise<ToolCallResult> => {
   try {
-    const response = await wpsClient.executeMethod<{ mergedDocument?: string; sourceDocument?: string; fields?: string[]; fieldsInserted?: number; preview?: string; message?: string }>(
+    const response = await wpsClient.executeMethod<{ mergedDocument?: string; sourceDocument?: string; fields?: string[]; fieldsInserted?: number; preview?: string; message?: string; mode?: string; records?: number; outputDir?: string; outputPath?: string; files?: string[]; written?: number }>(
       'mailMerge',
-      { dataFile: args.dataFile, fields: args.fields },
+      {
+        dataFile: args.dataFile,
+        fields: args.fields,
+        splitDir: args.splitDir,
+        fileNameField: args.fileNameField,
+        outputPath: args.outputPath,
+      },
       WpsAppType.WRITER
     );
     if (!response.success) return longtailFail('邮件合并失败', response.error);
     const d = response.data || {};
     const lines = [d.message || '已合并'];
-    lines.push('  新文档: ' + String(d.mergedDocument || '?') + '（母版 ' + String(d.sourceDocument || '?') + ' 未改动）');
-    const fields = d.fields || [];
-    if (fields.length) lines.push('  字段: ' + fields.join(', '));
+    if (d.mode === 'splitByRecord') {
+      lines.push('  模式: 每个数据行一份文档（共 ' + String(d.records) + ' 行，已写出 ' + String(d.written) + ' 份）');
+      lines.push('  目录: ' + String(d.outputDir || '?'));
+      for (const f of (d.files || []).slice(0, 30)) lines.push('    ' + f);
+      lines.push('  母版 ' + String(d.sourceDocument || '?') + ' 未改动');
+    } else {
+      const out = d.outputPath ? '（已存到 ' + String(d.outputPath) + '）' : '（未存盘）';
+      lines.push('  新文档: ' + String(d.mergedDocument || '?') + out + '；母版 ' + String(d.sourceDocument || '?') + ' 未改动');
+      lines.push('  数据行: ' + String(d.records) + '，替换字段: ' + ((d.fields || []).join(', ') || '无'));
+    }
     if (d.preview) lines.push('  开头: ' + String(d.preview).replace(/[\r\n]+/g, ' / '));
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: lines.join('\n') }] };
   } catch (error) {

@@ -9,6 +9,7 @@
  * 规则：
  *   A  Range 一律写 `return ,$range`（变量形式与直接表达式形式都查）；
  *   B  裸 `catch { continue }` 必须登记并给理由（账本式：涨即失败，缩要显式改）；
+ *   D  几何成员（Left/Top/Width/Height/Rotation/Scale*）一律走 Set-ComValue（S3 场景门禁）。
  *   C  （信息）仍在边界层外的 COM 成员读写 —— 只报告，不判红：那是逐步迁移的存量。
  *
  * Run: node scripts/lint-com-boundary.mjs
@@ -28,6 +29,13 @@ export const BARE_CONTINUE_ALLOWLIST = [
 
 const RANGE_ASSIGN = /=\s*[^=].*\.(Range|Cells|Rows|Columns|Areas)\s*\(/;
 const RANGE_RETURN_EXPR = /^\s*return\s+(?!,)[^\n]*\.(Range|Cells|Rows|Columns|Areas)\b/;
+// D：几何成员直接赋参数。宿主会把参数 `ConvertTo-Json` -> `ConvertFrom-Json` 往返一遍，
+//    PS 5.1 在那里把带小数的数字变成 System.Decimal，赋给 COM 的 Single 属性直接抛
+//    InvalidCastException（"指定的转换无效"）→ 用户看到"坐标/尺寸设不进去"，报错还误导成
+//    "确认操作对象存在、名称或序号正确"。走 Set-ComValue 会按约定归一化并每次重新绑定。
+//    显式 `[double]` 强转同样安全（值是 Double），所以只查「`=` 后面就是 `$`」这一种写法。
+//    场景证据：docs/scenarios/S3-真机走查报告.md（真机 8 次失败 + test/ppt-shape-position.test.mjs）。
+const GEOM_WRITE = /\.(Left|Top|Width|Height|Rotation|ScaleWidth|ScaleHeight)\s*=(?!=)\s*\$/;
 
 export function collectBoundaryViolations(text, file = BRIDGE) {
   const violations = [];
@@ -60,6 +68,11 @@ export function collectBoundaryViolations(text, file = BRIDGE) {
       if (!allow.has(key)) {
         violations.push({ rule: 'bare-continue', file, line: index + 1, detail: '裸 `catch { continue }` 必须登记并给理由（见 BARE_CONTINUE_ALLOWLIST）：' + key.slice(0, 70) });
       }
+    }
+
+    const trimmed = line.trim();
+    if (GEOM_WRITE.test(trimmed) && !trimmed.startsWith('#') && !/Set-ComValue/.test(trimmed)) {
+      violations.push({ rule: 'geometry-write', file, line: index + 1, detail: '几何成员必须走 Set-ComValue（小数参数是 Decimal，直接赋 COM 属性抛 InvalidCastException）：' + trimmed.slice(0, 70) });
     }
   });
 

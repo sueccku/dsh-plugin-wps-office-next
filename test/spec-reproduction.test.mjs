@@ -27,13 +27,19 @@ function check(name, ok, detail) { results.push({ name, ok }); console.log((ok ?
 function listFull() {
   return new Promise((resolvePromise) => {
     const child = spawn(process.execPath, ['mcp/dist/index.js'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: { ...process.env, WPS_OFFICE_TOOLSET: 'full' } });
-    let buf = '';
+    // **按字节收帧**：不要写成 `buf += d.toString()`。那种写法在 chunk 边界切开多字节 UTF-8 字符时，
+    // 会把中文变成 U+FFFD（2026-10-11 实测：`指`→2 个替换字符、`明`→3 个），于是这条冻结判据开始
+    // 误报"生成物与活面对不上"。定位依据：服务器 stdout 的原始字节里 `efbfbd` 出现 **0 次**，
+    // 坏的是读法不是数据；同一份 mcp/dist，字节式分帧读出来 0 个替换字符。
+    let buf = Buffer.alloc(0);
     const send = (o) => child.stdin.write(JSON.stringify(o) + '\n');
     child.stdout.on('data', (d) => {
-      buf += d.toString();
+      buf = Buffer.concat([buf, d]);
       let i;
-      while ((i = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      while ((i = buf.indexOf(0x0a)) >= 0) {
+        const frame = buf.subarray(0, i);
+        buf = buf.subarray(i + 1);
+        const line = frame.toString('utf8').trim();
         if (!line) continue;
         let m; try { m = JSON.parse(line); } catch { continue; }
         if (m.id === 1) send({ jsonrpc: '2.0', method: 'notifications/initialized' });
@@ -70,6 +76,9 @@ const namesGenerated = generatedSorted.map((t) => t.name).join(',');
 const namesLive = liveSorted.map((t) => t.name).join(',');
 check('same tool names', namesGenerated === namesLive, namesGenerated === namesLive ? 'identical' : 'first difference at index ' + [...generatedSorted.keys()].find((i) => namesGenerated.split(',')[i] !== namesLive.split(',')[i]));
 
+// 备注（2026-10-11）：这里曾经有一版"传输层坏点白名单"的归一化补丁。根因查清后已撤掉 ——
+// 坏点来自**本文件 listFull() 旧的字符串式缓冲**（见那里的注释），服务器侧数据一直是干净的，
+// 所以冻结判据保持**逐字节严格比对**，不做任何折叠。
 const diff = [];
 for (let i = 0; i < Math.min(generatedSorted.length, liveSorted.length); i++) {
   if (JSON.stringify(canon(generatedSorted[i])) !== JSON.stringify(canon(liveSorted[i]))) diff.push(generatedSorted[i].name);
@@ -185,11 +194,14 @@ check('every pass-through rename is declared on the bridge side', missingDeclare
 
 // S4 coverage, now tiered (FIXES 74). The old check asked only "does the name appear somewhere in the
 // test corpus" - comments counted, and it said nothing about how well a tool is exercised. The tiers
-// come from scripts/lib/coverage-tiers.mjs so the CLI and CI cannot drift apart; the two ratchets move
-// in opposite directions and must be edited deliberately.
+// come from scripts/lib/coverage-tiers.mjs so the CLI and CI cannot drift apart. Three ratchets, all of
+// them deliberate: bespoke may not shrink; matrixOk and matrixAny may not grow. matrixOk used to be
+// unguarded entirely - with a 72-tool margin on bespoke, a tool could slide from a real test into
+// "the call succeeded" and nothing failed (fixed 2026-10-10).
 const tiers = computeCoverageTiers();
 check('every registered tool is driven by a test or the e2e run', tiers.notDriven.length === 0, tiers.notDriven.length ? tiers.notDriven.slice(0, 6).join(', ') : tiers.registered.length + ' driven');
 check('bespoke coverage did not shrink (S4 ratchet)', tiers.bespoke.length >= TIER_LEDGER.bespoke, tiers.bespoke.length + ' tools have a non-matrix test (ratchet ' + TIER_LEDGER.bespoke + ')');
+check('the "ok-only" middle tier only shrinks (S4 ratchet)', tiers.matrixOk.length <= TIER_LEDGER.matrixOk, tiers.matrixOk.length + ' tools are only exercised by a matrix "ok" row (ratchet ' + TIER_LEDGER.matrixOk + ')');
 check('the weakest tier only shrinks (S4 ratchet)', tiers.matrixAny.length <= TIER_LEDGER.matrixAny, tiers.matrixAny.length + ' tools are only exercised by a matrix "any" row (ratchet ' + TIER_LEDGER.matrixAny + ')');
 
 console.log('');

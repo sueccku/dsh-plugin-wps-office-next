@@ -178,7 +178,9 @@ $guard = '    Clear-WpsWarnings' + $crlf +
          '    $p = Add-WpsParamAliases $Action $p' + $crlf +
          '    $p = Expand-WpsNestedParams $Action $p' + $crlf +
          '    $__paramError = Test-WpsActionParamKeys $Action $p $script:ActionParamKeys[$Action]' + $crlf +
-         '    if ($null -ne $__paramError) { Output-Json @{ success = $false; error = $__paramError }; return }' + $crlf
+         '    if ($null -ne $__paramError) { Output-Json @{ success = $false; error = $__paramError }; return }' + $crlf +
+         '    $__slideError = Test-WpsSlideIndexInRange $Action $p' + $crlf +
+         '    if ($null -ne $__slideError) { Output-Json @{ success = $false; error = $__slideError }; return }' + $crlf
 # Anchor on the dispatch switch, not on "the first newline": the source's line endings must not be
 # able to decide where the guard lands. A previous LF-only source made this split a line in half.
 $guardBoundary = 'try { $p = $Params | ConvertFrom-Json }'
@@ -229,4 +231,5 @@ $paramsInHead = ([regex]::Matches($head, '\$Action\b|\$Params\b')).Count
 'param_keys=' + $paramKeys.Count + ' dynamic=' + $dynamicActions.Count
 if ($dynamicActions.Count -gt 0) { 'param_keys_skipped=' + (($dynamicActions | Sort-Object) -join ',') }
 'guard_installed=' + ([regex]::Matches($text, 'Test-WpsActionParamKeys \$Action')).Count
+'slide_index_guard=' + ([regex]::Matches($text, 'Test-WpsSlideIndexInRange \$Action')).Count
 'param_aliases=' + $paramAliases.Count + ' containers=' + $paramContainers.Count

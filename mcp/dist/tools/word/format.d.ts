@@ -43,6 +43,12 @@ export declare const insertBookmarkHandler: ToolHandler;
 export declare const setPageSetupDefinition: ToolDefinition;
 export declare const setPageSetupHandler: ToolHandler;
 /**
+ * 读取页面布局
+ * 与 set_page_setup 对称：改之前先看现状，改完再核对生效了没有。
+ */
+export declare const getPageSetupDefinition: ToolDefinition;
+export declare const getPageSetupHandler: ToolHandler;
+/**
  * 导出所有格式化相关的Tools
  */
 export declare const formatTools: RegisteredTool[];
