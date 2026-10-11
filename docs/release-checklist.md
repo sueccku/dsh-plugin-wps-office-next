@@ -217,14 +217,16 @@ npm publish                      # 2FA 用户加 --otp <6 位码>；首次发布
 
 > 仓库里**不放任何凭证**（D4-B）。`publishConfig.registry` 只记录目标源，不含认证信息。
 
-## 5. 发布后验收（**v0.6.0 已按此执行，全过**）
+## 5. 发布后验收（**v0.8.0 已按此执行，全过**；v0.6.0 起每版都走一遍）
 
 ```powershell
 # 1) registry 上确实是发出去的那一份（integrity/shasum 要与第 4 步 dry-run 打印的一致）
 npm view dsh-plugin-wps-office-next version dist-tags dist.integrity dist.fileCount --registry https://registry.npmjs.org --prefer-online
 
 # 2) 全新隔离 profile 从 registry 真装一遍（不要用本机已有 profile 验）
-dsh plugin --profile <临时名> add dsh-plugin-wps-office-next
+#    **必须写全版本号**：pnpm 的 minimumReleaseAge（供应链保护）会拒绝"刚发布"的版本，不写版本号时
+#    它会静默装成**上一版**并写成 ^上一版（2026-10-11 发 0.8.0 时实测解析出 ^0.7.0）。
+dsh plugin --profile <临时名> add dsh-plugin-wps-office-next@<本次版本>
 dsh --profile <临时名> --dump-config | Select-String wps
 # 装出来的副本里再跑一次自检：
 Push-Location "$env:USERPROFILE\.dsh\profiles\<临时名>\node_modules\dsh-plugin-wps-office-next"
@@ -235,8 +237,12 @@ dsh plugin --profile <临时名> remove dsh-plugin-wps-office-next
 Remove-Item -Recurse -Force "$env:USERPROFILE\.dsh\profiles\<临时名>"
 ```
 
-> 新包首次安装时 pnpm 会提示 `minimumReleaseAgeExclude` 并自动写一行到 `pnpm-workspace.yaml`，那是它的新版本
-> 保护机制，**不是错误**。
+> pnpm 开了 `minimumReleaseAge`（供应链保护：拒绝选取"发布太新"的版本）。显式写版本号安装时，它会打印
+> `Added 1 entry to minimumReleaseAgeExclude in pnpm-workspace.yaml` 并自动写一行到 `pnpm-workspace.yaml`，
+> 那是**正常行为、不是错误**（`~/.dsh/profiles/desktop/pnpm-workspace.yaml` 里每个历史版本都有一条）。
+> 反过来，**不写版本号**的 `add` 在刚发完版时会解析到**上一版** —— registry 与 `dist-tags.latest` 都是对的，
+> 纯粹是客户端选取策略。所以本步一律写全版本号；`pnpm store prune` 之类的缓存清理无效（2026-10-11 实测；
+> 该现象此前被误诊为"pnpm 缓存了旧 packument"）。
 
 然后才是真实用户路径。
 

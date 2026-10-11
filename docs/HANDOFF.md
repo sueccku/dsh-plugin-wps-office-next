@@ -66,11 +66,12 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 ## 1. 一句话现状
 
-**已发布 `v0.7.0`（2026-10-09）**：npm `dist-tags.latest = 0.7.0`，`fileCount = 295`、shasum/integrity 与本地 dry-run 逐字符一致（详见 §2）。
-这一版收口了**用户报告的 Excel 实例主窗口全程隐藏**（FIXES 104），以及同源的 `getAppInfo` 只读化与
-`wps_common_get_app_info` 丢字段（FIXES 105）。最要紧的两条：**插件拉起的 WPS 表格窗口现在真的看得见**、
-**`wps_status` 只报告已存在的实例、不再顺手启动 Word/PPT**。工程侧把测试/开发环境的 WPS 残留回收换成 PID 基线
-（FIXES 106），并修掉一键 e2e 在带毒环境下的四条假红（FIXES 107）。
+**已发布 `v0.8.0`（2026-10-11）**：GitHub 侧 tag + Release 已建、npm `dist-tags.latest = 0.8.0`，`fileCount = 293`、
+shasum/integrity 与本地 dry-run 逐字符一致（详见 §2）。这一版补上 **Word 分节族三件套**（分节页面设置 / 页码格式与
+分节重编号 / 表头跨页重复，FIXES 113）与 **WO-001 的四个 Word 缺口**（FIXES 109），把**邮件合并**从「假成功」
+整条重写（FIXES 110），修掉「整篇转横向」的静默失效（FIXES 113）与 Word 段落单位错误（FIXES 108），并按六轮
+真机走查轨迹把**广告面 84 → 95**（FIXES 112）。工程侧把「不需要 WPS 的测试文件」收成唯一来源
+`scripts/lib/static-tests.mjs`（`npm run test:static`），并补齐此前漏入库、却被 `ci.yml` 引用的文件。
 
 | 指标 | 现值 | 权威来源 |
 | --- | --- | --- |
@@ -120,28 +121,41 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | 分支 / HEAD | `main`（以 `git describe --tags` / `git log --oneline -1` 为准）——已推送，与 `origin/main` 一致 |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、`v0.6.2`、`v0.6.3`、**`v0.7.0`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
-| Releases | **Latest = v0.7.0**（2026-10-09）：`gh release create v0.7.0 …` 已执行；上一版 v0.6.3 的 Release 建于 2026-10-08 |
-| 包 | `dsh-plugin-wps-office-next@0.7.0` —— **2026-10-09 已上架 npmjs，`dist-tags.latest = 0.7.0`**（`fileCount = 295`、`shasum = e16a7847d3173989cdc500eeb17960a7e20ef01e`、`integrity = sha512-0CxtyTZXx6HoPe4is+Mfr0fE2GPEc9YFqkGlUdliz9hzifIqbJocAYwP9IUB3FuDLf12cDpNBVz7cpJf8x1vIw==`，与本地 dry-run 逐字符一致；**本次发布不需要 OTP**）。历史：0.6.3 于 2026-10-07 上架（`fileCount = 296`、`shasum = 0054109e5c5e0df3a891a2711a9c6d49ef6ce911`）。历史：0.6.2 于 2026-10-04 上架（本次发布**不需要 OTP**：本机 token 已可免 2FA 发布，`PUT → 202`，约 2 分钟后 registry 上可见）。实测元数据：`fileCount=296`、`unpackedSize=3,294,700`、`shasum=3d9f2c3a…`、`integrity=sha512-agvvryjeImdzt…jAIKLAwGfqC8w==`（与本地 `npm publish` 打印的逐字符一致）。在架版本 `["0.6.1","0.6.2","0.6.3","0.7.0"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`、`v0.6.2`、`v0.6.3`、`v0.7.0`、**`v0.8.0`**（**注意：没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
+| Releases | **Latest = v0.8.0**（2026-10-11）：`gh release create v0.8.0 …` 已执行；上一版 v0.7.0 的 Release 建于 2026-10-09 |
+| 包 | `dsh-plugin-wps-office-next@0.8.0` —— **2026-10-11 已上架 npmjs，`dist-tags.latest = 0.8.0`**（`fileCount = 293`、`shasum = 42ff742f95263da69bfaa6dca8f5bda5cbd12d61`、`integrity = sha512-V4Zu/PxCBoMRgvs5TXIsbkNrsU6XDoRM2LwM4uNWu0zTS1FnBNG/xJxS/htX089te5Q1RN4PYx6uqskg3LdrXA==`、packed 701.5KB / unpacked 3.34MB，与本地 dry-run 逐字符一致；**本次发布不需要 OTP**）。历史：0.7.0 于 2026-10-09 上架（`fileCount = 295`、`shasum = e16a7847d3173989cdc500eeb17960a7e20ef01e`、`integrity = sha512-0CxtyTZXx6HoPe4is+Mfr0fE2GPEc9YFqkGlUdliz9hzifIqbJocAYwP9IUB3FuDLf12cDpNBVz7cpJf8x1vIw==`）。历史：0.6.3 于 2026-10-07 上架（`fileCount = 296`、`shasum = 0054109e5c5e0df3a891a2711a9c6d49ef6ce911`）。在架版本 `["0.6.1","0.6.2","0.6.3","0.7.0","0.8.0"]`。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
-**工作区**：**以 `git status --porcelain` 为准**（本节不写死状态）。2026-10-11 文档整理时工作区**不干净**：除了已提交的 v0.7.0，还有一批**未提交的源码/生成物改动**与**未入库的新文件**（`AGENTS.md`、`docs/scenarios/`、`docs/work-orders/`、`scripts/lib/static-tests.mjs`、`scripts/run-static-tests.mjs`、若干 `test/*.test.mjs` 与 `test/lib/harness.mjs`、`test/baseline.json`）——注意 `.github/workflows/ci.yml` 已经引用 `scripts/run-static-tests.mjs`，**这批文件必须与工作区改动一起提交**，否则干净检出上的 CI 会红。
+**工作区**：**干净且与 `origin/main` 一致**（2026-10-11 发完 v0.8.0 后核对）。此前那批"已在文档里、却没入库"的文件（`AGENTS.md`、`docs/scenarios/`、`docs/work-orders/`、`scripts/lib/static-tests.mjs`、`scripts/run-static-tests.mjs`、若干 `test/*.test.mjs`、`test/lib/harness.mjs`、`test/baseline.json`）已随 `0b5a774` 一起提交 —— 它们被 `ci.yml` 与 `run-tests.ps1` 引用，不入库会让干净检出上的 CI 直接变红。
 
 **本机当前状态（新会话请看这里）**：
 
-- **2026-10-07：用户为了开发环境纯净，已把插件从 DSH 里卸载** —— 所以现在 profile 里**没有**本插件的副本（这也是为什么按旧路径找不到 `node_modules/dsh-plugin-wps-office-next`）。`desktop` profile 与 `web` profile 目录仍在。要再装：`dsh plugin --profile desktop add dsh-plugin-wps-office-next@0.7.0`（装完需重启 DSH 才生效）（`…/profiles/desktop/node_modules/dsh-plugin-wps-office-next/package.json` → 以实际安装版本为准），
+- **2026-10-07：用户为了开发环境纯净，已把插件从 DSH 里卸载** —— 所以 `desktop` / `web` 里**没有**本插件的副本（`wpse2e` 是 e2e 用的临时 profile，里面装着 0.7.0），这也是为什么按旧路径找不到 `node_modules/dsh-plugin-wps-office-next`。要再装：`dsh plugin --profile desktop add dsh-plugin-wps-office-next@0.8.0`（**必须写全版本号**，原因见下面 §2 的"最小发布年龄"警告；装完需重启 DSH 才生效），
   与其他 profile（`web`）之外的临时 profile 都已删除。**你若在 DSH 里用插件，跑的就是本 HEAD 这版行为**。
 - 但**仓库工作区是权威**：改完源码要重新 `tsc` + 跑管线，装出来的副本不会自动跟着变（除了 `desktop` 依赖的是本地路径时）。
 
-**发布后验收（2026-10-09 实测，v0.7.0）**：全新一次性 profile `wpsnpm07` 从 registry 装 `@0.7.0` → **version = 0.7.0、295 文件、`DOCTOR OK`**，`--dump-config` 两个 id 都在，验收 profile 已删除；registry 侧 `dist-tags.latest = 0.7.0`、`fileCount = 295`、`integrity` 与本地 dry-run 逐字符一致。**发布本身不需要 OTP**（本机 token 已可免 2FA 发布）。
+**发布后验收（2026-10-11 实测，v0.8.0）**：全新一次性 profile `wpsver08` 从 registry 装 **`@0.8.0`（显式写版本号）** → **version = 0.8.0、`DOCTOR OK`**、`--dump-config` 两个 id 都在、4 份技能与 COM 宿主 BOM 全 OK，验收 profile 已删除；registry 侧 `dist-tags.latest = 0.8.0`、`fileCount = 293`、`shasum`/`integrity` 与本地 dry-run **逐字符一致**。**发布本身不需要 OTP**。
+
+> ⚠️ **这里踩到并查清了「最小发布年龄」门禁（比原来那条"pnpm 缓存"的说法准确）**：刚发完版时，
+> `dsh plugin add <包名>`（**不写版本号**）会装到**上一版**（本次实测解析出 `^0.7.0`）。原因**不是** packument 缓存——
+> 实测 `npm view` 与 pnpm 的 npmjs 元数据都已显示 `latest = 0.8.0`，而且我用 `pnpm store prune` 那类清理也不管用。
+> 真正的原因是这套 DSH/pnpm 开了 **`minimumReleaseAge`（供应链保护：拒绝选取"发布太新"的版本）**，
+> 证据有两个：① 显式写 `@0.8.0` 安装时 pnpm 主动打印
+> `Added 1 entry to minimumReleaseAgeExclude in pnpm-workspace.yaml: dsh-plugin-wps-office-next@0.8.0`；
+> ② `~/.dsh/profiles/desktop/pnpm-workspace.yaml` 里 `minimumReleaseAgeExclude` 正好**每个历史版本一条**
+> （0.6.0 / 0.6.1 / 0.6.2 / 0.7.0）——说明这机制从 0.6.0 起就一直在起作用。
+> **所以发版验收一律写全版本号**；给 desktop 装新版时也要写 `@0.8.0`，否则会静默装回旧版。
+> `dist/tags.latest` 是对的、包也是好的，这纯粹是客户端的选取策略。
+
+**历史验收（2026-10-09，v0.7.0）**：全新一次性 profile `wpsnpm07` 从 registry 装 `@0.7.0` → **version = 0.7.0、295 文件、`DOCTOR OK`**，`--dump-config` 两个 id 都在，验收 profile 已删除；registry 侧 `dist-tags.latest = 0.7.0`、`fileCount = 295`、`integrity` 与本地 dry-run 逐字符一致。
 
 **历史验收（2026-10-07，v0.6.3）**：全新一次性 profile `wpsnpm63` 从 registry 装 `@0.6.3` → **version = 0.6.3、`DOCTOR OK`**，验收 profile 已删除；registry 侧 `dist-tags.latest = 0.6.3`、`fileCount = 296`、shasum/integrity 与 dry-run 一致。
 
 **历史验收（2026-10-04，v0.6.2）**：全新 profile 装 `@0.6.2` → **296 文件、`doctor` OK**、`--dump-config` 两个 id 都在。
 
-> ⚠️ **pnpm 元数据缓存（发下一版时会再遇到）**：刚发完新版本时，`dsh plugin add <包名>` 不写版本可能**装到上一版** ——
-> pnpm 缓存了旧 packument，而 `dsh plugin add` 把依赖写成 `^上一版`（本次发 0.6.2 时就实测到解析出 `^0.6.1`）。
-> 要拿到新版本：写全版本 `add <包名>@X.Y.Z`，或先 `pnpm store prune` / 等缓存过期后重装。
+> ⚠️ **"不写版本号会装到上一版"的正确解释见上面 §2 的「最小发布年龄」注（2026-10-11 查清）**：
+> **不是** pnpm 缓存了旧 packument，而是 pnpm 的 `minimumReleaseAge` 供应链门禁在拒绝刚发布的版本。
+> 应对：发版验收与给 profile 装新版都**写全版本号**（`add <包名>@X.Y.Z`）；`pnpm store prune` 之类的缓存清理无效（已实测）。
 > 这不是包的问题（registry 侧 `dist-tags.latest` 是对的），但**发布后必须这样验证**，否则会误判"发布没生效"。
 
 > 若本节与 registry 或 `git` 现状不符，**以命令实测为准**：`git describe --tags`、`git status --porcelain`、`npm view dsh-plugin-wps-office-next versions`。
@@ -468,9 +482,9 @@ This file is being treated as an ES module because it has a '.js' file extension
 
 ### 8.2 发布状态（2026-10-04 实测）
 
-- **在架版本：`0.6.1` + `0.6.2` + `0.6.3` + `0.7.0`，`dist-tags.latest = 0.7.0`**（2026-10-09 发布）；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），
+- **在架版本：`0.6.1` + `0.6.2` + `0.6.3` + `0.7.0` + `0.8.0`，`dist-tags.latest = 0.8.0`**（2026-10-11 发布）；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），
   但 **CHANGELOG 保留那次事故的记录**（不要删）。
-- 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、86–91→v0.6.2、92–102→v0.6.3、**104–107→v0.7.0**。
+- 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、86–91→v0.6.2、92–102→v0.6.3、104–107→v0.7.0、**108–113→v0.8.0**。
 - 早期版本里写过的「还没发布到 npm」「npm 上只有 0.6.1」之类说法都已过期——发布事实一律看 §2。
 
 计划之外、审计出来的可选工作（文档同步是其中 P0 项，本轮已做）：
