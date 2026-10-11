@@ -1,9 +1,12 @@
 // D1 / FIXES 76: the 18 merged-away tool names were kept callable for one release cycle (v0.2.0 →
 // v0.4.0). That compatibility window is closed in v0.5.0: the aliases are gone, so an old name is now
-// simply an unknown tool. This test needs no WPS - it only exercises dispatch and discovery.
+// simply an unknown tool. The dispatch/discovery assertions need no WPS; the FIXES 95 canonical-oracle
+// block does (it really opens a workbook and reads Zoom back over raw COM), so that block self-skips
+// when this machine has no WPS install — see the SKIP guard below.
 // Run: node test/deprecated.test.mjs
 import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 // FIXES 95（W1-4）：这个文件的核对源（真实报错 + 文件系统）本身是独立的，但有一处缺口：
 // 它只验证规范名 `wps_excel_set_zoom` **能解析**（出现在 wps_help 里），从没验证它**还能干活**。
@@ -53,13 +56,23 @@ check('every removed alias is not found through wps_help', notFound === OLD_NAME
 const canonical = await call('wps_help', { tool: 'wps_excel_set_zoom' });
 check('the canonical name still resolves', !canonical.isErr && /wps_excel_set_zoom/.test(canonical.text), canonical.text.slice(0, 70));
 // ---- 独立 oracle：规范名不只是"能解析"，还得真的能干原来那个别名的活 ----
-const scratch = await call('wps_call', { tool: 'wps_excel_create_workbook', args: {} });
-check('a scratch workbook opened for the canonical probe', !scratch.isErr, scratch.text.slice(0, 80));
-const zoomSet = await call('wps_excel_set_zoom', { percent: 85 });
-check('the canonical tool really runs', !zoomSet.isErr, zoomSet.text.slice(0, 90));
-const rawZoom = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); [int]$w.ActiveWindow.Zoom")).trim();
-check('raw COM says the zoom really changed to 85', /^\d+$/.test(rawZoom) && Number(rawZoom) === 85, 'zoom=' + JSON.stringify(rawZoom));
-await call('wps_call', { tool: 'wps_excel_close_workbook', args: { save: false } });
+// 这一段要真机 WPS（真的建工作簿、真改缩放、再用裸 COM 读回），而本文件在 CI 的「不需要 WPS」清单里
+// （scripts/lib/static-tests.mjs）。所以按 close-safety.test.mjs 的既有做法先探一次「这台机器装没装 WPS」
+// （只读 LOCALAPPDATA，不启动 WPS），没装就显式 SKIP —— 否则 CI runner 上会把「没有 WPS」误报成代码坏了
+// （2026-10-11 实测：CI 上 7 PASS / 3 FAIL，全红）。
+const wpsBase = join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'Kingsoft', 'WPS Office');
+const wpsInstalled = existsSync(wpsBase) && readdirSync(wpsBase).some((d) => /^\d+\.\d+/.test(d));
+if (!wpsInstalled) {
+  console.log('SKIP canonical-oracle checks (no WPS Office install on this machine: ' + wpsBase + ')');
+} else {
+  const scratch = await call('wps_call', { tool: 'wps_excel_create_workbook', args: {} });
+  check('a scratch workbook opened for the canonical probe', !scratch.isErr, scratch.text.slice(0, 80));
+  const zoomSet = await call('wps_excel_set_zoom', { percent: 85 });
+  check('the canonical tool really runs', !zoomSet.isErr, zoomSet.text.slice(0, 90));
+  const rawZoom = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); [int]$w.ActiveWindow.Zoom")).trim();
+  check('raw COM says the zoom really changed to 85', /^\d+$/.test(rawZoom) && Number(rawZoom) === 85, 'zoom=' + JSON.stringify(rawZoom));
+  await call('wps_call', { tool: 'wps_excel_close_workbook', args: { save: false } });
+}
 
 const status = await call('wps_status', {});
 check('wps_status no longer reports a deprecated-alias count', !/deprecatedTools/.test(status.text), status.text.slice(0, 90));
