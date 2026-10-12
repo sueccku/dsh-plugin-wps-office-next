@@ -9,15 +9,19 @@
 > MCP 子进程的环境又会被清洗掉相关变量 —— 机器上没装 Node.js 时整行启动失败，插件显示「已启用」
 > 但 95 个工具一个都不注册。逐条证据见 [docs/FIXES.md](docs/FIXES.md) 第 114 条。
 >
-> **请安装 `0.8.2`。** 内容与 `0.8.1` 相同，但 `0.8.1` 在 npm 上停在**未定案的暂存发布**状态
-> （版本号已被占用、tarball 拉不下来），装不上；详见下方「发布说明」。
+> **`0.8.1` 与 `0.8.2` 内容完全相同**，两个版本现在都能从 npm 安装；用 registry 上的 `latest`
+> （`0.8.2`）即可。`0.8.1` 发布后 registry 的 tarball 有约半小时返回 404（元数据已写入、
+> 制品还没就绪），当时据此换号发了 `0.8.2`；制品就绪后两版都正常。
 
 ### 发布说明
 
-- **不要装 `0.8.1`**：npm 11 把一次 `npm publish` 暂存了（返回 202 而非 200），版本号被占住但
-  tarball 不可下载，重发同号会 `E409 Cannot publish over previously staged version`。
-  本版换号重发，内容与 0.8.1 完全一致。
-- GitHub 侧 `v0.8.1` 的 tag 与提交是完整可用的（代码没问题），只是 npm 上那一版不可安装。
+- `0.8.1` 发布时 `npm publish` 返回 **HTTP 202** 而不是 200，`GET …/0.8.1` 是 200、`dist-tags.latest`
+  已指向 0.8.1，但 tarball 有约半小时 **404**，期间重发同号会
+  `E409 Cannot publish over previously staged version "0.8.1"`。
+- 于是换号发了内容相同的 `0.8.2`。之后 `0.8.1` 的 tarball 也变为 200 —— 说明那是**制品就绪/传播延迟**，
+  不是发布失败。两版现在都可用，`latest = 0.8.2`。
+- 教训：`npm publish` 之后**不能只看退出码和那行 `+ pkg@version`**，要立刻 `HEAD` 一次 `dist.tarball`；
+  看到 404 也别急着换号，先等一会儿再确认（详见 [docs/release-checklist.md](docs/release-checklist.md) §9）。
 
 ### 用户可见的修复
 

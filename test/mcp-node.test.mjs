@@ -82,9 +82,9 @@ const plugin = readFileSync("plugin.js", "utf8");
 check("plugin.js publishes WPS_OFFICE_MCP_NODE", /process\.env\.WPS_OFFICE_MCP_NODE\s*=/.test(plugin), "");
 check("plugin.js publishes WPS_OFFICE_MCP_ENTRY", /process\.env\.WPS_OFFICE_MCP_ENTRY\s*=/.test(plugin), "");
 
-// --- 4. the doctor must distinguish the managed runtime Node from a mere fallback ---
-// With no DSH-managed runtime to find, resolveNodeExecutable() still lands on process.execPath, so
-// the MCP child does start — but the doctor has to say so instead of claiming a healthy OK.
+// --- 4. the doctor's mcp node verdict must follow what the resolver actually returns ---
+// Case A: no DSH-managed runtime, but the interpreter IS a real node (the documented "no node on
+// the host PATH" invocation runs doctor with the runtime's own node) — that is a healthy OK.
 {
   const doctor = spawnSync(process.execPath, ["scripts/doctor.mjs"], {
     encoding: "utf8",
@@ -92,11 +92,15 @@ check("plugin.js publishes WPS_OFFICE_MCP_ENTRY", /process\.env\.WPS_OFFICE_MCP_
     env: { ...process.env, DSH_HOME: join(tmpdir(), "dsh-doctor-no-runtime-" + process.pid) },
   });
   const out = String(doctor.stdout || "");
+  const line = (out.split(/\r?\n/).find((l) => /mcp node/.test(l)) || "(missing)").trim();
+  const interpreterIsNode = /(^|[/\\])node(\.exe)?$/iu.test(process.execPath);
   check("doctor still exits 0 when no DSH-managed runtime is found", doctor.status === 0, "status=" + doctor.status);
   check(
-    "doctor warns (not OK) when it falls back past the managed runtime",
-    /WARN\s+mcp node/.test(out) && !/OK\s+mcp node/.test(out),
-    (out.split(/\r?\n/).find((l) => /mcp node/.test(l)) || "(missing)").trim()
+    interpreterIsNode
+      ? "a real-node interpreter is reported OK (not a bogus missing-runtime warning)"
+      : "an Electron interpreter with no managed runtime is WARNed",
+    interpreterIsNode ? /^OK\s+mcp node/m.test(out) : /WARN\s+mcp node/.test(out),
+    line
   );
 }
 

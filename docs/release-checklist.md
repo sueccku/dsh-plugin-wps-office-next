@@ -332,14 +332,15 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes "$(Select-String -Path CHANGEL
 | 主题 | 宿主 PATH 上没有 Node.js 时 **95 个工具全部不可用**（FIXES 114） |
 | 真机整轮 | **跑了**（用户 2026-10-12 明确要求「跑测试」）：`TOTAL PASS=1508 FAIL=0 FILES=59 REAPED=240 ORPHANS_LEFT=0`、`ALL TEST FILES GREEN`、`BASELINE OK (1508 >= 1283, 59 >= 51)` |
 | 静态门禁 | tsc / build-host-actions / 三个生成器 / `gen-numbers --check` / lint / `verify --static` / `param-contract` / spec-reproduction / `test:static` 全绿；`verify:package` **11/11 → `PACKAGE RUNTIME OK`** |
-| 打包 | `entryCount=294  packed=706231 B  unpacked=3.35MB` |
+| 打包 | `entryCount=294  packed=706231 B  unpacked=3.35MB`；registry 实测 `fileCount=294 shasum=966ceabe3ea1293a84482fbbb24f1ed969a70fdc`，下载 tarball **706231 字节**与本地 pack 一致 |
+| 全新 profile 真装 | `dsh plugin --profile <临时> add dsh-plugin-wps-office-next@0.8.2` → 装出 0.8.2、两个 id 接线正常，验收后已拆掉 |
 | 顺带 | `run-tests.ps1` 的 P6 底线门禁此前**静默失效**（`test/baseline.json` 无 BOM + PS 5.1 按 ANSI 读 → `ConvertFrom-Json` 抛错、违规数组仍为空 → 放行），本版一并修掉 |
 
-### 0.8.1（2026-10-12）—— **npm 上不可安装，已由 0.8.2 取代**
+### 0.8.1（2026-10-12）
 
 | 项 | 读数 |
 | --- | --- |
-| 结果 | GitHub 侧完整可用（提交 `b2ffefe`、tag `v0.8.1`）；**npm 侧停在未定案的暂存发布** |
-| 症状 | `npm publish` 返回 **HTTP 202**（不是 200）并打印 `+ dsh-plugin-wps-office-next@0.8.1`；随后 registry 上：`GET /dsh-plugin-wps-office-next/0.8.1` → 200、`dist-tags.latest = 0.8.1`，但 **tarball 永久 404**（0.8.0 的 tarball 是 200）；重发同号 → `E409 Cannot publish over previously staged version "0.8.1"`；`npm stage list` 却报没有待批准项，`npm stage approve` 无从下手 |
-| 处置 | 换号发 0.8.2（内容与 0.8.1 完全一致）；消费者请装 `0.8.2`，**不要装 0.8.1** |
-| 教训 | 以后 `npm publish` 必须以 **HTTP 200** 与「tarball 可下载」为判据，不能只看退出码和那行 `+ pkg@version`；发完立刻 `Invoke-WebRequest -Method Head <dist.tarball>` 验一次 |
+| 结果 | 代码与 GitHub 侧完整可用（提交 `b2ffefe`、tag `v0.8.1`）；npm 上**最终也正常**（tarball 200、`shasum=c95c1d13867b305cfe47998eb5b07a24cc47f82b`），但与 0.8.2 内容重复 |
+| 插曲 | `npm publish` 返回 **HTTP 202**（不是 200）；随后 `GET …/0.8.1` 200、`dist-tags.latest=0.8.1`，但 **tarball 约半小时 404**；期间重发同号 → `E409 Cannot publish over previously staged version "0.8.1"`；`npm stage list` 报无待批准项，`npm stage approve` 无从下手。制品就绪后 tarball 变 200 |
+| 处置 | 当时据此换号发了内容相同的 0.8.2；`latest = 0.8.2` |
+| 教训 | ①`npm publish` 之后必须以「**HTTP 200 + `dist.tarball` 可 HEAD**」为判据，不能只看退出码和 `+ pkg@version`；②看到 tarball 404 先等 20–30 分钟复检再决定换号，202 表示发布被接受、制品可能仍在就绪中；③`npm stage list` 在这条路径上不显示任何待批准项，别据此判断"暂存卡住了" |

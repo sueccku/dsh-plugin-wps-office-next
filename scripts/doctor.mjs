@@ -55,29 +55,34 @@ else report("ERROR", "node", "need 22.19+ or 24+, found " + process.versions.nod
 // dsh-mcp-client starts that child from scrubbedParentEnv() (every DSH_* name dropped), so the
 // ambient PATH and DSH_DESKTOP_NODE_EXECUTABLE cannot be relied on: the Host resolves the
 // executable itself. An existing absolute path means the original "bare `node` → ENOENT → 0 tools"
-// failure cannot happen; a fallback (Electron-as-Node or this very interpreter) is reported as a
-// WARN because the managed runtime Node is the one this bundle prefers. This check cannot prove the
-// target is a *usable* Node (it never executes it): a user-pinned path that exists but is not a
-// node is reported as a WARN hint, and only the MCP row itself can confirm a real start.
+// failure cannot happen. A real Node binary (`node.exe` / `node`) can be handed to the MCP child
+// as-is, so it is OK; falling back to a NON-Node interpreter (the Electron binary) is a WARN,
+// because that only works thanks to ELECTRON_RUN_AS_NODE. This check cannot prove the target is a
+// *usable* Node (it never executes it): a user-pinned path that exists but is not a node is
+// reported as a WARN hint, and only the MCP row itself can confirm a real start.
 try {
   const { resolveNodeExecutable } = await import("./lib/mcp-node.mjs");
   const executable = resolveNodeExecutable();
   const override = (process.env.WPS_OFFICE_MCP_NODE || "").trim();
   const looksLikeNode = /(^|[/\\])node(\.exe)?$/iu.test(executable);
+  const suffix = override === executable ? " (WPS_OFFICE_MCP_NODE)" : "";
   if (executable === "node" || executable === "node.exe") {
     report("ERROR", "mcp node", "no absolute Node executable resolved for the MCP child (would fall back to a bare `node`)");
-  } else if (executable === process.execPath) {
+  } else if (override === executable && !looksLikeNode) {
+    report("WARN", "mcp node", "WPS_OFFICE_MCP_NODE is set to " + executable + ", which does not look like a Node executable");
+  } else if (looksLikeNode) {
+    // Includes the DSH-managed runtime node.exe even when this check is itself being run BY that
+    // very node (the documented "no node on the host PATH" invocation) — reporting a missing
+    // runtime there would be plainly wrong.
+    report("OK", "mcp node", executable + suffix);
+  } else {
     report(
       "WARN",
       "mcp node",
-      "no DSH-managed runtime Node found; falls back to the interpreter running this check (" +
+      "no Node binary found; falls back to " +
         executable +
-        ") — the MCP child still starts, but install DSH's primary runtime or set WPS_OFFICE_MCP_NODE to pin one"
+        " as an Electron-as-Node interpreter — the MCP child still starts, but install DSH's primary runtime or set WPS_OFFICE_MCP_NODE to pin a real Node"
     );
-  } else if (override === executable && !looksLikeNode) {
-    report("WARN", "mcp node", "WPS_OFFICE_MCP_NODE is set to " + executable + ", which does not look like a Node executable");
-  } else {
-    report("OK", "mcp node", executable + (override === executable ? " (WPS_OFFICE_MCP_NODE)" : ""));
   }
 } catch (error) {
   report("ERROR", "mcp node", "cannot resolve the MCP child's Node: " + String(error && error.message ? error.message : error));
