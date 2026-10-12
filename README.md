@@ -95,7 +95,7 @@
 3. 执行安装：
    dsh plugin --profile <profile> add dsh-plugin-wps-office-next
    如果报 ERR_PNPM_FETCH_404 或装不上，改用 GitHub 标签重试：
-   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.8.0
+   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.8.1
 4. 用下面这条命令确认接线成功（输出里应出现 wps-office-next-plugin 与 mcp-wps-office-next）：
    dsh --profile <profile> --dump-config | Select-String wps
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
@@ -160,11 +160,13 @@ AI 装完后，按它说的**完全关闭 DSH 再重新打开**。重启后新�
 |---|---|---|
 | 操作系统 | 64 位 Windows 10 / 11 | `(Get-CimInstance Win32_OperatingSystem).OSArchitecture` 为 `64-bit` |
 | WPS Office | 12.1 或更高，64 位 | 能创建 COM 对象 `Ket.Application` / `Kwps.Application` / `Kwpp.Application` |
-| Node.js | ≥ 22.19 | `node --version` |
+| Node.js | ≥ 22.19，**必须在宿主进程的 PATH 上** | `node --version`（读的是宿主那份 PATH） |
 | pnpm | 任意较新版本 | `pnpm --version`；缺失则 `npm install -g pnpm` |
 | DSH | 能正常启动 | `dsh --version`；已在 **0.2.0-rc.2** 上完整验证（安装验收 14/14 + 一键 e2e 29/29） |
 
 Windows PowerShell 5.1 是系统自带的，不需要装。硬性条件不满足时如实告诉用户，不要硬装。
+
+> **DSH Desktop 用户注意**：DSH Desktop 自带 Node，但**不会把它放进宿主进程的 PATH**，而 MCP 子进程的环境又会被清洗掉所有 `DSH_*` 变量（包括 `DSH_DESKTOP_NODE_EXECUTABLE`）。所以宿主 PATH 上没有 `node` 时，插件不会调用它——MCP 条目会改用 DSH 自带运行时里的真实 Node（`%DSH_HOME%\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe`），找不到才退到宿主自己的 `process.execPath`。想指定别的 Node，设 `WPS_OFFICE_MCP_NODE` 即可。
 
 ### 2. 判断要装进哪个 profile
 
@@ -196,7 +198,7 @@ dsh plugin --profile <profile> add dsh-plugin-wps-office-next
 - 报 `ERR_PNPM_FETCH_404`（包名/版本取不到，或该机器改了 registry）或网络不通时，改用 GitHub 标签重试（标签就是发布版本，内容与 npm 包一致）：
 
   ```powershell
-  dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.8.0
+  dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.8.1
   ```
 
   > 标签必须是**真实存在、且能装上**的那个。历史上这里写的是 `v0.6.0`，而 `v0.6.0` 从未打过 tag（它的 npm 版本还是坏的、已撤销），照着敲只会拿到 `ERR_PNPM_GIT_RESOLVE_FAILED`。
@@ -205,7 +207,7 @@ dsh plugin --profile <profile> add dsh-plugin-wps-office-next
 - 报 `ERR_PNPM_GIT_RESOLVE_FAILED`、`could not connect to server`、连接超时等，是这台机器访问 github.com 不稳定。此时优先回到上面那条 npm 命令；确实要走 GitHub 又连不上时，可用打包地址（已实测可行）：
 
   ```powershell
-  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.8.0
+  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.8.1
   ```
 
 - **注意 dsh 事后那句「构建脚本被拦截 / allowBuilds」提示**：本包没有任何 `prepare` 脚本，也没装 `esbuild` 之类的原生依赖，所以**永远不需要**改 `allowBuilds`。dsh 在 pnpm 失败时会补上这句通用提示，照着改只会白费功夫——**先看真正的错误**：如果是 `ERR_PNPM_GIT_RESOLVE_FAILED` / `Failed to connect to github.com`，用上面的 codeload 地址重试即可（这一条已实测：4.1 秒装好）。
@@ -251,6 +253,7 @@ dsh --profile <profile> --dump-config | Select-String wps
 | 装完毫无反应 | 装错 profile，或没重启 | 用第 2 步重新确认 profile；确认已重启 |
 | `connected: false` | WPS 没启动 / 没打开文档 | 让用户启动 WPS 12.1+（64 位）并打开一个文件；不要反复空转重试 |
 | 平台 / Node 版本不符 | 系统或 Node 太旧 | 需要 64 位 Windows 与 Node ≥ 22.19 |
+| 装完、也启用了，但一个 `mcp__wps-office-next__*` 工具都没有 | MCP 行 `fiberPhase: failed` —— 多半是拉不起 MCP server（旧版这里是裸 `node`，宿主 PATH 上没有 Node 就 `spawn ENOENT`） | 升级到含本修复的版本（见 [CHANGELOG](CHANGELOG.md) 0.8.1）后按第 2 步重装并重启；或自己把 profile 的 `cordis.patch.yml` 里该行 `command` 指向真实的 `node.exe`（见「环境要求」下方的说明） |
 | WPS 是 32 位 / 多组件模式 | 环境不支持 | 换 64 位完整安装的 WPS |
 | 操作时好时坏 | 多程序同时驱动 WPS | 关掉多余的 DSH 会话或自动化工具 |
 | 报错「检测到另一个 DSH 会话或自动化程序正在控制 WPS」 | 另一个会话的插件宿主正占着 WPS（同一时间只允许一个） | 关掉那个会话，或在那个会话里结束 WPS 操作后重试 |
@@ -264,7 +267,15 @@ cd "$env:DSH_HOME\profiles\<profile>\node_modules\dsh-plugin-wps-office-next"
 node scripts\doctor.mjs
 ```
 
-逐项检查系统位数、Node 版本、PowerShell STA、包内容是否完整、WPS 能否连上、**已安装 WPS 的版本与架构**（≥ 12.1 且 64 位）以及**插件接线**（`cordis.patch.yml` 里是否有 `wps-office-next-plugin` 与 `mcp-wps-office-next` 两个 id），最后打印 `DOCTOR OK` 或具体错误。
+宿主 PATH 上没有 `node` 时（DSH Desktop 自带 Node，但不会放进宿主 PATH），用 DSH 自带运行时跑：
+
+```powershell
+$node = if ($env:DSH_HOME) { "$env:DSH_HOME\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" } else { "$env:USERPROFILE\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" }
+cd "$env:DSH_HOME\profiles\<profile>\node_modules\dsh-plugin-wps-office-next"
+& $node scripts\doctor.mjs
+```
+
+逐项检查系统位数、Node 版本、**MCP 子进程将要用的那个 Node**（与宿主 PATH 无关，见「环境要求」下方的说明）、PowerShell STA、包内容是否完整、WPS 能否连上、**已安装 WPS 的版本与架构**（≥ 12.1 且 64 位）以及**插件接线**（`cordis.patch.yml` 里是否有 `wps-office-next-plugin` 与 `mcp-wps-office-next` 两个 id，且 MCP 行的 `command` 不是裸 `node`），最后打印 `DOCTOR OK` 或具体错误。
 
 ## 卸载
 
@@ -353,6 +364,8 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 node scripts\doctor.mjs
 ```
 
+> 宿主 PATH 上没有 `node` 时，改用 DSH 自带运行时跑（见「完整环境自检」一节的写法）。
+
 > **测试时机以 [AGENTS.md](AGENTS.md) 为准（2026-10-10 / R13）**：普通修改后**不跑完整/回归测试**
 > （`scripts/run-tests.ps1` 整轮、`scripts/e2e.mjs`、逐文件 `test/*.test.mjs`）；只在准备 push 到 GitHub
 > **之前由用户决定**跑不跑。下面第 1–4 步是不需要 WPS 的**静态门禁，照常跑**；**第 5 步按需**。
@@ -393,9 +406,9 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1283 项 / 51 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数）**+ `verify` 24 项 + spec 复现 15 项**；广告面 95 工具 / 54,673 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。
+当前数字：测试 **1508 项 / 59 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-12 全绿）**+ `verify` 24 项 + spec 复现 16 项**；广告面 95 工具 / 54,673 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。
 
-`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十三个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `com-boundary-gate` / `deprecated` / `style-names`，清单的唯一来源是 `scripts/lib/static-tests.mjs`，由 `node scripts/run-static-tests.mjs` 执行）。需要真实 WPS 的测试与一键 e2e 留在本机。
+`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十四个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `mcp-node` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `com-boundary-gate` / `deprecated` / `style-names`，清单的唯一来源是 `scripts/lib/static-tests.mjs`，由 `node scripts/run-static-tests.mjs` 执行）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
 一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」，以及「归属记录不会指向已经死掉的主人」。**29 项检查、约 2–4 分钟。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 

@@ -1,8 +1,9 @@
 # DSH integration for the Windows/COM-only WPS bundle (dsh-plugin-wps-office-next).
 #
-# The plugin entry must stay first: its module top level publishes WPS_OFFICE_MCP_ENTRY,
-# which the MCP client entry below reads when it activates. That is what removes the old
-# WPS_SKILLS_ROOT / WPS_OFFICE_MCP_ENTRY configuration step.
+# The plugin entry must stay first: its module top level publishes WPS_OFFICE_MCP_ENTRY and
+# WPS_OFFICE_MCP_NODE, which the MCP client entry below reads when it activates. That is what
+# removes the old WPS_SKILLS_ROOT / WPS_OFFICE_MCP_ENTRY configuration step, and what makes the
+# MCP row work on machines without Node.js on the host PATH.
 
 - insert:
     - id: wps-office-next-plugin
@@ -13,11 +14,19 @@
       config:
         serverName: wps-office-next
         transport: stdio
-        command: node
+        # Never a bare `node`: the mcp-client stdio child environment is scrubbed of every DSH_*
+        # name, so DSH Desktop's bundled-runtime shim cannot work, and Desktop deliberately does not
+        # put a node on the host PATH — spawn('node') then fails with ENOENT and, because
+        # failOnStartupError is true, this whole row dies with zero WPS tools registered.
+        # plugin.js resolves a real Node (the DSH-managed runtime node.exe, else process.execPath).
+        command: !!js "process.env.WPS_OFFICE_MCP_NODE ?? (() => { throw new Error('dsh-plugin-wps-office-next: Node executable was not resolved; the plugin entry must load before the mcp entry') })()"
         args:
           - !!js "process.env.WPS_OFFICE_MCP_ENTRY ?? (() => { throw new Error('dsh-plugin-wps-office-next: MCP entry was not resolved; the plugin entry must load before the mcp entry') })()"
         cwd: !!js "process.env.WPS_OFFICE_MCP_CWD ?? process.cwd()"
         env:
           WPS_OFFICE_TOOLSET: !!js "process.env.WPS_OFFICE_TOOLSET ?? 'standard'"
+          # Explicit so the MCP child keeps Node mode even if the ambient value is ever scrubbed.
+          # Harmless when the command is a plain Node: non-Electron Node ignores it.
+          ELECTRON_RUN_AS_NODE: '1'
         toolCallTimeoutMs: 330000
         failOnStartupError: true

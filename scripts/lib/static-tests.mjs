@@ -13,6 +13,7 @@ export const STATIC_TESTS = [
   "test/watchdog.test.mjs",
   "test/silent-catch.test.mjs",
   "test/install-selfcheck.test.mjs",
+  "test/mcp-node.test.mjs",
   "test/arg-shape-guard.test.mjs",
   "test/wps-version.test.mjs",
   "test/encrypted-preflight.test.mjs",

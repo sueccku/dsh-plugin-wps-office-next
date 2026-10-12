@@ -162,10 +162,19 @@ $baselinePath = Join-Path $root 'test/baseline.json'
 if (-not $isFullRun) {
     'BASELINE skipped (subset run)'
 } elseif (Test-Path $baselinePath) {
-    $baseline = Get-Content $baselinePath -Raw | ConvertFrom-Json
-    if ($summary.assertions -lt [int]$baseline.minAssertions) { $baselineViolations += "assertions $($summary.assertions) < $($baseline.minAssertions)" }
-    if ($summary.files -lt [int]$baseline.minFiles) { $baselineViolations += "files $($summary.files) < $($baseline.minFiles)" }
-    if ($baselineViolations.Count -gt 0) { 'BASELINE VIOLATION: ' + ($baselineViolations -join '; ') }
-    else { "BASELINE OK (assertions=$($summary.assertions) >= $($baseline.minAssertions), files=$($summary.files) >= $($baseline.minFiles))" }
+    # test/baseline.json 是**无 BOM** 的 UTF-8（还带中文 note），而 Windows PowerShell 5.1 的
+    # Get-Content 默认按 ANSI 解码：中文 note 解坏后 ConvertFrom-Json 抛错，底线比较**静默失效**
+    # （打印 `>= ` 后面是空的，等于门禁本身成为摆设）。显式 -Encoding UTF8 读；真解析失败就判违规。
+    $baseline = $null
+    try { $baseline = Get-Content -LiteralPath $baselinePath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { $baselineViolations += 'cannot parse the baseline file: ' + $_.Exception.Message }
+    if ($null -eq $baseline) {
+        'BASELINE VIOLATION: ' + ($baselineViolations -join '; ')
+    } else {
+        if ($summary.assertions -lt [int]$baseline.minAssertions) { $baselineViolations += "assertions $($summary.assertions) < $($baseline.minAssertions)" }
+        if ($summary.files -lt [int]$baseline.minFiles) { $baselineViolations += "files $($summary.files) < $($baseline.minFiles)" }
+        if ($baselineViolations.Count -gt 0) { 'BASELINE VIOLATION: ' + ($baselineViolations -join '; ') }
+        else { "BASELINE OK (assertions=$($summary.assertions) >= $($baseline.minAssertions), files=$($summary.files) >= $($baseline.minFiles))" }
+    }
 }
 if ($totalFail -gt 0 -or $badFiles.Count -gt 0 -or $baselineViolations.Count -gt 0) { exit 1 }

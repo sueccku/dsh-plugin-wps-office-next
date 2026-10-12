@@ -51,7 +51,7 @@ node scripts/doctor.mjs                                     # 环境自检，末
 > **按需执行（2026-10-10 / R13）**：普通修改后**不跑**整轮；只有准备 push 到 GitHub 时**先问用户**，
 > 用户说「跑」才跑。下面的命令保留原样，供"用户说要跑"时使用。详见 [../AGENTS.md](../AGENTS.md)。
 
-跑完整测试（**51 个文件**，多数驱动真实 WPS，约 15 分钟）：
+跑完整测试（**59 个文件**，多数驱动真实 WPS，约 15 分钟）：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1   # 跑完会刷新 test/summary.json
@@ -77,7 +77,7 @@ shasum/integrity 与本地 dry-run 逐字符一致（详见 §2）。这一版�
 | --- | --- | --- |
 | 注册工具 / 广告面 | **270 / 95**（54,673 字节，预算上限 60,000；D4 于 2026-10-11 从 86 扩到 95；S7 修 D1+D2 只加参数、不加工具） | [current-numbers.md](current-numbers.md) |
 | 桥 action / 参数契约 | **265 / 259 对**（A/B/C/D 四类静默失效均为 0） | 同上 |
-| 测试 | **1283 项 / 51 个文件（整轮全绿）** | 同上（来自 `test/summary.json`） |
+| 测试 | **1508 项 / 59 个文件（整轮全绿，2026-10-12）** | 同上（来自 `test/summary.json`） |
 | 本机整轮回归 | 见 `test/summary.json` | `confirm-dialog` 那条曾长期红：看门狗把**全机**的 Qt 窗口（本机是微信）当成 WPS 弹框，属测试口径问题、不是代码缺陷。**已修（FIXES 92 / P1）**：先做基线，只报新增窗口 |
 
 > **未发布的工作区改动（2026-10-11，场景 S5 走查）**：`wps_word_mail_merge` 整条链路此前是**假成功**
@@ -351,7 +351,7 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 | 广告面字节 | **54,673** / 上限 60,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
 | 全量 schema | 163,687 字节（270 工具） | 同上 |
 | 预算 | `{ maxTools: 100, maxSchemaBytes: 60000 }` | `scripts/verify.mjs` |
-| 测试 | **1283 断言 / 51 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3、FIXES 106 +1、2026-10-10 去重回归 +13） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
+| 测试 | **1508 断言 / 59 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3、FIXES 106 +1、2026-10-10 去重回归 +13、FIXES 114 +16 与新增的 `mcp-node` 文件） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **259** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
@@ -360,7 +360,7 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 按能力域：Excel 118 / Word 61 / PPT 77 / 通用 9 / 内置 5（含 4 个门面 + 转换）＝ 注册 270。
 
 > **「断言数」的口径说明（2026-10-04 重写）**：上表那个数**不再靠推算** —— 它就是 `scripts/run-tests.ps1` 跑完
-> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（FIXES 92 之后整轮首次全绿；当前读数 **1283 = 1283 通过 + 0 失败 / 51 个文件**，2026-10-10）。
+> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（FIXES 92 之后整轮首次全绿；当前读数 **1508 = 1508 通过 + 0 失败 / 59 个文件**，2026-10-12）。
 > 想刷新：跑一次整轮，再 `node scripts/gen-numbers.mjs`。
 > **这一行不再写进 `docs/current-numbers.md`**（2026-10-10）：断言数只有跑过整轮才算得出来，写进入库快照
 > 会让 CI 的 `--check` 在干净检出上永远 drift。它现在只在本机的 `test/summary.json` /

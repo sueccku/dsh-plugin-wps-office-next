@@ -114,9 +114,9 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 }
 ```
 
-**期望值**（**2026-10-11 当场实测，0.8.0 候选**）：`entryCount=293  packed=685.1KB (701525 B)  unpacked=3.34MB (3500272 B)`。
-（上一版 0.7.0 实测 `entryCount=295`；差 −2 = 删掉 4 个孤儿构建产物 `mcp/dist/tools/ppt/data-viz.*`、新增 2 个脚本
-`scripts/lib/static-tests.mjs` / `scripts/run-static-tests.mjs`。）
+**期望值**（**2026-10-12 当场实测，0.8.1**）：`entryCount=294  packed=689.4KB (705915 B)  unpacked=3.35MB`。
+（上一版 0.8.0 实测 `entryCount=293  packed=685.1KB (701525 B)  unpacked=3.34MB`；0.8.1 的 +1 = 新增
+`scripts/lib/mcp-node.mjs`。`test/mcp-node.test.mjs` **不进包**，符合 `files` 白名单。）
 
 > **更硬的一步：与 npm 上那一版逐文件对比**，它不受"手抄数字"影响：
 >
@@ -320,3 +320,17 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes "$(Select-String -Path CHANGEL
 4. `npm publish`
 5. §5 全新 profile 安装验收 → 真实 profile 安装 → 重启验证
 6. §6 提交 / 打 tag / 推 / 发 Release
+
+---
+
+## 9. 发布记录
+
+### 0.8.1（2026-10-12）
+
+| 项 | 读数 |
+| --- | --- |
+| 主题 | 宿主 PATH 上没有 Node.js 时 **95 个工具全部不可用**（FIXES 114） |
+| 真机整轮 | **跑了**（用户 2026-10-12 明确要求「跑测试」）：`TOTAL PASS=1508 FAIL=0 FILES=59 REAPED=240 ORPHANS_LEFT=0`、`ALL TEST FILES GREEN`、`BASELINE OK (1508 >= 1283, 59 >= 51)` |
+| 静态门禁 | tsc / build-host-actions / 三个生成器 / `gen-numbers --check` / lint / `verify --static` / `param-contract` / spec-reproduction 全绿；`verify:package` **11/11 → `PACKAGE RUNTIME OK`** |
+| 打包 | `entryCount=294  packed=705915 B  unpacked=3.35MB` |
+| 顺带 | `run-tests.ps1` 的 P6 底线门禁此前**静默失效**（`test/baseline.json` 无 BOM + PS 5.1 按 ANSI 读 → `ConvertFrom-Json` 抛错、违规数组仍为空 → 放行），本版一并修掉 |

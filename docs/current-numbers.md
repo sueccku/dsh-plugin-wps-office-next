@@ -15,7 +15,7 @@
 | 桥参数键 | **1008** | 同上 |
 | 带键表的 action | **263** | spec/action-keys.json |
 | 未工具化 action | **2（getActivePresentation / getActiveWorkbook）** | 键表 − spec |
-| 测试文件 | **58** | test/*.test.mjs |
+| 测试文件 | **59** | test/*.test.mjs |
 
 > 「测试文件」数的是目录里现有的 `test/*.test.mjs`；README / HANDOFF 写的「N 个文件」是
 > **最近一次整轮实际跑到的**数 —— 新增文件但还没跑整轮时，两者本来就该不同。

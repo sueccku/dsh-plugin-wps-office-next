@@ -1,14 +1,16 @@
 /**
  * Input: DSH cordis loader
- * Output: skill registrations, plus the resolved MCP entry path in the process env
+ * Output: skill registrations, plus the resolved MCP entry path and Node executable in the process env
  * Pos: DSH entry for the Windows/COM-only WPS bundle.
  *      这个模块必须排在 cordis.patch.yml 的 MCP 条目之前：它在顶层把包内绝对路径
- *      写进 WPS_OFFICE_MCP_ENTRY，因此用户不需要再配置 WPS_SKILLS_ROOT。
+ *      写进 WPS_OFFICE_MCP_ENTRY、把要用来拉起 MCP server 的 Node 写进 WPS_OFFICE_MCP_NODE，
+ *      因此用户不需要再配置 WPS_SKILLS_ROOT，也不需要在宿主 PATH 上装 Node.js。
  *      一旦我被修改，请更新我的头部注释。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveNodeExecutable } from './scripts/lib/mcp-node.mjs';
 
 export const name = 'wps-office-next';
 export const inject = ['skills'];
@@ -22,9 +24,13 @@ export const mcpEntry = join(here, 'mcp', 'dist', 'index.js');
 export const hostScript = join(here, 'host', 'wps-com-host.ps1');
 
 // Publish the resolved paths for the MCP client entry and the spawned server.
-// cordis.patch.yml reads WPS_OFFICE_MCP_ENTRY when the mcp entry activates.
+// cordis.patch.yml reads WPS_OFFICE_MCP_ENTRY / WPS_OFFICE_MCP_NODE when the mcp entry activates.
+// The Node executable must be resolved here, not left to a bare `node` command: the mcp-client
+// stdio child starts from scrubbedParentEnv(), which drops every DSH_* name (so the bundled
+// DSH_DESKTOP_NODE_EXECUTABLE can never reach it) while DSH Desktop never puts a node on PATH.
 process.env.WPS_OFFICE_MCP_ENTRY = process.env.WPS_OFFICE_MCP_ENTRY || mcpEntry;
 process.env.WPS_OFFICE_HOST_SCRIPT = process.env.WPS_OFFICE_HOST_SCRIPT || hostScript;
+process.env.WPS_OFFICE_MCP_NODE = process.env.WPS_OFFICE_MCP_NODE || resolveNodeExecutable();
 
 /** Skills shipped by this bundle, in registration order. */
 const SKILLS = [

@@ -51,6 +51,38 @@ const nodeMinor = Number(process.versions.node.split(".")[1]);
 if (nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 19)) report("OK", "node", process.versions.node);
 else report("ERROR", "node", "need 22.19+ or 24+, found " + process.versions.node);
 
+// The Node the HOST will spawn for the MCP stdio child — NOT the one running this script.
+// dsh-mcp-client starts that child from scrubbedParentEnv() (every DSH_* name dropped), so the
+// ambient PATH and DSH_DESKTOP_NODE_EXECUTABLE cannot be relied on: the Host resolves the
+// executable itself. An existing absolute path means the original "bare `node` → ENOENT → 0 tools"
+// failure cannot happen; a fallback (Electron-as-Node or this very interpreter) is reported as a
+// WARN because the managed runtime Node is the one this bundle prefers. This check cannot prove the
+// target is a *usable* Node (it never executes it): a user-pinned path that exists but is not a
+// node is reported as a WARN hint, and only the MCP row itself can confirm a real start.
+try {
+  const { resolveNodeExecutable } = await import("./lib/mcp-node.mjs");
+  const executable = resolveNodeExecutable();
+  const override = (process.env.WPS_OFFICE_MCP_NODE || "").trim();
+  const looksLikeNode = /(^|[/\\])node(\.exe)?$/iu.test(executable);
+  if (executable === "node" || executable === "node.exe") {
+    report("ERROR", "mcp node", "no absolute Node executable resolved for the MCP child (would fall back to a bare `node`)");
+  } else if (executable === process.execPath) {
+    report(
+      "WARN",
+      "mcp node",
+      "no DSH-managed runtime Node found; falls back to the interpreter running this check (" +
+        executable +
+        ") — the MCP child still starts, but install DSH's primary runtime or set WPS_OFFICE_MCP_NODE to pin one"
+    );
+  } else if (override === executable && !looksLikeNode) {
+    report("WARN", "mcp node", "WPS_OFFICE_MCP_NODE is set to " + executable + ", which does not look like a Node executable");
+  } else {
+    report("OK", "mcp node", executable + (override === executable ? " (WPS_OFFICE_MCP_NODE)" : ""));
+  }
+} catch (error) {
+  report("ERROR", "mcp node", "cannot resolve the MCP child's Node: " + String(error && error.message ? error.message : error));
+}
+
 // Windows PowerShell with an STA apartment, which WPS COM requires
 const ps = spawnSync("powershell", ["-NoProfile", "-NonInteractive", "-STA", "-Command", "$PSVersionTable.PSVersion.ToString(); [System.Threading.Thread]::CurrentThread.GetApartmentState().ToString()"], { encoding: "utf8", windowsHide: true });
 if (ps.error) {
@@ -141,6 +173,16 @@ else report("OK", "WPS COM", "active: " + running);
     const missing = ["wps-office-next-plugin", "mcp-wps-office-next"].filter((id) => !text.includes(id));
     if (missing.length) report("ERROR", "plugin wiring", patchRel + " is missing " + missing.join(", "));
     else report("OK", "plugin wiring", patchRel + " declares wps-office-next-plugin + mcp-wps-office-next");
+    // The MCP stdio command must never be a bare `node`: the child env is scrubbed of every DSH_*
+    // name and DSH Desktop puts no node on the host PATH, so a bare name is an ENOENT on any machine
+    // without Node.js — which kills the whole row (failOnStartupError) and registers zero WPS tools.
+    if (/^\s*command:\s*node\s*$/mu.test(text)) {
+      report("ERROR", "mcp command", patchRel + " spawns a bare `node`; it must resolve an absolute Node executable");
+    } else if (!/^\s*command:\s*!!js\s/mu.test(text)) {
+      report("ERROR", "mcp command", patchRel + " has no `command: !!js ...` resolution");
+    } else {
+      report("OK", "mcp command", "resolved through !!js, not a bare `node`");
+    }
   }
 }
 

@@ -2,6 +2,23 @@
 
 本文件记录每个发布版本的用户可见变化；逐条修复的原因与实测证据见 [docs/FIXES.md](docs/FIXES.md)。
 
+## 0.8.1（宿主 PATH 上没有 Node.js 时 95 个工具全部不可用 · 修掉静默失效的测试底线门禁）
+
+> **建议所有 DSH Desktop 用户升级。** 本版修掉一个「装了插件却一个 WPS 工具都用不了」的缺陷：此前
+> MCP server 是用裸命令 `node` 拉起来的，而 DSH Desktop **不会**把自带 Node 放进宿主进程的 PATH，
+> MCP 子进程的环境又会被清洗掉相关变量 —— 机器上没装 Node.js 时整行启动失败，插件显示「已启用」
+> 但 95 个工具一个都不注册。逐条证据见 [docs/FIXES.md](docs/FIXES.md) 第 114 条。
+
+### 用户可见的修复
+
+- **不再要求系统 PATH 上有 Node.js**（FIXES 114）：插件改为直接用 DSH 自带运行时里的真实 Node
+  （`%DSH_HOME%\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe`），找不到才退回宿主自己的
+  `process.execPath`。想指定别的 Node，设环境变量 `WPS_OFFICE_MCP_NODE` 即可。
+- **失败不再无声**（FIXES 114）：`node scripts\doctor.mjs` 新增 `mcp node` 与 `mcp command` 两项检查，
+  分别报出「宿主将要 spawn 的那个 Node 在哪」和「`cordis.patch.yml` 的 `command` 是不是裸 `node`」。
+- 排错表新增一行「装完、也启用了，但一个 `mcp__wps-office-next__*` 工具都没有」，并说明无 Node 机器上
+  怎么跑环境自检。
+
 ## 0.8.0（Word 分节族三件套 · 邮件合并从「假成功」重写 · 广告面 84 → 95）
 
 > **建议升级，尤其是用 WPS 文字做分节排版、长文档与批量通知的场景。** 本版收口了三个「看着成功、其实没写进去」

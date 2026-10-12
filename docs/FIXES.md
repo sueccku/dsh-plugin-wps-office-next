@@ -4281,3 +4281,110 @@ null 值表达式 / 报错行号与源码对不上）全部由此解释。
 - `npm run lint`：192 文件 0 违规；`scripts/verify.mjs --static` 19 项；`param-contract` 通过；
   `spec-reproduction` 16 项；`npm run test:static` 13/13；`npm run verify:package` 11 项 OK。
 - `node scripts/gen-numbers.mjs --check`：20 项声明值一致（README full 档 schema 字节 159,433 → 159,636 —— 新增的 `shapeName` 属性）。
+
+## 114. 用户报告：宿主 PATH 上没有 Node.js 时整行 MCP 条目死掉，95 个工具全部不注册（P0，已修）
+
+**报告**：`dsh-plugin-wps-office-next@0.8.0`，DSH Desktop `0.2.0-rc.2`（Electron 内置 Node v24.18.1），
+Windows 11 26H2，机器上**没装 Node.js**。插件装好、显示已启用、4 个技能也能加载，但对话里
+**一个 `mcp__wps-office-next__*` 工具都没有**，UI 无提示，也没有落盘日志可查。插件清单里：
+
+```
+{"entryId":"include:wps-office-next-plugin","enabled":true,"fiberPhase":"active"}
+{"entryId":"include:mcp-wps-office-next","enabled":true,"fiberPhase":"failed"}
+```
+
+**根因（逐条对着 app.asar 里的宿主源码核实，不是推测）**：
+
+1. `cordis.patch.yml` 拉起 MCP server 用的是**裸命令** `command: node` —— 它是这份文件里
+   **唯一没有 `!!js` 兜底**的一行（`args` / `cwd` / `env` 都有）。
+2. DSH Desktop 启动 Host 时**故意不给 bin 目录**：`lib/main.js:3684`
+   `env: desktopNodeEnvironment(this.node, void 0, this.environment)`，而 `:3529-3538` 的
+   `desktopNodeEnvironment` 只在 `bin !== void 0` 时才设 `DSH_DESKTOP_NODE_EXECUTABLE` 与 PATH 前缀。
+   所以 **Host 进程里既没有自带的 `node`，也没有那个变量**。
+3. `dsh-mcp-client` 的 stdio transport 用的是 `{ ...scrubbedParentEnv(), ...config.env }`
+   （`lib/index.js:26-31,40-45`），而 `scrubbedParentEnv()` 会**删掉所有 `DSH_*` 变量**
+   （`dsh-subprocess/lib/index.js:32,52`）—— 于是即便第 2 步真的设了 `DSH_DESKTOP_NODE_EXECUTABLE`，
+   它也**到不了 MCP 子进程**。`resources\runtime\bin\node.cmd` 那个 shim 正是靠这个变量工作的。
+4. `spawn('node')` → `ENOENT`。又因为这一行是 `failOnStartupError: true`
+   （`dsh-mcp-client/lib/index.js:832`），整行直接判死：**0 个工具注册**。
+5. 插件自己那行是 `active` 的（只注册技能），所以表面一切正常 —— 这正是「装了没反应」的来源。
+
+**不是 0.7.0 → 0.8.0 的回归**：把 npm 上 0.7.0 与 0.8.0 的包都拉下来比对，`command: node` 与
+`failOnStartupError: true` **逐字相同**；`git log -- cordis.patch.yml` 显示该文件**只被改过一次**
+（2026-09-12 首次提交）。这是长期存在的集成缺陷，只在「宿主不提供 Node.js」的环境下暴露。
+
+**报告的一处理由不成立（记录以免后人按错的方向修）**：报告说 `.cmd` shim「即使放进 PATH 也没用」，
+理由是 `spawn` 无 `shell: true` 时 CreateProcess 只追加 `.exe`、不会执行 `.cmd`。对**原生
+`child_process.spawn`** 这话是对的（实测：裸 `node` → ENOENT、`node.cmd` → EINVAL），但
+**MCP 这条路根本不用原生 spawn**：`@modelcontextprotocol/client/dist/stdio.mjs:4,68,78` 用的是
+**cross-spawn 7.0.6** 且 `shell: false`，cross-spawn 会用 PATHEXT 解析并把非 `.exe/.com` 包进
+`cmd.exe /d /s /c` —— 实测 `cross-spawn` **确实能跑 `node.cmd`**，跑不起来只是因为里面那个
+`%DSH_DESKTOP_NODE_EXECUTABLE%` 是空的。真正的原因**只有第 3 条（变量被清洗）**这一个。
+
+**修复**：
+
+| 位置 | 改法 |
+| --- | --- |
+| `scripts/lib/mcp-node.mjs`（新增） | `resolveNodeExecutable()`：`WPS_OFFICE_MCP_NODE` 显式覆盖 → `$DSH_HOME\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe`（`DSH_HOME` 缺省时退 `~/.dsh\...`）→ `process.execPath`，每个候选都 `existsSync` 校验，全落空才回退裸 `node` |
+| `plugin.js` | 顶层与 `WPS_OFFICE_MCP_ENTRY` 同一处发布 `WPS_OFFICE_MCP_NODE`（仍要求插件条目先于 mcp 条目） |
+| `cordis.patch.yml` | `command` 改为 `!!js "process.env.WPS_OFFICE_MCP_NODE ?? (() => { throw ... })()"`；`env` 里显式写 `ELECTRON_RUN_AS_NODE: '1'`（它不匹配清洗规则，实测会穿过；命令是真 Node 时无副作用） |
+| `scripts/doctor.mjs` | 新增 `mcp node` 检查（报的是**宿主将要 spawn 的那个 Node**，与跑脚本的 Node 区分开：命中 DSH 自带运行时 → OK、落回 `process.execPath` → WARN、返回裸 `node` → ERROR；它不执行目标，所以只做「像不像 Node」的提示，真正的可用性由 MCP 行自己确认）+ `mcp command` 检查（拒绝裸 `command: node`） |
+| `test/mcp-node.test.mjs`（新增） | 静态锁死「`command` 不许是裸 `node`」+ 解析器的候选顺序 / `DSH_HOME` / 覆盖优先级 |
+| `scripts/lib/static-tests.mjs` | 把新测试登记进静态清单（CI 自动带上） |
+| `README.md` | Node 要求补上「**必须在宿主进程的 PATH 上**」；排错表新增一行「装完、也启用了，但一个 WPS 工具都没有」；无 Node 机器怎么跑 `doctor.mjs` |
+
+**为什么用自带运行时的真实 `node.exe`、而不是报告首选的 `process.execPath`**：
+`process.execPath` 在 Desktop 形态下是 244 MB 的 `DeepSeek Harness.exe`，实测配 `ELECTRON_RUN_AS_NODE=1`
+确实能跑通（95 个工具），但那是让每个 MCP 子进程都变成一整个 Electron 进程；DSH 本来就带了一个
+真 Node（本机 `v24.21.0`，93,580,104 字节）。仓库里已有同样的先例：`test/lib/oracle.mjs:103-110`
+给 Python 就是「显式覆盖 > DSH 自带运行时 > PATH」这么解析的。
+
+### 验证
+
+- **端到端**（`.tmp-investigate/accept-node-fix.mjs`，一次性验收脚本，不入库）：把 `PATH` 里所有含
+  node 的目录剔掉、按 `scrubbedParentEnv()` 的规则清洗出 DSH Desktop 的 Host 环境，然后
+  ① 加载**真实的** `plugin.js`；② 用 DSH 自己的 `!!js` YAML 方言（`js-yaml` v4 +
+  `new Type('tag:yaml.org,2002:js')`，与 `dsh-app-boot` 同一构造）解析 `cordis.patch.yml` 并求值
+  `command`；③ 按 mcp-client 的方式 spawn 并握手。读数：
+
+  ```
+  host PATH has a node?: false
+  WPS_OFFICE_MCP_NODE   = C:\Users\qwer\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe
+  parsed command node kind: !!js expression
+  cordis command expression -> C:\Users\qwer\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe
+  OLD command:"node"     SPAWN-ERR  ENOENT spawn node ENOENT
+  NEW resolved command   OK         tools=95
+  RESULT: ACCEPT
+  ```
+
+  （`tools=95` 与报告里独立握手的 95 一致；`server=` 读数来自 `tools/list`，该响应不带 `serverInfo`。）
+- `node test/mcp-node.test.mjs`：16/16 绿（含「`DSH_HOME` 指到没有运行时的地方时必须 WARN 而不是冒充 OK」与
+  「`WPS_OFFICE_MCP_NODE` 指到一个存在但不是 Node 的文件时必须 WARN」两条反例）。
+- `npm run test:static`（= `scripts/run-static-tests.mjs`）：**14/14 绿**（原 13 项 + 新增的 `mcp-node`）。
+- `scripts/verify.mjs --static` 19 项；`param-contract` 通过；`spec-reproduction` 16 项；
+  `node test/install-selfcheck.test.mjs` 6/6 绿（doctor 仍退 0）；`mcp; npx tsc` 通过；
+  `scripts/build-host-actions.ps1` 产出对账一致（265 switch cases，bom 正常）。
+- `node scripts/lint.mjs`：0 违规。
+- 按 AGENTS.md §1，**没有**跑真机整轮 / 一键 e2e（那两条按需、由用户决定）。
+
+### 顺带修掉：`run-tests.ps1` 的底线门禁一直在**静默失效**（跑整轮时才发现）
+
+**症状**：每次跑 `scripts\run-tests.ps1`，stderr 上都有一行
+`ConvertFrom-Json : Invalid object passed in, ':' or '}' expected. (89)`，而脚本照样退 0，打出来的那行是
+`BASELINE OK (assertions=1508 >= , files=59 >= )` —— 两个下限值**是空的**。
+
+**根因**：`test/baseline.json` 是**无 BOM** 的 UTF-8，且带中文 `note`；Windows PowerShell 5.1 的
+`Get-Content` 默认按 ANSI 解码，中文解坏后 `ConvertFrom-Json` 抛错，`$baseline` 变成 `$null`。
+`$baselineViolations` 仍是空数组，最后的 `if (... or $baselineViolations.Count -gt 0) { exit 1 }` 于是放行 ——
+**P6 那道「有人顺手删测试」的门禁整个是摆设**（形状与 FIXES 92 的同类问题一致）。
+
+**修复**：`scripts/run-tests.ps1` 第 164 段改用 `Get-Content -LiteralPath $baselinePath -Raw -Encoding UTF8`，
+并把解析失败显式计入 `$baselineViolations`（真读不出来就判违规，而不是假装通过）。
+
+**验证**：修复后同一次整轮打印 `BASELINE OK (assertions=1508 >= 1283, files=59 >= 51)`，stderr 干净。
+
+> 记录一处自己踩的坑：第一次改这个文件时编辑动作**吃掉了文件头的 UTF-8 BOM**。这个 BOM 不是装饰 ——
+> FIXES 记录的 P8 就是「含中文却**不带 BOM** 的 `.ps1` 让 `perFile` 只剩第一个文件」。当次运行时脚本因此
+> 整体崩掉（`$psi.FileName` 等一连串 `PropertyNotFound`、59 个文件全记成 `exit=-1` TIMEOUT），
+> 看到读数就回退了改动、确认 BOM 已补回后才重跑。以后改这个仓里的 `.ps1`，改完必须核前三个字节是 `EF BB BF`。
+
