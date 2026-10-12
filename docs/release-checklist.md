@@ -114,9 +114,9 @@ npm pack --dry-run --json | ConvertFrom-Json | ForEach-Object {
 }
 ```
 
-**期望值**（**2026-10-12 当场实测，0.8.1**）：`entryCount=294  packed=689.4KB (705915 B)  unpacked=3.35MB`。
-（上一版 0.8.0 实测 `entryCount=293  packed=685.1KB (701525 B)  unpacked=3.34MB`；0.8.1 的 +1 = 新增
-`scripts/lib/mcp-node.mjs`。`test/mcp-node.test.mjs` **不进包**，符合 `files` 白名单。）
+**期望值**（**2026-10-12 当场实测，0.8.2**）：`entryCount=294  packed=689.7KB (706231 B)  unpacked=3.35MB`。
+（0.8.1 实测 `entryCount=294  packed=705915 B`；0.8.1 vs 0.8.0 的 +1 = 新增 `scripts/lib/mcp-node.mjs`，
+`test/mcp-node.test.mjs` **不进包**，符合 `files` 白名单。）
 
 > **更硬的一步：与 npm 上那一版逐文件对比**，它不受"手抄数字"影响：
 >
@@ -325,12 +325,21 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes "$(Select-String -Path CHANGEL
 
 ## 9. 发布记录
 
-### 0.8.1（2026-10-12）
+### 0.8.2（2026-10-12）
 
 | 项 | 读数 |
 | --- | --- |
 | 主题 | 宿主 PATH 上没有 Node.js 时 **95 个工具全部不可用**（FIXES 114） |
 | 真机整轮 | **跑了**（用户 2026-10-12 明确要求「跑测试」）：`TOTAL PASS=1508 FAIL=0 FILES=59 REAPED=240 ORPHANS_LEFT=0`、`ALL TEST FILES GREEN`、`BASELINE OK (1508 >= 1283, 59 >= 51)` |
-| 静态门禁 | tsc / build-host-actions / 三个生成器 / `gen-numbers --check` / lint / `verify --static` / `param-contract` / spec-reproduction 全绿；`verify:package` **11/11 → `PACKAGE RUNTIME OK`** |
-| 打包 | `entryCount=294  packed=705915 B  unpacked=3.35MB` |
+| 静态门禁 | tsc / build-host-actions / 三个生成器 / `gen-numbers --check` / lint / `verify --static` / `param-contract` / spec-reproduction / `test:static` 全绿；`verify:package` **11/11 → `PACKAGE RUNTIME OK`** |
+| 打包 | `entryCount=294  packed=706231 B  unpacked=3.35MB` |
 | 顺带 | `run-tests.ps1` 的 P6 底线门禁此前**静默失效**（`test/baseline.json` 无 BOM + PS 5.1 按 ANSI 读 → `ConvertFrom-Json` 抛错、违规数组仍为空 → 放行），本版一并修掉 |
+
+### 0.8.1（2026-10-12）—— **npm 上不可安装，已由 0.8.2 取代**
+
+| 项 | 读数 |
+| --- | --- |
+| 结果 | GitHub 侧完整可用（提交 `b2ffefe`、tag `v0.8.1`）；**npm 侧停在未定案的暂存发布** |
+| 症状 | `npm publish` 返回 **HTTP 202**（不是 200）并打印 `+ dsh-plugin-wps-office-next@0.8.1`；随后 registry 上：`GET /dsh-plugin-wps-office-next/0.8.1` → 200、`dist-tags.latest = 0.8.1`，但 **tarball 永久 404**（0.8.0 的 tarball 是 200）；重发同号 → `E409 Cannot publish over previously staged version "0.8.1"`；`npm stage list` 却报没有待批准项，`npm stage approve` 无从下手 |
+| 处置 | 换号发 0.8.2（内容与 0.8.1 完全一致）；消费者请装 `0.8.2`，**不要装 0.8.1** |
+| 教训 | 以后 `npm publish` 必须以 **HTTP 200** 与「tarball 可下载」为判据，不能只看退出码和那行 `+ pkg@version`；发完立刻 `Invoke-WebRequest -Method Head <dist.tarball>` 验一次 |
