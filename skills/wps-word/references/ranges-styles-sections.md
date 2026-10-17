@@ -51,6 +51,8 @@
 - `wps_word_get_page_setup {section}` / `wps_word_set_page_setup {section, ...}`；不传 `section` 用第 1 节。
 - 边距单位是**磅**（整数，0-1584），键名 `topMargin/bottomMargin/leftMargin/rightMargin`；`orientation` 取 `portrait`/`landscape`。
 - 工具内部**固定先应用方向与纸张、后应用边距**（改方向会把已有边距整体旋转），回报里始终给出四个边距 + 方向 + 纸张，可以据此核对。
+- **横向页的「纸张」可能是一个未命名代码，这不是错误**：实测 WPS 12.1 把「A4 横向」记成 `41（横向纸张代码）`，改回纵向又恢复 `A4`；**即使同时传 `paperSize:"A4"` + `orientation:"landscape"` 也一样**。
+  遇到这种代码以**页面尺寸**（`pageWidth`/`pageHeight`，磅）为准判断纸张是否正确 —— 别因为它反复改纸张、反复核对，那会把一次正常的"改方向"拖成十几步。
 - 横竖混排：改目标节之前先逐节 `get_page_setup` 读出基线，改完只回读目标节，并抽查相邻节没被改动。
 
 节数怎么探：逐节调 `wps_word_get_page_setup {section:N}`，从 1 开始直到报错。

@@ -10,8 +10,14 @@
 //   file-exists:<rel>                       文件存在
 //   file-absent:<rel>                        文件不存在
 //   docx-text:<rel>|<子串>                   docx 正文/表格文本里包含该子串
+//   docx-xml-count:<rel>|<期望个数>|<正则>    word/document.xml 里正则命中几次（数 TOC 域等）
+//   docx-section-count:<rel>|<期望>          节数
+//   docx-section-orientation:<rel>|<1基节号>|<portrait|landscape>
 //   xlsx-value:<rel>|<sheet>|<cell>|<期望>   单元格值等于期望（数字按数值比）
 //   xlsx-formula:<rel>|<sheet>|<cell>|<期望> 单元格**公式文本**等于期望（去空白、去前导 =、忽略大小写）
+//   pptx-slide-count:<rel>|<期望>            页数
+//   pptx-text:<rel>|<1基页号>|<子串>         某页文字包含子串
+//   pptx-slide-xml-matches:<rel>|<1基页号>|<正则>  某页 slideN.xml 匹配（查 <p:timing> 动画等）
 //   unchanged:<rel>                          与 baseline 指纹一致（原文件未被修改）
 //   transcript-matches:<正则>               会话/运行轨迹文本匹配该正则
 //   transcript-not-matches:<正则>           会话/运行轨迹文本不匹配
@@ -86,14 +92,27 @@ function transcriptText(dir) {
 }
 
 const checks = [];
+// 这些断言的最后一段是**自由文本**（正则/子串），里面可能含 |，所以只按前几个分隔符切。
+const TRAILING_FREE = new Set([
+  'transcript-matches',
+  'transcript-not-matches',
+  'docx-xml-count',
+  'pptx-slide-xml-matches',
+]);
 function parseCheck(spec) {
   const i = spec.indexOf(':');
   if (i < 0) return { kind: spec, parts: [] };
   const kind = spec.slice(0, i);
   const rest = spec.slice(i + 1);
-  // transcript-* 的值本身可能含 |（正则），所以只有它们不按 | 切。
-  if (kind.startsWith('transcript-')) return { kind, parts: [rest] };
-  return { kind, parts: rest.split('|') };
+  const pieces = rest.split('|');
+  if (TRAILING_FREE.has(kind)) {
+    // <rel>|<期望>|<自由文本>（或 transcript 的 <自由文本>）
+    if (kind.startsWith('transcript-')) return { kind, parts: [rest] };
+    const head = pieces.slice(0, 2);
+    const tail = pieces.slice(2).join('|');
+    return { kind, parts: [...head, tail] };
+  }
+  return { kind, parts: pieces };
 }
 
 function runCheck(spec, { dir, baseline, python, scenario }) {
@@ -129,6 +148,71 @@ function runCheck(spec, { dir, baseline, python, scenario }) {
       const text = pythonJson(python, ['docx-text', abs]).text || '';
       const ok = text.includes(parts[1]);
       record(ok ? 'PASS' : 'FAIL', spec, ok ? '' : '实际文本：' + text.replace(/\s+/g, ' ').slice(0, 120));
+      return;
+    }
+    case 'docx-xml-count': {
+      // <rel>|<期望个数>|<正则>
+      if (!existsSync(abs)) { record('FAIL', spec, '文件不存在'); return; }
+      const xml = pythonJson(python, ['docx-xml', abs]).xml || '';
+      let count;
+      try {
+        count = (xml.match(new RegExp(parts[2], 'g')) || []).length;
+      } catch (error) {
+        record('FAIL', spec, '正则无效：' + error.message);
+        return;
+      }
+      const want = Number(parts[1]);
+      record(count === want ? 'PASS' : 'FAIL', spec, count === want ? '' : '实际 ' + count + ' 处（期望 ' + want + '）');
+      return;
+    }
+    case 'docx-section-count': {
+      if (!existsSync(abs)) { record('FAIL', spec, '文件不存在'); return; }
+      const sections = pythonJson(python, ['docx-sections', abs]);
+      const want = Number(parts[1]);
+      record(sections.count === want ? 'PASS' : 'FAIL', spec, sections.count === want ? '' : '实际 ' + sections.count + ' 节（期望 ' + want + '）');
+      return;
+    }
+    case 'docx-section-orientation': {
+      // <rel>|<1 基节号>|<portrait|landscape>
+      if (!existsSync(abs)) { record('FAIL', spec, '文件不存在'); return; }
+      const sections = pythonJson(python, ['docx-sections', abs]);
+      const index = Number(parts[1]);
+      const actual = (sections.orientations || [])[index - 1];
+      const want = String(parts[2]).trim();
+      record(actual === want ? 'PASS' : 'FAIL', spec, actual === want ? '' : '第 ' + index + ' 节实际 ' + JSON.stringify(actual) + '（期望 ' + want + '）');
+      return;
+    }
+    case 'pptx-slide-count': {
+      if (!existsSync(abs)) { record('FAIL', spec, '文件不存在'); return; }
+      const decks = pythonJson(python, ['pptx-slides', abs]);
+      const want = Number(parts[1]);
+      record(decks.count === want ? 'PASS' : 'FAIL', spec, decks.count === want ? '' : '实际 ' + decks.count + ' 页（期望 ' + want + '）');
+      return;
+    }
+    case 'pptx-text': {
+      // <rel>|<1 基页号>|<子串>
+      if (!existsSync(abs)) { record('FAIL', spec, '文件不存在'); return; }
+      const decks = pythonJson(python, ['pptx-slides', abs]);
+      const index = Number(parts[1]);
+      const texts = (decks.slides || []).find((s) => s.index === index);
+      const joined = texts ? (texts.texts || []).join('\n') : '';
+      const ok = joined.includes(parts[2]);
+      record(ok ? 'PASS' : 'FAIL', spec, ok ? '' : '第 ' + index + ' 页实际文本：' + JSON.stringify(joined).slice(0, 120));
+      return;
+    }
+    case 'pptx-slide-xml-matches': {
+      // <rel>|<1 基页号>|<正则>
+      if (!existsSync(abs)) { record('FAIL', spec, '文件不存在'); return; }
+      const index = Number(parts[1]);
+      const xml = pythonJson(python, ['pptx-slide-xml', abs, String(index)]).xml || '';
+      let hit;
+      try {
+        hit = new RegExp(parts[2], 'm').test(xml);
+      } catch (error) {
+        record('FAIL', spec, '正则无效：' + error.message);
+        return;
+      }
+      record(hit ? 'PASS' : 'FAIL', spec, hit ? '' : '第 ' + index + ' 页 slideN.xml 里没有匹配 ' + parts[2]);
       return;
     }
     case 'xlsx-value': {

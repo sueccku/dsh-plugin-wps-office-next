@@ -129,8 +129,20 @@ node test\skilleval\compare.mjs --new new --old old
 
 ## 断言语法
 
-见 [verify.mjs](verify.mjs) 顶部注释：`file-exists` / `file-absent` / `docx-text` / `xlsx-value` /
-`xlsx-formula` / `unchanged` / `transcript-matches` / `transcript-not-matches`。
+见 [verify.mjs](verify.mjs) 顶部注释：
+
+| 断言 | 说明 |
+|---|---|
+| `file-exists` / `file-absent` | 文件在 / 不在 |
+| `docx-text:<rel>\|<子串>` | docx 正文+表格文本包含子串 |
+| `docx-xml-count:<rel>\|<期望个数>\|<正则>` | word/document.xml 里正则命中几次（数 TOC 域、查节属性） |
+| `docx-section-count:<rel>\|<期望>` / `docx-section-orientation:<rel>\|<1基节号>\|<portrait\|landscape>` | 节数与逐节方向（python-docx 按 pgSz 宽高判） |
+| `xlsx-value` / `xlsx-formula:<rel>\|<sheet>\|<cell>\|<期望>` | 单元格值 / 公式文本 |
+| `pptx-slide-count:<rel>\|<期望>` / `pptx-text:<rel>\|<1基页号>\|<子串>` | 页数 / 某页文字 |
+| `pptx-slide-xml-matches:<rel>\|<1基页号>\|<正则>` | 某页 slideN.xml 匹配（查 `<p:timing>` 动画之类） |
+| `unchanged:<rel>` | 与 `fingerprint.json` 一致（原文件未被改） |
+| `transcript-matches:<正则>` / `transcript-not-matches:<正则>` | 会话轨迹匹配 / 不匹配 |
+
 `unchanged` 需要 `fingerprint.json`；轨迹类断言需要同目录有 `transcript.txt` / `run.stdout.txt` / `trace.txt`，
 缺了记 `SKIP` 而不是 `PASS`。
 
@@ -139,8 +151,14 @@ node test\skilleval\compare.mjs --new new --old old
 夹具是机器本地产物（每个场景的输入文件几百 KB 到几 MB，且要能按需重建）；
 **场景表、提示词、断言、夹具生成脚本**入库，保证同一份场景在任何机器上可重建、可复核。
 
-## 还没 ready 的场景
+## 场景就绪状态
 
-`scenarios.mjs` 里 `ready: false` 的 9 个场景（跨工作簿、目录刷新、多节、PPT 页序、超时、部分失败等）
-需要更复杂的夹具或受控故障注入，按 [skill-evaluation.md](../../docs/skill-evaluation.md) §3 的说明在 D1 补。
-它们**不计入**"已跑"。
+15 个场景里 **12 个 ready**（有夹具 + 确定性断言），3 个 `ready: false` 并**写明原因**：
+
+| # | 场景 | 为什么还不能跑 |
+|---|---|---|
+| 2 | only-word-skill | 不是任务场景；插件目前无条件注册四个技能，没有"只注册一个"的配置项。它要回答的问题已由 §3.2 实测（应用 Skill 单独加载**不会**带出总 Skill） |
+| 12 | write-timeout | 缺一个"只影响一次调用"的受控超时注入开关；调小全局超时会让整轮都坏，测不出模型如何处理超时。超时契约另由 `test/watchdog.test.mjs` 钉死 |
+| 14 | partial-failure | 缺**确定性**的 shortfall 触发点；不存在的字体/样式在 WPS 上要么硬报错要么静默成功，不稳定复现的东西不能当判定依据 |
+
+它们**不计入**"已跑"，也不会在没有夹具/断言的情况下产出 PASS。

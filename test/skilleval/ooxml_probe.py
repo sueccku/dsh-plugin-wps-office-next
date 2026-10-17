@@ -40,17 +40,78 @@ def xlsx_cell(path, sheet, cell):
         wb.close()
 
 
+def docx_xml(path):
+    """docx 的 word/document.xml 原文（用于数 TOC 域、查节属性这类 python-docx 不暴露的东西）。"""
+    import zipfile
+    with zipfile.ZipFile(path) as zf:
+        return {"xml": zf.read("word/document.xml").decode("utf-8", "replace")}
+
+
+def docx_sections(path):
+    """每节的页方向（python-docx 的 section.orientation 会按 pgSz 的宽高推断）。"""
+    from docx import Document
+
+    doc = Document(path)
+    orientations = []
+    for section in doc.sections:
+        try:
+            value = section.orientation
+            orientations.append("landscape" if int(value) == 1 else "portrait")
+        except Exception:   # noqa: BLE001
+            orientations.append("unknown")
+    return {"count": len(orientations), "orientations": orientations}
+
+
+def pptx_slides(path):
+    """按页序返回每页的文字（用于判页序、判某页有没有某个标题）。"""
+    from pptx import Presentation
+
+    pres = Presentation(path)
+    slides = []
+    for index, slide in enumerate(pres.slides, start=1):
+        texts = []
+        for shape in slide.shapes:
+            try:
+                if shape.has_text_frame and shape.text_frame.text.strip():
+                    texts.append(shape.text_frame.text)
+            except Exception:   # noqa: BLE001
+                continue
+        slides.append({"index": index, "texts": texts})
+    return {"count": len(slides), "slides": slides}
+
+
+def pptx_slide_xml(path, index):
+    """某一页的 slideN.xml 原文（用于查动画 timing 这类 python-pptx 不暴露的东西）。"""
+    import zipfile
+    with zipfile.ZipFile(path) as zf:
+        names = sorted(n for n in zf.namelist() if n.startswith("ppt/slides/slide") and n.endswith(".xml"))
+        if index < 1 or index > len(names):
+            raise SystemExit("slide index out of range: " + str(index) + " (have " + str(len(names)) + ")")
+        return {"xml": zf.read(names[index - 1]).decode("utf-8", "replace")}
+
+
 def main(argv):
     if len(argv) < 3:
-        print("usage: inspect.py docx-text <file> | xlsx-cell <file> <sheet> <cell>", file=sys.stderr)
+        print("usage: ooxml_probe.py <kind> <file> [args...]", file=sys.stderr)
         return 2
     kind = argv[1]
     try:
         if kind == "docx-text":
             result = docx_text(argv[2])
+        elif kind == "docx-xml":
+            result = docx_xml(argv[2])
+        elif kind == "docx-sections":
+            result = docx_sections(argv[2])
+        elif kind == "pptx-slides":
+            result = pptx_slides(argv[2])
+        elif kind == "pptx-slide-xml":
+            if len(argv) != 4:
+                print("usage: ooxml_probe.py pptx-slide-xml <file> <index>", file=sys.stderr)
+                return 2
+            result = pptx_slide_xml(argv[2], int(argv[3]))
         elif kind == "xlsx-cell":
             if len(argv) != 5:
-                print("usage: inspect.py xlsx-cell <file> <sheet> <cell>", file=sys.stderr)
+                print("usage: ooxml_probe.py xlsx-cell <file> <sheet> <cell>", file=sys.stderr)
                 return 2
             result = xlsx_cell(argv[2], argv[3], argv[4])
         else:

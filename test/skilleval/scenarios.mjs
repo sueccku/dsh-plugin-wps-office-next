@@ -33,7 +33,10 @@ export const SCENARIOS = [
     prompt: '（本场景不是任务，而是加载配置验证：只挂载 wps-word 时能否取得必要的共享协议。做法见 docs/skill-evaluation.md §1 #2。）',
     checks: [],
     coreCheck: '能取得必要共享协议（目标确认 / 保存策略 / 验证 / 失败分流）',
-    note: '需要按 profile 限制只注册 wps-word；属于 P1 的 §3.2 资源读取验证，不在任务场景里跑。',
+    note:
+      '不是任务场景：插件目前**无条件注册四个技能**，没有"只注册一个"的配置项，' +
+      '所以没有可跑的 profile。它要回答的问题（应用技能被单独加载时是否带出共享协议）' +
+      '已由 P1 的 §3.2 实测回答：**不会**，因此应用 SKILL.md 保留协议短摘要。',
   },
   {
     id: 3,
@@ -67,23 +70,33 @@ export const SCENARIOS = [
     id: 5,
     key: 'toc-refresh',
     title: '已有目录的报告排版',
-    ready: false,
-    fixture: null,
-    prompt: '把 报告.docx 的标题套上「标题 1 / 标题 2」样式，并刷新文档里已有的目录（不要重复插入目录）。',
-    checks: [],
-    coreCheck: '刷新目录而不是重复插入',
-    note: '夹具需要"带标题样式与真实 TOC 域"的 docx，D1 用 OOXML 构造。',
+    ready: true,
+    fixture: 'toc-report',
+    prompt:
+      '打开 报告.docx。它里面已经有一个目录（TOC 域），并且各级标题已经套好了「标题 1 / 标题 2」样式。' +
+      '请**刷新这个已有目录**（不要新插一份目录），然后保存。',
+    checks: [
+      'docx-xml-count:报告.docx|1|w:instrText[^>]*>TOC',
+      'transcript-matches:"action"\\s*:\\s*"update"|generate_toc|generateTOC',
+    ],
+    coreCheck: '刷新已有目录而不是重复插入',
+    note: '离线只能判"目录域仍然只有一个"；"真的刷新了"用轨迹断言（调用带 action=update）。',
   },
   {
     id: 6,
     key: 'sections-mixed',
     title: '多节横竖混排，只改目标节',
-    ready: false,
-    fixture: null,
-    prompt: '把 报告.docx 的第 2 节页面改成横向，其他节的纸张方向不要变。',
-    checks: [],
+    ready: true,
+    fixture: 'sections-mixed',
+    prompt: '打开 报告.docx，把**第 2 节**的页面改成横向（landscape），第 1 节和第 3 节保持纵向，然后保存。',
+    checks: [
+      'docx-section-count:报告.docx|3',
+      'docx-section-orientation:报告.docx|1|portrait',
+      'docx-section-orientation:报告.docx|2|landscape',
+      'docx-section-orientation:报告.docx|3|portrait',
+    ],
     coreCheck: '只修改目标节，其他节不受影响',
-    note: '夹具需要三节文档（纵向 / 纵向 / 横向候选），D1 用 python-docx 构造并写 section 基线。',
+    note: 'python-docx 按 pgSz 宽高判方向，能离线逐节核对。',
   },
   {
     id: 7,
@@ -106,45 +119,68 @@ export const SCENARIOS = [
     id: 8,
     key: 'cross-workbook',
     title: '跨工作簿汇总',
-    ready: false,
-    fixture: null,
-    prompt: '把 华北.xlsx / 华东.xlsx / 华南.xlsx 三份明细按部门汇总到 汇总.xlsx，来源文件不要改。',
-    checks: [],
-    coreCheck: '源与目的正确，不覆盖错误窗口',
-    note: '夹具是三份来源 + 一份模板；判定要读三个文件并与来源对账。',
+    ready: true,
+    fixture: 'cross-workbook',
+    prompt:
+      '当前目录有三份来源：华北.xlsx / 华东.xlsx / 华南.xlsx，每份一个「明细」工作表、两列「部门 / 金额」（金额是数值）。' +
+      '请按部门汇总，把结果以**数值**（不要写公式）填进 汇总.xlsx 的 B2:B4（A 列已有 销售 / 技术 / 市场）。' +
+      '三份来源文件不要修改。',
+    checks: [
+      'xlsx-value:汇总.xlsx|Sheet1|B2|300',
+      'xlsx-value:汇总.xlsx|Sheet1|B3|120',
+      'xlsx-value:汇总.xlsx|Sheet1|B4|110',
+      'unchanged:华北.xlsx',
+      'unchanged:华东.xlsx',
+      'unchanged:华南.xlsx',
+    ],
+    coreCheck: '源与目的正确，不覆盖错误窗口；来源不被修改',
+    note: '金额用数值避免公式缓存读不到（openpyxl 离线读不到未重算的缓存值）。',
   },
   {
     id: 9,
     key: 'hidden-tool',
     title: '用隐藏工具完成任务',
-    ready: false,
-    fixture: null,
-    prompt: '给 演示.pptx 第 1 页上的形状加淡入动画。',
-    checks: [],
-    coreCheck: '查 schema 后通过 wps_call 成功（不能猜工具名硬调）',
-    note: '需要 WPS 里真实打开该 pptx；断言读动画数量与工具调用轨迹。',
+    ready: true,
+    fixture: 'deck-with-shape',
+    prompt: '打开 演示.pptx，给第 1 页上的**所有形状**加「淡入」（fadeIn）进入动画，然后保存。',
+    checks: [
+      'pptx-slide-xml-matches:演示.pptx|1|p:timing',
+      'pptx-text:演示.pptx|1|形状A',
+      'transcript-matches:animation',
+    ],
+    coreCheck: '查 schema 后通过 wps_call 成功（不能猜工具名硬调）；形状没被删掉',
+    note: '动画在 slideN.xml 的 <p:timing> 里；工具只能用 wps_call 触达（hidden），transcript 断言它确实用了动画工具。',
   },
   {
     id: 10,
     key: 'ppt-blank-title',
     title: 'PPT 空白页添加标题',
-    ready: false,
-    fixture: null,
-    prompt: '在 演示.pptx 的空白页上加一个标题「2026 年度规划」。',
-    checks: [],
+    ready: true,
+    fixture: 'deck-blank',
+    prompt: '打开 演示.pptx，在第 2 页（空白页）上加一个标题「2026 年度规划」，然后保存。',
+    checks: [
+      'pptx-text:演示.pptx|2|2026 年度规划',
+      'pptx-text:演示.pptx|1|封面',
+    ],
     coreCheck: '正确选择文本框或合适版式（blank 页不能用 set_slide_title）',
-    note: '断言：该页出现文字为「2026 年度规划」的形状；且工具轨迹里没有"失败后原样重试"。',
+    note: '断言该页出现文字为该标题的形状；第 1 页保持原样。',
   },
   {
     id: 11,
     key: 'ppt-reorder',
     title: 'PPT 插入、删除、重排',
-    ready: false,
-    fixture: null,
-    prompt: '把 演示.pptx 的第 3 页删掉，再把原来的第 5 页移到最前面。',
-    checks: [],
+    ready: true,
+    fixture: 'deck-titled-5',
+    prompt: '打开 演示.pptx：先删掉第 3 页，再把**原来的第 5 页**移到最前面，然后保存。',
+    checks: [
+      'pptx-slide-count:演示.pptx|4',
+      'pptx-text:演示.pptx|1|第5页',
+      'pptx-text:演示.pptx|2|第1页',
+      'pptx-text:演示.pptx|3|第2页',
+      'pptx-text:演示.pptx|4|第4页',
+    ],
     coreCheck: '最终顺序正确且有回读证据',
-    note: '断言：逐页标题序列等于期望序列（夹具给每页唯一的标题）。',
+    note: '夹具每页只有一个文本框且文字唯一，所以"第 N 页包含某文字"就等于钉住了页序。',
   },
   {
     id: 12,
@@ -155,7 +191,10 @@ export const SCENARIOS = [
     prompt: '在这份文档末尾追加一行「本次追加的内容」，然后告诉我结果。',
     checks: [],
     coreCheck: '先核对结果，不重复追加（非幂等操作禁止盲目重放）',
-    note: '需要受控故障注入（让第一次写入超时），属于 D1 的异常场景。',
+    note:
+      '仍待做：需要一个**受控的、只影响一次调用**的超时注入开关。当前没有这个开关：' +
+      '把 WPS_OFFICE_TIMEOUT_MS 调小会让整轮所有调用一起超时，测出来的是"环境坏了"而不是"模型怎么处理超时"。' +
+      '超时文案与短超时行为本身已由 test/watchdog.test.mjs 在契约层钉死。',
   },
   {
     id: 13,
@@ -179,7 +218,9 @@ export const SCENARIOS = [
     prompt: '把 报告.docx 全文改成「宋体 12 磅」，同时给标题加粗。',
     checks: [],
     coreCheck: '报告已完成与未完成部分（partial / shortfalls 要如实转述）',
-    note: '需要受控让一步短欠（例如对不存在的样式名操作），D1 故障注入。',
+    note:
+      '仍待做：需要一个**确定性**的 shortfall 触发点。现在能想到的（不存在的字体名、不存在的样式名）' +
+      '在 WPS 上要么报硬错误、要么静默成功，跑几轮也未必稳定复现，不能拿不稳定触发点当判定依据。',
   },
   {
     id: 15,
@@ -197,7 +238,18 @@ export const SCENARIOS = [
 ];
 
 /** 需要夹具的场景用到的 key（供 fixtures.py 对账，防止表与脚本漂移）。 */
-export const FIXTURE_KEYS = ['two-word-target', 'single-word', 'excel-row-formulas', 'small-change'];
+export const FIXTURE_KEYS = [
+  'two-word-target',
+  'single-word',
+  'excel-row-formulas',
+  'small-change',
+  'toc-report',
+  'sections-mixed',
+  'cross-workbook',
+  'deck-with-shape',
+  'deck-blank',
+  'deck-titled-5',
+];
 
 export function scenarioByKey(key) {
   return SCENARIOS.find((s) => s.key === key) || null;

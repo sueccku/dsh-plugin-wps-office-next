@@ -1447,6 +1447,18 @@ function Get-WordSaveFormat([string]$format) {
     return $map[$f]
 }
 
+function Get-WordPaperLabel($code) {
+    # WPS 把「A4 横向」记成未命名代码 41（实测：A4 纵向=7，改成横向后 PaperSize 变成 41，改回纵向又恢复 7；
+    # 即使同时传 paperSize=A4 + orientation=landscape 也一样）。只回报一个裸数字时，模型会把它当成
+    # 「纸张被改坏了」并停下来反复核对 —— D1 场景 6 就因为这个吃满了 60s 上限。未知代码必须带上解释。
+    if ($null -eq $code) { return $null }
+    $names = @{ 7 = "A4"; 6 = "A3"; 1 = "Letter"; 5 = "Legal" }
+    $value = [int]$code
+    if ($names.ContainsKey($value)) { return $names[$value] }
+    if ($value -eq 41) { return "41（横向纸张代码）" }
+    return ([string]$value + "（未命名纸张代码）")
+}
+
 function Get-ExcelFileFormat([string]$format) {
     if (-not $format) { return $null }
     $f = $format.ToLower().Trim('.')
@@ -5951,11 +5963,9 @@ switch ($Action) {
         if ($sectionIndex -lt 1 -or $sectionIndex -gt $doc.Sections.Count) { Output-Json @{ success = $false; error = "section out of range" }; exit }
         # WO-001：与 setPageSetup 读的是同一批属性，单位也一致（磅），这样"写—读"能直接对账。
         $ps = $doc.Sections.Item($sectionIndex).PageSetup
-        $sizeNames = @{ 7 = "A4"; 6 = "A3"; 1 = "Letter"; 5 = "Legal" }
         $paper = $null
         try { $paper = [int]$ps.PaperSize } catch { $paper = $null }
-        $paperName = $null
-        if ($null -ne $paper) { if ($sizeNames.ContainsKey($paper)) { $paperName = $sizeNames[$paper] } else { $paperName = $paper } }
+        $paperName = Get-WordPaperLabel $paper
         $data = @{
             section = $sectionIndex
             orientation = $(if ([int]$ps.Orientation -eq 1) { "landscape" } else { "portrait" })
@@ -6021,11 +6031,9 @@ switch ($Action) {
         }
         # 回读**全部四个边距 + 方向 + 纸张**，而不只是"传进来的那几个"：方向一变边距会跟着挪，
         # 只回报传入项就看不出这件事（WO-001 之前这里连键名都对不上，一个边距都没回报出来）。
-        $sizeNames = @{ 7 = "A4"; 6 = "A3"; 1 = "Letter"; 5 = "Legal" }
         $paper = $null
         try { $paper = [int]$ps.PaperSize } catch { $paper = $null }
-        $paperName = $null
-        if ($null -ne $paper) { if ($sizeNames.ContainsKey($paper)) { $paperName = $sizeNames[$paper] } else { $paperName = $paper } }
+        $paperName = Get-WordPaperLabel $paper
         $applied = @{
             orientation = $(if ([int]$ps.Orientation -eq 1) { "landscape" } else { "portrait" })
             paperSize = $paperName

@@ -82,6 +82,9 @@ check("L1 第1节读回 纵向 A4", r1.ok && r1.v.orientation === "纵向" && r1
 check("L1 第2节未被第3节的设置影响（仍纵向 A4）", r2.ok && r2.v.orientation === "纵向" && r2.v.paperSize === "A4", JSON.stringify(r2.v));
 check("L2 第3节读回 **横向** A3（顺序缺陷的真判据）", r3.ok && r3.v.orientation === "横向", "orientation=" + r3.v.orientation + " paper=" + r3.v.paperSize + " " + r3.v.w + "x" + r3.v.h);
 check("L2 第3节纸张是 A3 横向（宽>高）", r3.ok && r3.v.w > r3.v.h && Math.abs(r3.v.w - 1190.7) <= 6 && Math.abs(r3.v.h - 842) <= 6, r3.v.w + "x" + r3.v.h);
+// D1 实测：WPS 把「A4 横向」记成未命名纸张代码 41（改回纵向又恢复 A4）。只回一个裸数字时，
+// 模型会把它当成"纸张被改坏了"并停下来排查 —— 所以未知代码必须带解释。
+check("L2 横向页的纸张读数带解释（不能只回裸代码）", r3.ok && (r3.v.paperSize === "A3" || /（/.test(String(r3.v.paperSize))), "paper=" + r3.v.paperSize);
 check("L1 第1节边距写—读闭环（上/左 ±1pt）", r1.ok && Math.abs(r1.v.top - 56.7) <= 1 && Math.abs(r1.v.left - 85) <= 1, "top=" + r1.v.top + " left=" + r1.v.left);
 
 // 第 4 节保持默认（纵向 A4），证明确实只动了第 3 节
