@@ -244,7 +244,21 @@ const getSlideInfoHandler = async (args) => {
         const response = await wps_client_1.wpsClient.executeMethod('getSlideInfo', { slideIndex }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             const info = response.data;
-            let output = `第 ${info.slideIndex} 页幻灯片信息：\n`;
+            let output = '';
+            // A4（改进指南 §9 P1 + §7.2）：目标身份与画布尺寸都要出现在模型看得到的那段文本里 ——
+            // 桥返回了但 handler 不打印，等于这个能力对模型不存在。画布用「磅（像素）」同时给出：
+            // 形状几何走磅，set_slide_size / export_slide_as_image 收像素，差 0.75 倍。
+            if (info.presentationName) {
+                const onDisk = typeof info.presentationPath === 'string' && info.presentationPath.includes('\\');
+                output += `演示文稿: ${info.presentationName}\n`;
+                output += `演示文稿路径: ${onDisk ? info.presentationPath : '(尚未保存到磁盘)'}\n`;
+            }
+            if (typeof info.slideWidth === 'number' && typeof info.slideHeight === 'number') {
+                const px = typeof info.slideWidthPx === 'number' && typeof info.slideHeightPx === 'number'
+                    ? `（${info.slideWidthPx} × ${info.slideHeightPx} 像素）` : '';
+                output += `画布尺寸: ${info.slideWidth} × ${info.slideHeight} 磅${px}\n`;
+            }
+            output += `第 ${info.slideIndex} 页幻灯片信息：\n`;
             output += `布局: ${info.layout}\n`;
             output += `元素数量: ${info.shapesCount}\n`;
             if (info.shapes && info.shapes.length > 0) {
@@ -994,14 +1008,16 @@ exports.setShapeTextHandler = setShapeTextHandler;
 // ============================================================
 exports.setSlideSizeDefinition = {
     name: 'wps_ppt_set_slide_size',
-    description: `设置演示文稿的幻灯片尺寸。
+    description: `设置演示文稿的幻灯片尺寸。width / height 的单位是**像素**，桥内部乘以 0.75 换成磅（COM 的 PageSetup.SlideWidth 是磅）。
 
-常用尺寸：
-- 标准(4:3): 宽960, 高720
-- 宽屏(16:9): 宽960, 高540
-- 宽屏(16:10): 宽960, 高600
-- A4横版: 宽1123, 高794
-- A4竖版: 宽794, 高1123
+常用尺寸（像素 → 实际磅值）：
+- 标准 4:3: 960 × 720 像素（= 720 × 540 磅）
+- 宽屏 16:9: 1280 × 720 像素（= 960 × 540 磅）—— 注意不是 960 × 540：那组数字是**磅**，按像素传会小一圈
+- 宽屏 16:10: 1280 × 800 像素（= 960 × 600 磅）
+- A4 横版: 1123 × 794 像素（= 842 × 595 磅）
+- A4 竖版: 794 × 1123 像素（= 595 × 842 磅）
+
+改完用 wps_ppt_get_slide_info 回读 slideWidth / slideHeight（磅）与 slideWidthPx / slideHeightPx（像素）核对。
 
 使用场景：
 - "把PPT改成16:9宽屏"

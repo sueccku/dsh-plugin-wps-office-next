@@ -16,7 +16,7 @@ const wps_1 = require("../../types/wps");
  */
 exports.openWorkbookDefinition = {
     name: 'wps_excel_open_workbook',
-    description: '打开指定路径的Excel工作簿文件。',
+    description: '打开指定路径的Excel工作簿文件。readOnly=true 时以只读方式打开（改不动原件，适合把来源数据读出来做汇总）；updateLinks 控制外部链接是否随之更新。',
     category: tools_1.ToolCategory.SPREADSHEET,
     inputSchema: {
         type: 'object',
@@ -25,12 +25,20 @@ exports.openWorkbookDefinition = {
                 type: 'string',
                 description: '工作簿文件路径',
             },
+            readOnly: {
+                type: 'boolean',
+                description: '以只读方式打开（默认 false）。读来源数据、又不该改原件时传 true。',
+            },
+            updateLinks: {
+                type: 'boolean',
+                description: '打开时是否更新外部链接（默认由 WPS 决定）。',
+            },
         },
         required: ['path'],
     },
 };
 const openWorkbookHandler = async (args) => {
-    const { path } = args;
+    const { path, readOnly, updateLinks } = args;
     if (!path) {
         return {
             id: (0, uuid_1.v4)(),
@@ -42,7 +50,14 @@ const openWorkbookHandler = async (args) => {
     try {
         // The bridge reads "path"; path was never read, so a relative or alternate spelling of the
         // argument was silently ignored.
+        // readOnly / updateLinks are read by the bridge (Open-ExcelWorkbook) but were missing from the
+        // schema — so the tool layer would have rejected them and there was no way to open a source
+        // workbook without risking the original. Both are forwarded now.
         const params = { path: path };
+        if (readOnly !== undefined)
+            params.readOnly = readOnly;
+        if (updateLinks !== undefined)
+            params.updateLinks = updateLinks;
         const response = await wps_client_1.wpsClient.executeMethod('openWorkbook', params, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `打开工作簿失败: ${response.error}` }], error: response.error };

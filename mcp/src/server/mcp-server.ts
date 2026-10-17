@@ -415,7 +415,10 @@ export class WpsMcpServer {
     this.registry.register(
       {
         name: 'wps_batch',
-        description: '按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项',
+        description:
+          '按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。' +
+          '默认逐项继续（stopOnError=false），整体返回 status: completed/partial/failed 与逐项结果；' +
+          '整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。',
         inputSchema: {
           type: 'object',
           properties: {
@@ -431,6 +434,12 @@ export class WpsMcpServer {
                 required: ['tool'],
               },
             },
+            stopOnError: {
+              type: 'boolean',
+              description:
+                'true 时遇到第一个失败就停止后续调用（默认 false = 逐项继续）。' +
+                '有依赖关系的步骤请用 stopOnError=true 或逐项调用，避免后续步骤落到错误的前置状态上。',
+            },
           },
           required: ['calls'],
         },
@@ -440,12 +449,19 @@ export class WpsMcpServer {
         const raw = Array.isArray(args.calls) ? args.calls : [];
         if (raw.length === 0) return failure('calls 不能为空');
         if (raw.length > 50) return failure('单次批量最多 50 项');
-        const results: unknown[] = [];
-        for (const item of raw) {
+        const stopOnError = args.stopOnError === true;
+        const results: Array<Record<string, unknown>> = [];
+        let succeeded = 0;
+        let failedCount = 0;
+        let stoppedAt: number | null = null;
+        for (let index = 0; index < raw.length; index++) {
+          const item = raw[index];
           const entry = (item || {}) as Record<string, unknown>;
           const tool = typeof entry.tool === 'string' ? entry.tool : '';
           if (!callable(tool)) {
-            results.push({ tool, success: false, error: '无效或不可调用的工具名' });
+            failedCount++;
+            results.push({ index, tool, success: false, error: '无效或不可调用的工具名' });
+            if (stopOnError) { stoppedAt = index; break; }
             continue;
           }
           const inner = entry.args && typeof entry.args === 'object' ? (entry.args as Record<string, unknown>) : {};
@@ -454,9 +470,31 @@ export class WpsMcpServer {
           const joined = blocks
             .map((block) => (block && typeof block === 'object' && 'text' in block ? String((block as { text?: string }).text || '') : ''))
             .join('\n');
-          results.push({ tool, success: outcome.success, result: joined.slice(0, 2000) });
+          const record: Record<string, unknown> = { index, tool, success: outcome.success, result: joined.slice(0, 2000) };
+          if (outcome.success) {
+            succeeded++;
+          } else {
+            failedCount++;
+            // 结构化错误**不截断**：截断过的错误没法诊断，而正文才是有长度压力的那部分。
+            if (typeof outcome.error === 'string' && outcome.error) record.error = outcome.error;
+            if (outcome.partial === true) record.partial = true;
+            if (Array.isArray(outcome.shortfalls) && outcome.shortfalls.length) record.shortfalls = outcome.shortfalls;
+            if (stopOnError) { stoppedAt = index; results.push(record); break; }
+          }
+          results.push(record);
         }
-        return text({ count: results.length, results });
+        // 整体状态是显式字段，不靠调用方去推理："批处理跑完了吗、全成了吗"必须一眼能答。
+        const status = failedCount === 0 ? 'completed' : succeeded > 0 ? 'partial' : 'failed';
+        return text({
+          count: results.length,
+          requested: raw.length,
+          succeeded,
+          failed: failedCount,
+          status,
+          stopOnError,
+          stoppedAt,
+          results,
+        });
       }
     );
 

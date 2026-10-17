@@ -9,6 +9,7 @@
  */
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import { StringDecoder } from 'string_decoder';
 import { log } from '../utils/logger';
 
 /** Path to the resident host script; overridable for tests and relocated installs. */
@@ -84,6 +85,39 @@ function timeoutFor(action: string, suspect = false): number {
 }
 
 /**
+ * 按行切帧的 UTF-8 读取器。
+ *
+ * 为什么不能写 `buf += chunk.toString()`：一个 chunk 的边界可以落在多字节字符中间（中文一个字 3 字节），
+ * `toString()` 会把半个字符解成 U+FFFD，整帧 JSON 里的中文就坏了。`scripts/gen-skill-tools.mjs`、
+ * `test/spec-reproduction.test.mjs` 的收帧都吃过这个坑；正式客户端此前没修（改进指南 §9 P1）。
+ * StringDecoder 会把不完整的尾部字节留到下一次 `write()` 再拼，所以任何切法都能还原。
+ */
+export class Utf8LineReader {
+  private decoder = new StringDecoder('utf8');
+  private buffer = '';
+
+  /** 喂一个 chunk，返回本次凑齐的完整行（已 trim，空行丢弃）。 */
+  push(chunk: Buffer | string): string[] {
+    this.buffer += typeof chunk === 'string' ? chunk : this.decoder.write(chunk);
+    const lines: string[] = [];
+    let index = this.buffer.indexOf('\n');
+    while (index >= 0) {
+      const line = this.buffer.slice(0, index).trim();
+      this.buffer = this.buffer.slice(index + 1);
+      if (line.length > 0) lines.push(line);
+      index = this.buffer.indexOf('\n');
+    }
+    return lines;
+  }
+
+  /** 换一个子进程时必须清空：上一个进程的半帧不能混进新进程的输入。 */
+  reset(): void {
+    this.decoder = new StringDecoder('utf8');
+    this.buffer = '';
+  }
+}
+
+/**
  * Resident COM host.
  *
  * One PowerShell process is kept alive for the lifetime of the MCP server. Requests are
@@ -92,7 +126,9 @@ function timeoutFor(action: string, suspect = false): number {
  */
 export class ComHost {
   private child: ChildProcess | null = null;
-  private stdoutBuffer = '';
+  /** 按字节收帧的 stdout 读取器（见 Utf8LineReader：chunk 边界会切开中文）。 */
+  private readonly stdoutReader = new Utf8LineReader();
+  private stderrDecoder = new StringDecoder('utf8');
   private readyWaiters: Array<{ resolve: () => void; reject: (error: Error) => void; timer: NodeJS.Timeout }> = [];
   private inflight: { id: number; resolve: (value: WpsActionOutcome) => void; reject: (error: Error) => void; timer: NodeJS.Timeout } | null = null;
   private sequence = 0;
@@ -218,7 +254,8 @@ export class ComHost {
 
       log.info('Starting resident COM host', { script: HOST_SCRIPT });
       this.stderrTail = [];
-      this.stdoutBuffer = '';
+      this.stdoutReader.reset();
+      this.stderrDecoder = new StringDecoder('utf8');
 
       let child: ChildProcess;
       try {
@@ -240,8 +277,8 @@ export class ComHost {
 
       this.child = child;
 
-      child.stdout?.on('data', (chunk: Buffer) => this.onStdout(child, chunk.toString()));
-      child.stderr?.on('data', (chunk: Buffer) => this.onStderr(child, chunk.toString()));
+      child.stdout?.on('data', (chunk: Buffer) => this.onStdout(child, chunk));
+      child.stderr?.on('data', (chunk: Buffer) => this.onStderr(child, chunk));
       child.on('error', (error) => {
         if (this.child !== child) return;
         this.killChild(new Error('COM host process error: ' + error.message));
@@ -257,17 +294,11 @@ export class ComHost {
     });
   }
 
-  private onStdout(child: ChildProcess, chunk: string): void {
+  private onStdout(child: ChildProcess, chunk: Buffer): void {
     // Output from a host that was already replaced must not be mixed into the current buffer.
     if (this.child !== child) return;
-    this.stdoutBuffer += chunk;
-    let index = this.stdoutBuffer.indexOf('\n');
-    while (index >= 0) {
-      const line = this.stdoutBuffer.slice(0, index).trim();
-      this.stdoutBuffer = this.stdoutBuffer.slice(index + 1);
-      if (line.length > 0) this.onFrame(line);
-      index = this.stdoutBuffer.indexOf('\n');
-    }
+    // 按字节收帧：StringDecoder 会把被切开的半个中文字留到下一次喂进来（见 Utf8LineReader）。
+    for (const line of this.stdoutReader.push(chunk)) this.onFrame(line);
   }
 
   private onFrame(line: string): void {
@@ -312,9 +343,10 @@ export class ComHost {
     inflight.resolve(frame.result || { success: false, error: 'COM host returned no result' });
   }
 
-  private onStderr(child: ChildProcess, chunk: string): void {
+  private onStderr(child: ChildProcess, chunk: Buffer): void {
     if (this.child !== child) return;
-    const text = chunk.trim();
+    // stderr 是给人看的诊断文本，同样走 StringDecoder，免得中文报错被切成 U+FFFD。
+    const text = this.stderrDecoder.write(chunk).trim();
     if (!text) return;
     this.stderrTail.push(text);
     if (this.stderrTail.length > 8) this.stderrTail.shift();
@@ -342,7 +374,7 @@ export class ComHost {
   private killChild(cause: Error): void {
     const child = this.child;
     this.child = null;
-    this.stdoutBuffer = '';
+    this.stdoutReader.reset();
     if (child && !child.killed) {
       this.awaitingExit = child;
       child.once('exit', () => { if (this.awaitingExit === child) this.awaitingExit = null; });

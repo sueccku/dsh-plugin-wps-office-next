@@ -53,13 +53,18 @@
 | --- | --- |
 | `calls` 为空 | 整体失败：`calls 不能为空` |
 | `calls` > 50 | 整体失败：`单次批量最多 50 项`；**一项都不执行** |
-| 某一项工具名无效 / 是门面 / 未知 | 该项记 `{tool, success:false, error:"无效或不可调用的工具名"}`，**继续执行后面的项** |
-| 某一项执行失败 | 该项记 `{tool, success:false, result:"<错误文案>"}`，**继续执行后面的项** |
-| 某一项成功 | 该项记 `{tool, success:true, result:"<结果文本，最多 2000 字符>"}` |
+| 某一项工具名无效 / 是门面 / 未知 | 该项记 `{index, tool, success:false, error:"无效或不可调用的工具名"}`，**默认继续执行后面的项** |
+| 某一项执行失败 | 该项记 `{index, tool, success:false, result:"<结果文本>", error:"<完整错误，不截断>"}`（有 `partial`/`shortfalls` 时一并带上），**默认继续执行后面的项** |
+| 某一项成功 | 该项记 `{index, tool, success:true, result:"<结果文本，最多 2000 字符>"}` |
+| `stopOnError: true` | 遇到第一个失败项即停止，`stoppedAt` 记下失败项下标，后面的项**不执行** |
 
-- 整批的返回值**恒为 `success: true`**，结构 `{count, results[]}`；局部失败不会把整批标成失败，
-  所以调用方**必须逐项看 `results[i].success`**。
-- `result` 会被截断到 2000 字符；需要完整结果就单项调用。
+- 整批的返回值**恒为 `success: true`**（它表示"批处理本身跑完了"），结构
+  `{count, requested, succeeded, failed, status, stopOnError, stoppedAt, results[]}`；
+  局部失败不会把整批标成失败，所以调用方**必须看 `status` 或逐项看 `results[i].success`**。
+- `status` 取值：`completed`（全部成功）/ `partial`（有成功也有失败）/ `failed`（一项都没成功）。
+- `result` 会被截断到 2000 字符（长度压力在正文上）；`error` **不截断** —— 截断过的错误没法诊断。
+- 有依赖关系的步骤（先建表再写数据）用 `stopOnError: true`，或干脆逐项调用；默认的"继续执行"会让
+  后续步骤落到错误的前置状态上。
 
 ## 3. 超时契约
 
@@ -89,15 +94,18 @@
 | 症状 | 该做什么 |
 | --- | --- |
 | 超时，文案含「状态未知」 | 切到 WPS 处理弹框（密码 / 保存 / 恢复），然后重试；**不要**以为操作已经失败 |
-| 批量里某项 `success:false` | 只看那一项；它前面的项**已经执行**，后面的项**也会继续执行** |
+| 批量里某项 `success:false` | 只看那一项；它前面的项**已经执行**，默认后面的项**也会继续执行**（要停就用 `stopOnError: true`） |
+| 批量的 `status` | `completed` / `partial` / `failed` —— 整批 `success:true` 只表示"跑完了" |
 | 结果里带 `warnings` | 主操作已生效，按 warning 内容人工确认次要步骤 |
+| 结果里带 `partial` / `shortfalls` | 你要求的事**没有全部生效**（`success` 已经是 `false`）：读已生效范围，只补做缺失部分 |
 
 ## 5. 断言位置
 
 | 语义 | 断言 |
 | --- | --- |
 | 超时文案含「状态未知」、短超时、成功即恢复、不偷偷重试 | `test/watchdog.test.mjs` |
-| 批量上限 50、空批量、部分失败继续、结果截断 2000、门面/未知工具拒绝 | `test/error-contract.test.mjs` |
+| 批量上限 50、空批量、部分失败继续、`stopOnError` 停止位、`status/succeeded/failed`、结果截断 2000、错误不截断、门面/未知工具拒绝 | `test/error-contract.test.mjs` |
 | 空 catch 的静默必须登记 | `test/silent-catch.test.mjs` |
 | 错误文案三段式、动作名、幂等 | `test/error-wording.test.mjs` |
-| 广告面、桥动作数、门面行为、长动作名单都是真实 action | `scripts/verify.mjs` |
+| 广告面、桥动作数、门面行为、长动作名单都是真实 action、Skill 参考覆盖全部注册工具 | `scripts/verify.mjs` |
+| Skill 结构、引用可达、示例参数符合 schema、生成块不含工具清单 | `test/skill-quality.test.mjs` |

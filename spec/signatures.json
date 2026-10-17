@@ -1,7 +1,7 @@
 [
  {
   "tool": "wps_batch",
-  "signature": "batch(calls*)",
+  "signature": "batch(calls*, stopOnError?)",
   "effect": "write"
  },
  {

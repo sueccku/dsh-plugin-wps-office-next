@@ -14,7 +14,7 @@ exports.operations = [
         "tool": "wps_batch",
         "action": null,
         "app": "common",
-        "summary": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项",
+        "summary": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。默认逐项继续（stopOnError=false），整体返回 status: completed/partial/failed 与逐项结果；整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。",
         "params": {
             "calls": {
                 "type": "array",
@@ -41,6 +41,12 @@ exports.operations = [
                     }
                 },
                 "required": true,
+                "kind": "local"
+            },
+            // A4（改进指南 §9 P1）：stopOnError 也在本地生效（不进桥），所以同样标 local。
+            "stopOnError": {
+                "type": "boolean",
+                "description": "true 时遇到第一个失败就停止后续调用（默认 false = 逐项继续）。有依赖关系的步骤请用 stopOnError=true 或逐项调用，避免后续步骤落到错误的前置状态上。",
                 "kind": "local"
             }
         },

@@ -44,6 +44,7 @@ export const getSheetInfoHandler: ToolHandler = async (
   try {
     const response = await wpsClient.executeMethod<{
       workbookName?: string;
+      workbookPath?: string;
       currentSheet?: string;
       allSheets?: string[];
       selectedCell?: string;
@@ -55,6 +56,9 @@ export const getSheetInfoHandler: ToolHandler = async (
     }
     const d = response.data || {};
     const lines = [`工作簿: ${d.workbookName || '(未知)'}`];
+    // A4（改进指南 §9 P1）：目标身份要能读回来。名称会重复（新建的簿都叫「工作簿N」），
+    // 路径才是能对账的那一半；未落盘就如实说"尚未保存到磁盘"，不要编一个看起来像路径的名字。
+    lines.push(`工作簿路径: ${typeof d.workbookPath === 'string' && d.workbookPath.includes('\\') ? d.workbookPath : '(尚未保存到磁盘)'}`);
     if (d.currentSheet) lines.push(`当前工作表: ${d.currentSheet}`);
     if (Array.isArray(d.allSheets) && d.allSheets.length) lines.push(`全部工作表: ${d.allSheets.join(', ')}`);
     lines.push(`已用范围: ${d.usedRange || '(空表)'}`);

@@ -21,7 +21,8 @@ import { WpsAppType } from '../../types/wps';
  */
 export const openWorkbookDefinition: ToolDefinition = {
   name: 'wps_excel_open_workbook',
-  description: '打开指定路径的Excel工作簿文件。',
+  description:
+    '打开指定路径的Excel工作簿文件。readOnly=true 时以只读方式打开（改不动原件，适合把来源数据读出来做汇总）；updateLinks 控制外部链接是否随之更新。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
@@ -29,6 +30,14 @@ export const openWorkbookDefinition: ToolDefinition = {
       path: {
         type: 'string',
         description: '工作簿文件路径',
+      },
+      readOnly: {
+        type: 'boolean',
+        description: '以只读方式打开（默认 false）。读来源数据、又不该改原件时传 true。',
+      },
+      updateLinks: {
+        type: 'boolean',
+        description: '打开时是否更新外部链接（默认由 WPS 决定）。',
       },
     },
     required: ['path'],
@@ -38,7 +47,7 @@ export const openWorkbookDefinition: ToolDefinition = {
 export const openWorkbookHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { path } = args as { path: string };
+  const { path, readOnly, updateLinks } = args as { path: string; readOnly?: boolean; updateLinks?: boolean };
   if (!path) {
     return {
       id: uuidv4(),
@@ -50,7 +59,12 @@ export const openWorkbookHandler: ToolHandler = async (
   try {
     // The bridge reads "path"; path was never read, so a relative or alternate spelling of the
     // argument was silently ignored.
-    const params = { path: path };
+    // readOnly / updateLinks are read by the bridge (Open-ExcelWorkbook) but were missing from the
+    // schema — so the tool layer would have rejected them and there was no way to open a source
+    // workbook without risking the original. Both are forwarded now.
+    const params: Record<string, unknown> = { path: path };
+    if (readOnly !== undefined) params.readOnly = readOnly;
+    if (updateLinks !== undefined) params.updateLinks = updateLinks;
     const response = await wpsClient.executeMethod<{ message: string }>(
       'openWorkbook',
       params,

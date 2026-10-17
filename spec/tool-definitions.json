@@ -1,7 +1,7 @@
 [
  {
   "name": "wps_batch",
-  "description": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项",
+  "description": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。默认逐项继续（stopOnError=false），整体返回 status: completed/partial/failed 与逐项结果；整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -22,6 +22,10 @@
        "tool"
       ]
      }
+    },
+    "stopOnError": {
+     "type": "boolean",
+     "description": "true 时遇到第一个失败就停止后续调用（默认 false = 逐项继续）。有依赖关系的步骤请用 stopOnError=true 或逐项调用，避免后续步骤落到错误的前置状态上。"
     }
    },
    "required": [
@@ -1859,13 +1863,21 @@
  },
  {
   "name": "wps_excel_open_workbook",
-  "description": "打开指定路径的Excel工作簿文件。",
+  "description": "打开指定路径的Excel工作簿文件。readOnly=true 时以只读方式打开（改不动原件，适合把来源数据读出来做汇总）；updateLinks 控制外部链接是否随之更新。",
   "inputSchema": {
    "type": "object",
    "properties": {
     "path": {
      "type": "string",
      "description": "工作簿文件路径"
+    },
+    "readOnly": {
+     "type": "boolean",
+     "description": "以只读方式打开（默认 false）。读来源数据、又不该改原件时传 true。"
+    },
+    "updateLinks": {
+     "type": "boolean",
+     "description": "打开时是否更新外部链接（默认由 WPS 决定）。"
     }
    },
    "required": [
@@ -2695,13 +2707,17 @@
  },
  {
   "name": "wps_excel_set_print_area",
-  "description": "设置打印区域",
+  "description": "设置打印区域（range 省略时清除）。桥按 sheet 定位工作表，多工作簿/多工作表时显式传 sheet。",
   "inputSchema": {
    "type": "object",
    "properties": {
     "range": {
      "type": "string",
      "description": "打印区域，如 A1:D20"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名或序号；不填则用当前活动工作表"
     }
    },
    "required": [
@@ -5172,7 +5188,7 @@
  },
  {
   "name": "wps_ppt_set_slide_size",
-  "description": "设置演示文稿的幻灯片尺寸。\n\n常用尺寸：\n- 标准(4:3): 宽960, 高720\n- 宽屏(16:9): 宽960, 高540\n- 宽屏(16:10): 宽960, 高600\n- A4横版: 宽1123, 高794\n- A4竖版: 宽794, 高1123\n\n使用场景：\n- \"把PPT改成16:9宽屏\"\n- \"设置幻灯片为A4尺寸\"\n- \"修改幻灯片大小\"",
+  "description": "设置演示文稿的幻灯片尺寸。width / height 的单位是**像素**，桥内部乘以 0.75 换成磅（COM 的 PageSetup.SlideWidth 是磅）。\n\n常用尺寸（像素 → 实际磅值）：\n- 标准 4:3: 960 × 720 像素（= 720 × 540 磅）\n- 宽屏 16:9: 1280 × 720 像素（= 960 × 540 磅）—— 注意不是 960 × 540：那组数字是**磅**，按像素传会小一圈\n- 宽屏 16:10: 1280 × 800 像素（= 960 × 600 磅）\n- A4 横版: 1123 × 794 像素（= 842 × 595 磅）\n- A4 竖版: 794 × 1123 像素（= 595 × 842 磅）\n\n改完用 wps_ppt_get_slide_info 回读 slideWidth / slideHeight（磅）与 slideWidthPx / slideHeightPx（像素）核对。\n\n使用场景：\n- \"把PPT改成16:9宽屏\"\n- \"设置幻灯片为A4尺寸\"\n- \"修改幻灯片大小\"",
   "inputSchema": {
    "type": "object",
    "properties": {

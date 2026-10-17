@@ -383,11 +383,17 @@ export const evaluateFormulaHandler = async (args: Record<string, unknown>) => {
 
 export const setPrintAreaDefinition: ToolDefinition = {
   name: 'wps_excel_set_print_area',
-  description: '设置打印区域',
+  description: '设置打印区域（range 省略时清除）。桥按 sheet 定位工作表，多工作簿/多工作表时显式传 sheet。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
-    properties: { range: { type: 'string', description: '打印区域，如 A1:D20' } },
+    properties: {
+      range: { type: 'string', description: '打印区域，如 A1:D20' },
+      // The bridge resolves the worksheet through Get-WorksheetByParam, which reads $p.sheet, but
+      // the schema never declared it — so the tool layer rejected "sheet" and the only way to aim
+      // this at a non-active worksheet was to switch worksheets first.
+      sheet: { type: 'string', description: '工作表名或序号；不填则用当前活动工作表' },
+    },
     required: ['range'],
   },
 };

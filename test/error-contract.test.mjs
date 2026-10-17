@@ -52,6 +52,24 @@ check("the batch reports exactly [ok, failed, ok]", JSON.stringify((m.results ||
 check("the unknown tool is reported as its own failed item", !!(m.results && m.results[1] && m.results[1].success === false && String(m.results[1].error || "").includes("无效")), JSON.stringify(m.results && m.results[1]));
 check("execution continued after the failed item", !!(m.results && m.results[2] && m.results[2].success === true), "");
 check("every item result is truncated to 2000 chars", !!(m.results && m.results.every((r) => !r.result || r.result.length <= 2000)), "");
+// A4（改进指南 §9 P1）：批处理必须有**整体结果**，调用方不该靠推理判断"跑完了吗/全成了吗"。
+check("the batch reports a structured overall status", m.status === "partial" && m.succeeded === 2 && m.failed === 1 && m.requested === 3, JSON.stringify({ status: m.status, succeeded: m.succeeded, failed: m.failed, requested: m.requested }));
+check("every item carries its index", JSON.stringify((m.results || []).map((r) => r.index)) === "[0,1,2]", JSON.stringify((m.results || []).map((r) => r.index)));
+check("a failed item carries a structured, untruncated error", typeof m.results[1].error === "string" && m.results[1].error.length > 0, JSON.stringify(m.results[1]).slice(0, 120));
+
+// stopOnError：有依赖的步骤不许在失败之后继续往下写。
+const halted = await call("wps_batch", { stopOnError: true, calls: [
+  { tool: "wps_common_ping" },
+  { tool: "wps_definitely_not_a_tool" },
+  { tool: "wps_common_ping" },
+] });
+const h = payload(halted);
+check("stopOnError halts at the first failure", h.count === 2 && h.stoppedAt === 1 && h.status === "partial", JSON.stringify({ count: h.count, stoppedAt: h.stoppedAt, status: h.status, stopOnError: h.stopOnError }));
+check("stopOnError really skipped the remaining call", JSON.stringify((h.results || []).map((r) => r.tool)) === '["wps_common_ping","wps_definitely_not_a_tool"]', JSON.stringify((h.results || []).map((r) => r.tool)));
+
+const allBad = await call("wps_batch", { calls: [{ tool: "wps_nope_one" }, { tool: "wps_nope_two" }] });
+const ab = payload(allBad);
+check("a batch where nothing succeeded reports status failed", ab.status === "failed" && ab.succeeded === 0 && ab.failed === 2, JSON.stringify({ status: ab.status, succeeded: ab.succeeded, failed: ab.failed }));
 
 const unknown = await call("wps_call", { tool: "wps_definitely_not_a_tool", args: {} });
 check("wps_call rejects an unknown tool", isErr(unknown) && text(unknown).includes("未知工具"), text(unknown).slice(0, 70));
