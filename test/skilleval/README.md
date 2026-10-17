@@ -79,6 +79,48 @@ session.txt    这次运行对应的会话文件路径
   checks.txt         ← 断言清单 + 成功标准
 ```
 
+## 跑 N 轮并汇总（`rounds.mjs`，D1 的执行器）
+
+```powershell
+$env:DEEPSEEK_API_KEY = <key>
+node test\skilleval\rounds.mjs --profile <profile> --label new --rounds 3 [--scenario <key|all>] [--reap-wps] [--resume]
+```
+
+- 每轮：清场（可选）→ 复制 `input/` 成 `run-<label>-r<N>/` → headless 跑一次 → 解轨迹 → `verify.mjs` 判定；
+  结果写 `run-<label>-r<N>/result.json`，汇总写 `_summary/rounds-<label>.{json,md}`。
+- `--resume`：跳过已有 `result.json` 的轮次，中断后接着跑。
+- `--reap-wps`：每轮开始前跑 `scripts/reap-wps.ps1 -Since <本臂最早一轮的时刻>`，把评测自己留下的 WPS 清掉
+  （否则第二、三轮跑的是"WPS 已经开着"，场景 1 的冷启动前提就没了）。**它真的会杀进程**，只在测试机上用。
+- **单轮默认超时 60s**（`--timeout` 可改）：正常一轮 20–80s；超时的轮次记 `timedOut: true` 并判失败，
+  同时用 `taskkill /T` 收掉整棵进程树 —— 不能让孙进程（MCP server / COM 宿主）活下来占着 WPS 租约。
+- 每轮记录：`ok`、`timedOut`、退出码、耗时、**真实 token**（input/output/cacheRead/total）、工具调用序列、
+  `usedWpsTools`（有没有真的走 WPS 通道而不是用 python 绕过）、`verify` 的逐条断言。
+
+## A/B 对照怎么搭（旧 Skill 基线）
+
+新旧两条臂要**同一 profile 模板、同一夹具、同一提示词**，只换插件代码。旧臂用 git worktree 固定到重构前的提交：
+
+```powershell
+git worktree add D:\dsh\baseline-skill <重构前的 commit>
+cmd /c mklink /J "D:\dsh\baseline-skill\mcp\node_modules" "D:\dsh\a\mcp\node_modules"   # mcp/dist 需要运行时依赖
+dsh --profile wpse2e-old --from-default-profile headless --dump-config
+dsh plugin --profile wpse2e-old add D:\dsh\baseline-skill
+# 校验：两个 profile 的 --dump-config 都有 wps-office-next-plugin / mcp-wps-office-next
+node test\skilleval\rounds.mjs --profile wpse2e-old --label old --rounds 3 --reap-wps
+```
+
+两臂**必须串行**跑（WPS 是单实例，租约会让并发的第二个宿主拒绝启动）。
+
+跑完两臂后合并成一张对比表：
+
+```powershell
+node test\skilleval\compare.mjs --new new --old old
+```
+
+它会读两臂的 `_summary/rounds-<label>.json`，按场景对齐输出成功率差、平均 token 差、失败断言，
+写 `_summary/compare.md`（本机产物）。其中「无依据成功声明」是**启发式**代理指标
+（判定失败但最终回答出现"已完成/已保存"等措辞），只能提示过度自信，不是逐条审计。
+
 ## Python 依赖
 
 夹具生成与产物检查用 `openpyxl` / `python-docx` / `python-pptx`。脚本按这个顺序找解释器：

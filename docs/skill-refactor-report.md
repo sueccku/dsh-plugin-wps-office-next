@@ -110,6 +110,21 @@
 | `test/warning-channel.test.mjs` | **14/14** | 批量/透传通道的 warning 仍逐字保留 |
 | `test/word-lifecycle.test.mjs` | **18/18** | 关闭/保存语义 |
 | `test/excel-missing-halves.test.mjs` | **20/20** | `get_sheet_info` 文本新增字段未破坏既有断言 |
+| `test/file-ops.test.mjs` | **13/13** | D1 发现的接口缺陷修复：`save_as` 输出目录不存在时不再只说「文档保存失败」，而是 `输出目录不存在：<路径>` + 下一步；且不替调用方创建目录 |
+
+### 2.3 模型侧 A/B（D1，2026-10-17）
+
+6 个 ready 场景 × 3 轮 × 两臂，同模型/Harness/档位/夹具，详细表格与解读见
+[skill-evaluation.md](skill-evaluation.md) §4。摘要：
+
+| 臂 | 通过 | 平均 tokens/轮 | 平均 WPS 调用/轮 | 平均耗时 | 超时 |
+|---|---|---|---|---|---|
+| 新 Skill | **18/18** | 530,319 | 14.7 | 44s | 0 |
+| 旧 Skill | **18/18** | 401,122 | 11.9 | 32s | 2（产物正确） |
+
+**正确率打平，新臂更贵（+32% token / +38% 时间）**。过程中发现并修掉一个真实接口缺陷
+（`save_as` 缺目录只回"保存失败"，导致模型两轮重试后**声称成功而副本未改**）——修接口后该场景 3/3。
+两臂各 18 轮、每场景 3 轮，**无统计显著性**；9 个 todo 场景（跨工作簿、多节、PPT 页序、超时/部分失败）仍未跑。
 
 **没有跑的**：`scripts/run-tests.ps1` 整轮（按 `AGENTS.md` §1/§2，需要用户明确同意）、`scripts/e2e.mjs`、
 `scripts/accept-install.mjs`、`test/orphan-reclaim.test.mjs`（它会强制结束本机所有 WPS 进程，属于破坏性；
@@ -117,10 +132,10 @@
 
 ## 3. 未完成项与剩余限制（明确不假装已支持）
 
-1. **模型侧效果对比未跑**：见 `docs/skill-evaluation.md` §1/§3。场景与成功标准已固定，但新旧 Skill 的
-   成功率、调用数、加载 tokens 一个都没有实测；本轮**不能**声称"模型更容易选对工具"。
-   （后续补充：可执行脚手架已落地在 [test/skilleval/](../test/skilleval/README.md) —— 6 个场景有夹具与
-   确定性断言，正例/反例都验证过会 PASS/FAIL；跑模型会话属于下一步，需要用户同意。）
+1. **模型侧效果对比 —— 已跑第一轮，但结论有限**：6 个 ready 场景 × 3 轮 × 两臂，正确率打平（各 18/18），
+   新臂多花 +32% tokens、+38% 墙钟时间（见 §2.3 与 [skill-evaluation.md](skill-evaluation.md) §4）。
+   **不能**据此声称"模型更容易选对工具"：样本小、无显著性，且 9 个更难的场景（跨工作簿、多节混排、
+   PPT 页序、超时/部分失败）还没跑。**不能**据此删减 Skill 里的验证步骤，也不改回旧文案。
 2. **Harness 的 Skill 加载 / 相对路径读取 —— 已实测（2026-10-17）**：`wpse2e` profile（junction → 工作区）
    上跑了两轮只读 headless 会话。结论：① 只加载应用 Skill **不会**自动带出总 Skill（只有一行指针）；
    ② 相对 `references/` `recipes/` **能读到**（base directory 明确交付）；③ 读不到的错误是

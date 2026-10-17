@@ -1949,6 +1949,14 @@ return }
     "saveAs" {
         $path = $p.outputPath
         if (-not $path) { Output-Json @{ success = $false; error = "Path required" }; return }
+        # D1 实测（场景 4 第 1 轮）：给一个**不存在的输出目录**时，WPS 每个应用都只回一句
+        # 「文档保存失败」——模型只能再花一轮 mkdir 或换路径去试。这里先自己判断父目录，
+        # 给出能直接修的错误。刻意**不替调用方创建目录**：目录是调用方的意图，不是插件的。
+        $parent = $null
+        try { $parent = Split-Path -Parent ([string]$path) } catch { $parent = $null }
+        if ($parent -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+            Output-Json @{ success = $false; error = ("输出目录不存在：" + $parent + "（动作：saveAs）下一步：先创建这个目录，或把 outputPath 换到已存在的目录后重试。") }
+return }
         $appType = if ($p.appType) { $p.appType } else { Get-AppTypeByExtension $path }
         if ($appType -eq 'excel') {
             $excel = Get-WpsExcel

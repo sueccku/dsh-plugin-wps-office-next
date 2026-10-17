@@ -43,6 +43,13 @@ const saved = await call("wps_common_save_as", { outputPath: XLSX });
 check("save_as accepts path", ok(saved), text(saved).replace(/\s+/g, " ").slice(0, 90));
 check("save_as actually wrote the file to the requested path", existsSync(XLSX), XLSX);
 
+// D1 实测（场景 4 第 1 轮）：输出目录不存在时，WPS 只回一句「文档保存失败」，模型只能再花一轮去试。
+// 桥现在先判断父目录，给出能直接修的错误（不替调用方创建目录）。
+const missingDir = path.join(OUT, "no-such-dir", "sub", "probe.xlsx");
+const badSave = await call("wps_common_save_as", { outputPath: missingDir });
+check("save_as reports a missing output directory clearly", !ok(badSave) && /输出目录不存在/.test(text(badSave)), text(badSave).replace(/\s+/g, " ").slice(0, 130));
+check("the refused save did not create the directory", !existsSync(path.join(OUT, "no-such-dir")), "");
+
 // open_workbook had the same mismatch.
 const before = payload(await viaAction("getOpenWorkbooks", {})).data?.count ?? -1;
 const opened = await call("wps_excel_open_workbook", { path: XLSX });

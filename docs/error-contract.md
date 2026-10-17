@@ -98,6 +98,7 @@
 | 批量的 `status` | `completed` / `partial` / `failed` —— 整批 `success:true` 只表示"跑完了" |
 | 结果里带 `warnings` | 主操作已生效，按 warning 内容人工确认次要步骤 |
 | 结果里带 `partial` / `shortfalls` | 你要求的事**没有全部生效**（`success` 已经是 `false`）：读已生效范围，只补做缺失部分 |
+| `输出目录不存在：<路径>`（`save_as`） | 先创建该目录或把 `outputPath` 换到已存在的目录；桥**不会**替调用方创建目录。以前这种情况只回一句「文档保存失败」，模型会白试两轮（D1 实测） |
 
 ## 5. 断言位置
 
@@ -107,5 +108,6 @@
 | 批量上限 50、空批量、部分失败继续、`stopOnError` 停止位、`status/succeeded/failed`、结果截断 2000、错误不截断、门面/未知工具拒绝 | `test/error-contract.test.mjs` |
 | 空 catch 的静默必须登记 | `test/silent-catch.test.mjs` |
 | 错误文案三段式、动作名、幂等 | `test/error-wording.test.mjs` |
+| `save_as` 缺输出目录的错误文案与"不替调用方建目录" | `test/file-ops.test.mjs` |
 | 广告面、桥动作数、门面行为、长动作名单都是真实 action、Skill 参考覆盖全部注册工具 | `scripts/verify.mjs` |
 | Skill 结构、引用可达、示例参数符合 schema、生成块不含工具清单 | `test/skill-quality.test.mjs` |

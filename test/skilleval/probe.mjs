@@ -30,7 +30,8 @@ const argv = process.argv.slice(2);
 const profile = opt(argv, '--profile');
 const workdir = resolve(opt(argv, '--dir') || process.cwd());
 const label = opt(argv, '--label') || 'probe';
-const timeoutMs = Number(opt(argv, '--timeout') || 420) * 1000;
+// 单次会话默认 60s：正常一次 10–60s；超时就让进程整棵树退出并如实报错，不无限等。
+const timeoutMs = Number(opt(argv, '--timeout') || 60) * 1000;
 const promptFile = opt(argv, '--prompt');
 const inlineTask = opt(argv, '--task');
 
@@ -84,6 +85,10 @@ const run = spawnSync(launcher.command, launcher.args.concat(['--profile', profi
 const elapsedMs = Date.now() - startedAt;
 const stdout = String(run.stdout || '');
 const stderr = String(run.stderr || '');
+if (run.error && run.pid) {
+  // 超时只结束直接子进程，孙进程（MCP server / COM 宿主）可能活下来占着 WPS 租约 —— 整棵树收掉。
+  spawnSync('taskkill', ['/PID', String(run.pid), '/T', '/F'], { encoding: 'utf8', windowsHide: true });
+}
 
 writeFileSync(join(outDir, 'stdout.txt'), stdout, 'utf8');
 writeFileSync(join(outDir, 'stderr.txt'), stderr, 'utf8');
