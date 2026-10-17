@@ -9,6 +9,9 @@ Thumbs.db
 .tmp-*/
 tmp/
 test/.artifacts/
+# Python 字节码缓存（test/skilleval 的夹具生成与产物探测脚本是 .py）
+__pycache__/
+*.pyc
 # 机器生成的快照（FIXES 91）：整轮回归由 scripts/run-tests.ps1 写，数字对账报告由 scripts/gen-numbers.mjs 写，
 # 都只在跑过的机器上存在，不入库（入库的权威版本是 docs/current-numbers.md）
 test/summary.json

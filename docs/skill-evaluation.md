@@ -31,6 +31,11 @@
 
 ## 2. 比较方法（§10.3）
 
+> 可执行的场景表、夹具生成、提示词与**确定性断言**已落到 [test/skilleval/](../test/skilleval/README.md)：
+> `node test/skilleval/run.mjs --dry-run` 生成输入夹具与断言清单（不调模型、不需要 WPS），
+> `node test/skilleval/verify.mjs <场景key>` 对产物做判定（正例/反例都已验证过会 PASS/FAIL）。
+> §1 的 15 条与 `test/skilleval/scenarios.mjs` 一一对应；其中 6 条已有夹具与断言，其余 9 条标着待补原因。
+
 对同一场景、新旧 Skill 各跑一轮，**必须固定**：模型、Harness 版本、工具档位（`WPS_OFFICE_STANDARD` = standard）、
 初始文件（同一份 fixture）、温度等采样参数。
 
