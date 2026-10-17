@@ -14,6 +14,7 @@ const uuid_1 = require("uuid");
 const tools_1 = require("../types/tools");
 const logger_1 = require("../utils/logger");
 const tool_warnings_1 = require("../utils/tool-warnings");
+const fault_inject_1 = require("../utils/fault-inject");
 const error_1 = require("../utils/error");
 const logger = (0, logger_1.createChildLogger)('ToolRegistry');
 /**
@@ -58,6 +59,8 @@ class ToolRegistry {
     static instance;
     tools;
     categories;
+    /** 仅测试用的受控故障注入；WPS_OFFICE_FAULT_INJECT 未设置时 active=false，什么都不做。 */
+    faults = new fault_inject_1.FaultInjector();
     constructor() {
         this.tools = new Map();
         this.categories = new Map();
@@ -165,11 +168,33 @@ class ToolRegistry {
         try {
             // 验证参数
             this.validateArguments(tool.definition, args);
+            // 仅测试用的受控故障注入（WPS_OFFICE_FAULT_INJECT 未设置时 take() 恒为 null）。
+            // shortfall 在**执行前**判定：这一步真的不执行，"未生效"与文件状态一致；
+            // timeout 在**执行后**改判：动作已落盘，模型看到的是"状态未知"，这正是要测的场景。
+            const fault = this.faults.take(name, args);
+            if (fault === 'shortfall') {
+                const label = typeof args?.tool === 'string' ? args.tool : name;
+                const partialResult = {
+                    id,
+                    success: true,
+                    content: [{ type: 'text', text: '（这一步没有执行：注入的部分失败）' }],
+                };
+                const injected = this.applyShortfalls(partialResult, [(0, fault_inject_1.injectedShortfallText)(label)], name);
+                logger.info(`Fault injected (shortfall): ${name}`, { id });
+                return { ...injected, id };
+            }
             // 执行handler，同时收集桥侧留下的 warnings / shortfalls
             const { value: result, warnings, shortfalls } = await (0, tool_warnings_1.runWithWarningCollector)(() => tool.handler(args));
             const withWarnings = this.attachWarnings(result, warnings);
             // R11 不变量：success === true ⟺ 调用方要求的事**全部生效**
             const finalResult = shortfalls.length ? this.applyShortfalls(withWarnings, shortfalls, name) : withWarnings;
+            if (fault === 'timeout') {
+                // 动作已经执行完（可能已落盘），但调用方只看到"状态未知"—— 模型必须自己核对再决定是否重试。
+                const label = typeof args?.tool === 'string' ? args.tool : name;
+                const message = (0, fault_inject_1.injectedTimeoutText)(label);
+                logger.info(`Fault injected (timeout after execution): ${name}`, { id });
+                return { id, success: false, content: [{ type: 'text', text: message }], error: message };
+            }
             const duration = Date.now() - startTime;
             logger.info(`Tool executed: ${name}`, { id, duration, success: finalResult.success, warnings: warnings.length, shortfalls: shortfalls.length });
             return {

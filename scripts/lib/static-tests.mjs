@@ -22,6 +22,7 @@ export const STATIC_TESTS = [
   "test/com-boundary-gate.test.mjs",
   "test/deprecated.test.mjs",
   "test/style-names.test.mjs",
+  "test/fault-injection.test.mjs",
 ];
 
 /** CI 里单独跑的静态门禁（不重复进 STATIC_TESTS）。 */

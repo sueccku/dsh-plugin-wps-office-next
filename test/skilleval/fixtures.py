@@ -177,6 +177,29 @@ def deck_titled_5(out):
     prs.save(os.path.join(out, "演示.pptx"))
 
 
+def append_doc(out):
+    from docx import Document
+
+    doc = Document()
+    doc.add_paragraph("开头内容")
+    doc.save(os.path.join(out, "报告.docx"))
+
+
+def format_report(out):
+    from docx import Document
+    from docx.shared import Pt
+
+    doc = Document()
+    # 第一段刻意用**普通段落 + 较大字号**而不是「标题 1」：内置标题样式自带加粗，
+    # 会让人分不清"加粗是这轮改的"还是"样式自带的"，也会骗过模型的核对。
+    title = doc.add_paragraph()
+    title_run = title.add_run("季度报告")
+    title_run.font.size = Pt(16)
+    title_run.bold = False
+    doc.add_paragraph("正文内容：本季度营收同比增长 12%。")
+    doc.save(os.path.join(out, "报告.docx"))
+
+
 FIXTURES = {
     "two-word-target": two_word_target,
     "single-word": single_word,
@@ -188,6 +211,8 @@ FIXTURES = {
     "deck-with-shape": deck_with_shape,
     "deck-blank": deck_blank,
     "deck-titled-5": deck_titled_5,
+    "append-doc": append_doc,
+    "format-report": format_report,
 }
 
 

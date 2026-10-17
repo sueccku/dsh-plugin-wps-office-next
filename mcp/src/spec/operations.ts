@@ -7558,10 +7558,16 @@ export const operations: OperationSpec[] = [
         "description": "字体颜色，支持颜色名称(red/blue/green)或十六进制(#FF0000)"
       },
       "range": {
-        "type": "object",
+        "type": [
+          "object",
+          "string"
+        ],
         "description": "作用范围（0 基字符偏移，end 不含）。用 wps_word_get_paragraphs 拿每段的 start/end 再传进来，例如 {start: 12, end: 40} 只给这一段加粗。传 \"all\" 表示全文；不传表示当前选中内容（没有选中时是空范围，什么都不会变）",
         "schema": {
-          "type": "object",
+          "type": [
+            "object",
+            "string"
+          ],
           "description": "作用范围（0 基字符偏移，end 不含）。用 wps_word_get_paragraphs 拿每段的 start/end 再传进来，例如 {start: 12, end: 40} 只给这一段加粗。传 \"all\" 表示全文；不传表示当前选中内容（没有选中时是空范围，什么都不会变）",
           "properties": {
             "start": {

@@ -192,7 +192,10 @@ export const setFontDefinition: ToolDefinition = {
         description: '字体颜色，支持颜色名称(red/blue/green)或十六进制(#FF0000)',
       },
       range: {
-        type: 'object',
+        // D1 实测：这里原来只声明 object，而描述里写"传 \"all\" 表示全文"——
+        // 参数形状守卫按声明拒绝字符串，于是 Skill 与描述推荐的 `set_font {range:"all"}`
+        // 直接报「参数 range 的形状不对」。桥（FIXES 86）本来就接受 "all"，所以是声明漏了联合类型。
+        type: ['object', 'string'],
         description:
           '作用范围（0 基字符偏移，end 不含）。用 wps_word_get_paragraphs 拿每段的 start/end 再传进来，' +
           '例如 {start: 12, end: 40} 只给这一段加粗。传 "all" 表示全文；不传表示当前选中内容（没有选中时是空范围，什么都不会变）',

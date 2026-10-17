@@ -19,6 +19,7 @@ import {
 } from '../types/tools';
 import { createChildLogger } from '../utils/logger';
 import { runWithWarningCollector } from '../utils/tool-warnings';
+import { FaultInjector, injectedShortfallText, injectedTimeoutText } from '../utils/fault-inject';
 import {
   ToolNotFoundError,
   ToolExecutionError,
@@ -67,6 +68,8 @@ export class ToolRegistry {
   private static instance: ToolRegistry;
   private readonly tools: Map<string, RegisteredTool>;
   private readonly categories: Map<ToolCategory, Set<string>>;
+  /** 仅测试用的受控故障注入；WPS_OFFICE_FAULT_INJECT 未设置时 active=false，什么都不做。 */
+  private readonly faults = new FaultInjector();
 
   private constructor() {
     this.tools = new Map();
@@ -198,11 +201,36 @@ export class ToolRegistry {
       // 验证参数
       this.validateArguments(tool.definition, args);
 
+      // 仅测试用的受控故障注入（WPS_OFFICE_FAULT_INJECT 未设置时 take() 恒为 null）。
+      // shortfall 在**执行前**判定：这一步真的不执行，"未生效"与文件状态一致；
+      // timeout 在**执行后**改判：动作已落盘，模型看到的是"状态未知"，这正是要测的场景。
+      const fault = this.faults.take(name, args);
+
+      if (fault === 'shortfall') {
+        const label = typeof args?.tool === 'string' ? args.tool : name;
+        const partialResult: ToolCallResult = {
+          id,
+          success: true,
+          content: [{ type: 'text', text: '（这一步没有执行：注入的部分失败）' }],
+        };
+        const injected = this.applyShortfalls(partialResult, [injectedShortfallText(label)], name);
+        logger.info(`Fault injected (shortfall): ${name}`, { id });
+        return { ...injected, id };
+      }
+
       // 执行handler，同时收集桥侧留下的 warnings / shortfalls
       const { value: result, warnings, shortfalls } = await runWithWarningCollector(() => tool.handler(args));
       const withWarnings = this.attachWarnings(result, warnings);
       // R11 不变量：success === true ⟺ 调用方要求的事**全部生效**
       const finalResult = shortfalls.length ? this.applyShortfalls(withWarnings, shortfalls, name) : withWarnings;
+
+      if (fault === 'timeout') {
+        // 动作已经执行完（可能已落盘），但调用方只看到"状态未知"—— 模型必须自己核对再决定是否重试。
+        const label = typeof args?.tool === 'string' ? args.tool : name;
+        const message = injectedTimeoutText(label);
+        logger.info(`Fault injected (timeout after execution): ${name}`, { id });
+        return { id, success: false, content: [{ type: 'text', text: message }], error: message };
+      }
 
       const duration = Date.now() - startTime;
       logger.info(`Tool executed: ${name}`, { id, duration, success: finalResult.success, warnings: warnings.length, shortfalls: shortfalls.length });

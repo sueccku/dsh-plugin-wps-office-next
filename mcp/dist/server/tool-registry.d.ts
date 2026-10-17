@@ -11,6 +11,8 @@ export declare class ToolRegistry {
     private static instance;
     private readonly tools;
     private readonly categories;
+    /** 仅测试用的受控故障注入；WPS_OFFICE_FAULT_INJECT 未设置时 active=false，什么都不做。 */
+    private readonly faults;
     private constructor();
     /**
      * 获取单例实例

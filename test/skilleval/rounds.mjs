@@ -11,10 +11,10 @@
 //   * 单轮默认超时 60s：正常一轮 20–80s，超时的轮次记为失败并标 timedOut（不静默重试）。
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SCENARIOS, scenarioByKey } from './scenarios.mjs';
-import { findSession, summarize } from './session.mjs';
+import { findSession, listSessionFiles, loadRecords, summarize } from './session.mjs';
 import { resolveDshLauncher } from './dsh-bin.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -44,6 +44,107 @@ const timeoutSec = Number(opt('--timeout') || 60);
 // 改了判定口径或想重算时用；函数声明是提升的，这里可以直接调。
 if (argv.includes('--summarize-only')) {
   mkdirSync(join(EVAL_ROOT, '_summary'), { recursive: true });
+  writeSummary(loadCompleted(label));
+  process.exit(0);
+}
+
+// --rebuild-missing：不跑模型，把**丢了 result.json 但运行目录还在**的轮次从会话日志重建回来。
+// 为什么会丢：清场/误删（`Remove-Item` 通配符踩过一次）。运行目录里的产物和 transcript.txt 都还在，
+// 会话日志按 `<场景目录>-<轮次目录>` 编码成 sessions 下的目录名，所以能原样取回 usage / 工具轨迹 / 最终回答。
+if (argv.includes('--rebuild-missing')) {
+  mkdirSync(join(EVAL_ROOT, '_summary'), { recursive: true });
+  const dshHome = process.env.DSH_HOME || join(process.env.USERPROFILE || '', '.dsh');
+  const sessionFiles = listSessionFiles(dshHome);
+  let rebuilt = 0;
+  for (const scenario of SCENARIOS.filter((s) => s.ready)) {
+    for (let round = 1; round <= rounds; round++) {
+      const runDir = join(scenarioDir(scenario), 'run-' + label + '-r' + round);
+      const resultPath = join(runDir, 'result.json');
+      if (existsSync(resultPath) || !existsSync(runDir)) continue;
+      const suffix = '-' + basename(scenarioDir(scenario)) + '-' + basename(runDir) + '--';
+      const matches = sessionFiles.filter((file) => file.includes(suffix));
+      if (!matches.length) {
+        console.log('skip  ' + scenario.key + ' r' + round + '（找不到对应会话日志）');
+        continue;
+      }
+      let metrics = null;
+      let sessionFile = null;
+      let elapsedMs = 0;
+      for (const file of matches.slice().sort()) {
+        try {
+          const records = loadRecords(file);
+          const times = records.map((r) => r.time).filter((t) => typeof t === 'number');
+          if (!records.length) continue;
+          sessionFile = file;
+          metrics = summarize(records);
+          elapsedMs = times.length ? times[times.length - 1] - times[0] : 0;
+        } catch {
+          // 坏日志跳过
+        }
+      }
+      if (!metrics) {
+        console.log('skip  ' + scenario.key + ' r' + round + '（会话日志解不出来）');
+        continue;
+      }
+      const lines = [];
+      for (const call of metrics.toolCalls) lines.push('CALL   ' + call.name + ' ' + call.args.replace(/\s+/g, ' ').slice(0, 300));
+      for (const result of metrics.toolResults) lines.push('RESULT ' + result.name + ' ' + result.text.replace(/\s+/g, ' ').slice(0, 600));
+      for (const text of metrics.assistantTexts) lines.push('ASST   ' + text.replace(/\s+/g, ' '));
+      writeFileSync(join(runDir, 'transcript.txt'), lines.join('\n') + '\n', 'utf8');
+      const verification = runVerify(scenario, runDir);
+      const usedWps = metrics.toolCalls.filter((c) => isWpsCall(c.name)).length;
+      const record = {
+        scenario: scenario.key,
+        id: scenario.id,
+        label,
+        round,
+        exitCode: null,
+        timedOut: false,
+        rebuilt: true,
+        elapsedMs,
+        sessionFile,
+        toolCounts: metrics.toolCounts,
+        toolCalls: metrics.toolCalls.map((c) => c.name),
+        skillLoads: metrics.skillLoads,
+        helpQueries: metrics.helpQueries,
+        usedWpsTools: usedWps,
+        usage: metrics.usage,
+        loadedChars: metrics.loadedChars,
+        finalAnswer: metrics.finalAnswer,
+        verify: verification,
+        ok: verification.fail === 0 && verification.exitCode === 0,
+      };
+      writeFileSync(resultPath, JSON.stringify(record, null, 1) + '\n', 'utf8');
+      rebuilt += 1;
+      console.log('rebuilt ' + scenario.key.padEnd(20) + ' r' + round + '  ' + Math.round(elapsedMs / 1000) + 's  tokens=' + (metrics.usage ? metrics.usage.totalTokens : '?') + '  verify=' + verification.pass + '/' + (verification.pass + verification.fail));
+    }
+  }
+  writeSummary(loadCompleted(label));
+  console.log('重建轮次=' + rebuilt);
+  process.exit(0);
+}
+
+// --reverify：不跑模型，只对已落盘的运行目录**重算** verify 并更新 result.json。
+// 改了断言/修了 verify 的 bug 之后用它，省掉重跑整轮模型会话的钱。
+if (argv.includes('--reverify')) {
+  mkdirSync(join(EVAL_ROOT, '_summary'), { recursive: true });
+  const byKey = new Map(SCENARIOS.map((s) => [s.key, s]));
+  for (const record of loadCompleted(label)) {
+    const scenario = byKey.get(record.scenario);
+    if (!scenario) continue;
+    const runDir = join(scenarioDir(scenario), 'run-' + label + '-r' + record.round);
+    const resultPath = join(runDir, 'result.json');
+    const baseline = join(scenarioDir(scenario), 'fingerprint.json');
+    // 夹具重新生成后字节会变（docx/xlsx 的 zip 时间戳不稳定），旧轮次的 unchanged 断言必然失败。
+    // 这种情况不能把旧结果改判成 FAIL，而是跳过并提示重跑该场景。
+    if (existsSync(baseline) && existsSync(resultPath) && statSync(baseline).mtimeMs > statSync(resultPath).mtimeMs) {
+      console.log('skip  ' + record.scenario + ' r' + record.round + '（夹具比结果新：需重跑该场景，旧轮次不能重算）');
+      continue;
+    }
+    record.verify = runVerify(scenario, runDir);
+    record.ok = record.verify.fail === 0 && record.verify.exitCode === 0;
+    writeFileSync(resultPath, JSON.stringify(record, null, 1) + '\n', 'utf8');
+  }
   writeSummary(loadCompleted(label));
   process.exit(0);
 }
@@ -152,12 +253,16 @@ for (const scenario of scenarios) {
     cpSync(join(scenarioDir(scenario), 'input'), runDir, { recursive: true });
 
     const startedAt = Date.now();
+    // 场景可用 timeoutSec 单独放宽（默认仍是全局 60s）。目前只有 #14 用它：持续 shortfall 会让模型
+    // 反复排查，实测 60–95s 才收敛；这不是"卡死"，而是该场景本身要跑很多步。
+    const roundTimeoutSec = Number(scenario.timeoutSec) > 0 ? Number(scenario.timeoutSec) : timeoutSec;
     const run = spawnSync(launcher.command, launcher.args.concat(['--profile', profile, scenario.prompt]), {
       cwd: runDir,
       encoding: 'utf8',
       windowsHide: true,
-      timeout: timeoutSec * 1000,
-      env: { ...env, ...launcher.env },
+      timeout: roundTimeoutSec * 1000,
+      // scenario.env：只有少数场景需要（受控故障注入 WPS_OFFICE_FAULT_INJECT）。
+      env: { ...env, ...launcher.env, ...(scenario.env || {}) },
     });
     const elapsedMs = Date.now() - startedAt;
     const timedOut = !!(run.error && (run.error.code === 'ETIMEDOUT' || /timed? ?out/i.test(run.error.message || '')))
@@ -219,7 +324,7 @@ for (const scenario of scenarios) {
     results.push(record);
     console.log(
       (record.ok ? 'PASS ' : 'FAIL ') + scenario.key.padEnd(20) + ' ' + label + ' r' + round +
-      (timedOut ? ' TIMEOUT(' + timeoutSec + 's)' : '') +
+      (timedOut ? ' TIMEOUT(' + roundTimeoutSec + 's)' : '') +
       '  verify ' + verification.pass + '/' + (verification.pass + verification.fail) +
       (verification.skip ? ' (+' + verification.skip + ' skip)' : '') +
       '  wps=' + usedWps + '/tools=' + (metrics ? metrics.toolCalls.length : 0) +

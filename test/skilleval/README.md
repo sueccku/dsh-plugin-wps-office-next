@@ -93,6 +93,11 @@ node test\skilleval\rounds.mjs --profile <profile> --label new --rounds 3 [--sce
   （否则第二、三轮跑的是"WPS 已经开着"，场景 1 的冷启动前提就没了）。**它真的会杀进程**，只在测试机上用。
 - **单轮默认超时 60s**（`--timeout` 可改）：正常一轮 20–80s；超时的轮次记 `timedOut: true` 并判失败，
   同时用 `taskkill /T` 收掉整棵进程树 —— 不能让孙进程（MCP server / COM 宿主）活下来占着 WPS 租约。
+  个别慢场景可以在 `scenarios.mjs` 里用 `timeoutSec` 单独放宽（目前只有 #14 partial-failure，实测要 90–120s）。
+- `--reverify`：不跑模型，只对已落盘的运行目录重算 verify（改了断言后省一次模型钱）。
+  **注意**：夹具重新生成后 `unchanged` 断言会失效（docx/xlsx 的 zip 时间戳让同一个夹具两次生成字节不同），
+  所以只重建**缺失**的夹具（`--dry-run` 不带 `--force`）；一旦 `--force` 重建了某个场景，
+  该场景的旧轮次必须重跑，`--reverify` 会跳过而不是把它们改判成 FAIL。
 - 每轮记录：`ok`、`timedOut`、退出码、耗时、**真实 token**（input/output/cacheRead/total）、工具调用序列、
   `usedWpsTools`（有没有真的走 WPS 通道而不是用 python 绕过）、`verify` 的逐条断言。
 
@@ -146,6 +151,23 @@ node test\skilleval\compare.mjs --new new --old old
 `unchanged` 需要 `fingerprint.json`；轨迹类断言需要同目录有 `transcript.txt` / `run.stdout.txt` / `trace.txt`，
 缺了记 `SKIP` 而不是 `PASS`。
 
+## 受控故障注入（仅测试用）
+
+超时与"部分未生效"在真机上没法稳定复现：调小全局超时会让整轮所有调用一起坏，测出来是"环境坏了"，
+不是"模型怎么处理失败"。所以插件里有一个**默认完全惰性**的注入开关（`mcp/src/utils/fault-inject.ts`），
+只有测试运行器给子进程设了 `WPS_OFFICE_FAULT_INJECT` 才生效：
+
+```
+WPS_OFFICE_FAULT_INJECT="<tool正则>:<mode>[:<count>];..."      # 多条用 ; 分隔，count 默认 1
+  mode=timeout     执行完动作后如实回「状态未知」超时（动作其实已落盘）→ 测"超时后会不会盲目重放"
+  mode=shortfall   不执行该动作，直接按"这一步未生效"回报（success:false + shortfall）→ 测"能不能如实说没做到"
+```
+
+- 匹配 tool 名；`wps_call` 还会用内层 tool 名和 `args.method/action`（防"绕行调桥动作"绕过注入）。
+- 不设这个变量时：不解析、不改结果、不产生日志，正常路径行为与没有这个开关时一致（`test/fault-injection.test.mjs` 钉住）。
+- 用它的场景只有两个：#12 `write-timeout`（`INSERT_TEXT:timeout:1`）与 #14 `partial-failure`
+  （`set_font/apply_style:shortfall:99`，并单独放宽到 120s——持续 shortfall 下模型要反复排查，实测 90–120s）。
+
 ## 为什么夹具不入库、代码入库
 
 夹具是机器本地产物（每个场景的输入文件几百 KB 到几 MB，且要能按需重建）；
@@ -153,12 +175,10 @@ node test\skilleval\compare.mjs --new new --old old
 
 ## 场景就绪状态
 
-15 个场景里 **12 个 ready**（有夹具 + 确定性断言），3 个 `ready: false` 并**写明原因**：
+15 个场景里 **14 个 ready**（有夹具 + 确定性断言），1 个 `ready: false`：
 
-| # | 场景 | 为什么还不能跑 |
+| # | 场景 | 为什么不做 |
 |---|---|---|
 | 2 | only-word-skill | 不是任务场景；插件目前无条件注册四个技能，没有"只注册一个"的配置项。它要回答的问题已由 §3.2 实测（应用 Skill 单独加载**不会**带出总 Skill） |
-| 12 | write-timeout | 缺一个"只影响一次调用"的受控超时注入开关；调小全局超时会让整轮都坏，测不出模型如何处理超时。超时契约另由 `test/watchdog.test.mjs` 钉死 |
-| 14 | partial-failure | 缺**确定性**的 shortfall 触发点；不存在的字体/样式在 WPS 上要么硬报错要么静默成功，不稳定复现的东西不能当判定依据 |
 
-它们**不计入**"已跑"，也不会在没有夹具/断言的情况下产出 PASS。
+#12/#14 原先也在此列，现在用上面的注入开关补齐了。未跑的场景**不计入**"已跑"。

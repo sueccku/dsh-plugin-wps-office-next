@@ -10,6 +10,7 @@
 //   file-exists:<rel>                       文件存在
 //   file-absent:<rel>                        文件不存在
 //   docx-text:<rel>|<子串>                   docx 正文/表格文本里包含该子串
+//   docx-text-count:<rel>|<期望个数>|<子串>  该子串出现几次（判"只追加了一次"）
 //   docx-xml-count:<rel>|<期望个数>|<正则>    word/document.xml 里正则命中几次（数 TOC 域等）
 //   docx-section-count:<rel>|<期望>          节数
 //   docx-section-orientation:<rel>|<1基节号>|<portrait|landscape>
@@ -97,6 +98,7 @@ const TRAILING_FREE = new Set([
   'transcript-matches',
   'transcript-not-matches',
   'docx-xml-count',
+  'docx-text-count',
   'pptx-slide-xml-matches',
 ]);
 function parseCheck(spec) {
@@ -148,6 +150,17 @@ function runCheck(spec, { dir, baseline, python, scenario }) {
       const text = pythonJson(python, ['docx-text', abs]).text || '';
       const ok = text.includes(parts[1]);
       record(ok ? 'PASS' : 'FAIL', spec, ok ? '' : '实际文本：' + text.replace(/\s+/g, ' ').slice(0, 120));
+      return;
+    }
+    case 'docx-text-count': {
+      // <rel>|<期望个数>|<子串>：数某个子串在正文+表格里出现几次（判"只追加了一次"）
+      if (!existsSync(abs)) { record('FAIL', spec, '文件不存在'); return; }
+      const text = pythonJson(python, ['docx-text', abs]).text || '';
+      const needle = parts[2] || '';
+      if (!needle) { record('FAIL', spec, '子串为空'); return; }
+      const count = text.split(needle).length - 1;
+      const want = Number(parts[1]);
+      record(count === want ? 'PASS' : 'FAIL', spec, count === want ? '' : '实际出现 ' + count + ' 次（期望 ' + want + '）');
       return;
     }
     case 'docx-xml-count': {
@@ -235,7 +248,15 @@ function runCheck(spec, { dir, baseline, python, scenario }) {
     case 'transcript-not-matches': {
       const text = transcriptText(dir);
       if (text === null) { record('SKIP', spec, '找不到会话轨迹文本'); return; }
-      const hit = new RegExp(parts[0], 'm').test(text);
+      let hit;
+      try {
+        hit = new RegExp(parts[0], 'm').test(text);
+      } catch (error) {
+        // 正则写坏（例如把 Python 的 (?m) 当 JS 写法用）必须记成这一条 FAIL，
+        // 不能让整个 verify 进程崩掉 —— 崩掉时后面的断言全部消失，结果看起来像"少了一条"。
+        record('FAIL', spec, '正则无效：' + error.message);
+        return;
+      }
       const want = kind === 'transcript-matches';
       record(hit === want ? 'PASS' : 'FAIL', spec, hit ? '命中' : '未命中');
       return;

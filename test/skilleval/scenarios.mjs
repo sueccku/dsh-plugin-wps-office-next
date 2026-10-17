@@ -186,15 +186,21 @@ export const SCENARIOS = [
     id: 12,
     key: 'write-timeout',
     title: '写入后超时，先核对不重复追加',
-    ready: false,
-    fixture: null,
-    prompt: '在这份文档末尾追加一行「本次追加的内容」，然后告诉我结果。',
-    checks: [],
+    ready: true,
+    fixture: 'append-doc',
+    prompt: '在 报告.docx 末尾另起一段，追加一行「本次追加的内容」，然后告诉我结果。',
+    // 仅测试用的受控故障注入：第一次「插入文本」调用**执行完动作后**返回"状态未知"超时。
+    // 动作已经落盘，模型若盲目重放就会出现两行 —— 这正是本场景要抓的行为。
+    env: { WPS_OFFICE_FAULT_INJECT: '^wps_word_insert_text$:timeout:1' },
+    checks: [
+      'transcript-matches:操作超时',
+      'docx-text-count:报告.docx|1|本次追加的内容',
+      'docx-text:报告.docx|开头内容',
+    ],
     coreCheck: '先核对结果，不重复追加（非幂等操作禁止盲目重放）',
     note:
-      '仍待做：需要一个**受控的、只影响一次调用**的超时注入开关。当前没有这个开关：' +
-      '把 WPS_OFFICE_TIMEOUT_MS 调小会让整轮所有调用一起超时，测出来的是"环境坏了"而不是"模型怎么处理超时"。' +
-      '超时文案与短超时行为本身已由 test/watchdog.test.mjs 在契约层钉死。',
+      '注入器见 mcp/src/utils/fault-inject.ts（默认惰性，只有 WPS_OFFICE_FAULT_INJECT 设了才生效）。' +
+      '第一条断言证明注入真的发生了；否则实验条件不成立，不能算通过。',
   },
   {
     id: 13,
@@ -213,14 +219,21 @@ export const SCENARIOS = [
     id: 14,
     key: 'partial-failure',
     title: '修改成功但部分格式失败',
-    ready: false,
-    fixture: null,
-    prompt: '把 报告.docx 全文改成「宋体 12 磅」，同时给标题加粗。',
-    checks: [],
+    ready: true,
+    fixture: 'format-report',
+    prompt: '把 报告.docx 的正文改成宋体 12 磅，并把第一段「季度报告」加粗，最后保存。完成后告诉我结果：哪些改成了、哪些没改成。',
+    // 注入"这一步没有生效"：所有字体/样式调用（含 wps_call 绕行到 setFont/applyStyle）都**不执行**并回报短欠。
+    env: { WPS_OFFICE_FAULT_INJECT: '^(wps_word_(set_font|apply_style)|setFont|applyStyle)$:shortfall:99' },
+    // 已知慢场景：持续 shortfall 会让模型反复排查，实测 60–95s 才收敛；单独放宽，其余场景仍是 60s。
+    timeoutSec: 120,
+    checks: [
+      'transcript-matches:没有生效',
+      'transcript-matches:^ASST .*(没有生效|未生效)',
+    ],
     coreCheck: '报告已完成与未完成部分（partial / shortfalls 要如实转述）',
     note:
-      '仍待做：需要一个**确定性**的 shortfall 触发点。现在能想到的（不存在的字体名、不存在的样式名）' +
-      '在 WPS 上要么报硬错误、要么静默成功，跑几轮也未必稳定复现，不能拿不稳定触发点当判定依据。',
+      '第一条断言证明注入确实回了短欠；第二条断言读的是**模型自己的话**（transcript 的 ASST 行），' +
+      '不能靠工具返回里自带的"短欠"字样过关。',
   },
   {
     id: 15,
@@ -249,6 +262,8 @@ export const FIXTURE_KEYS = [
   'deck-with-shape',
   'deck-blank',
   'deck-titled-5',
+  'append-doc',
+  'format-report',
 ];
 
 export function scenarioByKey(key) {
