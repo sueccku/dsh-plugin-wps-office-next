@@ -303,7 +303,9 @@ function loadCompleted(labelName) {
   return loaded;
 }
 
-writeSummary(results);
+// 只跑单个场景时，汇总必须**合并磁盘上已有的其它场景结果**；否则每跑一个场景就把
+// rounds-<label>.json 覆盖成只剩它自己那一行（分场景补跑时踩过）。
+writeSummary(only && only !== 'all' ? loadCompleted(label) : results);
 // 收尾：把本次评测自己启动的 WPS 清掉（只清 runStartedAt 之后启动的）。
 reapSince(new Date(runStartedAt));
 process.exit(results.every((r) => r.ok) ? 0 : 1);
