@@ -67,11 +67,41 @@
 | P1 | 目标标识缺失 | 桥 `Get-TargetPres` / `Get-WorksheetByParam` / Word 活动文档 | 实现可读回的目标身份（名称 + 路径），并在写操作结果里回报；**验证通过后**才写进 Skill |
 | P1 | 结果状态不统一 | `tool-registry.ts` / 桥 | 已有 `success` / `partial` / `shortfalls` / `warnings`；补一条 `status` 便于程序化消费 |
 
-## 4. 尚未实测、必须标注的条目
+## 4. 实测记录
 
-- 应用 Skill 被单独选中时，总 Skill 是否自动加载、相对路径 `references/` `recipes/` 是否可读：**本环境没有 DSH 交互会话（只有静态文件系统）**，因此按改进指南 §3.2 的降级方案处理——每个应用 SKILL.md 保留极短的共享协议摘要（目标确认 / 保存策略 / 验证 / 失败分流），关键规则不放进「可能读不到」的文件。
-- 视觉验收（文字溢出、重叠、裁切）：需要导出图片 + 图像读取能力，本环境未验证，Skill 里明确写「未验证视觉效果」而不是「排版无误」。
-- 新旧 Skill 的模型侧对比（成功率 / 调用数 / tokens）：见 `docs/skill-evaluation.md` 的固定场景集；**本轮只固定场景与成功标准，不声称已跑过**。
+### 4.1 §3.2 资源读取与 Skill 加载（**已实测**，2026-10-17）
+
+入口：`wpse2e` profile（junction → `D:\dsh\a`，即真实工作区），用
+`node test/skilleval/probe.mjs --profile wpse2e` 跑两次只读 headless 会话
+（提交里的 `test/skilleval/{session,probe,dsh-bin}.mjs` 就是取证工具）。证据（会话日志 / 工具原始返回）
+留在 `test/.artifacts/p1-3.2/probe-s32*/`，被 `.gitignore` 忽略；下面是可复核的结论。
+
+| # | 问题 | 实测结果 | 一手证据（原始返回值） |
+|---|---|---|---|
+| 1 | 只加载应用 Skill 时，总 Skill 是否自动加载 | **不会**。加载 `wps-excel` 的返回里只有一句指针「共享的执行协议……见 `wps-office-next` 技能」，**没有**总技能正文（查 `documentId` / `保存、副本与关闭` / `失败恢复` 均不命中） | skill 工具返回 4337 字符；`documentId=False`、`保存、副本与关闭=False` |
+| 2 | 相对路径读 `references/` `recipes/` | **可以**。`<skill_resources>` 明确交付 base directory 并说明"相对路径按它解析、需要时才加载"；按它读 `references/ranges-and-formulas.md`、`recipes/summarize-report.md`、`recipes/infographic-layout.md` 全部成功且内容正确 | base directory = `D:\dsh\a\skills\wps-excel`（junction 经 ESM realpath 解析到工作区）；read 返回 `<path>` + 正文 |
+| 3 | 读不到文件时 Agent 得到什么错误 | 明确、可修正：`Error: cannot read "D:\dsh\a\skills\wps-excel\references\does-not-exist-probe.md": not found`（带解析后的绝对路径） | read 工具原文 92 字符 |
+| 4 | 能否读取另一个已注册 Skill 的内容 | **可以**，但走的是文件系统路径（模型按 `<skills>/wps-word/SKILL.md` 推出路径直接读），不是通过技能目录"跨技能加载" | 读到 `wps-word/SKILL.md`（111 行）与 `wps-ppt/recipes/infographic-layout.md`（96 行） |
+| 5 | 应用 Skill 指向总技能后，能否续着读 | **可以**。按 `wps-excel` 正文的指针加载 `wps-office-next` 成功，正文包含「### 5.3 保存、副本与关闭」「当前没有 documentId」「保存 ≠ 备份」 | 总技能返回 4580 字符，上述三个标记均命中 |
+
+**本次实测开销**（会话日志里的真实计费口径，不是字符估算 —— 改进指南 §10.3 的要求）：
+
+| 会话 | 轮数 | input | output | cacheRead | total | 技能正文加载 | 参考文件加载 |
+|---|---|---|---|---|---|---|---|
+| s32（四项机制） | 3 | 4,920 | 3,310 | 73,728 | 81,958 | 4,337 字符 | 1,007 字符 |
+| s32b（recipes + 指针续读） | 4 | 7,104 | 2,616 | 101,888 | 111,608 | 8,917 字符 | 892 字符 |
+
+**结论与处置**：
+- 第 1 条证实改进指南 §3.2 的担心是真的 → **保留**"每个应用 SKILL.md 自带关键协议摘要"的降级设计
+  （应用技能被单独加载时，目标/保存/验证/失败分流仍在正文里）。
+- 第 2、4、5 条说明细节可以安全地放在 `references/` `recipes/`，主文件只留流程与入口 —— 与当前结构一致，**无需回退**。
+- 第 3 条说明"读不到"有可用错误，Skill 里不需要再写一套兜底话术。
+
+### 4.2 仍未实测
+
+- 视觉验收（文字溢出、重叠、裁切）：需要导出图片 + 图像读取能力，本环境未验证；Skill 里明确写「未验证视觉效果」而不是「排版无误」。
+- 新旧 Skill 的模型侧对比（成功率 / 调用数 / tokens）：场景与成功标准已固定在 `docs/skill-evaluation.md`，
+  可执行脚手架在 `test/skilleval/`；**对比本身还没跑**，因此不声称任何"成功率提升"。
 
 ## 5. 审计中发现、清单之外的额外缺陷（本轮一并修掉）
 

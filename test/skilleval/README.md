@@ -7,10 +7,10 @@
 
 | 能做 | 不能做（别当成已通过） |
 |---|---|
-| 一键生成每个场景的输入夹具，并算输入指纹 | 它自己不跑模型；跑模型会话属于 P2，需用户同意 |
+| 一键生成每个场景的输入夹具，并算输入指纹 | `run.mjs --dry-run` / `verify.mjs` 不跑模型；**只有 `probe.mjs` 会跑** |
 | 每个场景的提示词（`prompt.txt`）与断言清单（`checks.txt`） | 还没 ready 的场景只有提示与成功标准，没有夹具/断言 |
 | 对已有产物做**确定性**判定（文件/文本/公式/原文件未改/轨迹匹配） | 视觉验收（溢出、重叠）不在本脚手架范围 |
-| 验表一致性（场景表 ↔ 夹具脚本），防"写了场景但没实现" | 指标统计（调用数/help 次数/tokens/重复询问）在 D1 从会话轨迹补 |
+| 跑一次 headless 会话并落盘轨迹 + 指标（`probe.mjs`） | 指标里的"重复询问/tokens"目前只给了原始轨迹，聚合口径在 D1 定 |
 
 ## 用法
 
@@ -41,6 +41,33 @@ node test\skilleval\verify.mjs <key> --dir "<NN>-<key>\run-r1"
 ```
 
 `--print-command` 打印的就是这套命令（含复制与判定两行）。
+
+## 跑一次 headless 会话并取证（`probe.mjs`）
+
+`probe.mjs` 是"自由提示词"的探针：跑一次 `dsh --profile <p> <task>`，然后**解码会话日志**
+（`$DSH_HOME/sessions/*/session.v*.jsonl.zstd`，按 zstd 帧切分）把工具调用、工具结果、助手文本落盘。
+P1 的 §3.2 资源读取验证就是用它做的；D1 的指标也从它的 `metrics.json` 取。
+
+```powershell
+# 需要模型凭据（headless profile 从环境读；web/desktop 端存在 credentials 服务里）
+$env:DEEPSEEK_API_KEY = <key>
+node test\skilleval\probe.mjs --profile <profile> --label s32 --dir <工作目录> --prompt <提示词文件>
+```
+
+产出 `<工作目录>/probe-<label>/`：
+
+```
+prompt.txt     我们发给它的任务原文
+stdout/stderr  dsh 的进程输出（stderr 里是模型的推理流）
+transcript.txt 重排后的 CALL / RESULT / ASST 行
+metrics.json   工具调用与结果全文 + 计数（toolCalls / skillLoads / helpQueries / finalAnswer）
+session.txt    这次运行对应的会话文件路径
+```
+
+⚠️ 它会花真钱、并可能让 Agent 改动工作目录里的文件。**本仓库的规矩是跑这类会话前先问用户**
+（`AGENTS.md` §1）。脚本自己也只做一件事，不检查你有没有获得同意。
+判 dsh 启动器时不会直接 `spawn('dsh')`（Windows 上是 `.cmd`，Node 不带 shell 会 ENOENT），
+而是解析到真正的 `lib/bin.js` 用当前 node 跑，见 [dsh-bin.mjs](dsh-bin.mjs)。
 
 产物落在 `test/.artifacts/skill-eval/<NN>-<key>/`（**已被 .gitignore 忽略**）：
 

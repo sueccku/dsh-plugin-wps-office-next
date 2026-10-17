@@ -60,16 +60,18 @@
 > 调用数=…  无效=…  help=…  加载 tokens=…  耗时=…  重复询问=…  恢复=…
 > ```
 
-## 3. 本轮明确未验收的部分（不许当成已通过）
+## 3. 验收状态（哪些已验、哪些还没验）
 
-1. **Harness 侧的 Skill 加载与相对路径读取**：改进指南 §3.2 要求用真实 Harness 会话验证
-   "应用 Skill 被选中时总 Skill 是否自动加载""相对路径 `references/`/`recipes/` 能否读到"。
-   本环境没有 DSH 交互会话，**未验证**。因此四个 SKILL.md 都保留了关键协议的短摘要
-   （应用技能被单独加载时不会失去目标确认与保存规则）。文件存在性由
-   `test/plugin.test.mjs` / `test/skill-quality.test.mjs` 断言，但那不等于"Harness 一定读得到"。
-2. **视觉验收**：文字溢出、对象重叠、裁切需要导出图片 + 图像读取能力。本轮未跑；
-   Skill 里写的是"读不到图片就说视觉效果未验证"，不是"排版无误"。
-3. **模型侧对比（新旧 Skill）**：一次都没跑（见 §1 最后一列）。所以本轮**不能**给出
-   "成功率提升 X%" 这类结论；能给的只有确定性的能力与契约验证，见
-   [skill-refactor-report.md](skill-refactor-report.md)。
-4. **危险/异常场景**（超时、部分生效）：需要受控故障注入，本轮只做了文本与单元层面的契约断言。
+1. **Harness 侧的 Skill 加载与相对路径读取 —— 已实测（2026-10-17，`wpse2e` profile，headless 会话）。**
+   结论：① 只加载应用 Skill 时**不会**自动带出总 Skill（返回里只有一句指针）；② 相对 `references/`、
+   `recipes/` **能读到**，base directory 明确交付给模型；③ 读不到文件的错误是
+   `Error: cannot read "<绝对路径>": not found`；④ 能按路径读另一个已注册 Skill 的文件；
+   ⑤ 顺着应用 Skill 的指针加载 `wps-office-next` 成功，正文含「保存、副本与关闭」「没有 documentId」。
+   详细证据与原始返回见 [skill-audit.md](skill-audit.md) §4.1。因此四个 SKILL.md 保留关键协议短摘要的
+   降级设计**被证实是必要的**；细节放 `references/` `recipes/` **被证实是安全的**。
+2. **视觉验收 —— 未做**：文字溢出、对象重叠、裁切需要导出图片 + 图像读取能力；Skill 里写的是
+   "读不到图片就说视觉效果未验证"，不是"排版无误"。
+3. **模型侧对比（新旧 Skill）—— 未做**（见 §1 最后一列）。所以本轮**不能**给出"成功率提升 X%"
+   这类结论；能给的只有确定性的能力与契约验证，见 [skill-refactor-report.md](skill-refactor-report.md)。
+   脚手架已就绪：[test/skilleval/](../test/skilleval/README.md)（6 场景有夹具与断言，正/反例都验证过）。
+4. **危险/异常场景**（超时、部分生效）—— **未做**：需要受控故障注入，本轮只做了文本与单元层面的契约断言。

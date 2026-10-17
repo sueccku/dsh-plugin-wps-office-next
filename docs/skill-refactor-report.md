@@ -121,10 +121,12 @@
    成功率、调用数、加载 tokens 一个都没有实测；本轮**不能**声称"模型更容易选对工具"。
    （后续补充：可执行脚手架已落地在 [test/skilleval/](../test/skilleval/README.md) —— 6 个场景有夹具与
    确定性断言，正例/反例都验证过会 PASS/FAIL；跑模型会话属于下一步，需要用户同意。）
-2. **Harness 的 Skill 加载 / 相对路径读取未验证**：改进指南 §3.2 要求用真实 Harness 会话确认
-   "应用 Skill 被单独选中时总 Skill 是否自动加载""`references/`/`recipes/` 能否读到"。
-   本环境没有交互会话 → 已按降级方案处理（四个应用 SKILL.md 都保留关键协议短摘要）。
-   （后续补充：`wpse2e` profile 已用 junction 指向工作区，是这条验证的可用入口。）
+2. **Harness 的 Skill 加载 / 相对路径读取 —— 已实测（2026-10-17）**：`wpse2e` profile（junction → 工作区）
+   上跑了两轮只读 headless 会话。结论：① 只加载应用 Skill **不会**自动带出总 Skill（只有一行指针）；
+   ② 相对 `references/` `recipes/` **能读到**（base directory 明确交付）；③ 读不到的错误是
+   `Error: cannot read "<绝对路径>": not found`；④ 能按路径读其它已注册 Skill 的文件；
+   ⑤ 顺着指针加载 `wps-office-next` 成功。→ 降级方案（应用 SKILL.md 自带协议短摘要）**必要且已保留**。
+   证据与原始返回见 [skill-audit.md](skill-audit.md) §4.1；取证工具见 [test/skilleval/](../test/skilleval/README.md)。
 3. **没有 documentId**：本轮实现的是"**身份读回**"（名称 + 路径 + 画布 + 前后各读一次对账），
    这**只能缓解**调用之间窗口焦点切换的竞争，不能消除。Skill 里没有一处声称"已锁定目标"。
 4. **静态值/公式的边界**：`set_formula` 对多格区域不做相对引用调整是**当前实现**，本轮把它写成
