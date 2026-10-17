@@ -5,6 +5,7 @@
 ![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![npm](https://img.shields.io/badge/npm-dsh--plugin--wps--office--next-CB3837)](https://www.npmjs.com/package/dsh-plugin-wps-office-next)
+[![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/sueccku/dsh-plugin-wps-office-next)
 
 让 DSH 替你动手操作 **WPS 表格 / 文字 / 演示**。你用中文把要求说清楚，它去改数据、排格式、画图、导出，最后把文件存好。
 
