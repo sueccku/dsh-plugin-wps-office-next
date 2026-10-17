@@ -86,17 +86,30 @@
 
 | 命令 | 结果 |
 |---|---|
-| `npm run lint` | scanned=225 files, violations=0 |
+| `npm run lint` | scanned=237 files, violations=0 |
 | `node scripts/verify.mjs --static` | **VERIFY OK (21 checks)** |
 | `node test/spec-reproduction.test.mjs` | **SPEC REPRODUCTION OK (16)** |
-| `node scripts/run-static-tests.mjs` | **15/15 文件全绿**（plugin 40、skill-quality 123、com-host 17、host-lease 23、watchdog 15、silent-catch 8、install-selfcheck 6、mcp-node 16、arg-shape-guard 10、wps-version 14、encrypted-preflight 15、alerts-gate 10、com-boundary-gate 16、deprecated 10、style-names 28） |
+| `node scripts/run-static-tests.mjs` | **16/16 文件全绿**（plugin 40、skill-quality 123、com-host 17、host-lease 23、watchdog 15、silent-catch 8、install-selfcheck 6、mcp-node 16、arg-shape-guard 10、wps-version 14、encrypted-preflight 15、alerts-gate 10、com-boundary-gate 16、deprecated 10、style-names 28、fault-injection 21） |
 | `node scripts/gen-skill-tools.mjs --check` | 8 个文件全部 ok，未写工作区 |
 | `node scripts/gen-numbers.mjs --check` | CLAIMS OK (20 checked) |
 | `node scripts/param-contract.mjs` | tools=270 checked=259；A/B/C/D 四类静默失效均为 0 |
 | `npm run verify:package` | **PACKAGE RUNTIME OK (11)**（打包 305 项、装包、MCP 握手、tools/list=95） |
+
+### 2.2 整轮真机回归（2026-10-18，用户明确同意后执行）
+
+`powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1`：
+
+```
+TOTAL PASS=1753 FAIL=0 FILES=63 REAPED=281 ORPHANS_LEFT=0
+ALL TEST FILES GREEN
+BASELINE OK (assertions=1753 >= 1283, files=63 >= 51)
+```
+
+63 个测试文件全绿、0 失败、**收尾后没有残留 WPS 进程**（ORPHANS_LEFT=0）。
+其中新增的 `test/fault-injection.test.mjs`（21 项）与 `test/file-ops.test.mjs`（13 项，含 save_as 缺目录断言）都在这一轮里跑过。
 | `cd mcp; npx tsc` + 重新生成 `host/wps-actions.ps1` / `spec/*` | 全部成功，265 个 action、解析 0 错误、0 个 `exit` 残留 |
 
-### 2.2 真机测试（本机 WPS 12.1.0.29158，全部显式把 `WPS_OFFICE_HOST_SCRIPT`/`WPS_OFFICE_MCP_ENTRY` 钉到本仓库）
+### 2.3 真机测试（本机 WPS 12.1.0.29158，全部显式把 `WPS_OFFICE_HOST_SCRIPT`/`WPS_OFFICE_MCP_ENTRY` 钉到本仓库）
 
 > 为什么必须钉：本 DSH 会话把插件装在了 profile 里，`WPS_OFFICE_HOST_SCRIPT` / `WPS_OFFICE_MCP_ENTRY`
 > 指向**安装副本**；不钉就会测到 0.8.2 那份旧代码（第一次跑 close-safety 时正是这样先"假绿"后"假红"的），
@@ -117,7 +130,7 @@
 | `test/file-ops.test.mjs` | **13/13** | D1 发现的接口缺陷修复：`save_as` 输出目录不存在时不再只说「文档保存失败」，而是 `输出目录不存在：<路径>` + 下一步；且不替调用方创建目录 |
 | `test/fault-injection.test.mjs` | **21/21** | 故障注入规格解析 / 命中消耗（含 `wps_call` 深层动作名）/ **不设变量时完全惰性**；不需要 WPS，已进静态测试清单 |
 
-### 2.3 模型侧 A/B（D1，2026-10-17/18，三轮）
+### 2.4 模型侧 A/B（D1，2026-10-17/18，三轮）
 
 **共享 12 个场景 × 3 轮 × 两臂 = 72 轮**，另加 **2 个故障注入场景 × 3 轮（只有新臂能跑）= 6 轮**；
 同模型/Harness/档位/夹具，串行跑；详细表格与解读见 [skill-evaluation.md](skill-evaluation.md) §4。摘要：
@@ -141,10 +154,10 @@
    声明补成 `["object","string"]` 后正常。
 另外新增**仅测试用**的受控故障注入（`mcp/src/utils/fault-inject.ts`，默认惰性），让 #12/#14 可以确定性复现。
 
-**没有跑的**：`scripts/run-tests.ps1` 整轮（按 `AGENTS.md` §1/§2，需要用户明确同意）、`scripts/e2e.mjs`、
-`scripts/accept-install.mjs`、`test/orphan-reclaim.test.mjs`（它会强制结束本机所有 WPS 进程，属于破坏性；
-本轮的 `orphan-identity` 用受控记录覆盖了同一段逻辑，但没有覆盖"强杀客户端→下次接管"那条端到端路径）。
-另有 3 个评估场景（只加载 Word Skill、超时注入、部分失败）未做，原因见 `test/skilleval/README.md`。
+**没有跑的**：`scripts/e2e.mjs`、`scripts/accept-install.mjs`。
+整轮 `scripts/run-tests.ps1` **已于 2026-10-18 在用户明确同意后跑过**（见 §2.2，1753/0 全绿），
+`test/orphan-reclaim.test.mjs` 也包含在那一轮里（18 项全绿，覆盖了"强杀客户端→下次接管"的端到端路径）。
+评估场景只剩 #2（只加载 Word Skill）不做，原因见 `test/skilleval/README.md`。
 
 ## 3. 未完成项与剩余限制（明确不假装已支持）
 

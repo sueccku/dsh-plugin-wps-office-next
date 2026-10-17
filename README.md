@@ -407,7 +407,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1508 项 / 59 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-12 全绿）**+ `verify` 24 项 + spec 复现 16 项**；广告面 95 工具 / 55,346 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。
+当前数字：测试 **1753 项 / 63 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-18 全绿）**+ `verify` 24 项 + spec 复现 16 项**；广告面 95 工具 / 55,346 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及十四个不碰真实 WPS 的测试文件（`plugin` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `mcp-node` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `com-boundary-gate` / `deprecated` / `style-names`，清单的唯一来源是 `scripts/lib/static-tests.mjs`，由 `node scripts/run-static-tests.mjs` 执行）。需要真实 WPS 的测试与一键 e2e 留在本机。
 
