@@ -8,6 +8,7 @@
  */
 export const STATIC_TESTS = [
   "test/plugin.test.mjs",
+  "test/skill-quality.test.mjs",
   "test/com-host.test.mjs",
   "test/host-lease.test.mjs",
   "test/watchdog.test.mjs",

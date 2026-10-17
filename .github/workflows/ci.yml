@@ -47,6 +47,9 @@ jobs:
           ./scripts/build-host-actions.ps1
           git diff --exit-code -- host/wps-actions.ps1
 
+      - name: Skill references are up to date (check mode, writes nothing)
+        run: node scripts/gen-skill-tools.mjs --check
+
       - name: Regenerate the skill reference tables
         run: node scripts/gen-skill-tools.mjs
 

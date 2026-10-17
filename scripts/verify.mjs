@@ -94,6 +94,21 @@ for (const curated of ["wps_excel_read_range", "wps_word_insert_text", "wps_ppt_
 }
 check("hidden tail is not advertised", !names.has("wps_ppt_add_animation") && !names.has("wps_common_get_app_info"));
 
+// A4（改进指南 §10.1）：Skill 的按需参考必须覆盖**整个注册目录**，而不只是广告面。
+// 生成物（skills/*/reference.md）是模型找隐藏工具的唯一入口；漏一个工具就等于那个能力对模型不存在。
+try {
+  const definitions = JSON.parse(readFileSync("spec/tool-definitions.json", "utf8"));
+  const reffed = ["skills/wps-office-next/reference.md", "skills/wps-excel/reference.md", "skills/wps-word/reference.md", "skills/wps-ppt/reference.md"]
+    .map((p) => readFileSync(p, "utf8")).join("\n");
+  const missing = definitions.map((t) => t.name).filter((n) => !reffed.includes(n));
+  check("every registered tool is listed in a skill reference", missing.length === 0, missing.length ? missing.slice(0, 5).join(", ") : definitions.length + " tools covered");
+  // 广告面必须在 reference.md 里能分辨（直达 vs wps_call），否则模型无法知道哪些能直接调。
+  const execRef = readFileSync("skills/wps-excel/reference.md", "utf8");
+  check("the reference distinguishes direct vs wps_call", execRef.includes("直达") && execRef.includes("wps_call"), "");
+} catch (e) {
+  check("every registered tool is listed in a skill reference", false, e instanceof Error ? e.message : String(e));
+}
+
 let id = 10;
 
 // Discovery and dispatch guards. These are answered from the registry, so they hold everywhere.

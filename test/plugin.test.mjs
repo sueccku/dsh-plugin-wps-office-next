@@ -1,5 +1,5 @@
 // Verifies the DSH entry: path publication and skill registration, without booting DSH.
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 const mod = await import("../plugin.js");
@@ -25,6 +25,13 @@ for (const skill of registered) {
   const dir = skill.resourceBase && skill.resourceBase.path;
   check("skill " + skill.name + " resourceBase is a directory", skill.resourceBase && skill.resourceBase.kind === "directory" && existsSync(dir));
   check("skill " + skill.name + " reference.md sits beside SKILL.md", existsSync(join(dirname(join(dir, "SKILL.md")), "reference.md")));
+  // A4：按需参考结构（references/ + recipes/）必须真的在 resourceBase 之下 —— 模型只有读得到
+  // 才算"按需阅读"成立；这里只保证文件在（Harness 侧的读取能力另有评估文档记录）。
+  for (const sub of ["references", "recipes"]) {
+    const subDir = join(dir, sub);
+    const files = existsSync(subDir) ? readdirSync(subDir).filter((f) => f.endsWith(".md")) : [];
+    check("skill " + skill.name + " has " + sub + "/ files", files.length > 0, files.join(", ") || "none");
+  }
 }
 check("no skill body leaks frontmatter name", !registered.some((s) => s.content.includes("name: wps-")));
 

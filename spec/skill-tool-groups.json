@@ -1,0 +1,253 @@
+{
+  "_comment": [
+    "按任务分组的工具索引元数据（人工维护，只写工具名，不重复维护参数 schema）。",
+    "scripts/gen-skill-tools.mjs 用它生成 reference.md 的「按任务查找」小节。",
+    "硬约束：每个应用注册的**全部**工具都必须出现在某一组里，否则生成失败 ——",
+    "这样新增工具时被迫做一次有意的归类，而不是让索引悄悄漏掉它。",
+    "参数类型、单位、默认值、枚举一律不写在这里：那些以运行时 schema 为准。"
+  ],
+  "office-next": [
+    {
+      "title": "状态与诊断",
+      "tools": ["wps_status", "wps_common_ping", "wps_common_wire_check", "wps_common_get_app_info"]
+    },
+    {
+      "title": "工具发现与派发",
+      "tools": ["wps_help", "wps_call", "wps_batch", "wps_execute_method"]
+    },
+    {
+      "title": "保存、另存与转换",
+      "tools": ["wps_common_save", "wps_common_save_as", "wps_convert_format", "wps_convert_to_pdf"]
+    },
+    {
+      "title": "选区文本",
+      "tools": ["wps_common_get_selected_text", "wps_common_set_selected_text"]
+    }
+  ],
+  "excel": [
+    {
+      "title": "定位工作簿与工作表",
+      "tools": [
+        "wps_excel_get_open_workbooks", "wps_excel_switch_workbook", "wps_excel_create_workbook",
+        "wps_excel_open_workbook", "wps_excel_close_workbook", "wps_excel_get_sheet_list",
+        "wps_excel_get_sheet_info", "wps_excel_switch_sheet", "wps_excel_create_sheet",
+        "wps_excel_rename_sheet", "wps_excel_copy_sheet", "wps_excel_move_sheet",
+        "wps_excel_delete_sheet", "wps_excel_set_sheet_appearance"
+      ]
+    },
+    {
+      "title": "读取数据",
+      "tools": [
+        "wps_excel_read_range", "wps_excel_get_cell_value", "wps_excel_get_cell_info",
+        "wps_excel_get_formula", "wps_excel_get_selection", "wps_excel_find_in_sheet",
+        "wps_excel_get_named_ranges", "wps_excel_get_sheet_settings"
+      ]
+    },
+    {
+      "title": "写入与编辑区域",
+      "tools": [
+        "wps_excel_write_range", "wps_excel_set_cell_value", "wps_excel_clear_range",
+        "wps_excel_copy_range", "wps_excel_paste_range", "wps_excel_find_replace",
+        "wps_excel_fill_series", "wps_excel_insert_rows", "wps_excel_insert_columns",
+        "wps_excel_delete_rows", "wps_excel_delete_columns", "wps_excel_transpose",
+        "wps_excel_text_to_columns", "wps_excel_remove_duplicates", "wps_excel_clean_data",
+        "wps_excel_auto_sum"
+      ]
+    },
+    {
+      "title": "公式、重算与审计",
+      "tools": [
+        "wps_excel_set_formula", "wps_excel_set_array_formula", "wps_excel_evaluate_formula",
+        "wps_excel_generate_formula", "wps_excel_diagnose_formula", "wps_excel_calculate",
+        "wps_excel_goal_seek", "wps_excel_get_formula_audit", "wps_excel_refresh_links",
+        "wps_excel_refresh_all_data"
+      ]
+    },
+    {
+      "title": "格式与外观",
+      "tools": [
+        "wps_excel_set_cell_format", "wps_excel_set_number_format", "wps_excel_set_cell_style",
+        "wps_excel_set_border", "wps_excel_set_column_width", "wps_excel_set_row_height",
+        "wps_excel_auto_fit", "wps_excel_auto_fit_columns", "wps_excel_auto_fit_rows",
+        "wps_excel_set_wrap_text", "wps_excel_copy_format", "wps_excel_clear_formats",
+        "wps_excel_merge_cells", "wps_excel_unmerge_cells", "wps_excel_set_hyperlink"
+      ]
+    },
+    {
+      "title": "排序、筛选与整理",
+      "tools": [
+        "wps_excel_sort_range", "wps_excel_auto_filter", "wps_excel_set_conditional_format",
+        "wps_excel_get_conditional_formats", "wps_excel_remove_conditional_format",
+        "wps_excel_set_data_validation", "wps_excel_get_data_validations",
+        "wps_excel_remove_data_validation", "wps_excel_subtotal", "wps_excel_group_rows",
+        "wps_excel_group_columns", "wps_excel_set_outline_levels", "wps_excel_hide_rows",
+        "wps_excel_show_rows", "wps_excel_hide_column", "wps_excel_show_columns",
+        "wps_excel_consolidate", "wps_excel_freeze_panes", "wps_excel_set_zoom",
+        "wps_excel_set_named_range", "wps_excel_delete_named_range"
+      ]
+    },
+    {
+      "title": "表（ListObject）与透视表",
+      "tools": [
+        "wps_excel_create_list_object", "wps_excel_get_list_objects", "wps_excel_add_list_row",
+        "wps_excel_delete_list_row", "wps_excel_update_list_object",
+        "wps_excel_set_list_object_totals", "wps_excel_resize_list_object",
+        "wps_excel_unlist_list_object", "wps_excel_create_pivot_table",
+        "wps_excel_update_pivot_table", "wps_excel_get_pivot_tables",
+        "wps_excel_refresh_pivot_tables", "wps_excel_clear_pivot_table"
+      ]
+    },
+    {
+      "title": "图表、迷你图与导出图片",
+      "tools": [
+        "wps_excel_create_chart", "wps_excel_update_chart", "wps_excel_delete_chart",
+        "wps_excel_set_chart_labels", "wps_excel_export_chart_as_image",
+        "wps_excel_export_range_as_image", "wps_excel_add_sparkline", "wps_excel_clear_sparkline",
+        "wps_excel_insert_excel_image"
+      ]
+    },
+    {
+      "title": "打印、批注与保护",
+      "tools": [
+        "wps_excel_set_sheet_page_setup", "wps_excel_set_sheet_print_titles",
+        "wps_excel_set_sheet_header_footer", "wps_excel_set_print_area",
+        "wps_excel_reset_page_breaks", "wps_excel_add_comment", "wps_excel_get_cell_comments",
+        "wps_excel_delete_cell_comment", "wps_excel_protect_sheet", "wps_excel_unprotect_sheet",
+        "wps_excel_protect_workbook", "wps_excel_lock_cells"
+      ]
+    }
+  ],
+  "word": [
+    {
+      "title": "定位文档",
+      "tools": [
+        "wps_word_get_active_document", "wps_word_get_open_documents",
+        "wps_word_switch_document", "wps_word_open_document", "wps_word_create_document",
+        "wps_word_close_document", "wps_word_get_document_stats"
+      ]
+    },
+    {
+      "title": "读取内容与结构",
+      "tools": [
+        "wps_word_get_document_text", "wps_word_get_paragraphs", "wps_word_get_tables",
+        "wps_word_get_table_data", "wps_word_find_in_document", "wps_word_get_bookmarks",
+        "wps_word_get_content_controls", "wps_word_get_notes", "wps_word_get_header_footer",
+        "wps_word_get_page_setup"
+      ]
+    },
+    {
+      "title": "写入与替换内容",
+      "tools": [
+        "wps_word_insert_text", "wps_word_replace_range", "wps_word_find_replace",
+        "wps_word_set_table_cell", "wps_word_insert_table", "wps_word_set_table_format",
+        "wps_word_merge_table_cells", "wps_word_split_table_cell", "wps_word_delete_table_line",
+        "wps_word_add_table_lines", "wps_word_convert_table_to_text",
+        "wps_word_insert_page_break", "wps_word_insert_hyperlink", "wps_word_insert_image"
+      ]
+    },
+    {
+      "title": "格式、样式与段落",
+      "tools": [
+        "wps_word_set_font", "wps_word_set_text_color", "wps_word_set_paragraph",
+        "wps_word_set_line_spacing", "wps_word_apply_style", "wps_word_set_columns",
+        "wps_word_generate_toc", "wps_word_insert_index", "wps_word_insert_cross_reference"
+      ]
+    },
+    {
+      "title": "分节、页眉页脚与页码",
+      "tools": [
+        "wps_word_insert_section_break", "wps_word_set_page_setup",
+        "wps_word_insert_header", "wps_word_insert_footer", "wps_word_insert_page_numbers"
+      ]
+    },
+    {
+      "title": "模板字段",
+      "tools": [
+        "wps_word_smart_fill_field", "wps_word_insert_bookmark",
+        "wps_word_replace_bookmark_content", "wps_word_add_content_control",
+        "wps_word_mail_merge"
+      ]
+    },
+    {
+      "title": "批注、修订与校对",
+      "tools": [
+        "wps_word_insert_comment", "wps_word_get_comments", "wps_word_delete_comment",
+        "wps_word_get_revisions", "wps_word_accept_revisions", "wps_word_reject_revisions",
+        "wps_word_enable_track_changes", "wps_word_get_track_changes_status",
+        "wps_word_proofread_basic", "wps_word_add_footnote", "wps_word_add_endnote"
+      ]
+    }
+  ],
+  "ppt": [
+    {
+      "title": "定位演示文稿",
+      "tools": [
+        "wps_ppt_get_open_presentations", "wps_ppt_switch_presentation",
+        "wps_ppt_set_active_target", "wps_ppt_open_presentation",
+        "wps_ppt_create_presentation", "wps_ppt_close_presentation", "wps_ppt_set_slide_size"
+      ]
+    },
+    {
+      "title": "读取页面与对象",
+      "tools": [
+        "wps_ppt_get_slide_count", "wps_ppt_get_slide_info", "wps_ppt_get_slide_title",
+        "wps_ppt_get_shapes", "wps_ppt_get_textboxes", "wps_ppt_get_table_cell",
+        "wps_ppt_get_slide_notes", "wps_ppt_get_slide_master", "wps_ppt_find_ppt_text"
+      ]
+    },
+    {
+      "title": "增删与重排页面",
+      "tools": [
+        "wps_ppt_add_slide", "wps_ppt_delete_slide", "wps_ppt_move_slide",
+        "wps_ppt_copy_slide", "wps_ppt_switch_slide", "wps_ppt_insert_slides_from_file",
+        "wps_ppt_set_slide_layout"
+      ]
+    },
+    {
+      "title": "占位符与文本",
+      "tools": [
+        "wps_ppt_set_slide_title", "wps_ppt_set_slide_subtitle", "wps_ppt_set_slide_content",
+        "wps_ppt_set_slide_notes", "wps_ppt_add_textbox", "wps_ppt_set_textbox_text",
+        "wps_ppt_set_textbox_style", "wps_ppt_delete_textbox", "wps_ppt_replace_ppt_text"
+      ]
+    },
+    {
+      "title": "形状与版式",
+      "tools": [
+        "wps_ppt_add_shape", "wps_ppt_set_shape_text", "wps_ppt_set_shape_fill",
+        "wps_ppt_set_shape_position", "wps_ppt_set_shape_style", "wps_ppt_set_shape_effect",
+        "wps_ppt_set_shape_z_order", "wps_ppt_delete_shape", "wps_ppt_duplicate_shape",
+        "wps_ppt_align_shapes", "wps_ppt_distribute_shapes", "wps_ppt_group_shapes"
+      ]
+    },
+    {
+      "title": "图片、表格与图表",
+      "tools": [
+        "wps_ppt_insert_ppt_image", "wps_ppt_replace_ppt_image", "wps_ppt_delete_ppt_image",
+        "wps_ppt_set_image_style", "wps_ppt_insert_table", "wps_ppt_set_table_cell",
+        "wps_ppt_set_table_format", "wps_ppt_insert_ppt_chart", "wps_ppt_set_ppt_chart_data",
+        "wps_ppt_set_ppt_chart_style"
+      ]
+    },
+    {
+      "title": "动画、切换与放映",
+      "tools": [
+        "wps_ppt_add_animation", "wps_ppt_get_animations", "wps_ppt_remove_animation",
+        "wps_ppt_set_animation_order", "wps_ppt_set_slide_transition",
+        "wps_ppt_apply_transition_to_all", "wps_ppt_remove_slide_transition",
+        "wps_ppt_start_slide_show", "wps_ppt_end_slide_show"
+      ]
+    },
+    {
+      "title": "背景、主题与统一风格",
+      "tools": [
+        "wps_ppt_set_slide_background", "wps_ppt_set_master_background",
+        "wps_ppt_set_background_color", "wps_ppt_set_background_gradient",
+        "wps_ppt_set_background_image", "wps_ppt_set_slide_theme", "wps_ppt_beautify",
+        "wps_ppt_unify_font", "wps_ppt_set_font_color", "wps_ppt_add_master_element",
+        "wps_ppt_set_slide_footer", "wps_ppt_add_ppt_hyperlink", "wps_ppt_remove_ppt_hyperlink",
+        "wps_ppt_export_slide_as_image"
+      ]
+    }
+  ]
+}

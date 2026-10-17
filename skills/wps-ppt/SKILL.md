@@ -1,44 +1,50 @@
 ---
 name: wps-ppt
-description: 用 WPS 演示工具增删幻灯片、设置标题与正文、添加文本框与形状、插入图片、动画与切换、导出幻灯片为图片。
-whenToUse: 任务针对演示文稿、幻灯片、形状、文本框、动画、切换、母版或演示导出时。
+description: 用 WPS 演示工具增删与重排幻灯片、选择版式、填占位符与文本框、添加形状与图片、组织版式、设置动画与切换、导出幻灯片为图片。
+whenToUse: 任务针对演示文稿、幻灯片、页序、版式占位符、形状与文本框、图片表格、动画切换、母版或幻灯片导出时用本技能。
 ---
 
 # WPS 演示
 
-## 直接广告的工具
+共享的执行协议（目标确认、保存策略、验证与失败分流）见 `wps-office-next` 技能；
+本节是演示特有的决策与流程。**应用技能可能被单独加载**，所以关键规则在本文件里也写了一遍。
 
 <!-- GENERATED:advertised:start -->
-直接广告的 14 个演示工具（其余 63 个用 wps_call，清单见同目录 reference.md）：
-
-wps_ppt_add_slide、wps_ppt_add_textbox、wps_ppt_export_slide_as_image、wps_ppt_get_shapes、wps_ppt_get_slide_count、wps_ppt_get_slide_info、wps_ppt_insert_ppt_image、wps_ppt_insert_table、wps_ppt_open_presentation、wps_ppt_set_shape_fill、wps_ppt_set_shape_text、wps_ppt_set_slide_content、wps_ppt_set_slide_title、wps_ppt_set_table_format
-
-通用工具（4 个，三个应用共用）：wps_common_save、wps_common_save_as、wps_convert_format、wps_convert_to_pdf
+本应用注册 **77** 个工具，standard 档直接广告 **14** 个；
+完整工具表与按任务分组索引见同目录 `reference.md`（未广告的用 `wps_call`）。
 <!-- GENERATED:advertised:end -->
 
-演示是三个应用里工具最多的一个。动画、切换、母版、图表、3D、表格等通过 wps_call 使用，清单见同目录 reference.md。
-KPI 卡片、时间线、流程图等「高层场景封装」已不再作为工具提供，改由下面的组合配方实现。
+## 1. 先定画布，再定结构，最后版式
 
-## 参数约定
+顺序反了会返工：
 
-- 新增形状与文本框用 left、top、width、height，单位像素。没有 x、y 参数——传了不会被发现（可选参数拼错是静默忽略），只是完全不起作用，所以务必按 schema 的名字传。
-- 插入图片用 path；相对路径会按当前工作目录解析，文件不存在会明确报 image file not found。
-- **形状定位的三种写法**，语义不同，别混用：
-  - shapeIndex / shapeName / name：任意形状的序号或名称；
-  - imageIndex：**第几张图片**（只数图片）；
-  - textboxIndex：**第几个文本框**（只数文本框）。
-  用 get_shapes 拿到列表后再选合适的那个。
-- 动画：set_animation / add_animation 的动画名支持 fadeIn、flyIn、wipeIn、zoomIn、bounceIn、spinIn、fadeOut、flyOut，也可以直接传 MsoAnimEffect 数值；trigger 取 onClick / withPrevious / afterPrevious。add_animation_preset 传 shapeIndex 时只给该形状加动画，不填则给整页每个形状都加。
-- 切换：set_transition / set_slide_transition 的效果名支持 none、cut、fade、dissolve、push、wipe、split、reveal、cover、curtains（也可传 PpEntryEffect 数值），duration 单位为秒；apply_transition_to_all 会对所有幻灯片应用。
-- 背景：set_slide_background / set_master_background 接受 background 对象，形如 {type:"solid",color:"#FF0000"}、{type:"gradient",colors:["#1a1a2e","#0f3460"]}、{type:"image",imagePath:"..."}。缺色或未知类型会明确报错。
-- 幻灯片页码只支持显示/隐藏（show），没有起始编号参数。
+1. **定目标文稿**：同时打开多份时显式传 `presentationName`（`wps_ppt_get_open_presentations` 看清单）。
+2. **读画布尺寸**：`wps_ppt_get_slide_info` 会回报 `slideWidth` / `slideHeight`（**磅**）与 `slideWidthPx` / `slideHeightPx`。
+   不确定画布就套固定坐标，一定会偏。
+3. **定内容结构**：几页、每页要什么（标题 / 正文 / 图 / 表 / 信息图）。
+4. **定版式**：按结构选 `add_slide {layout}`，**加页时就把版式定下来**。
 
-## 版式与占位符（实测矩阵，FIXES 90）
+## 2. 单位与画布（混合单位，务必分清）
 
-`add_slide` 与 `set_slide_layout` **收同一套键名**。占位符不是"哪个版式都有"——下面是真机扫出来的对应关系：
+| 对象 | 单位 | 说明 |
+|---|---|---|
+| 形状几何：`add_shape` / `add_textbox` / `set_shape_position` / `insert_table` / `insert_ppt_image` 的 `left/top/width/height` | **磅**（point） | 直接交给 COM 的 `Shape.Left` 等属性 |
+| `wps_ppt_set_slide_size` 的 `width` / `height` | **像素** | 桥内部 `×0.75` 换成磅。常用：`1280×720` 像素 = 标准宽屏 16:9（= 960×540 磅）；`960×720` 像素 = 4:3（= 720×540 磅） |
+| `wps_ppt_export_slide_as_image` 的 `width` / `height` | **像素** | 默认 1280×720 |
+| 字号（`fontSize`） | **磅** | |
+| 动画 `duration` | **秒** | |
+
+换算：`1 像素 = 0.75 磅`（96 dpi），即 `磅 = 像素 × 0.75`。**96dpi 下 1 英寸 = 96 像素 = 72 磅**。
+
+也就是说：**`set_slide_size` 传像素，形状坐标传磅**。一块 1280×720 像素（标准 16:9）的画布，形状可用区域是 960×540 磅。
+按"像素"给形状排版的坐标会大出 1/3，直接跑到画布外。详细换算表与版式模板见 `references/layout-and-shapes.md`。
+
+## 3. 版式与占位符（不是每个版式都有占位符）
+
+`add_slide` 与 `set_slide_layout` 收同一套键名。实测对应关系：
 
 | layout 键 | 母版版式 | 页上的占位符（ppPlaceholderType） |
-| --- | --- | --- |
+|---|---|---|
 | `title` | 标题页 | 标题(3) + **副标题(4)** |
 | `titleContent` | 标题和内容 | 标题(1) + **正文(2)** |
 | `twoColumn` | 两栏内容 | 标题(1) + 表格占位符(12) |
@@ -46,71 +52,69 @@ KPI 卡片、时间线、流程图等「高层场景封装」已不再作为工�
 | `titleOnly` | 仅标题 | 标题(1) |
 | `blank` | 空白 | 无 |
 
-- `set_slide_title` 需要标题占位符（`title` / `titleContent` / `titleOnly` / `twoColumn` / `comparison` 都有）；
-  在 `blank` 页上它会**明确报错**，不会再静默回成功（那一页改用 `add_textbox`）。
-- `set_slide_subtitle` 只在 **`title`** 版式上可用，`set_slide_content` 只在带正文占位符的版式（如 `titleContent`）上可用；
-  用错版式会得到带"下一步"的明确失败。**先定版式、再填内容**，不要先填内容再换版式。
-- **换版式不是万能药**：对已有的空白页执行 `set_slide_layout` 时，WPS 自己可能直接拒（`E_FAIL`）。
-  要某个版式，最稳的是 `add_slide` 时就指定 `layout`；需要改已有页时，失败信息里会说明。
-## 常用流程
+- `set_slide_title` 需要标题占位符（`title` / `titleContent` / `titleOnly` / `twoColumn` / `comparison` 都有）；在 `blank` 页上**明确报错** → 那一页改用 `add_textbox`。
+- `set_slide_subtitle` 只在 `title` 版式可用；`set_slide_content` 只在带正文占位符的版式（如 `titleContent`）可用。用错版式会得到带"下一步"的明确失败。
+- **先定版式、再填内容**；不要填完内容再换版式。
+- 换版式不是万能药：对已有空白页执行 `set_slide_layout` 时 WPS 自己可能直接拒（`E_FAIL`）。要某个版式，最稳的是**加页时**就指定 `layout`。
 
-1. wps_ppt_get_slide_count 与 get_slide_info 确认文稿与页码。
-2. 多份演示文稿同时打开时，**显式传 presentationName** 指定目标文稿；不传时动作会落在「活动文稿」上（跟着窗口焦点走），桥会在结果的 `warnings` 里提醒。`set_active_target`（通过 wps_call）也能改全局焦点，但它是全局状态，优先用参数。
-3. **新建文稿后先 add_slide**：WPS 的 Presentations.Add() 返回 null，且新建文稿通常是 0 页；此时 get_slide_count 可能仍报 0，不要据此判断文稿为空。
-4. 加页用 add_slide，**加页时就给 layout**（见上面矩阵），然后 set_slide_title 与 set_slide_content 填内容；
-   副标题要先加 `layout:"title"` 的页，正文要先加 `layout:"titleContent"` 的页。
-5. 需要精细排版时先 get_shapes 取形状索引，再对具体形状操作。
-6. 导出前先 wps_common_save，导出用 export_slide_as_image（绝对路径）。
-7. **改过页序就必须回读终检**（S3 真机走查的教训）：`add_slide` 把新页追加到**末尾**，
-   `move_slide` / `delete_slide` 之后后面的页号会整体前移 —— 连续移动时**很容易把两页调换顺序**，
-   而每一步都会回 `success`。所以收尾前必须：
-   `wps_ppt_get_slide_count` 取页数 → 逐页 `wps_ppt_get_slide_title`（或 `get_slide_info`）**按序回读标题**
-   → 与用户给的目标顺序**逐页比对** → 回报时写清"第 X 页是什么"。
-   真机上出现过：工具全部回 success、模型自述页序正确，文件里第 8/9 页实际互换；
-   最省事的自查是"我报的页号 → 回读到的标题"能否一一对上，对不上就再移一次并重新回读。
+## 4. 页序与形状索引会变
 
-   > 页码参数统一 1 起、上界 = 当前页数。越界（含 0、非整数）会被桥**在动手之前**拦下并回明确中文，
-   > 不要靠 `get_slide_info` 的 E_FAIL 去试探边界。
+- `add_slide` 把新页追加到**末尾**；`move_slide` / `delete_slide` 之后后面的页号整体前移。
+- 形状 / 文本框 / 图片的序号在插入、删除、重排之后都会变；每次操作前重新 `get_shapes` / `get_textboxes`。
+- 定位形状有三种写法，语义不同：`shapeIndex` / `shapeName` / `name`（任意形状）、`imageIndex`（只数图片）、`textboxIndex`（只数文本框）。
 
-## 组合配方（用基础工具画出常见信息图）
+**改过页序就必须回读终检**：`get_slide_count` 取页数 → 逐页 `get_slide_title`（或 `get_slide_info`）**按序回读标题** → 与目标顺序逐页比对 → 回报里写清"第 X 页是什么"。
+每一步都会回 `success`，**看起来对不代表顺序对**。最省事的自查是"我报的页号 → 回读到的标题"能否一一对上。
 
-KPI 卡片、时间线、流程图、组织架构图、仪表盘、环形图、进度条、迷你图表、标题装饰、页码指示器、
-配色统一这些「高层场景封装」已从工具层移除，改由本技能给出配方——**用基础工具组合**，
-这样位置、配色、文案都能按场景调整，而不是被写死的参数限制。
+页码参数统一 **1 起**，上界 = 当前页数；越界（含 0、非整数）会被桥**在动手之前**拦下。
 
-坐标单位是像素，左上角为原点。常用基础工具：
-wps_ppt_add_shape（type: rectangle/oval/arrow/…，可带 text 与 fillColor）、wps_ppt_set_shape_fill、
-wps_ppt_set_shape_text、wps_ppt_set_shape_position、wps_ppt_add_textbox、wps_ppt_get_shapes。
+## 5. 编辑已有页 vs 从零创建页
 
-- **KPI 卡片行**：每张卡片一个 rectangle（如 150×70，left 依次 +170，top 相同），
-  set_shape_text 写「指标名\n数值」，用不同 fillColor 区分正负。
-- **时间线**：一条细长 rectangle 作轴（如 500×4），每个事件一个 oval 节点压轴上，
-  节点下方 add_textbox 写日期与标题。
-- **流程图**：每个步骤一个 rectangle（text 直接写步骤名），步骤之间用 arrow 形状连接；
-  分支就并排放两个 rectangle，再各引一根 arrow。
-- **组织架构图**：根节点一个 rectangle 居中，子节点在同一 top 上等距排开，
-  再用无填充的 rectangle 或线段连接各层。
-- **进度条**：轨道 = 灰色 rectangle（如 400×24）；填充 = 同位置同高的 rectangle，
-  **宽度 = 轨道宽 × 完成比例**，fillColor 用强调色；旁边 add_textbox 写百分比与说明。
-- **仪表盘 / 环形图**：外圈 oval（纯色）+ 内圈较小的白色 oval 盖住中心 + add_textbox 写百分比。
-  多段占比不要用扇形（WPS 的扇形只暴露一个 adjustment，改角度会挂住 COM 宿主），
-  用横向堆叠条 + 图例表达分布。
-- **迷你图表（sparkline 风格）**：每个指标一组文本框——数值（大号）、标签（小号）、趋势箭头 ↑/↓。
-- **标题装饰**：标题下方一根细 rectangle（如 200×6）作为下划线；做成侧边条就把宽度收到 6。
-- **页码指示器**：右下角 add_textbox，内容「当前页 / 总页数」（页码取自 get_slide_count 与当前 slideIndex）。
-- **配色统一**：先 get_shapes 拿到形状列表，再对每个形状 set_shape_fill（标题用深色、正文用浅色），
-  比一次性套配色方案更可控。
-- **网格 / 自动排版**：按 rows×cols 算好每个单元的 left/top/width/height，逐个 set_shape_position。
+- **从零创建**：`create_presentation` → `add_slide {layout}` → 填标题/正文 → 形状与图片 → 保存。
+  新建文稿通常是 **0 页**，必须先 `add_slide`；`Presentations.Add()` 返回 null，**不要解引用它的返回值**，用页数与形状的读操作判断状态。
+- **编辑已有页**：先 `get_slide_info` 看这一页有什么（版式、形状、文本），再决定改哪个对象；不要盲目按序号写。
+- 局部改文本用 `replace_ppt_text` / `set_textbox_text`；整段换内容用 `set_slide_content`（需要正文占位符）。
 
-配方同样适用于表格外的场景：先算坐标，再落形状，最后回读 get_shapes 校验。
-## 已知坑与不支持的能力
+## 6. 排版与信息图
 
-- 当前这版 WPS 里，**通过 COM 新建的文稿 Slides.Count 会一直报 0**，所以 get_slide_count 可能返回 0 而幻灯片确实存在。以 get_slide_info / get_shapes 的实际返回为准。
-- 动画与切换此前整族不可用（底层要数值而工具传的是名字），现已修好；但名称仍必须在上面的列表内，写错会明确报 unknown animation / unknown transition 并列出可用名称。
-- **环形图只画单一占比**：create_donut_chart 用 value（0-1 或百分数），不支持多段 data——WPS 的扇形只暴露一个 adjustment，赋值会挂住 COM 宿主。
-- **组织架构图只生成默认骨架**：create_org_chart 不接受自定义节点（传自定义节点会 60 秒超时）。
-- **图表不注入数据**：insert_ppt_chart / add_chart 只插入指定类型的空图表并可选标题，数据请在 WPS 中填写；data 参数已移除。
-- **渐变角度/类型不可设置**：set_shape_gradient 只支持 stops（两个色标），没有 angle / type。
-- 设置形状阴影、边框、渐变时传的是嵌套对象（shadow / border / gradient），对象里多写 action 不认识的字段会报错。
-- 配色相关工具有两套枚举（beautify 的内置配色与 apply_color_scheme 的 ocean/forest/sunset 等），不要混用。
-- 定位到不存在的目标文稿时，部分底层实现会继续解引用空对象；锁定目标后要复验。
+KPI 卡片、时间线、流程图、组织架构图、仪表盘、进度条这类信息图**没有封装工具**，用基础形状组合搭：`add_shape` + `set_shape_fill` + `set_shape_text` + `set_shape_position` + `add_textbox`。
+
+做法：**先按画布算坐标 → 落形状 → 回读 `get_shapes` 校验位置与尺寸**。完整配方（含每种的坐标算法、文字容量、验收点）见 `recipes/infographic-layout.md`。
+
+几条约定的边界：
+- WPS 的扇形只暴露一个 adjustment，多段占比不要用扇形（改角度会挂住 COM 宿主）——用横向堆叠条 + 图例。
+- 形状渐变只支持两个色标（`set_shape_effect` 的 `gradientColor1/2`），没有角度与类型参数。
+- 形状效果（阴影 / 边框 / 渐变 / 透明度）用扁平参数（`shadow*` / `border*` / `gradientColor*` / `transparency`）；图片样式用嵌套 `style` 对象、背景用 `background` 对象。对象里多写 action 不认识的字段会报错；**顶层**参数名写错也会被明确拒绝。
+
+## 7. 动画、切换与放映
+
+- `wps_ppt_add_animation`：给 `preset` 就按整页预设给页上每个形状依次加动画；给了 `shapeIndex` / `shapeName` 就只给该形状；给 `effect` 加入场/退场，`effectKind:"emphasis"` 加强调。`trigger` 取 `onClick` / `withPrevious` / `afterPrevious`。也可以直接传 MsoAnimEffect 数值。其余动画操作（`remove_animation` / `get_animations` / `set_animation_order`）用 `wps_call`。
+- 切换：`wps_ppt_set_slide_transition` 的效果名支持 `none/cut/fade/dissolve/push/wipe/split/reveal/cover/curtains`（也可传 PpEntryEffect 数值），`duration` 单位是**秒**；`apply_transition_to_all` 应用到全部；`remove_slide_transition` 移除。
+- 名称写错会明确报 `unknown animation` / `unknown transition` 并列出可用名称。
+
+## 8. 核对、保存与视觉检查
+
+- **属性回读 ≠ 排版正确**：位置、字号、颜色都对，不代表没有文字溢出、对象重叠或裁切。
+- 能力允许时先 `wps_common_save`，再 `export_slide_as_image`（绝对路径，必要时加大 `width` / `height`），然后用图像读取能力看：标题完整、文字不溢出、对象不重叠、边距一致、图片比例正确。
+- **读不到导出的图片时，明确说"内容与属性已核对，视觉效果尚未验证"**，不要把"导出成功"写成"排版无误"。
+- 收尾：要归档到新路径用 `wps_common_save_as`；**用户没要求关闭就不要关闭**演示文稿。
+
+## 9. 已知限制与坑
+
+- 目标文稿不存在时，部分底层实现会继续解引用空对象；**锁定目标后要复验**（用 `get_slide_info` 读回文稿名与页内容）。
+- 某些 WPS 构建上，**新建文稿的 `Slides.Count` 可能滞后**（报 0 而页确实存在）。以 `get_slide_info` / `get_shapes` 的实际返回为准，并把构建版本记下来。
+- 图表要分两步：`insert_ppt_chart` 只按 `type` 插入空图表（可给 `title`/`left`/`top`）；数据用 `set_ppt_chart_data {slideIndex, chartIndex, data}`，其中 `data` 是 `{categories:[...], series:[{name, values}]}`（**不是**顶层 `categories`/`series`，`chartIndex` 数的是第几个图表而不是形状索引）；样式用 `set_ppt_chart_style`。
+- 图片路径参数一律是 **`imagePath`**（不是 `path`）；表格单元格用 `{tableIndex, row, col, text}`（`col` 不是 `column`）。
+- `beautify` 的配色方案（`color_scheme`）取 `business/tech/creative/minimal`，不要与其它工具的颜色参数混用。
+- 幻灯片页码只支持显示/隐藏，没有起始编号参数。
+- 转换（`wps_convert_to_pdf` / `wps_convert_format`）**必须显式传 `appType:"ppt"`**。
+
+## 10. 按需参考
+
+| 想了解 | 读哪里 |
+|---|---|
+| 全部演示工具与按任务分组索引 | 同目录 `reference.md` |
+| 画布 / 单位换算 / 形状与版式细则 | `references/layout-and-shapes.md` |
+| 从零做一份演示的完整任务实例 | `recipes/create-deck.md` |
+| 信息图配方（坐标算法、文字容量、验收点） | `recipes/infographic-layout.md` |
+| 共享执行协议 | `wps-office-next` 技能 |

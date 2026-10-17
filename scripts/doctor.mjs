@@ -132,6 +132,16 @@ for (const name of skillDirs) {
   const file = join(root, "skills", name, "SKILL.md");
   if (existsSync(file)) report("OK", "skill " + name);
   else report("WARN", "skill " + name + " missing", file);
+  // A4：按需参考结构（reference.md + references/ + recipes/）必须在 resourceBase 下真实存在 ——
+  // SKILL.md 里的相对链接指向不存在的文件时，模型只会拿到一个读不到的错误。
+  for (const rel of ["reference.md", "references", "recipes"]) {
+    const target = join(root, "skills", name, rel);
+    if (!existsSync(target)) report("WARN", "skill " + name + " " + rel + " missing", target);
+  }
+  const body = existsSync(file) ? readFileSync(file, "utf8") : "";
+  const links = [...new Set([...body.matchAll(/(?:references|recipes)\/[\w-]+\.md/g)].map((m) => m[0]))];
+  const broken = links.filter((rel) => !existsSync(join(root, "skills", name, rel)));
+  if (links.length && broken.length) report("ERROR", "skill " + name + " has broken references", broken.join(", "));
 }
 
 // WPS COM registration: read-only, never launches WPS
