@@ -50,6 +50,7 @@ const ALLOWLIST = {
     "try { $null = Invoke-WpsAction -Action '__warmup' -Params '{}' } catch { }": { count: 1, reason: "warmup is an optimisation; the first real call pays the JIT cost if it fails" },
     "try { $null = Close-WpsAppsStartedByUs } catch { }": { count: 1, reason: "FIXES 65 exit net: releasing our own WPS instances must never turn a clean EOF exit into a crash" },
     "try { $null = Invoke-WpsOrphanReclaim } catch { }": { count: 1, reason: "FIXES 66 reclaim is best effort; a failed reclaim must never stop the host from serving" },
+    "try { $null = Save-WpsOwnedApps } catch { }": { count: 1, reason: "A4: refreshing the owned-instances record after each action keeps the reclaim-time identity check current; bookkeeping must never fail the action" },
   },
 };
 

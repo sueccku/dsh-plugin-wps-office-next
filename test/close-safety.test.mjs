@@ -70,6 +70,35 @@ check("close_workbook(default save:true) on an unsaved workbook returns", ok(c2)
 check("it warns that nothing was written to disk", t2.includes("never saved"), t2.replace(/\s+/g, " ").slice(0, 110));
 check("no workbook leaked", (await wbCount()) === before, "workbooks=" + (await wbCount()));
 
+// ---------------- A4（改进指南 §9 P0）：脏 + 未落盘 + 要求保存 ⇒ 不许关闭、不许丢弃 --------------
+// 修复前的行为：把 save 降级成 false **照常关闭**，只回一条 warning 且 success=true ——
+// 只看 success 的调用方会以为"保存并关闭"成功了，而内容已经没了。
+await call("wps_excel_create_workbook", {});
+check("A4: probe workbook seeded", ok(await call("wps_excel_write_range", { range: "A1", data: [["A4 未保存探针"]] })), "");
+const dirtyFlag = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Ket.Application'); [string]$w.ActiveWorkbook.Saved")).trim();
+check("A4: premise - the workbook really is dirty", dirtyFlag === "False" || dirtyFlag === "0", "Saved=" + JSON.stringify(dirtyFlag));
+const c3 = await call("wps_excel_close_workbook", {});
+const t3 = text(c3);
+check("A4: save:true close of a dirty never-saved workbook is refused", !ok(c3), t3.replace(/\s+/g, " ").slice(0, 120));
+check("A4: the refusal names the missing disk path and the next step", t3.includes("磁盘路径") && t3.includes("save_as"), t3.replace(/\s+/g, " ").slice(0, 120));
+check("A4: the dirty workbook is still open (nothing discarded)", (await wbCount()) === before + 1, "workbooks=" + (await wbCount()));
+check("A4: the unsaved content is still there", text(await call("wps_excel_read_range", { range: "A1" })).includes("A4 未保存探针"), "");
+check("A4: save:false still closes it explicitly", ok(await call("wps_excel_close_workbook", { save: false })), "");
+check("A4: cleanup left no workbook behind", (await wbCount()) === before, "workbooks=" + (await wbCount()));
+
+// ---------------- A4：Word 侧同一条不变量 --------------------------------------------------
+const wOpenBefore = (payload(await viaAction("getOpenDocuments")).data?.count) ?? -1;
+await call("wps_word_create_document", {});
+check("A4: word probe document seeded", ok(await call("wps_word_insert_text", { text: "A4 未保存探针" })), "");
+const wDirty = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application'); [string]$w.ActiveDocument.Saved")).trim();
+check("A4: premise - the document really is dirty", wDirty === "False" || wDirty === "0", "Saved=" + JSON.stringify(wDirty));
+const w1 = await call("wps_word_close_document", {});
+const wt1 = text(w1);
+check("A4: save:true close of a dirty never-saved document is refused", !ok(w1), wt1.replace(/\s+/g, " ").slice(0, 120));
+check("A4: the document is still open with its content", text(await call("wps_word_get_document_text")).includes("A4 未保存探针"), "");
+check("A4: save:false closes the word document explicitly", ok(await call("wps_word_close_document", { save: false })), "");
+check("A4: word cleanup left no extra document", ((payload(await viaAction("getOpenDocuments")).data?.count) ?? -2) === wOpenBefore, "before=" + wOpenBefore + " after=" + ((payload(await viaAction("getOpenDocuments")).data?.count) ?? -2));
+
 // ---------------- PowerPoint ----------------
 const pb = await presCount();
 if (pb < 0) {
@@ -88,6 +117,19 @@ if (pb < 0) {
   check("close_presentation(default save:true) on an unsaved deck returns", ok(p2), pt2.replace(/\s+/g, " ").slice(0, 110));
   check("it warns that nothing was written to disk", pt2.includes("never saved"), pt2.replace(/\s+/g, " ").slice(0, 110));
   check("no presentation leaked", (await presCount()) === pb, "presentations=" + (await presCount()));
+
+  // A4：演示文稿侧同一条不变量（Close() 不收 save 参数，所以这里靠 Saved 标记与"拒绝关闭"实现）。
+  await call("wps_ppt_create_presentation", {});
+  check("A4: deck seeded with a slide", ok(await call("wps_ppt_add_slide", { layout: "blank" })), "");
+  const pDirty = String(com("$w=[Runtime.InteropServices.Marshal]::GetActiveObject('Kwpp.Application'); [string]$w.ActivePresentation.Saved")).trim();
+  // WPS 演示的 Saved 用 msoFalse 数值（"0"）而不是 "False" —— 两种都算脏。
+  check("A4: premise - the deck really is dirty", pDirty === "False" || pDirty === "0", "Saved=" + JSON.stringify(pDirty));
+  const p3 = await call("wps_ppt_close_presentation", {});
+  const pt3 = text(p3);
+  check("A4: save:true close of a dirty never-saved deck is refused", !ok(p3), pt3.replace(/\s+/g, " ").slice(0, 120));
+  check("A4: the deck is still open (nothing discarded)", (await presCount()) === pb + 1, "presentations=" + (await presCount()));
+  check("A4: save:false closes the deck explicitly", ok(await call("wps_ppt_close_presentation", { save: false })), "");
+  check("A4: presentation cleanup left nothing behind", (await presCount()) === pb, "presentations=" + (await presCount()));
 }
 
 // ---- 独立 oracle：裸 COM 核对关完之后两个应用实例里真的是空的 ----

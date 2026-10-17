@@ -206,12 +206,64 @@ function Save-WpsOwnedApps {
         if ($kinds.Count -eq 0) { return }
         $clientPid = 0
         try { if ($env:WPS_OFFICE_CLIENT_PID) { $clientPid = [int]$env:WPS_OFFICE_CLIENT_PID } } catch { $clientPid = 0 }
+        # A4（改进指南 §9 P0）：只记「应用类别」不足以在回收时认出**是哪一个实例** —— 用户在我们
+        # 被强杀之后自己打开的那个 wps/et/wpp 会被当成我们的遗留实例退掉。现在连同实例身份一起记：
+        # 类名 + 安装目录 + 窗口句柄（读得到时）+ 当时打开的文件清单。
+        $identities = [ordered]@{}
+        foreach ($kind in $kinds) {
+            $identity = $null
+            try {
+                $cached = Get-Variable -Name ('WpsAppCache_' + $kind) -Scope Script -ErrorAction SilentlyContinue
+                if ($null -ne $cached -and $null -ne $cached.Value) { $identity = Get-WpsAppIdentity $cached.Value $kind }
+            } catch { $identity = $null }
+            $identities[$kind] = $identity
+        }
         $path = Get-WpsOwnedAppsPath
         $dir = Split-Path -Parent $path
         if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-        $rec = [ordered]@{ hostPid = $PID; clientPid = $clientPid; apps = $kinds; updatedUtc = (Get-Date).ToUniversalTime().ToString('o') }
-        [System.IO.File]::WriteAllText($path, ($rec | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+        $rec = [ordered]@{ version = 2; hostPid = $PID; clientPid = $clientPid; apps = $kinds; identities = $identities; updatedUtc = (Get-Date).ToUniversalTime().ToString('o') }
+        [System.IO.File]::WriteAllText($path, ($rec | ConvertTo-Json -Compress -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
     } catch { }
+}
+
+function Get-WpsAppIdentity($app, [string]$kind) {
+    # 回收时要回答的核心问题：「现在从 ROT 里拿到的这个实例，是不是我们当初启动的那一个？」
+    # 读不出来就返回 $null（= 身份未知），调用方据此**不回收**（宁可留下，也不误关用户的窗口）。
+    if ($null -eq $app) { return $null }
+    $name = ''
+    $install = ''
+    $hwnd = ''
+    try { $name = [string]$app.Name } catch { $name = '' }
+    try { $install = [string]$app.Path } catch { $install = '' }
+    try { $hwnd = [string]$app.Hwnd } catch { $hwnd = '' }
+    if (-not $hwnd) { try { $hwnd = [string]$app.ActiveWindow.Hwnd } catch { $hwnd = '' } }
+    $docs = @()
+    try {
+        if ($kind -eq 'excel') { for ($i = 1; $i -le $app.Workbooks.Count; $i++) { $docs += [string]$app.Workbooks.Item($i).FullName } }
+        elseif ($kind -eq 'word') { for ($i = 1; $i -le $app.Documents.Count; $i++) { $docs += [string]$app.Documents.Item($i).FullName } }
+        else { for ($i = 1; $i -le $app.Presentations.Count; $i++) { $docs += [string]$app.Presentations.Item($i).FullName } }
+    } catch { return $null }
+    return @{ kind = $kind; name = $name; path = $install; hwnd = $hwnd; docs = @($docs | Sort-Object) }
+}
+
+function Test-WpsAppIdentityMatches($recorded, $actual) {
+    # $true = 可以按「这就是我们启动的那个实例」处理。
+    #   * 旧记录（没有 identities 块）→ 不做身份判定，保持修复前的行为（向后兼容）。
+    #   * 记录里有身份、现在读不出来 → 回绝（安全方向）。
+    #   * 类名 / 安装目录不符 → 回绝。
+    #   * 两边都读得到窗口句柄、且不相等 → 回绝。
+    #   * 当前实例里有**记录时不存在**的文件 → 回绝（用户后来打开的东西在里面）。
+    if ($null -eq $recorded) { return $true }
+    if ($null -eq $actual) { return $false }
+    if ([string]$recorded.name -ne [string]$actual.name) { return $false }
+    if ([string]$recorded.path -ne [string]$actual.path) { return $false }
+    $rh = [string]$recorded.hwnd
+    $ah = [string]$actual.hwnd
+    if ($rh -and $ah -and $rh -ne $ah) { return $false }
+    $known = @{}
+    foreach ($d in @($recorded.docs)) { $known[[string]$d] = $true }
+    foreach ($d in @($actual.docs)) { if (-not $known.ContainsKey([string]$d)) { return $false } }
+    return $true
 }
 
 function Clear-WpsOwnedApps {
@@ -243,7 +295,10 @@ function Invoke-WpsOrphanReclaim {
     $path = Get-WpsOwnedAppsPath
     if (-not (Test-Path $path)) { return $closed }
     $rec = $null
-    try { $rec = (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json) } catch { $rec = $null }
+    # **必须显式 -Encoding UTF8**：记录是我们自己用 UTF8(no BOM) 写出去的，而 PowerShell 5.1 的
+    # Get-Content 默认按 ANSI 解码 —— 中文文件名会变成乱码（实测：「文字文稿2」→「鏂囧瓧鏂囩2」），
+    # 于是身份核对永远不相等、孤儿实例永远回收不掉。scripts/run-tests.ps1 里记录过同一个坑。
+    try { $rec = (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { $rec = $null }
     if ($null -eq $rec) { Clear-WpsOwnedApps; return $closed }
     # Only a provably dead owner is reclaimed: a live host still owns its instances, and a live client
     # may be about to use them. A reused pid only makes us skip, which is the safe direction.
@@ -257,6 +312,12 @@ function Invoke-WpsOrphanReclaim {
         try {
             $app = [System.Runtime.InteropServices.Marshal]::GetActiveObject($progId)
             if ($null -eq $app -or -not (Test-WpsAppUsable $app $k)) { continue }
+            # A4（改进指南 §9 P0）：**先核身份再动手**。ROT 里现在这个实例未必是我们当初启动的那一个：
+            # 用户完全可能在我们被强杀之后自己打开 WPS（单实例应用会复用那个遗留进程），
+            # 这时"按应用类别回收"就会退出用户正在用的窗口。
+            $recorded = $null
+            if ($null -ne $rec.identities) { $recorded = $rec.identities.$k }
+            if (-not (Test-WpsAppIdentityMatches $recorded (Get-WpsAppIdentity $app $k))) { continue }
             if (Test-WpsAppHasUnsavedWork $app $k) { continue }
             $app.Quit()
             $closed += $k
@@ -747,6 +808,21 @@ function Test-WpsHasDiskPath($obj) {
     } catch {
         return $false
     }
+}
+
+function Test-WpsObjectClean($obj) {
+    # $true = 没有未保存的改动（Saved 为真）。读不到就当成「不干净」，走保守分支。
+    if ($null -eq $obj) { return $false }
+    try { return [bool]$obj.Saved } catch { Add-WpsWarning $_.Exception.Message; return $false }
+}
+
+function Format-WpsUnsavedCloseRefusal([string]$kind, [string]$action) {
+    # A4（改进指南 §9 P0）：未落盘 + 有未保存改动 + 要求保存 → **不关闭、不丢弃**。
+    # 修复前的行为是「把 save 降级成 false 照常关闭」，只回一条 warning 且 success=true ——
+    # 调用方只看 success 会以为"保存并关闭"成功了，而内容已经没了。
+    return ($kind + '还没有磁盘路径，而且有未保存的改动，所以没有关闭，内容仍留在 WPS 里。' +
+        '（动作：' + $action + '）下一步：先用 wps_common_save_as 指定输出路径把它落盘，再按需要关闭；' +
+        '确实不要这些改动时才传 save=false 显式关闭。')
 }
 
 function Get-RowRefList($p) {
@@ -2868,8 +2944,12 @@ return }
             }
         }
         $sheets = @(); for ($i = 1; $i -le $wb.Sheets.Count; $i++) { $sheets += $wb.Sheets.Item($i).Name }
+        # A4（改进指南 §9 P1）：目标身份要能**读回来**。名称会重复，路径才是能对账的身份；
+        # 写操作前后各读一次这里，就能证明"落在同一本工作簿上"。
+        $wbPath = ''
+        try { $wbPath = [string]$wb.FullName } catch { $wbPath = '' }
         Output-Json @{ success = $true; data = @{
-            workbookName = $wb.Name; currentSheet = $sheet.Name; allSheets = $sheets
+            workbookName = $wb.Name; workbookPath = $wbPath; currentSheet = $sheet.Name; allSheets = $sheets
             selectedCell = $excel.Selection.Address(); headers = $headers; usedRange = $usedRange.Address(); usedRangeAddress = $usedRange.Address()
         }}
     }
@@ -5589,8 +5669,6 @@ return }
         $wb = if ($p.name) { $excel.Workbooks.Item($p.name) } else { $excel.ActiveWorkbook }
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No workbook" }; return }
         $name = $wb.Name
-        $path = ""
-        try { $path = [string]$wb.Path } catch { Add-WpsWarning $_.Exception.Message }
         # Tools spell this parameter "save" while this action used to read only "saveChanges".
         # The mismatch meant save=false was silently ignored and every close asked to save.
         $saveWanted = $true
@@ -5599,9 +5677,13 @@ return }
         $saveChanges = $saveWanted
         $warning = $null
         $saved = $false
-        if ($saveWanted -and $path -eq "") {
+        if ($saveWanted -and -not (Test-WpsHasDiskPath $wb)) {
             # Close(save) on a workbook that has no file yet opens a modal Save As dialog and
             # blocks the COM call until something answers it. Never allow that.
+            # A4（改进指南 §9 P0）：**有未保存改动时不再降级关闭** —— 那会把内容静默丢掉，
+            # 调用方还拿到 success=true。改为保留打开 + 明确错误。
+            if (-not (Test-WpsObjectClean $wb)) {
+                Output-Json @{ success = $false; error = (Format-WpsUnsavedCloseRefusal '这个工作簿' 'closeWorkbook') }; return }
             $saveChanges = $false
             $warning = "workbook was never saved to disk; closed without saving (use save_as first if you need it on disk)"
         }
@@ -5735,8 +5817,6 @@ return }
         $docItem = if ($p.name) { $word.Documents.Item($p.name) } else { $word.ActiveDocument }
         if ($null -eq $docItem) { Output-Json @{ success = $false; error = "No document" }; return }
         $name = $docItem.Name
-        $path = ""
-        try { $path = [string]$docItem.Path } catch { Add-WpsWarning $_.Exception.Message }
         # Same "save" vs "saveChanges" mismatch as closeWorkbook.
         $saveWanted = $true
         if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
@@ -5744,7 +5824,10 @@ return }
         $saveChanges = $saveWanted
         $warning = $null
         $saved = $false
-        if ($saveWanted -and $path -eq "") {
+        if ($saveWanted -and -not (Test-WpsHasDiskPath $docItem)) {
+            # A4（改进指南 §9 P0）：有未保存改动时不降级关闭，保留打开并明确报错。
+            if (-not (Test-WpsObjectClean $docItem)) {
+                Output-Json @{ success = $false; error = (Format-WpsUnsavedCloseRefusal '这个文档' 'closeDocument') }; return }
             $saveChanges = $false
             $warning = "document was never saved to disk; closed without saving (use save_as first if you need it on disk)"
         }
@@ -6710,6 +6793,9 @@ return }
         $saveWanted = $true
         if ($null -ne $p.save) { $saveWanted = [bool]$p.save }
         elseif ($null -ne $p.saveChanges) { $saveWanted = [bool]$p.saveChanges }
+        # A4（改进指南 §9 P0）：未落盘 + 有未保存改动 + 要求保存 → 保留打开 + 明确错误。
+        if ($saveWanted -and -not $onDisk -and -not (Test-WpsObjectClean $pres)) {
+            Output-Json @{ success = $false; error = (Format-WpsUnsavedCloseRefusal '这个演示文稿' 'closePresentation') }; return }
         $saved = $false
         $warning = $null
         # Save 与 Close 都会弹框（只读 / 未落盘 / 被占用），统一关掉并在 finally 还原（FIXES 70）；
@@ -6847,6 +6933,16 @@ return }
         $index = if ($p.index) { $p.index } else { $p.slideIndex }
         if (-not $index) { $index = 1 }
         $slide = $pres.Slides.Item($index)
+        # A4（改进指南 §9 P1 + §7.2）：目标身份与**画布尺寸**必须能读回来。
+        # 形状几何走 COM 的磅；而 setSlideSize / exportSlideAsImage 收的是像素，两边差 0.75 倍，
+        # 不知道画布就直接套固定坐标必然排错。这里同时给磅与像素两种读数。
+        $canvasWidth = $null
+        $canvasHeight = $null
+        try { $canvasWidth = [double]$pres.PageSetup.SlideWidth; $canvasHeight = [double]$pres.PageSetup.SlideHeight } catch { Add-WpsWarning $_.Exception.Message }
+        $canvasWidthPx = $null
+        $canvasHeightPx = $null
+        if ($null -ne $canvasWidth) { $canvasWidthPx = [math]::Round($canvasWidth / 0.75, 2) }
+        if ($null -ne $canvasHeight) { $canvasHeightPx = [math]::Round($canvasHeight / 0.75, 2) }
         $shapes = @()
         for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
             $shape = $slide.Shapes.Item($i)
@@ -6873,7 +6969,7 @@ return }
             if ($shape.HasTextFrame) { $hasTxt = $true }
             $shapes += @{ name = $shape.Name; type = "$($shape.Type)"; hasText = $hasTxt; text = $txt }
         }
-        Output-Json @{ success = $true; data = @{ index = $index; slideIndex = $index; shapeCount = $slide.Shapes.Count; shapesCount = $slide.Shapes.Count; shapes = $shapes; layout = "$($slide.Layout)" } }
+        Output-Json @{ success = $true; data = @{ index = $index; slideIndex = $index; shapeCount = $slide.Shapes.Count; shapesCount = $slide.Shapes.Count; shapes = $shapes; layout = "$($slide.Layout)"; presentationName = $pres.Name; presentationPath = $(try { [string]$pres.FullName } catch { '' }); slideWidth = $canvasWidth; slideHeight = $canvasHeight; slideWidthPx = $canvasWidthPx; slideHeightPx = $canvasHeightPx } }
     }
 
     "switchSlide" {

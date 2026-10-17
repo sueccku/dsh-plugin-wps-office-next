@@ -92,6 +92,20 @@ await b.stop();
 // A refused host must not have disturbed the lease holder.
 check('the lease holder is unaffected by the refusal', a.exited === null, 'exited=' + a.exited);
 
+// ---------------- A4: 心跳停更不能把**仍存活**的宿主判成过期 --------------------------------
+// 改进指南 §9 P0：旧规则把「心跳超过 120s」当成过期依据，于是用户闲置两分钟之后新开一个会话，
+// 就会杀掉一个完全健康的宿主（而且在新会话里看起来像"顺利拿到了租约"，问题被藏起来）。
+// 这里把租约的 updatedUtc 改老一小时，hostPid / startedUtc / clientPid 保持真实不变：
+// 第二个宿主必须**拒绝**，宿主 a 必须继续活着；心跳只能出现在拒绝文案里当诊断。
+writeFileSync(STATE_FILE, JSON.stringify({ ...lease, updatedUtc: new Date(Date.now() - 3600 * 1000).toISOString() }), 'utf8');
+const s = startHost(process.pid);
+const readyS = await s.ready();
+check('A4: a stale heartbeat does not make a live owner stale', !!readyS && readyS.ready === false, JSON.stringify(readyS || {}).slice(0, 140));
+check('A4: the refusal reports the heartbeat as a diagnostic', !!readyS && /心跳/.test(String(readyS.error)), readyS ? String(readyS.error).slice(-60) : 'no frame');
+check('A4: the live host with a stale heartbeat was NOT killed', a.exited === null, 'exited=' + a.exited);
+await s.stop();
+writeFileSync(STATE_FILE, JSON.stringify(lease), 'utf8');   // 还原租约，后续断言照旧
+
 // ---------------- lease is released on exit ----------------
 await a.stop();
 const aExit = await waitExit(a);

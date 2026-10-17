@@ -46,13 +46,16 @@ function Send-Response($id, $ok, $result, $ms) {
 #
 # The mutex alone is not enough: a host killed while blocked inside COM lingers just long enough
 # for the next one to arrive, and a host whose MCP server is gone would hold the lease forever.
-# So the lease carries a state file (owner pid, owning client pid, heartbeat) and the newcomer
-# takes over only when the recorded owner is provably dead: its process is gone, its client is
-# gone, or its heartbeat stopped moving.
+# So the lease carries a state file (owner pid + its start time, owning client pid, heartbeat) and
+# the newcomer takes over only when the recorded owner is **provably dead**: its process is gone
+# (identity checked against startedUtc, so a recycled pid cannot fake liveness), or its client is
+# gone, or the lease file is unreadable.
+#
+# A4（改进指南 §9 P0）：心跳**不再**是接管判据。以前"心跳超过 120s"会被当成过期，于是任何闲置
+# 两分钟以上的健康宿主都会被新会话杀掉 —— 而现在心跳只出现在拒绝文案里（诊断用）。
 $script:MutexName = 'Local\dsh-plugin-wps-office-next-com-host'
 $script:StateDir = Join-Path $env:USERPROFILE '.wps-office-mcp'
 $script:StateFile = Join-Path $script:StateDir 'com-host.json'
-$script:StaleHeartbeatSeconds = 120
 $script:StartedUtc = (Get-Date).ToUniversalTime().ToString('o')
 $script:BusySinceUtc = ''
 $script:ClientPid = 0
@@ -82,7 +85,9 @@ function Update-HostState([string]$phase, [string]$action = '', [int]$ms = 0) {
 function Read-HostState {
     try {
         if (-not (Test-Path $script:StateFile)) { return $null }
-        return (Get-Content -LiteralPath $script:StateFile -Raw | ConvertFrom-Json)
+        # 显式 UTF8：状态文件由本文件用 UTF8(no BOM) 写出，而 PS 5.1 的 Get-Content 默认按 ANSI 解码，
+        # 一旦有中文进了状态（例如路径），读回来就是乱码，租约判断会基于坏数据做决定。
+        return (Get-Content -LiteralPath $script:StateFile -Raw -Encoding UTF8 | ConvertFrom-Json)
     } catch { return $null }
 }
 
@@ -114,10 +119,23 @@ function Get-StaleOwnerReason {
     if ($null -eq $state) { return 'the lease file is missing or unreadable' }
     if (-not (Test-OwnerAlive $state.hostPid $state.startedUtc)) { return 'the owning host process is gone (or its pid was reused by an unrelated process)' }
     if ([int]$state.clientPid -gt 0 -and -not (Test-ProcessAlive $state.clientPid)) { return 'the DSH/MCP client that owned it is gone' }
-    $age = 99999
-    try { $age = ((Get-Date).ToUniversalTime() - ([datetime]::Parse([string]$state.updatedUtc)).ToUniversalTime()).TotalSeconds } catch { $age = 99999 }
-    if ($age -gt $script:StaleHeartbeatSeconds) { return ('its heartbeat stopped ' + [int]$age + 's ago') }
+    # A4（改进指南 §9 P0）：**身份核对通过就不再判过期**。
+    # 旧行为：心跳超过 $script:StaleHeartbeatSeconds 就把宿主判成过期并杀掉 —— 但心跳只表示
+    # "最近有没有业务动作"，空闲的宿主本来就该没有心跳。结果是用户闲置两分钟后新开一个会话，
+    # 就会杀掉一个完全健康的宿主（还会在新会话里看起来像"顺利拿到租约"，把问题藏起来）。
+    # 现在心跳只作为**诊断信息**出现在拒绝文案里；接管仍然只依据"能证明原宿主/原客户端已死"。
+    # 宿主进程真的卡死时，拒绝文案会告诉用户租约文件的位置，可以手工删除（见下面的提示）。
     return $null
+}
+
+function Get-HostStateHeartbeatNote {
+    # 只用于拒绝文案，不参与任何判定。
+    $state = Read-HostState
+    if ($null -eq $state) { return '' }
+    $age = $null
+    try { $age = [int]((Get-Date).ToUniversalTime() - ([datetime]::Parse([string]$state.updatedUtc)).ToUniversalTime()).TotalSeconds } catch { $age = $null }
+    if ($null -eq $age) { return '' }
+    return '，心跳 ' + $age + 's 前'
 }
 
 function Acquire-HostMutex {
@@ -146,7 +164,7 @@ $script:HostMutex = Acquire-HostMutex
 if ($null -eq $script:HostMutex) {
     $state = Read-HostState
     $holder = ''
-    if ($null -ne $state -and $state.hostPid) { $holder = '（占用者 hostPid=' + [string]$state.hostPid + '，clientPid=' + [string]$state.clientPid + '，最近动作：' + [string]$state.lastAction + '）' }
+    if ($null -ne $state -and $state.hostPid) { $holder = '（占用者 hostPid=' + [string]$state.hostPid + '，clientPid=' + [string]$state.clientPid + '，最近动作：' + [string]$state.lastAction + (Get-HostStateHeartbeatNote) + '）' }
     $message = '检测到另一个 DSH 会话或自动化程序正在控制 WPS：本插件同一时间只允许一个宿主，' +
         '以免两个会话交叉操作同一个 WPS 实例（表现为「莫名其妙卡住」）。' +
         '请先关闭那个会话或结束它的 WPS 操作，然后重试。' + $holder +
@@ -269,6 +287,10 @@ while ($true) {
     $sw.Stop()
     $script:BusySinceUtc = ''
     Update-HostState 'idle' $action ([int]$sw.ElapsedMilliseconds)
+    # A4（改进指南 §9 P0）：每次动作后刷新「我们启动过的实例」记录。回收时的身份核对要拿最近状态
+    # （打开的文件清单、窗口句柄），不能用"实例刚建好那一刻"的旧快照 —— 否则我们自己刚添加的文档
+    # 都会让身份核对失败，把该回收的实例永远留下。写文件是 best effort，绝不能影响动作结果。
+    try { $null = Save-WpsOwnedApps } catch { }
     $result = $script:WpsResult
     if ($null -eq $result) { $result = @{ success = $false; error = ('action produced no result: ' + $action) } }
     $ok = $true

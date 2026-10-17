@@ -46,8 +46,15 @@ check('closing a saved workbook reports 已保存', !closedSaved.isErr && /已�
 await call('wps_excel_create_workbook', {});
 await call('wps_excel_write_range', { range: 'A1', data: [[2]] });
 const closedNever = await call('wps_excel_close_workbook', { save: true });
-check('a never-saved workbook is not reported as saved', !closedNever.isErr && /未保存/.test(closedNever.text), closedNever.text.slice(0, 90));
-check('and the drop is explained as a warning', /注意/.test(closedNever.text) && /never saved/.test(closedNever.text), closedNever.text.slice(0, 140));
+// A4（改进指南 §9 P0）：这条**改判**了。以前是"降级成不保存关闭 + warning + success=true"，
+// 结果是内容被静默丢弃而调用方以为成功。现在未落盘且有未保存改动时**不关闭、报错**。
+check('a never-saved workbook is not reported as saved', closedNever.isErr && /未保存的改动/.test(closedNever.text), closedNever.text.slice(0, 120));
+check('the refusal names the missing path and the next step', /磁盘路径/.test(closedNever.text) && /save_as/.test(closedNever.text), closedNever.text.slice(0, 200));
+// 内容真的还在（不是"报了错但顺手关了"）。
+const stillThere = await call('wps_excel_read_range', { range: 'A1' });
+check('the unsaved content survived the refusal', !stillThere.isErr && /2/.test(stillThere.text), stillThere.text.slice(0, 90));
+const cleanedUp = await call('wps_excel_close_workbook', { save: false });
+check('save=false still closes it explicitly', !cleanedUp.isErr, cleanedUp.text.slice(0, 120));
 
 // ---------- protect / unprotect read back ------------------------------------------------------------
 await call('wps_excel_create_workbook', {});
