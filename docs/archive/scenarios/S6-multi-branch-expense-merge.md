@@ -2,7 +2,7 @@
 
 > 面向 A3「产品扩张」唤醒规则的一份**真实用户场景卡**：谁 × 手上什么文件 × 要什么产出 × 现在手工怎么做。
 > 用途：拿它当测试输入，看插件在一条**同时打开 6 个工作簿**的真实任务链上能不能走通、哪里会改错文件。
-> 相关：[HANDOFF.md §3.1](../HANDOFF.md)（A3 唤醒规则）、[known-defects.md §C7](../../baseline/known-defects.md)（多工作簿目标歧义残余）、
+> 相关：[HANDOFF.md §3.1](../../HANDOFF.md)（A3 唤醒规则）、[known-defects.md §C7](../../../baseline/known-defects.md)（多工作簿目标歧义残余）、
 > [S1](S1-excel-monthly-report.md)（Excel 单簿深挖）、[S4](S4-cross-app-quarterly-report.md)（跨应用搬运）、[S5](S5-word-batch-notices.md)（批量产出）。
 
 | 项 | 内容 |
@@ -166,5 +166,5 @@
 5. **attempt 2（有效）**：5 分 40 秒、130 次调用（插件 107）、泄漏门禁 0 命中 → **28/28 硬判据全过、8/9 软判据**
    （唯一未过：PDF 10 页，prompt 未限定"只导汇总页"）；
 6. **查出并修掉 1 个 P2**：sheet 名字不存在时报裸 COM `Invalid index` → 中文诊断（哪本工作簿/缺哪张表/现有哪几张）
-   + 回归 `test/excel-sheet-resolve.test.mjs`（修复前 7/15 红 → 修复后 15/15 绿）+ 静态门禁全绿 → [FIXES 111](../FIXES.md)；
+   + 回归 `test/excel-sheet-resolve.test.mjs`（修复前 7/15 红 → 修复后 15/15 绿）+ 静态门禁全绿 → [FIXES 111](../../FIXES.md)；
 7. 完整读数、证据清单、决策与未决事项见 FIXES 111/112（走查报告已随 2026-10-18 文档清理删除；D4 已实施：广告面 86 → 95；D5「PDF 页数口径」**已定：暂不动、后续观察**，观察判据原写在报告 §6 D5）。

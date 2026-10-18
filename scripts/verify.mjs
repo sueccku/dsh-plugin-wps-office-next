@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 const argv = process.argv.slice(2);
 const staticOnly = argv.includes("--static");
 const entry = argv.find((arg) => !arg.startsWith("--")) || "mcp/dist/index.js";
-// D1 (locked 2026-09-13, docs/tool-roadmap.md): the advertised surface is allowed 100 tools / 60,000
+// D1 (locked 2026-09-13; source of record now FIXES 68): the advertised surface is allowed 100 tools / 60,000
 // bytes. It was 45 / 25,000, then 60 / 32,000, then 70 / 40,000 (FIXES 42); v0.4.0 ended at
 // 69 / 37,573 - one tool slot and 2,427 bytes short of the ceiling - and the v0.5.0 pilot work needs
 // room, so the user raised it again (FIXES 68). The number moves with the decision, and this gate is

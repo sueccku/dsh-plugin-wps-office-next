@@ -2,7 +2,7 @@
 
 > 面向 A3「产品扩张」唤醒规则的一份**真实用户场景卡**：谁 × 手上什么文件 × 要什么产出 × 现在手工怎么做。
 > 用途：拿它当测试输入，看插件在一条**批量文档生产**的真实任务链上能不能走通、哪里会漏人、哪里会假成功。
-> 相关：[HANDOFF.md §3.1](../HANDOFF.md)（A3 唤醒规则）、[S1 场景卡](S1-excel-monthly-report.md)（Excel 域）、
+> 相关：[HANDOFF.md §3.1](../../HANDOFF.md)（A3 唤醒规则）、[S1 场景卡](S1-excel-monthly-report.md)（Excel 域）、
 > [S2 场景卡](S2-word-report-finalization.md)（Word 单文档深度）、[S3 场景卡](S3-ppt-solution-deck-finalization.md)（PPT 域）、
 > [S4 场景卡](S4-cross-app-quarterly-report.md)（跨三件套数据搬运）。
 >
@@ -286,8 +286,8 @@ PDF 只读 `%PDF-` 文件头 + 页数 + 首页文字粗比），**不读插件�
    （含两个王磊、缺基数留空、缺部门空着）；合订版 24 块 / 23 个分页符 / 顺序正确；
 8. 真机走查 attempt 1：`run/run.ps1`（`wpse2e` profile、`link:D:/dsh/a`、task 走 stdin，
    先 strip `WPS_OFFICE_MCP_ENTRY` / `WPS_OFFICE_HOST_SCRIPT`，FIXES 107），prompt = §2 原文（+ `splitDir` 提示）；
-9. 独立核验（`verify.py --dir input/产出`）+ 交叉验证插件自述 → 写走查报告 `docs/scenarios/S5-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
-10. 结果先给用户看再决定是否提交（当时定的是「先不提交」；后续记录已随 v0.8.0 入库）；遵守 [AGENTS.md](../../AGENTS.md)：**不主动跑真机整轮**。
+9. 独立核验（`verify.py --dir input/产出`）+ 交叉验证插件自述 → 写走查报告 `docs/archive/scenarios/S5-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
+10. 结果先给用户看再决定是否提交（当时定的是「先不提交」；后续记录已随 v0.8.0 入库）；遵守 [AGENTS.md](../../../AGENTS.md)：**不主动跑真机整轮**。
 
 ### 成本预估（实际读数见报告）
 

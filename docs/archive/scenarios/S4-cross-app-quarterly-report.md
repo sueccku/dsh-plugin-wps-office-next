@@ -2,7 +2,7 @@
 
 > 面向 A3「产品扩张」唤醒规则的一份**真实用户场景卡**：谁 × 手上什么文件 × 要什么产出 × 现在手工怎么做。
 > 用途：拿它当测试输入，看插件在一条**跨应用**的真实任务链上能不能走通、哪里会假成功。
-> 相关：[HANDOFF.md §3.1](../HANDOFF.md)（A3 唤醒规则）、[tool-roadmap.md §0](../tool-roadmap.md)（类别 C：跨应用不进桥、走技能「组合配方」）、
+> 相关：[HANDOFF.md §3.1](../../HANDOFF.md)（A3 唤醒规则）、[HANDOFF.md §8.5](../../HANDOFF.md)（类别 C：跨应用不进桥、走技能「组合配方」）、
 > [S1 场景卡](S1-excel-monthly-report.md)（Excel 域）、[S2 场景卡](S2-word-report-finalization.md)（Word 域）、[S3 场景卡](S3-ppt-solution-deck-finalization.md)（PPT 域）。
 
 | 项 | 内容 |
@@ -255,7 +255,7 @@ python-docx + 直读 `document.xml` / `header*.xml` / `footer*.xml` / `media` �
 4. `verify.py` 自检：**known-good 全绿、broken 精确变红**（这一步不过就不进真机）；
 5. 真机：沿用 S3 的 `run/run.ps1`（`wpse2e` profile、`link:D:/dsh/a`、task 走 stdin、
    先 strip `WPS_OFFICE_MCP_ENTRY` / `WPS_OFFICE_HOST_SCRIPT`，FIXES 107），prompt 就是 §2 原文，WPS 由测试侧自动拉起；
-6. 独立核验 + 交叉验证插件自述，写走查报告 `docs/scenarios/S4-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
+6. 独立核验 + 交叉验证插件自述，写走查报告 `docs/archive/scenarios/S4-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
 7. 发现缺陷**能修就修**（改 `mcp/` 代码并补回归，回归必须在修复前先红）；
 8. 结果先给用户看再决定是否提交（当时定的是「先不提交」；后续记录已随 v0.8.0 入库）；
-9. 遵守 [AGENTS.md](../../AGENTS.md)：**不主动跑真机整轮**；本场景走查即"按需执行"的那一次，**开跑需用户明确同意**。
+9. 遵守 [AGENTS.md](../../../AGENTS.md)：**不主动跑真机整轮**；本场景走查即"按需执行"的那一次，**开跑需用户明确同意**。

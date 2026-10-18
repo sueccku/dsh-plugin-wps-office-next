@@ -2,7 +2,7 @@
 
 > 面向 A3「产品扩张」唤醒规则的一份**真实用户场景卡**：谁 × 手上什么文件 × 要什么产出 × 现在手工怎么做。
 > 用途：拿它当测试输入，看插件在一条完整真实任务链上能不能走通、哪里会假成功。
-> 相关：[HANDOFF.md §3.1](../HANDOFF.md)（A3 唤醒规则）、[tool-roadmap.md §0](../tool-roadmap.md)（类别 B/C 边界）、[S1 场景卡](S1-excel-monthly-report.md)（Excel 域）、[S2 场景卡](S2-word-report-finalization.md)（Word 域）。
+> 相关：[HANDOFF.md §3.1](../../HANDOFF.md)（A3 唤醒规则）、[HANDOFF.md §8.5](../../HANDOFF.md)（类别 B/C 边界）、[S1 场景卡](S1-excel-monthly-report.md)（Excel 域）、[S2 场景卡](S2-word-report-finalization.md)（Word 域）。
 
 | 项 | 内容 |
 | --- | --- |
@@ -10,8 +10,8 @@
 | 域 | 演示（PPT / WPS 演示） |
 | 建立日期 | 2026-10-11 |
 | 状态 | **已真机走查（2026-10-11）**：attempt 1 = 33 项硬判据 + 5 项软判据**全过**；过程中发现 **1 个 P0 级插件缺陷（已修 + 已加真机回归 + 已加静态门禁）**、2 处核验器自身缺陷（已修，含 1 次对模型的假指控）；attempt 2（修复后重跑）30/33（页序互换，归因模型）→ 走查报告已随 2026-10-18 文档清理删除 |
-| 选定依据 | S1 覆盖 Excel、S2 覆盖 Word，**演示域此前没有任何场景级真机证据**：77 个工具里 63 个只能经 `wps_call` 触达、广告面仅 14 个（[tool-coverage.md](../tool-coverage.md)），动画 / 切换 / 备注 / 版式占位符 / 表格 / 母版这些长尾能力从未进过一条真实任务链 |
-| 有意排除 | 图表（`insert_ppt_chart` 只能插空图表、**不能注入数据**，见 [wps-ppt/SKILL.md §已知坑](../../skills/wps-ppt/SKILL.md)）→ 放进场景会变成不公平判据，故不列为要求 |
+| 选定依据 | S1 覆盖 Excel、S2 覆盖 Word，**演示域此前没有任何场景级真机证据**：77 个工具里 63 个只能经 `wps_call` 触达、广告面仅 14 个（[tool-coverage.md](../../tool-coverage.md)），动画 / 切换 / 备注 / 版式占位符 / 表格 / 母版这些长尾能力从未进过一条真实任务链 |
+| 有意排除 | 图表（`insert_ppt_chart` 只能插空图表、**不能注入数据**，见 [wps-ppt/SKILL.md §已知坑](../../../skills/wps-ppt/SKILL.md)）→ 放进场景会变成不公平判据，故不列为要求 |
 
 ---
 
@@ -96,7 +96,7 @@ fixture 由 `test/.artifacts/scenario-s3/tools/make_fixture.py` 生成（**独�
 | 6 | 备注缺失 | 第 5、7、8、9 页没有备注 | 要新建 |
 | 7 | 页脚是上期的「南方水泥项目组」，**幻灯片编号开关关闭** | 2 项 | 页码没开是 PPT 高频漏项 |
 | 8 | 母版/切换：全稿无切换效果、无动画 | — | 定稿要统一过渡 |
-| 9 | 第 5 页是**空白版式** | 1 页 | `set_slide_title` 在空白页上会明确报错（[SKILL §版式与占位符](../../skills/wps-ppt/SKILL.md)），模型必须自己处置 |
+| 9 | 第 5 页是**空白版式** | 1 页 | `set_slide_title` 在空白页上会明确报错（[SKILL §版式与占位符](../../../skills/wps-ppt/SKILL.md)），模型必须自己处置 |
 
 真值（`expected.json`）：页数 10、逐页关键词序列（主标题/目录/需求理解/方案总览/实施计划/报价/客户案例/团队/服务承诺/谢谢）、
 封面主标题与副标题原文、方案总览表 5×3 全表内容、报价 86.5 万 / 45 人天、「南方水泥」= 1（仅第 7 页）、
@@ -273,7 +273,7 @@ $py = C:\Users\qwer\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\py
 2. `make_fixture.py` 生成脏初稿 + 2 个素材 + `expected.json`，`make_known_good.py` 造两份对照产物；
 3. `verify.py` 自检：known-good 全绿 / broken 精确变红（**这一步不过就不进真机**）；
 4. 真机：沿用 S2 的 `run/run.ps1`（`wpse2e` profile，`link:D:/dsh/a`，task 走 stdin，先 strip `WPS_OFFICE_MCP_ENTRY/HOST_SCRIPT`，FIXES 107），prompt 就是 §2 原文，WPS 由测试侧自动拉起；
-5. 独立核验 + 交叉验证插件自述，写走查报告 `docs/scenarios/S3-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
+5. 独立核验 + 交叉验证插件自述，写走查报告 `docs/archive/scenarios/S3-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
 6. 发现缺陷按 **D3 = 能修就全修**（改 `mcp/` 代码并补回归，回归必须在修复前先红）；
 7. 结果先给用户看再决定是否提交（D5 当时定的是「先不提交」；后续记录已随 v0.8.0 入库）；
-8. 遵守 [AGENTS.md](../../AGENTS.md)：**不主动跑真机整轮**；本场景走查即为"按需执行"的那一次，开跑需用户明确同意。
+8. 遵守 [AGENTS.md](../../../AGENTS.md)：**不主动跑真机整轮**；本场景走查即为"按需执行"的那一次，开跑需用户明确同意。

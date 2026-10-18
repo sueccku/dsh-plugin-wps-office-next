@@ -30,7 +30,7 @@
 > `pending-bugs.md`、`baseline/upstream-0.1.0/SUMMARY.md`）与一轮工单台账（`bug-hunt-orders.md`），
 > 以及两个无调用方的上游分析脚本与 `baseline/` 下的一次性快照。
 > 其中**有长期价值的内容已迁入本文**（§10 的工具/测试陷阱）。历史修复记录一律在 `FIXES.md`。
-> （注：`docs/tool-roadmap.md` **没有**被删——它仍在库中，并被 README 的文档地图引用。）
+> （2026-10-18 R18：`docs/tool-roadmap.md` 已删除，判据/方法折叠到 §8.5；`docs/scenarios/` 移到 `docs/archive/scenarios/`。）
 
 > **2026-10-18 文档清理（R15，深度清理）**：删掉了 6 类已完成使命的文档与 7 份真机走查报告 ——
 > `PROGRESS.md`（阶段全部完成，现值看 current-numbers）、`skill-audit.md` / `skill-refactor-report.md`
@@ -137,7 +137,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 | # | 待定事项 | 为什么还开着 | 需要谁决定 |
 | --- | --- | --- | --- |
-| **A3**（原 D1-E）<br>**2026-10-07 已决（R12）** | **产品扩张**要不要做、往哪走。<br>（「跨应用工作流」那一半**早已有结论**：**不进桥**，走技能「组合配方」——`tool-roadmap.md` §0 类别 C；A3 实际只覆盖「产品扩张」） | **A（维持现状）**：不做任何开发。**唤醒规则**：给一句话场景 = **谁** × **手上什么文件** × **要什么产出** × **现在手工怎么做**；拿到它就按 B（技能配方体系化）→ C/D 递进评估。**没有这句话就不开工**（没有场景就做等于猜需求） | 用户（给场景即启动）；其余时间不占排期 |
+| **A3**（原 D1-E）<br>**2026-10-07 已决（R12）** | **产品扩张**要不要做、往哪走。<br>（「跨应用工作流」那一半**早已有结论**：**不进桥**，走技能「组合配方」——本文 §8.5 类别 C；A3 实际只覆盖「产品扩张」） | **A（维持现状）**：不做任何开发。**唤醒规则**：给一句话场景 = **谁** × **手上什么文件** × **要什么产出** × **现在手工怎么做**；拿到它就按 B（技能配方体系化）→ C/D 递进评估。**没有这句话就不开工**（没有场景就做等于猜需求） | 用户（给场景即启动）；其余时间不占排期 |
 | **A5**（2026-10-07 新开） | `wps_ppt_set_shape_style` 的 `roundness` 在 WPS 里**设不进去**（裸 COM 读回 `Adjustments.Item(1)` 恒为 1，四种赋值写法都试过） | 待定性：是 **WPS 自动化只读**，还是桥的赋值姿势问题。现在行为**诚实**（如实回 success=false + shortfall），但功能等于不存在 | 需要一次 WPS 侧实验或用户确认「这个能力要不要留」 |
 | ~~**A4**~~ | `param-contract` 那次 2 小时挂起 | ✅ **已定性并已修（FIXES 102）**：不是偶然故障 —— 宿主 `ready` 发在孤儿回收**之前**，而回收里是对遗留 WPS 的**无超时 COM 调用**；客户端 `invoke` 亦无超时。已把 `ready` 挪到回收之后 | 等复现，不需要现在决定 |
 
@@ -241,7 +241,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | **2026-10-07** | **R3** | GitHub 侧是否同步 | **A**：push main + tag `v0.6.3` + Release | 远端已同步 |
 | **2026-10-07** | **R4** | 是否升级本机 `desktop` profile | **B**：不改（用户随后**自行卸载插件**以求开发环境纯净） | 无 |
 | **2026-10-07**<br>文档轮 | **R5** | 文档清理的删除范围 | **A**：删 A 组（4 份已完成文档 + 2 个死脚本 + 249 KB 快照）+ B 组（工单台账，陷阱先并入 §10）；**保留 `PROGRESS.md`**（**2026-10-18 R15 已反转：该文件已删**） | `1c0c983` |
-| **2026-10-07** | **R6** | `tool-roadmap.md` 留不留 | **A**：**保留** + 状态标注（18 处源码注释引用它作排期依据） | `52f6f1a` |
+| **2026-10-07** | **R6** | `tool-roadmap.md` 留不留 | **A**：**保留** + 状态标注（18 处源码注释引用它作排期依据；**2026-10-18 R18 反转：文件已删**，源码注释已改为 FIXES 记账） | `52f6f1a` |
 | **2026-10-07** | **R7** | 清理提交是否 push | **B**：**暂不 push**（本地领先 origin） | 待定 |
 | **2026-10-07** | **R8** | 决策账本是否瘦身 | **A**：删「任务调度/已完成任务」条目，只留仍生效的决策与约束 | `a2e166f` |
 | **2026-10-07** | **R9** | 真机整轮要不要设为发版必跑 | ~~**改为必跑**（原来只是「可选但建议」）：静态门禁抓不到「假成功」类缺陷~~ → **已被 R13 取代（2026-10-10）** | 检查单 §1/§8 → [../AGENTS.md](../AGENTS.md) |
@@ -253,6 +253,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | **2026-10-18** | **R15** | 文档清理范围 | **深度清理**：删除已完成的过程文档（`PROGRESS.md`、`skill-audit.md`、`skill-refactor-report.md`、`work-orders/WO-001`、`com-surface-survey.md`）、7 份真机走查报告与 10 个模板 README；**保留**场景卡、FIXES、HANDOFF、生成物/契约/路线图/发布检查单；HANDOFF 同步删掉历史读数并补 §8.3/§8.4。**部分反转 R5/R10** | 本次提交 |
 | **2026-10-18** | **R16** | 静态门禁怎么维护 | **单一入口 + 按改动类型分层**：命令清单只放 [`scripts/run-gates.mjs`](../scripts/run-gates.mjs)，分 `docs` / `verify`（只读）/ `code` / `bridge` / `package` / `release` 六组；CI 只调 `gates:ci`；文档只写"改什么跑哪组"。同时新增两道静态门禁：Markdown 相对链接检查（lint）、版本号/README 回退 tag 对账（`verify --static`） | [AGENTS.md §3](../AGENTS.md)、README「质量门禁与 CI」 |
 | **2026-10-18** | **R17** | 改代码后能不能跑单个相关回归文件 | **可以**（细化 R13，不改变"整轮按需"）：整轮 / e2e / install 验收仍只在 push 前问、用户说跑才跑；改到某个能力时允许只跑**直接相关的那一个** `test/*.test.mjs`（5–10 秒，先红后绿）；WPS-free 的走 `test:static`。push 前询问改为**先按 diff 给默认建议** | [AGENTS.md §1/§2](../AGENTS.md) |
+| **2026-10-18** | **R18** | 历史文件是否继续保留 | **A+B+C**：冻结按需口径；**删 `tool-roadmap.md`**（独有判据/方法折叠进 §8.5；反转 R6）；**7 份场景卡移到 `docs/archive/scenarios/`**（保留按需参考，不参与门禁） | 本次提交 |
 
 > **编号纪律（2026-10-07 起）**：历史轮用 D1–D23，发布轮又撞了一次（例如历史 D15 = Word `range` 契约，发布轮 D15 = 提交方式）。
 > 从 R 系列起**新决策一律用 `R<n>` 或带日期的编号**，别再往 D 系列里加号。
@@ -350,7 +351,7 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深（4 波）→ P4 PPT 收敛（2 波，88→76）
 → P5 收尾（逃生舱决策、广告面重定、文档重生成）→ **P5-4 发布（v0.2.0，随后 v0.2.1）**
 → **加固第 1 波（S1 + S2，FIXES 52）**。
-详见 [tool-roadmap.md](tool-roadmap.md) 与 FIXES（阶段原始读数随 `PROGRESS.md` 于 2026-10-18 删除）。
+详见 FIXES（阶段原始读数随 `PROGRESS.md` 于 2026-10-18 删除；`tool-roadmap.md` 同日删除，判据见 §8.5）。
 
 ---
 
@@ -431,6 +432,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - **工程侧**：门禁收成单一入口 `npm run gates:{docs,verify,code,bridge,package,release}`（实现在 `scripts/run-gates.mjs`），CI 改调 `npm run gates:ci`；新增两个静态门禁：Markdown 相对链接检查（lint）、版本号/README 回退 tag 对账（`verify --static`，现 23 项）。
 - **文档结构**：FIXES 顶部加生成式索引（`scripts/gen-fixes-index.mjs`，`gates:*` 只读核对）；release-checklist 的历史发布记录拆到 [release-records.md](release-records.md)，§2 的打包读数改由 `verify:package` 打印。
 - **CI 去冗余**：release 组不再重复跑 `gen-skill-tools --check`，也不再跑 `gen-numbers --check` 之后那个空转的 `git diff`。
+- **历史文件整理（R18）**：删掉 `tool-roadmap.md`（判据/方法折叠到 §8.5）；7 份场景卡移到 [docs/archive/scenarios/](../docs/archive/scenarios/)；FIXES / README 的引用同步。
 
 - **Skill**：四个 `SKILL.md` 重写为任务决策指南 + 按需参考；`reference.md` 改为「完整目录 + 任务分组索引」；新增 10 份 `references/` / `recipes/`。门禁：`test/skill-quality.test.mjs`（123 项）、`gen-skill-tools.mjs --check` 进 CI。
 - **批处理**：`stopOnError` + `status/succeeded/failed/stoppedAt` + 逐项 `index`；失败项错误不截断。
@@ -440,6 +442,28 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - **参数面**：嵌套递归校验（FIXES 115）；`set_font.range` 补 `"all"`；`open_workbook` 补 `readOnly`/`updateLinks`；`set_print_area` 补 `sheet`；`save_as` 缺目录的文案改为可直接行动。
 - **评测**：`test/skilleval/` 固定场景脚手架 + 受控故障注入（默认惰性）；整轮 **1753/63 全绿**（2026-10-18）。
 - **发版前**：按 [release-checklist.md](release-checklist.md) 走完整流程；是否跑整轮按 [../AGENTS.md](../AGENTS.md) §2 先问用户。
+
+### 8.5 工具面扩张的判据与方法（原 `tool-roadmap.md` 折叠，2026-10-18）
+
+> 原文件已删除（R18）：规划项全部落地；当初保留它的理由（源码注释引用）已在 2026-10-18 那一轮改成 FIXES 记账。
+> 现值数字看 [current-numbers.md](current-numbers.md)；明确不做的能力见 §3.1 与 [baseline/known-defects.md](../baseline/known-defects.md)。
+
+**判据：一个能力要不要进桥？——「如果我不做，还有谁会做？」**
+
+| 类别 | 说明 | 处置 |
+| --- | --- | --- |
+| A. WPS COM 深水区 | 要读 COM 对象模型 + 实测 WPS 差异（ListObject、Word 表格/修订、WPS 特有坑） | **必做** |
+| B. 不体面但必需的另一半 | 读/删/清、used range、autofit、取消冻结、页眉页脚、文档属性 | **必做** |
+| C. 跨对象工作流/美化 | KPI 卡、时间线、流程图、配色美化 | **不进桥**，放技能「组合配方」 |
+
+**优先级**：Excel 第一 → Word 第二 → PPT 做减法（三阶段均已完成）。
+
+**继续发掘缺口的三条方法**（结果汇进 [tool-coverage.md](tool-coverage.md)）：
+A. 脚本化枚举 COM 类型库成员，与 action 名求差；
+B. 按应用核对官方对象模型清单，补「应有动词」；
+C. 跑真实任务，记录「模型想做但做不到」的每一步。
+
+方法 A/B 只给候选，是否可用必须**逐项实测**；不支持的写进 schema 与文档，不假装支持。
 
 ---
 

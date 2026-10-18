@@ -12,6 +12,9 @@
 >
 > **2026-10-18 文档清理（R15）**：`docs/PROGRESS.md`、`docs/scenarios/S1–S7-真机走查报告.md`、
 > `docs/work-orders/WO-001-word-gaps-from-s4.md` 已删除；下方历史条目里指向它们的链接改为纯文字，结论仍在各自条目里。
+>
+> **2026-10-18 历史文件整理（R18）**：`docs/tool-roadmap.md` 已删除（判据/方法见 `docs/HANDOFF.md` §8.5）；
+> `docs/scenarios/` 移到 `docs/archive/scenarios/`，下方历史条目里的场景卡链接已重指向。
 
 <!-- FIXES-INDEX:BEGIN（由 scripts/gen-fixes-index.mjs 生成，勿手改） -->
 ## 索引（编号 + 标题）
@@ -3144,7 +3147,7 @@ S7 的成品 30/30 硬判据全过，但**不是插件工具做出来的**：模
 
 ## 111. 场景 S6 真机走查：多工作簿合并 28/28 通过；工作表名不存在时报裸 COM `Invalid index`（已修）+ 两条记录
 
-**来源**：场景 S6 真机走查（走查报告已删除；场景卡见 [S6 场景卡](scenarios/S6-multi-branch-expense-merge.md)）。
+**来源**：场景 S6 真机走查（走查报告已删除；场景卡见 [S6 场景卡](archive/scenarios/S6-multi-branch-expense-merge.md)）。
 README 第 73 行承诺的「把这个文件夹里所有 .xlsx 的第一张工作表合并成一张总表」此前**零场景覆盖**，
 而且**没有任何一个场景在"多个工作簿同时打开"的条件下跑过** —— `baseline/known-defects.md` C7 的残余正落在这里
 （`copySheet` 目的工作簿 / `transpose` 落点，FIXES 90 记为 known limitation）。
@@ -3205,7 +3208,7 @@ prompt 只指向运行目录：**27/28**（唯一红是核验器自身对 `datet
 
 ## 110. 场景 S5 真机走查：邮件合并整条链路是假的（P0）+ `fileNameField` 指向不参与替换的列时被无视（P1）
 
-**来源**：场景 S5 真机走查（走查报告已删除；场景卡见 [S5 场景卡](scenarios/S5-word-batch-notices.md)）。
+**来源**：场景 S5 真机走查（走查报告已删除；场景卡见 [S5 场景卡](archive/scenarios/S5-word-batch-notices.md)）。
 README 头号卖点「拿一张 CSV 表，一次生成几十份文档，母版不动」此前**只有 3 条断言、且只查工具自述文本**，没有任何场景压过。
 
 ### P0 · `wps_word_mail_merge`：没有替换任何数据，还破坏了母版正文
@@ -3313,7 +3316,7 @@ S4 的 D7 升硬、S2 的 H3 结案**。四条能力先用裸 COM 探针实测�
 
 ## 108. 场景 S2 真机走查：Word 段落的**字符缩进**与**行距倍数**两个单位缺陷（都已修）
 
-**来源**：用户选定场景卡 `docs/scenarios/S2-word-report-finalization.md`（Word 单文档深度：《项目验收报告》定稿）后跑真机走查。
+**来源**：用户选定场景卡 `docs/archive/scenarios/S2-word-report-finalization.md`（Word 单文档深度：《项目验收报告》定稿）后跑真机走查。
 完整证据、逐条判据与两轮读数原在 `docs/scenarios/S2-真机走查报告.md`（已随 2026-10-18 文档清理删除）。
 两处都是「**回 success 但落盘的不是要求的东西**」，且**两轮真机的模型都自己撞上并绕开了**（所以产物最终正确 —— 属隐性错误）。
 

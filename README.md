@@ -425,7 +425,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口、**门禁入口 un-gates.mjs** |
 | test/ | 回归测试文件（多数需要本机 WPS；**文件数以 [docs/current-numbers.md](docs/current-numbers.md) 为准**）；整轮 `scripts/run-tests.ps1` **按需跑**（见 AGENTS.md），收尾自动回收无头 WPS 孤儿并写出 `test/summary.json` |
 | baseline/ | 早期基线快照与缺陷清单 |
-| docs/ | 交接（HANDOFF）、修复记录（FIXES）、现值数字（current-numbers）、契约（param-contract / error-contract）、发布检查单、覆盖矩阵、真机场景卡（`docs/scenarios/`） |
+| docs/ | 交接（HANDOFF）、修复记录（FIXES）、现值数字（current-numbers）、契约（param-contract / error-contract）、发布检查单、覆盖矩阵、历史归档（`docs/archive/`：场景卡等，按需参考） |
 
 </details>
 
@@ -472,14 +472,13 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | [docs/HANDOFF.md](docs/HANDOFF.md) | 交接文档：现状、决策登记表、下一步；**新对话从这里开始读** |
 | [docs/current-numbers.md](docs/current-numbers.md) | **所有现值的唯一来源**（自动生成，CI 对账） |
 | [docs/FIXES.md](docs/FIXES.md) | 修复记录，每条都带可复跑的验证方法与实测数字 |
-| [docs/tool-roadmap.md](docs/tool-roadmap.md) | 工具面路线图：能力审计、缺口 / 冗余清单、分阶段任务表 |
 | [docs/release-checklist.md](docs/release-checklist.md) | npm 发布检查单：发布前门禁、打包对账、收包验证、发布后验收 |
 | [docs/release-records.md](docs/release-records.md) | 历史发布记录：每版实测读数、registry 核对与事故处置 |
 | [docs/param-contract.md](docs/param-contract.md) | 工具 / action 参数契约对账（生成物） |
 | [docs/error-contract.md](docs/error-contract.md) | 错误与超时契约：失败 / 部分成功的回报形状与不变量 |
 | [docs/destructive-operations.md](docs/destructive-operations.md) | 破坏性操作清单：影响范围、前置守卫与对应测试 |
 | [docs/tool-coverage.md](docs/tool-coverage.md) | 工具覆盖矩阵（生成物） |
-| [docs/scenarios/](docs/scenarios/) | 7 份真机场景卡（S1–S7） |
+| [docs/archive/](docs/archive/) | 历史归档：真机场景卡 S1–S7 等，按需参考（不参与门禁） |
 | [baseline/known-defects.md](baseline/known-defects.md) | 早期基线缺陷清单与逐条状态 |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 来源与许可处理 |
 

@@ -2,7 +2,7 @@
 
 > 面向 A3「产品扩张」唤醒规则的一份**真实用户场景卡**：谁 × 手上什么文件 × 要什么产出 × 现在手工怎么做。
 > 用途：拿它当测试输入，看插件在一条完整真实任务链上能不能走通、哪里会假成功。
-> 相关：[HANDOFF.md §3.1](../HANDOFF.md)（A3 唤醒规则）、[tool-roadmap.md §0](../tool-roadmap.md)（类别 B/C 边界）、[S1 场景卡](S1-excel-monthly-report.md)（Excel 域的同类走查）。
+> 相关：[HANDOFF.md §3.1](../../HANDOFF.md)（A3 唤醒规则）、[HANDOFF.md §8.5](../../HANDOFF.md)（类别 B/C 边界）、[S1 场景卡](S1-excel-monthly-report.md)（Excel 域的同类走查）。
 
 | 项 | 内容 |
 | --- | --- |
@@ -196,6 +196,6 @@ $py = C:\Users\qwer\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\py
 2. `make_fixture.py` 生成脏初稿 + `expected.json`，`make_known_good.py` 造两份对照产物；
 3. `verify.py` 自检：known-good 全绿 / broken 对应项变红（**这一步不过就不进真机**）；
 4. 真机：`wpse2e` profile（`link:D:/dsh/a`）跑 headless DSH 任务，prompt 就是 §2 原文，WPS 由测试侧自动启动（D4）；
-5. 独立核验 + 交叉验证插件自述，写走查报告 `docs/scenarios/S2-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
+5. 独立核验 + 交叉验证插件自述，写走查报告 `docs/archive/scenarios/S2-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
 6. 发现缺陷按 **D3 = 能修就全修**（改 `mcp/` 代码并补回归，回归必须在修复前先红）；
 7. 结果先给用户看再决定是否提交（D5 当时定的是「先不提交」；后续记录已随 v0.8.0 入库）。
