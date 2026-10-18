@@ -7,6 +7,9 @@
  * 这个设计遵循OCP原则：扩展开放，修改关闭
  */
 import { ToolDefinition, ToolHandler, RegisteredTool, ToolCallRequest, ToolCallResult, ToolCategory, ListToolsResponse } from '../types/tools';
+/**
+ * Tool注册表 - 单例模式，全局唯一
+ */
 export declare class ToolRegistry {
     private static instance;
     private readonly tools;
@@ -70,7 +73,11 @@ export declare class ToolRegistry {
      */
     private attachWarnings;
     /**
-     * 验证参数 - 检查必填参数是否都有
+     * 验证参数 - 必填 / 未知键 / 形状（**递归**，见 ./arg-shape）。
+     *
+     * 结构性问题必须在 handler 之前挡掉，理由见 arg-shape.ts 顶部：handler 用显式解构拼参数，
+     * 未知键与形状错位到不了桥，桥的拒绝永远看不见它们。
+     * 只挡结构：标量之间放行（桥/COM 会互转），枚举仍由桥裁决。
      */
     private validateArguments;
     /**

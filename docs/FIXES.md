@@ -4388,3 +4388,43 @@ Windows 11 26H2，机器上**没装 Node.js**。插件装好、显示已启用�
 > 整体崩掉（`$psi.FileName` 等一连串 `PropertyNotFound`、59 个文件全记成 `exit=-1` TIMEOUT），
 > 看到读数就回退了改动、确认 BOM 已补回后才重跑。以后改这个仓里的 `.ps1`，改完必须核前三个字节是 `EF BB BF`。
 
+
+## 115. 嵌套参数只查了顶层：`calls[].tool` 缺失、`range` 只给 start、`data` 少一层数组都静默执行（C1）
+
+**症状（改进指南 §9 P1「参数 schema 与真实接受类型一致，嵌套参数递归检查」）**：FIXES 99 之后
+未知参数名会在注册层被响亮拒绝，但那只覆盖**顶层**。嵌套层仍然没人管，而 handler 用显式解构拼参数，
+这些实参到不了桥、桥的拒绝也永远看不见：
+
+| 实参 | 以前的结果 |
+| --- | --- |
+| `wps_batch {calls:[{args:{tool:"wps_excel_read_range"}}]}` | `calls[0].tool` 缺失 → 批处理里该项报"无效或不可调用的工具名"，看不出是参数拼错 |
+| `wps_word_set_font {range:{start:0}}` | 桥里 `start`/`end` 必须同时给，只给一个就**退化成"作用在当前选区"** → 模型以为改了指定字符范围 |
+| `wps_word_set_font {range:{start:0,end:5,unit:"chars"}}` | `unit` 被静默丢弃（桥只读 start/end） |
+| `wps_excel_write_range {range:"A1", data:["a"]}` | 少一层数组 → 桥拿到的是"一行标量"，报错晦涩或写错格 |
+| `wps_word_set_font {range:{start:"x",end:5}}` | 形状错位的嵌套对象（`range.start` 是对象/数组时）同样不报 |
+
+**修复**：把参数校验抽成纯函数模块 `mcp/src/server/arg-shape.ts`（`findArgumentProblem` 递归），
+`ToolRegistry.validateArguments` 只负责把 `ShapeProblem` 翻成既有三段式文案。规则只有三条：
+
+1. **形状**：容器/标量错位；标量之间仍一律放行（`value: 42` 之于 `string` 声明合法）；
+2. **未知键**：该层声明了 `properties` 才查（自由形状对象如 `calls[].args` 不碰）；
+3. **必填**：该层声明了 `required` 才查。
+
+错误路径是**实参路径**：顶层 `range`，嵌套 `range.start` / `calls[0].tool`（下标与点号混用，和 JSON 一致）。
+枚举值仍由桥裁决，`null`/缺失仍当作"没传"。**没有**扩大对外承诺：Skill 里明确写"不保证嵌套里所有东西
+都被严格校验"，避免把结构校验说成完整输入校验。
+
+**验证**：
+
+- `node test/arg-shape-nested.test.mjs`（新增，纯本地）：**19/19 绿**。其中三条是**对全部 265 个工具真实
+  schema 的自洽扫描**——按 schema 合成合法实参必须全部通过（0 误报）、删掉嵌套必填必须报出对应路径
+  （4 个工具命中）、塞入嵌套未知键必须报出 `key.__bogus__`（5 个工具命中）。
+- `node test/arg-shape-guard.test.mjs`（经 MCP server 的端到端拒绝）：**15/15 绿**（原 10 项 + 5 项嵌套：
+  `calls[0].tool`、`data[0]`、`range.unit`、`range.end`、合法嵌套不误伤）。
+- `npm run lint` 237 文件 0 违规；`scripts/verify.mjs --static` 21 项；`gen-numbers --check` 20 项；
+  `npm run test:static` 17/17；`param-contract` 259 对 0 失效；`spec-reproduction` 16 项。
+- 按 `AGENTS.md` §1，本轮改动**没有**主动跑真机整轮（下次 push/发版前按 §2 询问时再跑）。
+
+**不做/边界**：嵌套里的枚举值、`additionalProperties` 语义、跨参数约束（如"start 必须小于 end"）
+都不在这层校验里；它们仍由桥或 handler 裁决。改这条时不要顺手把 Skill 文案升级成"所有参数都严格校验"
+（改进指南 §2.3 明确要求不要扩展这个承诺）。

@@ -47,6 +47,28 @@
 
 断言：`test/target-ambiguity.test.mjs`（真实 WPS）。
 
+## 1d. 参数结构校验（顶层 + 嵌套，FIXES 115）
+
+handler 用显式解构拼参数，**未知键与形状错位到不了桥**，所以注册层必须在调用 handler 之前挡掉。
+以前只查顶层；`calls: [{ args: … }]` 少 `tool`、`data: ["a"]` 少一层数组、`range: {start: 0}` 少 `end`
+都能原样送到 handler —— `range` 那种还会退化成"作用在当前选区"，模型以为改了指定范围。
+
+| 检查 | 文案（路径是**实参路径**，嵌套用点号与下标） | 例 |
+| --- | --- | --- |
+| 形状 | `参数 <path> 的形状不对：需要 <类型>，实际收到 <类型>` | `参数 data[0] 的形状不对：需要 array，实际收到 string` |
+| 未知键 | `未知参数: <path>（动作：…）可选参数: …。是不是想传 X？下一步：…` | `未知参数: range.unit（动作：wps_word_set_font）可选参数: start / end` |
+| 缺必填 | `Missing required parameter: <path>` | `Missing required parameter: calls[0].tool` |
+
+口径（刻意不扩大）：
+
+- 只查**结构**。标量之间一律放行（`value: 42` 之于 `string` 声明照样可以）；**枚举值仍由桥裁决**。
+- 该层声明了 `properties` 才查未知键；声明了 `required` 才查必填。自由形状对象（如 `calls[].args`）不碰。
+- `null` / 缺失一律当作"没传"，与改动前一致。
+- **不要**对外宣称"所有嵌套参数都被严格校验"：没声明结构的层、枚举值、跨参数语义都不在这里。
+
+断言：`test/arg-shape-guard.test.mjs`（经 MCP server 的端到端拒绝；15 项）+
+`test/arg-shape-nested.test.mjs`（递归规则的单元测试 + **对全部 265 个工具的真实 schema 自洽扫描**：合成合法实参必须通过、删嵌套必填/塞未知键必须报出对应路径）。
+
 ## 2. 批量契约（`wps_batch`）
 
 | 情况 | 行为 |
@@ -99,6 +121,7 @@
 | 结果里带 `warnings` | 主操作已生效，按 warning 内容人工确认次要步骤 |
 | 结果里带 `partial` / `shortfalls` | 你要求的事**没有全部生效**（`success` 已经是 `false`）：读已生效范围，只补做缺失部分 |
 | `输出目录不存在：<路径>`（`save_as`） | 先创建该目录或把 `outputPath` 换到已存在的目录；桥**不会**替调用方创建目录。以前这种情况只回一句「文档保存失败」，模型会白试两轮（D1 实测） |
+| 参数错误（缺必填 / 未知参数 / 形状不对） | 按错误里的**实参路径**改一次（嵌套是 `range.start`、`calls[0].tool` 这种写法）；不要猜别名反复试 |
 
 ## 5. 断言位置
 
@@ -109,5 +132,6 @@
 | 空 catch 的静默必须登记 | `test/silent-catch.test.mjs` |
 | 错误文案三段式、动作名、幂等 | `test/error-wording.test.mjs` |
 | `save_as` 缺输出目录的错误文案与"不替调用方建目录" | `test/file-ops.test.mjs` |
+| 参数结构校验：顶层/嵌套的形状、未知键、必填，以及路径写法（`calls[0].tool`） | `test/arg-shape-guard.test.mjs`（端到端拒绝）+ `test/arg-shape-nested.test.mjs`（规则 + 全工具 schema 自洽扫描） |
 | 广告面、桥动作数、门面行为、长动作名单都是真实 action、Skill 参考覆盖全部注册工具 | `scripts/verify.mjs` |
 | Skill 结构、引用可达、示例参数符合 schema、生成块不含工具清单 | `test/skill-quality.test.mjs` |

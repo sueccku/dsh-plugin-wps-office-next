@@ -15,46 +15,12 @@ const tools_1 = require("../types/tools");
 const logger_1 = require("../utils/logger");
 const tool_warnings_1 = require("../utils/tool-warnings");
 const fault_inject_1 = require("../utils/fault-inject");
+const arg_shape_1 = require("./arg-shape");
 const error_1 = require("../utils/error");
 const logger = (0, logger_1.createChildLogger)('ToolRegistry');
 /**
  * Tool注册表 - 单例模式，全局唯一
  */
-/** 编辑距离：只用来给“未知参数”提一句“是不是想传 X”，不做任何语义判断。 */
-function editDistance(a, b) {
-    const prev = new Array(b.length + 1);
-    for (let j = 0; j <= b.length; j++)
-        prev[j] = j;
-    for (let i = 1; i <= a.length; i++) {
-        let diag = prev[0];
-        prev[0] = i;
-        for (let j = 1; j <= b.length; j++) {
-            const tmp = prev[j];
-            prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
-            diag = tmp;
-        }
-    }
-    return prev[b.length];
-}
-/** 在声明的参数里找最接近的一个；只有足够接近才提示，避免把人带偏。 */
-function closestParamName(key, accepted) {
-    const norm = (s) => s.toLowerCase().replace(/[_-]/g, '');
-    const target = norm(key);
-    let best;
-    let bestScore = Number.POSITIVE_INFINITY;
-    for (const candidate of accepted) {
-        const c = norm(candidate);
-        if (c === target)
-            return candidate;
-        const score = editDistance(target, c);
-        if (score < bestScore) {
-            bestScore = score;
-            best = candidate;
-        }
-    }
-    const limit = Math.max(2, Math.floor(target.length / 3));
-    return best !== undefined && bestScore <= limit ? best : undefined;
-}
 class ToolRegistry {
     static instance;
     tools;
@@ -277,55 +243,32 @@ class ToolRegistry {
         };
     }
     /**
-     * 验证参数 - 检查必填参数是否都有
+     * 验证参数 - 必填 / 未知键 / 形状（**递归**，见 ./arg-shape）。
+     *
+     * 结构性问题必须在 handler 之前挡掉，理由见 arg-shape.ts 顶部：handler 用显式解构拼参数，
+     * 未知键与形状错位到不了桥，桥的拒绝永远看不见它们。
+     * 只挡结构：标量之间放行（桥/COM 会互转），枚举仍由桥裁决。
      */
     validateArguments(definition, args) {
-        const { inputSchema } = definition;
-        const required = inputSchema.required || [];
-        for (const param of required) {
-            if (!(param in args) || args[param] === undefined || args[param] === null) {
-                throw new error_1.InvalidParamsError(`Missing required parameter: ${param}`, {
-                    toolName: definition.name,
-                    missingParam: param,
-                });
-            }
+        const problem = (0, arg_shape_1.findArgumentProblem)(definition.inputSchema, args);
+        if (!problem)
+            return;
+        if (problem.kind === 'missing-required') {
+            throw new error_1.InvalidParamsError(`Missing required parameter: ${problem.path}`, {
+                toolName: definition.name,
+                missingParam: problem.path,
+            });
         }
-        // 结构性类型校验：只挡“形状”明显错位的入参，标量之间一律放行。
-        // 只挡形状的原因：schema 里 value: string 这类声明比桥接层的真实契约更窄（桥接层/COM 会把
-        // 42 和 "42" 都吞下去），按 schema 强校验会误伤合法调用；而 data: "[[1,2]]"、calls: {} 这类
-        // 容器/标量错位，桥接层只能给出很晦涩的报错，提前挡掉更清楚。
-        // 枚举值仍然由桥接层裁决（错误措辞含 unknown xxx、未知 xxx，有测试覆盖），这里不重复校验。
-        const properties = inputSchema.properties || {};
-        const isScalar = (t) => t === 'string' || t === 'number' || t === 'boolean';
-        for (const [key, value] of Object.entries(args)) {
-            if (value === undefined || value === null) {
-                continue;
-            }
-            const schema = properties[key];
-            if (!schema) {
-                // FIXES 99（W6-4）：以前这里是 `continue`，注释写着“未声明的参数交给桥接层报未知参数”。
-                // 那个假设是**错的**：TS handler 用显式解构拼参数（`{ range, delimiter, sheet }`），
-                // 未知键在到达桥之前就被丢掉了，桥的“未知键拒绝”永远看不见它 —— 于是调用方传错参数名时
-                // **不报错、按默认值执行、回报还写着自己传的那个值**。
-                // 实证：`wps_excel_text_to_columns { range:"A1:A3", sep:"," }` 不报错，回报「分隔符: ","」。
-                // 这条路径上必须响亮拒绝 —— 它是唯一还看得见原始实参的地方。
-                const accepted = Object.keys(properties);
-                const hint = closestParamName(key, accepted);
-                throw new error_1.InvalidParamsError(`未知参数: ${key}（动作：${definition.name}）` +
-                    `可选参数: ${accepted.length ? accepted.join(' / ') : '(无)'}` +
-                    (hint ? `。是不是想传 ${hint}？` : '。') +
-                    `下一步：改成上面列出的参数名重试；若这个参数确实用不上，把它从调用里删掉。`, { toolName: definition.name, unknownParam: key });
-            }
-            const actual = Array.isArray(value) ? 'array' : typeof value === 'object' ? 'object' : typeof value;
-            // type 允许是数组（JSON Schema 合法写法，例如 ['object','string']）。以前只读 schema.type，
-            // 数组会落进"需要 X，实际 Y"的假报错里（FIXES 90：apply_style 的 range 就踩了这个）。
-            const expectedTypes = Array.isArray(schema.type) ? schema.type : [schema.type];
-            const shapeOk = expectedTypes.some((t) => t === actual || (isScalar(t) && isScalar(actual)));
-            const expected = expectedTypes.join(' | ');
-            if (!shapeOk) {
-                throw new error_1.InvalidParamsError(`参数 ${key} 的形状不对：需要 ${expected}，实际收到 ${actual}`, { toolName: definition.name, param: key, expected, actual });
-            }
+        if (problem.kind === 'unknown') {
+            const accepted = problem.accepted || [];
+            const leaf = problem.path.split('.').pop() || problem.path;
+            const hint = (0, arg_shape_1.closestParamName)(leaf, accepted);
+            throw new error_1.InvalidParamsError(`未知参数: ${problem.path}（动作：${definition.name}）` +
+                `可选参数: ${accepted.length ? accepted.join(' / ') : '(无)'}` +
+                (hint ? `。是不是想传 ${hint}？` : '。') +
+                `下一步：改成上面列出的参数名重试；若这个参数确实用不上，把它从调用里删掉。`, { toolName: definition.name, unknownParam: problem.path });
         }
+        throw new error_1.InvalidParamsError(`参数 ${problem.path} 的形状不对：需要 ${problem.expected}，实际收到 ${problem.actual}`, { toolName: definition.name, param: problem.path, expected: problem.expected, actual: problem.actual });
     }
     /**
      * 获取Tool数量

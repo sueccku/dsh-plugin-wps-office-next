@@ -62,6 +62,45 @@ check("a near-miss parameter name gets a suggestion", /是不是想传 delimiter
 const declaredParam = await call("wps_help", { tool: "wps_excel_text_to_columns" });
 check("a declared parameter is not rejected by the guard", !/未知参数/.test(text(declaredParam)), text(declaredParam).slice(0, 110));
 
+// ---- C1（FIXES 115）：嵌套参数**递归**校验 ----
+// 这三类以前只挡顶层：`calls: [{ args: … }]` 少 tool、`data: ["a"]` 少一层数组、`range.unit` 多一个键，
+// 都会原样送到 handler —— handler 用显式解构拼参数，问题到不了桥，桥的拒绝也看不见它。
+const nestedRequired = await call("wps_batch", { calls: [{ args: { tool: "wps_excel_read_range" } }] });
+check(
+  "nested missing required is rejected with a dotted path (calls[0].tool)",
+  /Missing required parameter: calls\[0\]\.tool/.test(text(nestedRequired)),
+  text(nestedRequired).replace(/\s+/g, " ").slice(0, 140)
+);
+
+const nestedShape = await call("wps_excel_write_range", { range: "A1", data: ["a"] });
+check(
+  "a wrong inner-array shape is rejected (data[0] needs array)",
+  /参数 data\[0\] 的形状不对：需要 array/.test(text(nestedShape)),
+  text(nestedShape).replace(/\s+/g, " ").slice(0, 140)
+);
+
+const nestedUnknown = await call("wps_word_set_font", { range: { start: 0, end: 5, unit: "chars" } });
+check(
+  "a nested unknown key is rejected (range.unit) and lists the accepted keys",
+  /未知参数: range\.unit/.test(text(nestedUnknown)) && /start/.test(text(nestedUnknown)),
+  text(nestedUnknown).replace(/\s+/g, " ").slice(0, 160)
+);
+
+const nestedMissingEnd = await call("wps_word_set_font", { range: { start: 0 } });
+check(
+  "a partial range cannot degrade to 'current selection' silently (range.end)",
+  /Missing required parameter: range\.end/.test(text(nestedMissingEnd)),
+  text(nestedMissingEnd).replace(/\s+/g, " ").slice(0, 140)
+);
+
+// 合法嵌套值不能被守卫误伤（后续走到主机/WPS 与否都不影响这一条：只断言不是"形状/未知/缺必填"）。
+const nestedOk = await call("wps_excel_write_range", { range: "A1:B1", data: [["a", "b"]] });
+check(
+  "a well-formed nested argument passes the guard",
+  !/的形状不对|未知参数|Missing required parameter/.test(text(nestedOk)),
+  text(nestedOk).replace(/\s+/g, " ").slice(0, 120)
+);
+
 child.kill();
 const failed = results.filter((r) => !r.ok).length;
 console.log(failed === 0 ? "ARG SHAPE TESTS OK (" + results.length + ")" : "ARG SHAPE TESTS FAILED (" + failed + "/" + results.length + ")");
