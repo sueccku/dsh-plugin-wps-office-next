@@ -1,7 +1,7 @@
 /**
  * Input: 通用工具定义
  * Output: 通用工具注册数组
- * Pos: Common Tools 汇总入口。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: Common Tools 汇总入口。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * Common Tools入口 - 通用工具汇总模块
  * 整合跨应用的通用Tools
  *

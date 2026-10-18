@@ -2,7 +2,7 @@
 /**
  * Input: Word 工具定义
  * Output: Word 工具注册数组
- * Pos: Word Tools 汇总入口。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: Word Tools 汇总入口。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * Word Tools入口 - Word工具汇总模块
  * 整合格式化、内容操作、文档管理和校对的所有Tools
  */

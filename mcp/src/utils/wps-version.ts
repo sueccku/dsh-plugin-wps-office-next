@@ -1,7 +1,7 @@
 /**
  * Input: WPS 应用名与"真实版本号"字符串（取自 exe 文件版本，不是 Application.Version）
  * Output: 版本解析结果与兼容性判断
- * Pos: 运行时 WPS 版本前置检查（wps_status 使用）。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: 运行时 WPS 版本前置检查（wps_status 使用）。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 
 /** 本插件支持的 WPS 下限，与 README / scripts/doctor.mjs 保持一致。 */

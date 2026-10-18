@@ -2,7 +2,7 @@
 /**
  * Input: MCP Tool 类型与Schema
  * Output: Tool 类型定义
- * Pos: MCP Tool 类型定义模块。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: MCP Tool 类型定义模块。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * Tool类型定义 - 老王出品，必属精品
  * 定义MCP Tool的所有相关类型，别tm乱改
  */

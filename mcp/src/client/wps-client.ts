@@ -1,7 +1,7 @@
 /**
  * Input: 平台信息与WPS调用参数
  * Output: WPS API 调用结果
- * Pos: Windows COM 专用客户端。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: Windows COM 专用客户端。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * WPS 通信客户端 - 仅 Windows，通过 PowerShell 调用 WPS COM 接口
  */
 

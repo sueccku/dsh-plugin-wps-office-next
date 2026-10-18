@@ -1,7 +1,7 @@
 /**
  * Input: 工作簿管理工具参数
  * Output: 工作簿操作结果
- * Pos: Excel 工作簿管理工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: Excel 工作簿管理工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 
 import { v4 as uuidv4 } from 'uuid';

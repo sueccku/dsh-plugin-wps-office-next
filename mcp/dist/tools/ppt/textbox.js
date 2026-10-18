@@ -2,7 +2,7 @@
 /**
  * Input: 文本框与标题工具参数
  * Output: 文本框操作结果
- * Pos: PPT 文本框与标题工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: PPT 文本框与标题工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.textboxTools = exports.setSlideContentHandler = exports.setSlideContentDefinition = exports.setSlideSubtitleHandler = exports.setSlideSubtitleDefinition = exports.getSlideTitleHandler = exports.getSlideTitleDefinition = exports.setTextboxStyleHandler = exports.setTextboxStyleDefinition = exports.setTextboxTextHandler = exports.setTextboxTextDefinition = exports.getTextboxesHandler = exports.getTextboxesDefinition = exports.deleteTextboxHandler = exports.deleteTextboxDefinition = void 0;

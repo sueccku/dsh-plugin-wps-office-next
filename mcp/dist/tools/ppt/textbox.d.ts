@@ -1,7 +1,7 @@
 /**
  * Input: 文本框与标题工具参数
  * Output: 文本框操作结果
- * Pos: PPT 文本框与标题工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: PPT 文本框与标题工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /**

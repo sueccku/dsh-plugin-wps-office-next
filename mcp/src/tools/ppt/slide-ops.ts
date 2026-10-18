@@ -1,13 +1,13 @@
 /**
  * Input: 幻灯片操作工具参数
  * Output: 幻灯片操作结果
- * Pos: PPT 幻灯片操作工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: PPT 幻灯片操作工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  *
- * 幻灯片操作Tools - 删除/复制/移动/查询/切换/布局/备注
+ * 幻灯片操作Tools - 幻灯片生命周期（删除/移动/查询/切换/布局/备注/尺寸）
+ * 与形状、文本框的创建（形状的读取/修改族在 shape-basic.ts / textbox.ts）
  *
- * 包含：
+ * 包含（15 个）：
  * - wps_ppt_delete_slide: 删除指定幻灯片
- * - wps_ppt_duplicate_slide: 复制幻灯片
  * - wps_ppt_move_slide: 移动幻灯片到指定位置
  * - wps_ppt_get_slide_count: 获取幻灯片总数
  * - wps_ppt_get_slide_info: 获取指定幻灯片的详细信息
@@ -19,15 +19,9 @@
  * - wps_ppt_set_shape_style: 设置形状样式
  * - wps_ppt_add_textbox: 添加文本框
  * - wps_ppt_set_slide_title: 设置幻灯片标题
- * - wps_ppt_insert_image: 插入图片
  * - wps_ppt_set_shape_text: 设置形状文字
- * - wps_ppt_set_animation: 设置元素动画
- * - wps_ppt_set_background: 设置幻灯片背景
  * - wps_ppt_set_slide_size: 设置幻灯片尺寸
- * - wps_ppt_set_transition: 设置幻灯片切换效果
- * - wps_ppt_add_chart: 在幻灯片中插入图表
  * - wps_ppt_set_shape_fill: 设置形状填充颜色
- * - wps_ppt_add_speaker_notes: 添加演讲者备注
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -114,13 +108,7 @@ export const deleteSlideHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 2. wps_ppt_duplicate_slide - 复制幻灯片
-// ============================================================
-
-
-
-// ============================================================
-// 3. wps_ppt_move_slide - 移动幻灯片到指定位置
+// 2. wps_ppt_move_slide - 移动幻灯片到指定位置
 // ============================================================
 
 export const moveSlideDefinition: ToolDefinition = {
@@ -197,7 +185,7 @@ export const moveSlideHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 4. wps_ppt_get_slide_count - 获取幻灯片总数
+// 3. wps_ppt_get_slide_count - 获取幻灯片总数
 // ============================================================
 
 export const getSlideCountDefinition: ToolDefinition = {
@@ -261,7 +249,7 @@ export const getSlideCountHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 5. wps_ppt_get_slide_info - 获取指定幻灯片的详细信息
+// 4. wps_ppt_get_slide_info - 获取指定幻灯片的详细信息
 // ============================================================
 
 export const getSlideInfoDefinition: ToolDefinition = {
@@ -370,7 +358,7 @@ export const getSlideInfoHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 6. wps_ppt_switch_slide - 切换到指定幻灯片
+// 5. wps_ppt_switch_slide - 切换到指定幻灯片
 // ============================================================
 
 export const switchSlideDefinition: ToolDefinition = {
@@ -440,7 +428,7 @@ export const switchSlideHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 7. wps_ppt_set_slide_layout - 设置幻灯片版式布局
+// 6. wps_ppt_set_slide_layout - 设置幻灯片版式布局
 // ============================================================
 
 export const setSlideLayoutDefinition: ToolDefinition = {
@@ -536,7 +524,7 @@ export const setSlideLayoutHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 8. wps_ppt_get_slide_notes - 获取幻灯片备注内容
+// 7. wps_ppt_get_slide_notes - 获取幻灯片备注内容
 // ============================================================
 
 export const getSlideNotesDefinition: ToolDefinition = {
@@ -610,7 +598,7 @@ export const getSlideNotesHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 9. wps_ppt_set_slide_notes - 设置幻灯片备注
+// 8. wps_ppt_set_slide_notes - 设置幻灯片备注
 // ============================================================
 
 export const setSlideNotesDefinition: ToolDefinition = {
@@ -687,7 +675,7 @@ export const setSlideNotesHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 10. wps_ppt_add_shape - 添加形状
+// 9. wps_ppt_add_shape - 添加形状
 // ============================================================
 
 export const addShapeDefinition: ToolDefinition = {
@@ -825,7 +813,7 @@ export const addShapeHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 11. wps_ppt_set_shape_style - 设置形状样式
+// 10. wps_ppt_set_shape_style - 设置形状样式
 // ============================================================
 
 export const setShapeStyleDefinition: ToolDefinition = {
@@ -942,7 +930,7 @@ export const setShapeStyleHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 12. wps_ppt_add_textbox - 添加文本框
+// 11. wps_ppt_add_textbox - 添加文本框
 // ============================================================
 
 export const addTextboxDefinition: ToolDefinition = {
@@ -1064,7 +1052,7 @@ export const addTextboxHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 13. wps_ppt_set_slide_title - 设置幻灯片标题
+// 12. wps_ppt_set_slide_title - 设置幻灯片标题
 // ============================================================
 
 export const setSlideTitleDefinition: ToolDefinition = {
@@ -1146,13 +1134,7 @@ export const setSlideTitleHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 14. wps_ppt_insert_image - 插入图片
-// ============================================================
-
-
-
-// ============================================================
-// 15. wps_ppt_set_shape_text - 设置形状文字
+// 13. wps_ppt_set_shape_text - 设置形状文字
 // ============================================================
 
 export const setShapeTextDefinition: ToolDefinition = {
@@ -1220,19 +1202,7 @@ export const setShapeTextHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 16. wps_ppt_set_animation - 设置元素动画
-// ============================================================
-
-
-
-// ============================================================
-// 17. wps_ppt_set_background - 设置幻灯片背景
-// ============================================================
-
-
-
-// ============================================================
-// 18. wps_ppt_set_slide_size - 设置幻灯片尺寸
+// 14. wps_ppt_set_slide_size - 设置幻灯片尺寸
 // ============================================================
 
 export const setSlideSizeDefinition: ToolDefinition = {
@@ -1318,19 +1288,7 @@ export const setSlideSizeHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 19. wps_ppt_set_transition - 设置幻灯片切换效果
-// ============================================================
-
-
-
-// ============================================================
-// 20. wps_ppt_add_chart - 在幻灯片中插入图表
-// ============================================================
-
-
-
-// ============================================================
-// 21. wps_ppt_set_shape_fill - 设置形状填充颜色
+// 15. wps_ppt_set_shape_fill - 设置形状填充颜色
 // ============================================================
 
 export const setShapeFillDefinition: ToolDefinition = {
@@ -1402,12 +1360,6 @@ export const setShapeFillHandler: ToolHandler = async (
     };
   }
 };
-
-// ============================================================
-// 22. wps_ppt_add_speaker_notes - 添加演讲者备注
-// ============================================================
-
-
 
 // ============================================================
 // 导出所有幻灯片操作相关的Tools

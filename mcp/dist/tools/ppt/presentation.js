@@ -2,7 +2,7 @@
 /**
  * Input: 演示文稿管理工具参数
  * Output: 演示文稿操作结果
- * Pos: PPT 演示文稿管理工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: PPT 演示文稿管理工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  *
  * 包含：
  * - wps_ppt_create_presentation: 新建空白演示文稿

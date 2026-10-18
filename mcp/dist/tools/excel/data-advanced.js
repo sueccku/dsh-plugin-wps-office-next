@@ -2,7 +2,7 @@
 /**
  * Input: 高级数据处理工具参数
  * Output: 数据处理结果
- * Pos: Excel 高级数据处理工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: Excel 高级数据处理工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataAdvancedTools = exports.subtotalHandler = exports.subtotalDefinition = exports.textToColumnsHandler = exports.textToColumnsDefinition = exports.transposeHandler = exports.transposeDefinition = exports.fillSeriesHandler = exports.fillSeriesDefinition = exports.pasteRangeHandler = exports.pasteRangeDefinition = exports.copyRangeHandler = exports.copyRangeDefinition = exports.autoFilterHandler = exports.autoFilterDefinition = void 0;

@@ -1,7 +1,7 @@
 /**
  * Input: Tool 定义集合
  * Output: Tool 注册数组
- * Pos: MCP Tools 总入口。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: MCP Tools 总入口。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * Tools总入口 - MCP工具汇总注册模块
  * 整合Excel、Word、PPT、Common的所有Tools
  *

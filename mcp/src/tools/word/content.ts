@@ -1,22 +1,25 @@
 /**
  * Input: Word 内容操作参数
  * Output: 文档内容变更结果
- * Pos: Word 内容工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: Word 内容工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * Word内容操作Tools - 文档内容编辑模块
- * 处理文档内容的插入、查找替换、表格、段落格式、页眉页脚等操作
+ * 处理文档内容的插入、查找替换、表格、段落格式、批注与模板字段填写等操作
+ * （页眉页脚在 document.ts，字体样式在 format.ts）
  *
- * 包含：
+ * 包含（13 个）：
  * - wps_word_insert_text: 插入文本到文档
  * - wps_word_find_replace: 查找替换功能
  * - wps_word_insert_table: 插入表格
  * - wps_word_set_paragraph: 设置段落格式
- * - wps_word_insert_header: 插入页眉
- * - wps_word_insert_footer: 插入页脚
  * - wps_word_get_active_document: 获取当前文档信息
+ * - wps_word_insert_image: 在文档中插入图片
  * - wps_word_insert_page_break: 插入分页符
  * - wps_word_insert_comment: 插入批注
- * - wps_word_set_font_style: 设置选中文字的字体样式属性
  * - wps_word_set_text_color: 设置文字颜色
+ * - wps_word_get_paragraphs: 获取文档段落结构与字符位置
+ * - wps_word_find_in_document: 查找文本并返回位置（不替换）
+ * - wps_word_smart_fill_field: 智能填写模板字段
+ * - wps_word_replace_bookmark_content: 按书签名替换内容
  */
 
 import { v4 as uuidv4 } from 'uuid';

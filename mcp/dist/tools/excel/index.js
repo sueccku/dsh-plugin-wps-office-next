@@ -2,7 +2,7 @@
 /**
  * Input: Excel 工具定义
  * Output: Excel 工具注册数组
- * Pos: Excel Tools 汇总入口。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: Excel Tools 汇总入口。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * Excel Tools入口 - Excel工具汇总模块
  * 整合公式、数据处理、透视表、图表、工作表、格式化的所有Tools
  */

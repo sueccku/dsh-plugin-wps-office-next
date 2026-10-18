@@ -2,7 +2,7 @@
 /**
  * Input: PPT 工具定义
  * Output: PPT 工具注册数组
- * Pos: PPT Tools 汇总入口。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Pos: PPT Tools 汇总入口。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * PPT Tools入口 - PPT工具汇总模块
  *
  * 整合所有PPT相关的Tools
