@@ -1,21 +1,19 @@
 /**
- * Input: PPT 杂项操作参数（母版、3D、超链接、搜索、放映）
+ * Input: PPT 杂项操作参数（母版、超链接、搜索、放映）
  * Output: 杂项操作结果
  * Pos: PPT 杂项工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
- * PPT杂项Tools - 母版/3D/超链接/搜索/放映模块
+ * PPT杂项Tools - 母版/超链接/搜索/放映模块
  *
- * 包含：
+ * 包含（9 个）：
  * - wps_ppt_get_slide_master: 获取母版信息
  * - wps_ppt_set_master_background: 设置母版背景
  * - wps_ppt_add_master_element: 添加母版元素
- * - wps_ppt_set_3d_rotation: 设置3D旋转
- * - wps_ppt_set_3d_depth: 设置3D深度
- * - wps_ppt_set_3d_material: 设置3D材质
  * - wps_ppt_add_ppt_hyperlink: 添加超链接
  * - wps_ppt_remove_ppt_hyperlink: 移除超链接
  * - wps_ppt_find_ppt_text: 搜索文本
  * - wps_ppt_replace_ppt_text: 替换文本
  * - wps_ppt_start_slide_show: 开始放映
+ * - wps_ppt_end_slide_show: 结束放映
  */
 
 import { v4 as uuidv4 } from 'uuid';

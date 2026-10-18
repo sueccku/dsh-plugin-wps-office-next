@@ -5,10 +5,12 @@
  * Excel公式相关Tools - 公式管理模块
  * 解决用户"公式不会写"痛点的核心工具集
  *
- * 包含：
+ * 包含（5 个）：
  * - wps_excel_set_formula: 设置公式到指定单元格
  * - wps_excel_generate_formula: 根据自然语言生成公式（核心功能）
- * - wps_excel_diagnose_formula: 诊断公式错误，分析原因并提供修复建议
+ * - wps_excel_diagnose_formula: 诊断公式错误并给出修复建议
+ * - wps_excel_evaluate_formula: 求值并返回结果（不写入单元格）
+ * - wps_excel_set_print_area: 设置打印区域（省略 range 即清除）
  */
 
 import { v4 as uuidv4 } from 'uuid';

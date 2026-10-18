@@ -4,7 +4,7 @@
  * Pos: Excel 基础格式化工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  * Excel格式化Tools - 单元格格式/边框/合并/列宽/行高
  *
- * 包含：
+ * 包含（9 个）：
  * - wps_excel_set_cell_format: 设置单元格格式（字体、颜色、背景等）
  * - wps_excel_set_cell_style: 应用预定义样式到单元格
  * - wps_excel_set_border: 设置单元格边框样式
@@ -13,8 +13,9 @@
  * - wps_excel_unmerge_cells: 拆分合并的单元格
  * - wps_excel_set_column_width: 设置列宽
  * - wps_excel_set_row_height: 设置行高
- * - wps_excel_hide_row: 隐藏/显示行
  * - wps_excel_set_data_validation: 设置数据验证规则
+ *
+ * 行的显示/隐藏在 row-column.ts。
  */
 
 import { v4 as uuidv4 } from 'uuid';

@@ -5,11 +5,12 @@
  * PPT图片Tools - 图片管理模块
  * 处理图片的插入、删除、样式设置以及幻灯片导出为位图操作
  *
- * 包含：
+ * 包含（5 个）：
  * - wps_ppt_insert_ppt_image: 插入图片到幻灯片
  * - wps_ppt_delete_ppt_image: 删除幻灯片中的图片
  * - wps_ppt_set_image_style: 设置图片样式
  * - wps_ppt_export_slide_as_image: 将指定幻灯片导出为位图图片（PNG/JPG/GIF/BMP）
+ * - wps_ppt_replace_ppt_image: 原位替换图片（保留位置、尺寸、旋转角度）
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 export declare const insertPptImageDefinition: ToolDefinition;

@@ -11,6 +11,11 @@
 // The bridge side comes from its own generated key table (the __validateParams control frame),
 // so it always matches the shipped script. The tool side is parsed out of the handler source.
 //
+// Failure behaviour (FIXES 117): a host that reports `ready:false` (the single-instance lease is
+// held by another DSH session) or exits mid-sweep now aborts with that message and exit code 2.
+// Before, the `ready:false` frame was mistaken for a successful start and the first invoke waited
+// forever on a child that had already exited - `gates:code` hung with no output at all.
+//
 // Usage: node scripts/param-contract.mjs [--json] [--check]
 import { spawn } from "node:child_process";
 import { analyseToolSource } from './lib/tool-action-map.mjs';
@@ -22,12 +27,38 @@ const jsonOut = process.argv.includes("--json");
 // --check：只比对已入库的 docs/param-contract.md，不写盘（供只读门禁 gates:verify 使用）。
 const checkOnly = process.argv.includes("--check");
 
+// The MCP server and the host are local processes; anything slower than this is a stuck child, not
+// a slow action. The host budget is generous because a cold start pays dot-source + JIT + orphan
+// reclaim once (measured ~0.4s, but a busy machine or a slow COM reclaim can exceed it).
+const SERVER_REQUEST_TIMEOUT_MS = 10000;
+const HOST_READY_TIMEOUT_MS = 30000;
+const HOST_INVOKE_TIMEOUT_MS = 30000;
+
 const { map: TOOLS, unparsed } = analyseToolSource();
+
+let server = null;
+let host = null;
+
+/** Fail loudly instead of hanging: kill both children, say why, exit non-zero. */
+function abort(error) {
+  console.error("param-contract: " + (error && error.message ? error.message : String(error)));
+  console.error("param-contract: sweep aborted; docs/param-contract.md was not written.");
+  try { if (host && host.child) host.child.kill(); } catch { }
+  try { if (server && server.child) server.child.kill(); } catch { }
+  process.exit(2);
+}
 
 function spawnServer() {
   const child = spawn(process.execPath, ["mcp/dist/index.js"], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true, env: { ...process.env, WPS_OFFICE_TOOLSET: "full" } });
   let buf = "";
   const pending = new Map();
+  const settle = (id, kind, value) => {
+    const entry = pending.get(id);
+    if (!entry) return;
+    pending.delete(id);
+    entry[kind](value);
+  };
+  const failAll = (error) => { for (const id of [...pending.keys()]) settle(id, "reject", error); };
   child.stdout.on("data", (d) => {
     buf += d.toString();
     let i;
@@ -36,12 +67,19 @@ function spawnServer() {
       buf = buf.slice(i + 1);
       if (!line) continue;
       let m; try { m = JSON.parse(line); } catch { continue; }
-      if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+      if (m.id && pending.has(m.id)) settle(m.id, "resolve", m);
     }
   });
   child.stderr.on("data", () => {});
+  child.on("exit", (code, signal) => failAll(new Error("MCP server exited before answering (code=" + code + ", signal=" + signal + ")")));
+  child.on("error", (error) => failAll(new Error("MCP server spawn failed: " + error.message)));
   let id = 0;
-  const req = (method, params) => new Promise((r) => { const n = ++id; pending.set(n, r); child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: n, method, params }) + "\n"); });
+  const req = (method, params) => new Promise((resolve, reject) => {
+    const n = ++id;
+    const timer = setTimeout(() => { pending.delete(n); reject(new Error("timeout after " + SERVER_REQUEST_TIMEOUT_MS + "ms waiting for " + method)); }, SERVER_REQUEST_TIMEOUT_MS);
+    pending.set(n, { resolve: (m) => { clearTimeout(timer); resolve(m); }, reject: (e) => { clearTimeout(timer); reject(e); } });
+    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: n, method, params }) + "\n");
+  });
   return { child, req };
 }
 
@@ -50,6 +88,17 @@ function spawnHost() {
   let buf = "";
   const pending = new Map();
   let ready = null;
+  let startupError = null;
+  const settle = (id, kind, value) => {
+    const entry = pending.get(id);
+    if (!entry) return;
+    pending.delete(id);
+    entry[kind](value);
+  };
+  const failAll = (error) => {
+    if (!startupError) startupError = error;
+    for (const id of [...pending.keys()]) settle(id, "reject", startupError);
+  };
   child.stdout.on("data", (d) => {
     buf += d.toString();
     let i;
@@ -58,45 +107,62 @@ function spawnHost() {
       buf = buf.slice(i + 1);
       if (!line) continue;
       let m; try { m = JSON.parse(line); } catch { continue; }
-      if (!m.id && m.ready !== undefined) { ready = m; continue; }
-      if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+      // Only `ready: true` means the host loop is up. A `ready: false` frame is the lease refusal
+      // and carries the human-readable reason; treating it as readiness is what used to hang.
+      if (m.id === undefined || m.id === null) {
+        if (m.ready === true) { ready = m; continue; }
+        if (m.ready === false) { failAll(new Error("COM host refused to start: " + String(m.error || "unknown reason"))); continue; }
+      }
+      if (m.id && pending.has(m.id)) settle(m.id, "resolve", m);
     }
   });
   child.stderr.on("data", () => {});
+  // A host that dies mid-sweep must reject every queued action; otherwise each pending invoke waits
+  // on a child that will never answer (there is no reply for a dead process).
+  child.on("exit", (code, signal) => failAll(new Error("COM host exited (code=" + code + ", signal=" + signal + ")")));
+  child.on("error", (error) => failAll(new Error("COM host spawn failed: " + error.message)));
   let id = 0;
-  const invoke = (action, params) => new Promise((r) => { const n = ++id; pending.set(n, r); child.stdin.write(JSON.stringify({ id: n, action, params }) + "\n"); });
+  const invoke = (action, params) => new Promise((resolve, reject) => {
+    if (startupError) { reject(startupError); return; }
+    const n = ++id;
+    const timer = setTimeout(() => { pending.delete(n); reject(new Error("timeout after " + HOST_INVOKE_TIMEOUT_MS + "ms waiting for action " + action)); }, HOST_INVOKE_TIMEOUT_MS);
+    pending.set(n, { resolve: (m) => { clearTimeout(timer); resolve(m); }, reject: (e) => { clearTimeout(timer); reject(e); } });
+    child.stdin.write(JSON.stringify({ id: n, action, params }) + "\n");
+  });
   const waitReady = () => new Promise((resolve, reject) => {
     const t0 = Date.now();
-    const tick = () => { if (ready) return resolve(ready); if (Date.now() - t0 > 30000) return reject(new Error("host never reported ready")); setTimeout(tick, 50); };
+    const tick = () => {
+      if (ready) return resolve(ready);
+      if (startupError) return reject(startupError);
+      if (Date.now() - t0 > HOST_READY_TIMEOUT_MS) return reject(new Error("COM host never reported ready within " + HOST_READY_TIMEOUT_MS + "ms"));
+      setTimeout(tick, 50);
+    };
     tick();
   });
   return { child, invoke, waitReady };
 }
 
-const server = spawnServer();
-await server.req("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "param-contract", version: "1" } });
+server = spawnServer();
+await server.req("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "param-contract", version: "1" } }).catch(abort);
 server.child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
-const list = await server.req("tools/list", {});
+const list = await server.req("tools/list", {}).catch(abort);
 const tools = new Map(list.result.tools.map((t) => [t.name, t]));
 
-const host = spawnHost();
-await host.waitReady();
+host = spawnHost();
+await host.waitReady().catch(abort);
 
 // Cache the bridge answer per action: one hop per action, not per tool.
 const bridgeCache = new Map();
 async function bridgeInfo(action) {
   if (bridgeCache.has(action)) return bridgeCache.get(action);
-  const res = await host.invoke("__validateParams", { action, keys: [] });
+  let res;
+  try { res = await host.invoke("__validateParams", { action, keys: [] }); } catch (error) { abort(error); }
   const data = res && res.result && res.result.data;
   const answer = data && data.validated
     ? { accepted: new Set(data.accepted), containers: data.containers || [] }
     : null;
   bridgeCache.set(action, answer);
   return answer;
-}
-async function bridgeAccepts(action) {
-  const info = await bridgeInfo(action);
-  return info ? info.accepted : null;
 }
 
 const classA = []; // handler sends what the bridge never reads
@@ -147,7 +213,7 @@ for (const entry of unparsed) {
   if (unknown.length) classD.push({ tool: entry.tool, action: entry.action, unknown, accepted: [...bridge.accepted] });
 }
 
-await host.invoke("__shutdown", {});
+await host.invoke("__shutdown", {}).catch(() => { });
 host.child.kill();
 server.child.kill();
 
@@ -243,4 +309,3 @@ else {
   for (const u of unparsed) console.log("  " + u.tool + " (" + u.reason + ")");
 }
 process.exit(classA.length + classB.length + classC.length + classD.length === 0 && !docStale ? 0 : 1);
-

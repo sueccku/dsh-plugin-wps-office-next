@@ -5,13 +5,11 @@
  * PPT表格Tools - 表格管理模块
  * 处理表格的插入、单元格读写、样式设置等操作
  *
- * 包含：
+ * 包含（4 个）：
  * - wps_ppt_insert_table: 在幻灯片中插入表格
  * - wps_ppt_set_table_cell: 设置表格单元格文本
  * - wps_ppt_get_table_cell: 获取表格单元格文本
- * - wps_ppt_set_table_style: 设置表格整体样式
- * - wps_ppt_set_table_cell_style: 设置表格单元格样式
- * - wps_ppt_set_table_row_style: 设置表格行样式
+ * - wps_ppt_set_table_format: 设置表格外观与样式（位置尺寸 + 整表/行/单元格样式）
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /**

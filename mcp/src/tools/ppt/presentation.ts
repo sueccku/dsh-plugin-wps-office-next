@@ -3,14 +3,16 @@
  * Output: 演示文稿操作结果
  * Pos: PPT 演示文稿管理工具实现。一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  *
- * 包含：
+ * 包含（9 个）：
  * - wps_ppt_create_presentation: 新建空白演示文稿
  * - wps_ppt_open_presentation: 打开指定路径的演示文稿
  * - wps_ppt_close_presentation: 关闭演示文稿
  * - wps_ppt_get_open_presentations: 获取所有已打开的演示文稿列表
  * - wps_ppt_switch_presentation: 切换到指定演示文稿
  * - wps_ppt_copy_slide: 复制幻灯片
- * - wps_ppt_insert_slide_image: 在幻灯片中插入图片
+ * - wps_ppt_insert_slides_from_file: 从另一个 PPT 文件插入整页幻灯片（保留原格式）
+ * - wps_ppt_set_active_target: 锁定后续 PPT 操作的目标演示文稿
+ * - wps_ppt_set_slide_theme: 套用主题模板（.thmx / .potx / .pptx）
  */
 
 import { v4 as uuidv4 } from 'uuid';

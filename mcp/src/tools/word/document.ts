@@ -5,18 +5,19 @@
  * Word文档管理Tools
  * 处理文档的打开、切换、获取列表等管理操作
  *
- * 包含：
+ * 包含（10 个）：
  * - wps_word_get_open_documents: 获取所有已打开的文档列表
  * - wps_word_switch_document: 切换到指定文档
  * - wps_word_open_document: 打开指定路径的文档
- * - wps_word_create_document: 新建空白文档
- * - wps_word_close_document: 关闭文档（可选保存）
  * - wps_word_get_document_text: 获取文档文本内容
  * - wps_word_insert_header: 设置页眉内容
  * - wps_word_insert_footer: 设置页脚内容
- * - wps_word_generate_doc_toc: 自动生成文档目录
  * - wps_word_insert_section_break: 插入分节符
  * - wps_word_set_line_spacing: 设置行距
+ * - wps_word_create_document: 新建空白文档
+ * - wps_word_close_document: 关闭文档（可选保存）
+ *
+ * 目录生成在 format.ts（generate_toc）。
  */
 
 import { v4 as uuidv4 } from 'uuid';

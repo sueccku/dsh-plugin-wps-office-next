@@ -5,12 +5,13 @@
  * PPT幻灯片Tools - 幻灯片管理模块
  * 处理幻灯片的添加、美化、字体统一等操作
  *
- * 包含：
+ * 包含（4 个）：
  * - wps_ppt_add_slide: 添加新幻灯片
  * - wps_ppt_beautify: 美化幻灯片（核心功能）
  * - wps_ppt_unify_font: 统一字体
  * - wps_ppt_set_font_color: 设置文字颜色
- * - wps_ppt_align_objects: 对齐幻灯片中的对象
+ *
+ * 形状对齐/分布/组合在 shape-basic.ts。
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /**

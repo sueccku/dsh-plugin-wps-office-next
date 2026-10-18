@@ -5,15 +5,13 @@
  * PPT背景Tools - 背景、页面信息、高级形状模块
  * 处理幻灯片背景设置、页码/页脚/日期时间、形状复制与层级调整
  *
- * 包含：
+ * 包含（6 个）：
  * - wps_ppt_set_slide_background: 设置幻灯片背景（通用）
- * - wps_ppt_set_background_color: 设置幻灯片背景颜色
- * - wps_ppt_set_background_image: 设置幻灯片背景图片
- * - wps_ppt_set_slide_number: 设置幻灯片页码显示
- * - wps_ppt_set_ppt_footer: 设置PPT页脚
- * - wps_ppt_set_ppt_date_time: 设置PPT日期时间
+ * - wps_ppt_set_background_color: 设置背景颜色
+ * - wps_ppt_set_background_image: 设置背景图片
  * - wps_ppt_duplicate_shape: 复制形状
  * - wps_ppt_set_shape_z_order: 设置形状层级顺序
+ * - wps_ppt_set_slide_footer: 一次设置页码/页脚文字/日期时间（三合一）
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /**

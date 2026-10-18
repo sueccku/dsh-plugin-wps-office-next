@@ -5,19 +5,20 @@
  * Excel数据处理Tools - 数据读写与清洗模块
  * 处理数据的读取、写入、去重、去空格、格式统一等操作
  *
- * 包含：
+ * 包含（11 个）：
  * - wps_excel_read_range: 读取指定范围数据
  * - wps_excel_write_range: 写入数据到指定范围
  * - wps_excel_clean_data: 数据清洗（核心功能）
  * - wps_excel_remove_duplicates: 删除重复行
  * - wps_excel_sort_range: 对选定区域排序
  * - wps_excel_find_replace: 查找并替换内容
- * - wps_excel_insert_row: 插入行
  * - wps_excel_add_comment: 给单元格添加批注
  * - wps_excel_protect_sheet: 保护/取消保护工作表
  * - wps_excel_set_conditional_format: 设置条件格式
  * - wps_excel_protect_workbook: 保护/取消保护工作簿
  * - wps_excel_set_zoom: 设置工作表缩放比例
+ *
+ * 行的插入/删除在 row-column.ts。
  */
 import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
 /**

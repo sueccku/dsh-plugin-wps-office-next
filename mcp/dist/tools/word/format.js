@@ -6,12 +6,13 @@
  * Word格式化Tools - 排版格式化模块
  * 处理文档样式、字体、目录等格式化需求
  *
- * 包含：
+ * 包含（6 个）：
  * - wps_word_apply_style: 应用样式到选中区域
  * - wps_word_set_font: 设置字体格式
  * - wps_word_generate_toc: 生成目录
  * - wps_word_insert_bookmark: 插入书签
  * - wps_word_set_page_setup: 设置页面布局
+ * - wps_word_get_page_setup: 读取页面设置
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.formatTools = exports.getPageSetupHandler = exports.getPageSetupDefinition = exports.setPageSetupHandler = exports.setPageSetupDefinition = exports.insertBookmarkHandler = exports.insertBookmarkDefinition = exports.generateTocHandler = exports.generateTocDefinition = exports.setFontHandler = exports.setFontDefinition = exports.applyStyleHandler = exports.applyStyleDefinition = void 0;

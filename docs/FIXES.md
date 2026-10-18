@@ -139,6 +139,7 @@
 | 114 | 用户报告：宿主 PATH 上没有 Node.js 时整行 MCP 条目死掉，95 个工具全部不注册（P0，已修） |
 | 115 | 嵌套参数只查了顶层：`calls[].tool` 缺失、`range` 只给 start、`data` 少一层数组都静默执行（C1） |
 | 116 | 嵌套校验上线后，schema 漏声明把一条一直可用的路径判死：`format.numberFormat` 被当未知参数（v0.9.0 发版前整轮抓到） |
+| 117 | `param-contract` 在宿主拒绝租约时永久挂起：把 `ready:false` 当成「已就绪」（门禁卡 10 分钟） |
 <!-- FIXES-INDEX:END -->
 
 ## 已修复
@@ -4599,3 +4600,45 @@ horizontalAlignment / verticalAlignment / wrapText —— **漏了 `numberFormat
 **真机整轮**抓到的，静态门禁抓不到 —— `arg-shape-nested` 的自洽扫描只验证"schema 内部一致"，
 验证不了"schema 与桥一致"；而 `param-contract` 把 setCellFormat 列为 UNVALIDATED（桥没有静态键表）。
 
+
+## 117. `param-contract` 在宿主拒绝租约时永久挂起：把 `ready:false` 当成「已就绪」（门禁卡 10 分钟）
+
+**症状**（2026-10-18 本次注释清理现场）：`npm run gates:code` 停在第 11 步「参数契约对账（写入）」超过
+10 分钟、没有任何输出；进程树里有 `scripts/param-contract.mjs` 及其 `mcp/dist/index.js` 子进程，
+但**没有** `wps-com-host.ps1` 进程。中断后单独重跑 `node scripts/param-contract.mjs` 同样挂住。
+
+**根因**：客户端侧两处叠在一起（宿主侧「ready 必须在孤儿回收之后」由 FIXES 102 保证，与本条无关）：
+
+1. `spawnHost()` 只判断帧里**有没有** `ready` 字段（`if (!m.id && m.ready !== undefined)`）。
+   而宿主拒绝租约时回的是 **`{"ready":false,"error":"…检测到另一个 DSH 会话…"}`**
+   （`host/wps-com-host.ps1` 的 `Acquire-HostMutex` 失败分支）——`false` 也被当成「已就绪」。
+2. 宿主紧接着 `exit 1`，而脚本既不监听子进程 `exit` / `error`，`invoke()` 也没有超时 →
+   第一个 `__validateParams` 的 Promise 永远等不到回复，脚本静默挂死。
+
+**触发条件**：同一台机器上已有另一个 DSH 会话的宿主持有 mutex
+`Local\dsh-plugin-wps-office-next-com-host`。本次现场是 profile 里安装的 v0.9.0 插件正在运行
+（空闲宿主），仓库这份代码跑门禁时被租约挡住 —— **开发机上「装了一份、仓库里改另一份」几乎必然撞上**，
+所以这不是罕见路径。
+
+**修复**（`scripts/param-contract.mjs`，只改失败路径，成功路径逐字节不变）：
+
+1. 宿主帧只有 `ready === true` 才算就绪；`ready === false` 立刻以宿主给出的中文原因失败。
+2. MCP server 与宿主两个客户端都监听 `exit` / `error`：子进程一死就把所有 pending 请求 reject。
+3. `invoke()` 加 30s 超时、MCP `req()` 加 10s 超时（都是本地进程，超过即视为卡死）。
+4. 失败统一走 `abort()`：打印原因 + `sweep aborted`，杀掉两个子进程，**exit 2**（成功路径的
+   0/1 退出码语义不变）。
+
+**验证**：
+
+- 复现（修复前挂 10 分钟被手工中断，修复后 0.7 秒失败）：先让一个宿主占住租约（临时
+  `USERPROFILE` 启动 `host/wps-com-host.ps1`，避免读到真实回收记录），再跑
+  `node scripts/param-contract.mjs`。修复后立即 `exit 2`，stderr 为
+  `param-contract: COM host refused to start: 检测到另一个 DSH 会话或自动化程序正在控制 WPS…`。
+- 正常路径：`npm run gates:code` 15 步全绿（参数契约 259 对，A/B/C/D 均为 0），
+  `docs/param-contract.md` 与修复前逐字节一致。
+- 本次现场处置：结束安装版插件的空闲宿主（下次 WPS 工具调用会自动重启它），门禁用临时
+  `USERPROFILE` 运行，未触碰任何 WPS 实例、真实租约与回收记录。
+
+**边界**：没有放宽「同一时间只允许一个宿主」的单实例租约 —— 那是刻意的；只保证被拒绝时
+**快速、可读地失败**。没有新增自动化测试：复现需要一个真实持有租约的宿主，会让本地门禁依赖
+外部状态；验收用上面的手工复现步骤。
