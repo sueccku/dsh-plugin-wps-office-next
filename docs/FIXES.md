@@ -6,6 +6,9 @@
 > `docs/bug-hunt-orders.md`、`docs/pending-bugs.md` 与 `baseline/upstream-0.1.0/` 已在文档清理中删除；
 > **链接保留原样（不改历史）**，它们的结论已分别落到 `docs/HANDOFF.md` §10（工具与测试陷阱）、
 > §3.1（开口决策）与本文自身的条目里。
+>
+> **2026-10-18 文档清理（R15）**：`docs/PROGRESS.md`、`docs/scenarios/S1–S7-真机走查报告.md`、
+> `docs/work-orders/WO-001-word-gaps-from-s4.md` 已删除；下方历史条目里指向它们的链接改为纯文字，结论仍在各自条目里。
 
 ## 已修复
 
@@ -2861,7 +2864,7 @@ A2 是 FIXES 89 遗留栏的"版式 × 占位符没测清楚"。
 
 ## 113. S7 D1+D2：Word 分节族三件套（分节页面设置 / 页码格式与分节重编号 / 表头跨页重复）+ 一个静默丢方向的顺序缺陷
 
-**来源**：场景 S7 真机走查（[报告](scenarios/S7-真机走查报告.md) §4.1/§4.2）。用户拍板「D1 三条全补、D2 补上」。
+**来源**：场景 S7 真机走查（走查报告已随 2026-10-18 文档清理删除；原 §4.1/§4.2）。用户拍板「D1 三条全补、D2 补上」。
 
 S7 的成品 30/30 硬判据全过，但**不是插件工具做出来的**：模型读桥源码 + 两次探针实测后确认插件缺三条必需能力，
 改用 WPS 自身 COM 接口（`Kwps.Application`）完成改写，并在答复第一段如实披露。能力缺口本身不是"错实现"
@@ -2955,7 +2958,7 @@ S7 的成品 30/30 硬判据全过，但**不是插件工具做出来的**：模
 
 ## 112. R14（S6 的 D4）：按六轮真机轨迹把 9 个高频隐藏工具提到广告面（86 → 95）
 
-**来源**：场景 S6 真机走查（[报告](scenarios/S6-真机走查报告.md) §4.2 / §6 D4）。用户拍板「高频隐藏工具进广告面」。
+**来源**：场景 S6 真机走查（走查报告已随 2026-10-18 文档清理删除；原 §4.2 / §6 D4）。用户拍板「高频隐藏工具进广告面」。
 两轮真机都实测到同一件事：模型直接调 `mcp__wps-office-next__wps_excel_freeze_panes` →
 `unknown tool`（该工具**存在**、`wps_call` 可达），白花一次调用再重试。S1 报告 §4.3 早就把这类工具列为
 「真实任务需要却不在广告面」，这轮它从"多绕一步"升级成**一次硬失败**。
@@ -3014,7 +3017,7 @@ S7 的成品 30/30 硬判据全过，但**不是插件工具做出来的**：模
 
 ## 111. 场景 S6 真机走查：多工作簿合并 28/28 通过；工作表名不存在时报裸 COM `Invalid index`（已修）+ 两条记录
 
-**来源**：场景 S6 真机走查（[S6-真机走查报告](scenarios/S6-真机走查报告.md)、[场景卡](scenarios/S6-multi-branch-expense-merge.md)）。
+**来源**：场景 S6 真机走查（走查报告已删除；场景卡见 [S6 场景卡](scenarios/S6-multi-branch-expense-merge.md)）。
 README 第 73 行承诺的「把这个文件夹里所有 .xlsx 的第一张工作表合并成一张总表」此前**零场景覆盖**，
 而且**没有任何一个场景在"多个工作簿同时打开"的条件下跑过** —— `baseline/known-defects.md` C7 的残余正落在这里
 （`copySheet` 目的工作簿 / `transpose` 落点，FIXES 90 记为 known limitation）。
@@ -3075,7 +3078,7 @@ prompt 只指向运行目录：**27/28**（唯一红是核验器自身对 `datet
 
 ## 110. 场景 S5 真机走查：邮件合并整条链路是假的（P0）+ `fileNameField` 指向不参与替换的列时被无视（P1）
 
-**来源**：场景 S5 真机走查（[S5-真机走查报告](scenarios/S5-真机走查报告.md)、[场景卡](scenarios/S5-word-batch-notices.md)）。
+**来源**：场景 S5 真机走查（走查报告已删除；场景卡见 [S5 场景卡](scenarios/S5-word-batch-notices.md)）。
 README 头号卖点「拿一张 CSV 表，一次生成几十份文档，母版不动」此前**只有 3 条断言、且只查工具自述文本**，没有任何场景压过。
 
 ### P0 · `wps_word_mail_merge`：没有替换任何数据，还破坏了母版正文
@@ -3128,8 +3131,8 @@ README 头号卖点「拿一张 CSV 表，一次生成几十份文档，母版�
 
 ## 109. WO-001：Word 侧四个缺口补齐（读页面设置 / 读页眉页脚 / 更新目录 /「共 Y 页」）+ 修出两个隐性缺陷
 
-**来源**：场景 S4 跨三件套真机走查的发现 F5/F6（[S4-真机走查报告](scenarios/S4-真机走查报告.md) §7.3），
-立项为 [WO-001](work-orders/WO-001-word-gaps-from-s4.md)。用户决策：**四项都做、`wps_word_get_page_setup` 进广告面、
+**来源**：场景 S4 跨三件套真机走查的发现 F5/F6（走查报告已随 2026-10-18 文档清理删除；原 §7.3），
+立项为 WO-001（工单文件已随 2026-10-18 文档清理删除）。用户决策：**四项都做、`wps_word_get_page_setup` 进广告面、
 S4 的 D7 升硬、S2 的 H3 结案**。四条能力先用裸 COM 探针实测可行才动手（`test/.artifacts/scenario-s4/tools/probe-word-gaps.ps1`）。
 
 **新增能力**（桥 action **263 → 265**，注册工具 **268 → 270**，广告面 **84 → 86**）：
@@ -3184,7 +3187,7 @@ S4 的 D7 升硬、S2 的 H3 结案**。四条能力先用裸 COM 探针实测�
 ## 108. 场景 S2 真机走查：Word 段落的**字符缩进**与**行距倍数**两个单位缺陷（都已修）
 
 **来源**：用户选定场景卡 `docs/scenarios/S2-word-report-finalization.md`（Word 单文档深度：《项目验收报告》定稿）后跑真机走查。
-完整证据、逐条判据与两轮读数见 `docs/scenarios/S2-真机走查报告.md`。
+完整证据、逐条判据与两轮读数原在 `docs/scenarios/S2-真机走查报告.md`（已随 2026-10-18 文档清理删除）。
 两处都是「**回 success 但落盘的不是要求的东西**」，且**两轮真机的模型都自己撞上并绕开了**（所以产物最终正确 —— 属隐性错误）。
 
 ### 8-1 · `firstLineIndent` / `leftIndent` / `rightIndent` 把"字符数"当"厘米"（严重）
@@ -4228,7 +4231,7 @@ null 值表达式 / 报错行号与源码对不上）全部由此解释。
 - `node scripts/lint.mjs`：**190 文件 0 违规**；`npm run test:static`：**13/13**；
   `node scripts/verify.mjs --static`：19 项；`node test/spec-reproduction.test.mjs`：16 项；
   `cd mcp; npx tsc`：0 错；`gen-numbers --check`：20 项声明值一致（testFiles 51 → 53）。
-- 场景侧证据：`docs/scenarios/S3-真机走查报告.md`（attempt 1 的 33/33 硬判据、attempt 2 的 30/33 与页序对照）。
+- 场景侧证据：`docs/scenarios/S3-真机走查报告.md` 已删除（attempt 1 的 33/33 硬判据、attempt 2 的 30/33 与页序对照）。
 
 ---
 

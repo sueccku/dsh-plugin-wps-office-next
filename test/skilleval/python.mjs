@@ -1,7 +1,7 @@
 // 找得到一个能读 Office 文件的 Python。
 //
 // 为什么需要它：夹具生成与产物检查都要 openpyxl / python-docx / python-pptx。这台机器上 PATH 里的
-// python 未必带这些库，而 DSH 自带运行时里带（版本见 docs/skill-refactor-report.md 的实测记录）。
+// python 未必带这些库，而 DSH 自带运行时里带（从 $DSH_HOME/dsh-runtimes/ 里找，见下方实现）。
 // 这里**不写死用户路径**：从 $DSH_HOME/dsh-runtimes/* 推，找不到再退回 PATH。
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

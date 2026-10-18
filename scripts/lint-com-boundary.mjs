@@ -34,7 +34,7 @@ const RANGE_RETURN_EXPR = /^\s*return\s+(?!,)[^\n]*\.(Range|Cells|Rows|Columns|A
 //    InvalidCastException（"指定的转换无效"）→ 用户看到"坐标/尺寸设不进去"，报错还误导成
 //    "确认操作对象存在、名称或序号正确"。走 Set-ComValue 会按约定归一化并每次重新绑定。
 //    显式 `[double]` 强转同样安全（值是 Double），所以只查「`=` 后面就是 `$`」这一种写法。
-//    场景证据：docs/scenarios/S3-真机走查报告.md（真机 8 次失败 + test/ppt-shape-position.test.mjs）。
+//    场景证据：S3 真机走查（报告已随 2026-10-18 文档清理删除）+ test/ppt-shape-position.test.mjs。
 const GEOM_WRITE = /\.(Left|Top|Width|Height|Rotation|ScaleWidth|ScaleHeight)\s*=(?!=)\s*\$/;
 
 export function collectBoundaryViolations(text, file = BRIDGE) {

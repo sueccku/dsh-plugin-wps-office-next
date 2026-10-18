@@ -72,7 +72,7 @@
    `recipes/` **能读到**，base directory 明确交付给模型；③ 读不到文件的错误是
    `Error: cannot read "<绝对路径>": not found`；④ 能按路径读另一个已注册 Skill 的文件；
    ⑤ 顺着应用 Skill 的指针加载 `wps-office-next` 成功，正文含「保存、副本与关闭」「没有 documentId」。
-   详细证据与原始返回见 [skill-audit.md](skill-audit.md) §4.1。因此四个 SKILL.md 保留关键协议短摘要的
+   详细证据与原始返回见 HANDOFF §8.3 第 9 条（原 `skill-audit.md` 已随 2026-10-18 文档清理删除）。因此四个 SKILL.md 保留关键协议短摘要的
    降级设计**被证实是必要的**；细节放 `references/` `recipes/` **被证实是安全的**。
 2. **视觉验收 —— 未做**：文字溢出、对象重叠、裁切需要导出图片 + 图像读取能力；Skill 里写的是
    "读不到图片就说视觉效果未验证"，不是"排版无误"。

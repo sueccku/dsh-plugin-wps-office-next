@@ -1,7 +1,7 @@
 // S6 走查回归（真机）：sheet 名字对不上时，桥必须回一条能照着做的中文错误
 // ——「哪本工作簿、缺哪张表、这本里现有哪几张」，而不是把裸 COM
 // 「Invalid index. (异常来自 HRESULT:0x8002000B (DISP_E_BADINDEX))」丢给模型。
-// 真机依据：S6 attempt 1 / attempt 2 各实测到一次（见 docs/scenarios/S6-真机走查报告.md）。
+// 真机依据：S6 attempt 1 / attempt 2 各实测到一次（FIXES 111；走查报告已随 2026-10-18 文档清理删除）。
 //
 // 反向取证（先红后绿）：把 host 的两处调用还原成 `$wb.Sheets.Item(...)`
 // （python test/.artifacts/scenario-s6/tools/make_prefix_host.py），再用环境变量
