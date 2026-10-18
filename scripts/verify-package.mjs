@@ -45,6 +45,10 @@ function resolvePluginRoot() {
   const manifest = JSON.parse(packed.stdout)[0];
   check("packed manifest lists mcp/package.json (the module boundary)", manifest.files.some((f) => f.path === "mcp/package.json"),
     "entries=" + manifest.entryCount);
+  // 打包读数以这一行为准（release-checklist §2 不再手抄数字）：entries / packed / unpacked。
+  const kb = (n) => (n / 1024).toFixed(1) + "KB";
+  const mb = (n) => (n / 1048576).toFixed(2) + "MB";
+  console.log("PACKAGE SIZE entries=" + manifest.entryCount + " packed=" + manifest.size + "B (" + kb(manifest.size) + ") unpacked=" + manifest.unpackedSize + "B (" + mb(manifest.unpackedSize) + ")");
   const staging = mkdtempSync(join(tmpdir(), "wps-verify-package-"));
   const tarball = spawnSync("npm", ["pack", "--pack-destination", staging], npmOpts);
   if (tarball.status !== 0) { console.log("FAIL npm pack"); console.log(tarball.stderr); process.exit(1); }

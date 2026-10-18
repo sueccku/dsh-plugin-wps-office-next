@@ -386,9 +386,10 @@ npm run gates:release    # push / 发版前：全部（CI 跑的就是这一组�
 ```
 
 - 门禁里的生成器会**重写**已入库的生成物；跑完 `git diff` 里出现的生成物要一起提交。
-- 需要本机 WPS 的部分 —— **按需，不要每次改完都跑**（见 AGENTS.md §1/§2）：只在准备 push 到 GitHub
-  且用户说「跑」时才执行。逐文件跑之前先清掉插件自己发布的两个环境变量（这个终端若是从「已装本插件」
-  的 DSH 会话里起的，它们会指向 profile 里那份副本，让 plugin.test.mjs 报一处假失败）：
+- 需要本机 WPS 的部分 —— **按需**（见 AGENTS.md §1/§2）：改到某个能力时可以先**只跑它直接相关的那一个**
+  回归文件（5–10 秒）；整轮 / e2e / install 验收只在准备 push 且用户说「跑」时才执行。逐文件跑之前先清掉
+  插件自己发布的两个环境变量（这个终端若是从「已装本插件」的 DSH 会话里起的，它们会指向 profile 里
+  那份副本，让 plugin.test.mjs 报一处假失败）：
 
 ```powershell
 $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
@@ -473,6 +474,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | [docs/FIXES.md](docs/FIXES.md) | 修复记录，每条都带可复跑的验证方法与实测数字 |
 | [docs/tool-roadmap.md](docs/tool-roadmap.md) | 工具面路线图：能力审计、缺口 / 冗余清单、分阶段任务表 |
 | [docs/release-checklist.md](docs/release-checklist.md) | npm 发布检查单：发布前门禁、打包对账、收包验证、发布后验收 |
+| [docs/release-records.md](docs/release-records.md) | 历史发布记录：每版实测读数、registry 核对与事故处置 |
 | [docs/param-contract.md](docs/param-contract.md) | 工具 / action 参数契约对账（生成物） |
 | [docs/error-contract.md](docs/error-contract.md) | 错误与超时契约：失败 / 部分成功的回报形状与不变量 |
 | [docs/destructive-operations.md](docs/destructive-operations.md) | 破坏性操作清单：影响范围、前置守卫与对应测试 |

@@ -42,7 +42,7 @@ const STEPS = [
   { id: "build-host", title: "重建 host/wps-actions.ps1", cmd: POWERSHELL, args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/build-host-actions.ps1"], groups: ["bridge", "release"] },
   { id: "host-diff", title: "host/wps-actions.ps1 对账", ...gitDiff("host/wps-actions.ps1"), groups: ["bridge", "release"] },
 
-  { id: "skill-tools-check", title: "技能参考表只读核对", ...node("scripts/gen-skill-tools.mjs", "--check"), groups: ["verify", ...CODE] },
+  { id: "skill-tools-check", title: "技能参考表只读核对", ...node("scripts/gen-skill-tools.mjs", "--check"), groups: ["verify", "code", "bridge", "package"] },
   { id: "skill-tools", title: "重建技能参考表", ...node("scripts/gen-skill-tools.mjs"), groups: ["release"] },
   { id: "skills-diff", title: "skills 对账", ...gitDiff("skills"), groups: ["release"] },
 
@@ -52,6 +52,7 @@ const STEPS = [
   { id: "coverage-diff", title: "docs/tool-coverage.md 对账", ...gitDiff("docs/tool-coverage.md"), groups: CODE },
 
   { id: "lint", title: "lint（含 Markdown 链接检查）", ...node("scripts/lint.mjs"), groups: ALL },
+  { id: "fixes-index-check", title: "FIXES 索引只读核对", ...node("scripts/gen-fixes-index.mjs", "--check"), groups: ALL },
   { id: "verify-static", title: "verify --static", ...node("scripts/verify.mjs", "--static"), groups: ["verify", ...CODE] },
 
   { id: "param-contract-check", title: "参数契约只读核对", ...node("scripts/param-contract.mjs", "--check"), groups: ["verify"] },
@@ -63,7 +64,6 @@ const STEPS = [
   { id: "verify-package", title: "打包冒烟 verify:package", cmd: process.env.ComSpec || "cmd.exe", args: ["/d", "/s", "/c", "npm run verify:package --silent"], groups: ["package", "release"] },
 
   { id: "numbers-check", title: "文档数字对账（只读）", ...node("scripts/gen-numbers.mjs", "--check"), groups: ALL },
-  { id: "numbers-diff", title: "docs/current-numbers.md 对账", ...gitDiff("docs/current-numbers.md"), groups: ["release"] },
 ];
 
 if (requested === "list" || requested === "--list") {

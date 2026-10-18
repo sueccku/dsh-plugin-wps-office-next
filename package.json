@@ -30,6 +30,7 @@
     "gen:skills": "node scripts/gen-skill-tools.mjs",
     "gen:coverage": "node scripts/gen-tool-coverage.mjs",
     "gen:numbers": "node scripts/gen-numbers.mjs",
+    "gen:fixes-index": "node scripts/gen-fixes-index.mjs",
     "check:numbers": "node scripts/gen-numbers.mjs --check",
     "lint": "node scripts/lint.mjs",
     "verify:package": "node scripts/verify-package.mjs",

@@ -4,20 +4,19 @@
 > 本文件是**测试时机**的唯一权威来源；README / docs 里任何相反或过期的说法，一律以本文件为准。
 > 依据：用户 2026-10-10 决策（HANDOFF 决策表 **R13**），**取代 R9**「真机整轮回归 = 发版前必跑」。
 
-## 1. 普通修改后：不跑测试
+## 1. 普通修改后：不跑整轮测试
 
-改代码 / 改文档 / 改生成物之后，**不要**主动执行完整测试或回归测试，包括：
+改代码 / 改文档 / 改生成物之后，按下面处理（真机整轮成本高，用户要求按需执行 —— R13）：
 
-- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1`（真机整轮，约 15 分钟）
-- `node scripts\e2e.mjs --profile <name>`（一键端到端，约 2–4 分钟）
-- `node scripts\accept-install.mjs`
-- 逐文件跑 `test\*.test.mjs`（`spec-reproduction.test.mjs` 例外：它不需要 WPS，属 §3 的静态门禁）
-
-原因：真机整轮成本高；用户要求按需执行。
+- **不要主动跑**：`scripts\run-tests.ps1`（整轮，约 15 分钟）、`scripts\e2e.mjs`（约 2–4 分钟）、`scripts\accept-install.mjs`。
+- **改到某个能力时，可以只跑它直接相关的那一个** `test\*.test.mjs`（实测 5–10 秒；回归先红后绿）。不要背靠背手跑多个 WPS 测试文件（单实例租约会让第二个假失败），也不要把它当整轮。
+- **不需要 WPS 的测试照常跑**：`npm run test:static`（17 个文件，属 §3 的静态门禁）；`spec-reproduction.test.mjs` 同样属 §3。
+- 整轮 / e2e / install 验收只在 §2 的 push 前询问里、**用户说「跑」**时才执行。
 
 ## 2. 要 push 到 GitHub 之前：先问用户
 
 - 每次准备 `git push`（含发版推送）**之前**，主动问一句：**「要不要跑测试？」**，并给出范围选项（整轮 / 只跑相关文件 / 跳过）。
+- 问之前先按本次 diff 给一句**默认建议**：只改文档 → 建议跳过；改了某个工具 → 建议只跑相关文件；改了桥/宿主或准备发版 → 建议整轮。用户仍可改选。
 - **用户明确说「跑」才跑**；用户没回复 → 不跑测试，也**先不 push**，等用户回话。
 - 用户说「跑」但没指定范围时，默认跑 `scripts\run-tests.ps1` 整轮。
 - 本地 `git commit` 不受此约束（可随时提交）。

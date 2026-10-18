@@ -13,15 +13,18 @@
 
 > 读 @docs/HANDOFF.md 和 @docs/current-numbers.md，然后按里面的「新对话怎么开始」做。
 
-### 0.1 先读这五份（按顺序，约 10 分钟）
+### 0.1 先读这三份（约 5 分钟；其余按需）
 
 | # | 文件 | 读它为了知道什么 |
 | --- | --- | --- |
 | 1 | [HANDOFF.md](HANDOFF.md)（本文） | 现状、决策登记表、契约管线、纪律 |
 | 2 | [current-numbers.md](current-numbers.md) | **所有现值的唯一来源**（自动生成 + CI 对账）。别用正则自己数 |
-| 3 | [FIXES.md](FIXES.md) 的 **103–115** 号 | 最近几轮做了什么、踩过哪些坑（含"假成功""字段名对不上""静默丢失"这类反复出现的模式） |
-| 4 | 本文 §10「纪律与已踩过的坑」 | 预算红线、账本只许缩、只读核对优先，以及本轮新增的工具/测试陷阱 |
-| 5 | [release-checklist.md](release-checklist.md) | 发版门禁与发布后验收步骤（**测试时机以 [../AGENTS.md](../AGENTS.md) 为准**） |
+| 3 | [FIXES.md](FIXES.md) 顶部的**索引** | 编号 + 标题速查；接到具体任务时再点开相关条目（最近几轮从 **103–115** 号看起）。不必通读全文 |
+
+**按需再读**：
+- 发版前：[release-checklist.md](release-checklist.md)（现行流程）+ [release-records.md](release-records.md)（历史读数与事故处置）；
+- 写代码/排错前：本文 §10「纪律与已踩过的坑」；
+- 契约管线的 7 步手工顺序：本文 §4。
 
 > **2026-10-07 文档清理**：删掉了四份已完成使命的文档（`stabilization-plan.md`、`CONTRACT-excel.md`、
 > `pending-bugs.md`、`baseline/upstream-0.1.0/SUMMARY.md`）与一轮工单台账（`bug-hunt-orders.md`），
@@ -75,7 +78,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 ## 1. 一句话现状
 
 **npm 上最新是 `v0.8.2`（2026-10-12）**：修 FIXES 114（宿主 PATH 上没有 Node.js 时 95 个工具全部不可用），
-逐版验收读数见 §2 与 [release-checklist.md](release-checklist.md) §9。
+逐版验收读数见 §2 与 [release-records.md](release-records.md)。
 **本地 `main` 比 `origin/main` 领先 12 个代码提交（另加文档清理 / 门禁整理提交）、尚未发版**：一轮 Skill 重构 + 一批真机测试驱动的接口修复 + FIXES 115。
 
 | 未发版改动（详情见 §8.4） | 证据 |
@@ -114,7 +117,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`–`v0.6.3`、`v0.7.0`、`v0.8.0`、`v0.8.1`、**`v0.8.2`**（**没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
-| Releases | **Latest = v0.8.2**（2026-10-12）；逐版发布记录与验收读数见 [release-checklist.md](release-checklist.md) §9 |
+| Releases | **Latest = v0.8.2**（2026-10-12）；逐版发布记录与验收读数见 [release-records.md](release-records.md) |
 | 包 | `dsh-plugin-wps-office-next@0.8.2` —— **`dist-tags.latest = 0.8.2`**；`fileCount = 294`、`shasum = 966ceabe3ea1293a84482fbbb24f1ed969a70fdc`、tarball **706,231 字节**（unpacked 3.35 MB）。在架版本 `0.6.1`–`0.8.2`（`0.6.0` 已撤销）。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
@@ -123,7 +126,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 **本机状态**：本机 DSH 里装的插件版本可能与仓库不同 —— 跑测试/探针时要把 `WPS_OFFICE_HOST_SCRIPT` / `WPS_OFFICE_MCP_ENTRY` 钉到仓库内路径（FIXES 87，详见 §9）。profile 与版本一律以 `dsh plugin --profile <name> list`、`npm view` 实测为准。
 
 > ⚠️ **发版验收 / 给 profile 装新版必须写全版本号**（`add <包名>@X.Y.Z`）：这套 DSH/pnpm 开了 **`minimumReleaseAge`**（供应链保护），不写版本号会静默装回上一版。
-> 发布后以「registry 200 + `dist.tarball` 可 HEAD」为判据，不能只看退出码（0.8.1 的 202/404 插曲见 release-checklist §9）。
+> 发布后以「registry 200 + `dist.tarball` 可 HEAD」为判据，不能只看退出码（0.8.1 的 202/404 插曲见 [release-records.md](release-records.md)）。
 > 若本节与 registry 或 `git` 现状不符，**以命令实测为准**：`git describe --tags`、`git status`、`npm view dsh-plugin-wps-office-next versions`。
 
 ---
@@ -249,6 +252,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | **2026-10-11** | **R14**（= S6 的 D4） | 高频隐藏工具要不要进广告面 | **进**：按 S1/S4/S6 六轮真机轨迹取证，准入阈值 =「**跨 ≥2 轮真实走查出现，或单轮被调用 ≥5 次**」，**86 → 95**（54,273 / 60,000 字节，仍留 5 个位 / 5,727 字节余量）。最硬依据：`wps_excel_freeze_panes` 在 S6 attempt 1 被直呼时拿 `unknown tool`（一次硬失败 + 一次重试）。复算脚本 `test/.artifacts/scenario-s6/tools/rank-hidden-tools.mjs` + `plan-ad-surface.mjs`；回归 `test/advertised-surface.test.mjs`（26 项真机） | FIXES 112（S6 走查报告已随 2026-10-18 清理删除） |
 | **2026-10-18** | **R15** | 文档清理范围 | **深度清理**：删除已完成的过程文档（`PROGRESS.md`、`skill-audit.md`、`skill-refactor-report.md`、`work-orders/WO-001`、`com-surface-survey.md`）、7 份真机走查报告与 10 个模板 README；**保留**场景卡、FIXES、HANDOFF、生成物/契约/路线图/发布检查单；HANDOFF 同步删掉历史读数并补 §8.3/§8.4。**部分反转 R5/R10** | 本次提交 |
 | **2026-10-18** | **R16** | 静态门禁怎么维护 | **单一入口 + 按改动类型分层**：命令清单只放 [`scripts/run-gates.mjs`](../scripts/run-gates.mjs)，分 `docs` / `verify`（只读）/ `code` / `bridge` / `package` / `release` 六组；CI 只调 `gates:ci`；文档只写"改什么跑哪组"。同时新增两道静态门禁：Markdown 相对链接检查（lint）、版本号/README 回退 tag 对账（`verify --static`） | [AGENTS.md §3](../AGENTS.md)、README「质量门禁与 CI」 |
+| **2026-10-18** | **R17** | 改代码后能不能跑单个相关回归文件 | **可以**（细化 R13，不改变"整轮按需"）：整轮 / e2e / install 验收仍只在 push 前问、用户说跑才跑；改到某个能力时允许只跑**直接相关的那一个** `test/*.test.mjs`（5–10 秒，先红后绿）；WPS-free 的走 `test:static`。push 前询问改为**先按 diff 给默认建议** | [AGENTS.md §1/§2](../AGENTS.md) |
 
 > **编号纪律（2026-10-07 起）**：历史轮用 D1–D23，发布轮又撞了一次（例如历史 D15 = Word `range` 契约，发布轮 D15 = 提交方式）。
 > 从 R 系列起**新决策一律用 `R<n>` 或带日期的编号**，别再往 D 系列里加号。
@@ -385,7 +389,7 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 - **在架版本：`0.6.1` … `0.8.2`，`dist-tags.latest = 0.8.2`**（2026-10-12 发布）；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），但 **CHANGELOG 保留那次事故的记录**（不要删）。
 - 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、86–91→v0.6.2、92–102→v0.6.3、104–107→v0.7.0、**108–113→v0.8.0**、**114→v0.8.2**、**115→未发版**。
-- 发版流程、逐版记录一律看 [release-checklist.md](release-checklist.md) §4–§9；不要在本文件重复维护。
+- 发版流程看 [release-checklist.md](release-checklist.md) §4–§8；逐版记录看 [release-records.md](release-records.md)。不要在本文件重复维护。
 
 **真实用法数据（2026-10-03 采集，是「广告面该放哪些工具」的唯一实测依据；2026-10-04 已据此完成 A1 重平衡）**
 
@@ -425,6 +429,8 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 ### 8.4 v0.8.2 之后的未发版改动（2026-10-17/18 起）
 
 - **工程侧**：门禁收成单一入口 `npm run gates:{docs,verify,code,bridge,package,release}`（实现在 `scripts/run-gates.mjs`），CI 改调 `npm run gates:ci`；新增两个静态门禁：Markdown 相对链接检查（lint）、版本号/README 回退 tag 对账（`verify --static`，现 23 项）。
+- **文档结构**：FIXES 顶部加生成式索引（`scripts/gen-fixes-index.mjs`，`gates:*` 只读核对）；release-checklist 的历史发布记录拆到 [release-records.md](release-records.md)，§2 的打包读数改由 `verify:package` 打印。
+- **CI 去冗余**：release 组不再重复跑 `gen-skill-tools --check`，也不再跑 `gen-numbers --check` 之后那个空转的 `git diff`。
 
 - **Skill**：四个 `SKILL.md` 重写为任务决策指南 + 按需参考；`reference.md` 改为「完整目录 + 任务分组索引」；新增 10 份 `references/` / `recipes/`。门禁：`test/skill-quality.test.mjs`（123 项）、`gen-skill-tools.mjs --check` 进 CI。
 - **批处理**：`stopOnError` + `status/succeeded/failed/stoppedAt` + 逐项 `index`；失败项错误不截断。
