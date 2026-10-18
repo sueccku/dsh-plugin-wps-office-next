@@ -77,11 +77,13 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 ## 1. 一句话现状
 
-**npm 上最新是 `v0.8.2`（2026-10-12）**：修 FIXES 114（宿主 PATH 上没有 Node.js 时 95 个工具全部不可用），
-逐版验收读数见 §2 与 [release-records.md](release-records.md)。
-**本地 `main` 比 `origin/main` 领先 12 个代码提交（另加文档清理 / 门禁整理提交）、尚未发版**：一轮 Skill 重构 + 一批真机测试驱动的接口修复 + FIXES 115。
+**npm 上最新是 `v0.9.0`（2026-10-18）**：四个 Skill 重写为任务决策指南、`wps_batch` 结构化状态、
+未落盘保存关闭不再丢内容（P0）、租约 / 孤儿身份收口、嵌套参数校验（FIXES 115；发版前还修掉新校验
+引出的 `format.numberFormat` 回归，FIXES 116），逐版验收读数见 §2 与 [release-records.md](release-records.md)。
+**本地 `main` 已与 `origin/main` 同步**：`v0.9.0` 已 push + tag + GitHub Release（2026-10-18）；
+0.8.2 之后的一轮 Skill 重构 + 一批真机测试驱动的接口修复 + 文档/门禁整理，均已随本版发布。
 
-| 未发版改动（详情见 §8.4） | 证据 |
+| 0.9.0 的变化（详情见 §8.4） | 证据 |
 | --- | --- |
 | 四个 Skill 重写为「任务决策指南 + 按需参考」；生成器不再往 SKILL.md 注入工具清单 | `test/skill-quality.test.mjs`（123 项） |
 | `wps_batch`：`stopOnError` + `status/succeeded/failed/stoppedAt` + 逐项 `index` | `test/error-contract.test.mjs` |
@@ -103,7 +105,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 **历史阶段（都是当时的读数，别当现值）**：S1–S9 加固分四波落地，`v0.3.0`（09-16）→ `v0.4.0`（09-19）→
 `v0.5.0`–`v0.5.4`（10-02）→ `v0.6.0`（上架 npm，因漏发 `mcp/package.json` 而坏）→ `v0.6.1`（修好分发）→
-`v0.6.2`（10-04）→ `v0.6.3`（10-07）→ `v0.7.0`（10-09）→ `v0.8.0`（10-11）→ `v0.8.2`（10-12）。
+`v0.6.2`（10-04）→ `v0.6.3`（10-07）→ `v0.7.0`（10-09）→ `v0.8.0`（10-11）→ `v0.8.2`（10-12）→ `v0.9.0`（10-18）。
 逐条证据在 FIXES 与 CHANGELOG。
 
 ---
@@ -113,15 +115,15 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | 项 | 值 |
 | --- | --- |
 | 仓库根 | `D:\dsh\a` |
-| 分支 / HEAD | `main`（以 `git describe --tags` / `git log --oneline -1` 为准）——**本地领先 `origin/main` 12 个代码提交（另加文档 / 门禁整理提交）、未 push**（2026-10-18 核对） |
+| 分支 / HEAD | `main`（以 `git describe --tags` / `git log --oneline -1` 为准）——**与 `origin/main` 同步（2026-10-18 push `v0.9.0`）** |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
-| 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`–`v0.6.3`、`v0.7.0`、`v0.8.0`、`v0.8.1`、**`v0.8.2`**（**没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
-| Releases | **Latest = v0.8.2**（2026-10-12）；逐版发布记录与验收读数见 [release-records.md](release-records.md) |
-| 包 | `dsh-plugin-wps-office-next@0.8.2` —— **`dist-tags.latest = 0.8.2`**；`fileCount = 294`、`shasum = 966ceabe3ea1293a84482fbbb24f1ed969a70fdc`、tarball **706,231 字节**（unpacked 3.35 MB）。在架版本 `0.6.1`–`0.8.2`（`0.6.0` 已撤销）。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
+| 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`–`v0.6.3`、`v0.7.0`、`v0.8.0`、`v0.8.1`、`v0.8.2`、**`v0.9.0`**（**没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
+| Releases | **Latest = v0.9.0**（2026-10-18）；逐版发布记录与验收读数见 [release-records.md](release-records.md) |
+| 包 | `dsh-plugin-wps-office-next@0.9.0` —— **`dist-tags.latest = 0.9.0`**；`fileCount = 315`、`shasum = a8b5b9f55e06fc2956fed1a2325cc0cad3662db2`、tarball **766,109 字节**（unpacked 3,670,529 B / 3.50 MB）。在架版本 `0.6.1`–`0.9.0`（`0.6.0` 已撤销）。依赖 `@modelcontextprotocol/sdk`、`uuid`、`winston` |
 | 构建脚本 | `snapshot` / `verify` / `gen:skills` / `gen:coverage` / `lint`——**没有 `prepare`**（安装时不需要构建） |
 
-**工作区**：2026-10-18 文档清理后全部改动已提交；`docs/` 只保留现行文档（历史过程文档已删，见 §0.1 清理记录）。
+**工作区**：2026-10-18 发布 `v0.9.0` 后全部改动已提交；`docs/` 只保留现行文档（历史过程文档已删，见 §0.1 清理记录）。
 
 **本机状态**：本机 DSH 里装的插件版本可能与仓库不同 —— 跑测试/探针时要把 `WPS_OFFICE_HOST_SCRIPT` / `WPS_OFFICE_MCP_ENTRY` 钉到仓库内路径（FIXES 87，详见 §9）。profile 与版本一律以 `dsh plugin --profile <name> list`、`npm view` 实测为准。
 
@@ -388,8 +390,8 @@ P0 清理 → P1 规格真源 → P2 Excel 做深（5 波）→ P3 Word 做深�
 
 ### 8.2 发布状态（2026-10-18 核对）
 
-- **在架版本：`0.6.1` … `0.8.2`，`dist-tags.latest = 0.8.2`**（2026-10-12 发布）；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），但 **CHANGELOG 保留那次事故的记录**（不要删）。
-- 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、86–91→v0.6.2、92–102→v0.6.3、104–107→v0.7.0、**108–113→v0.8.0**、**114→v0.8.2**、**115→未发版**。
+- **在架版本：`0.6.1` … `0.9.0`，`dist-tags.latest = 0.9.0`**（2026-10-18 发布）；坏掉的 `0.6.0` 已由用户 `npm unpublish` 撤销（2026-10-02），但 **CHANGELOG 保留那次事故的记录**（不要删）。
+- 版本归属：FIXES 79→v0.5.3、80–83→v0.5.4、84→v0.6.1、86–91→v0.6.2、92–102→v0.6.3、104–107→v0.7.0、**108–113→v0.8.0**、**114→v0.8.2**、**115–116→v0.9.0**。
 - 发版流程看 [release-checklist.md](release-checklist.md) §4–§8；逐版记录看 [release-records.md](release-records.md)。不要在本文件重复维护。
 
 **真实用法数据（2026-10-03 采集，是「广告面该放哪些工具」的唯一实测依据；2026-10-04 已据此完成 A1 重平衡）**
@@ -427,7 +429,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 8. **模型侧 A/B 结论有限**：12 场景 × 3 轮 × 两臂（各 35/36，token +2%），单模型单机、无统计显著性 —— **不能**据此声称"模型更容易选对工具"，也**不能**据此删减 Skill 里的验证步骤。
 9. **Harness 的 Skill 加载已实测**：只加载应用 Skill 不会自动带出总 Skill（只有一行指针）；相对 `references/` / `recipes/` 能读到。因此应用 SKILL.md 自带协议短摘要**必要且已保留**。
 
-### 8.4 v0.8.2 之后的未发版改动（2026-10-17/18 起）
+### 8.4 v0.9.0（2026-10-17/18）：Skill 重构与真机接口修复（已发版）
 
 - **工程侧**：门禁收成单一入口 `npm run gates:{docs,verify,code,bridge,package,release}`（实现在 `scripts/run-gates.mjs`），CI 改调 `npm run gates:ci`；新增两个静态门禁：Markdown 相对链接检查（lint）、版本号/README 回退 tag 对账（`verify --static`，现 23 项）。
 - **文档结构**：FIXES 顶部加生成式索引（`scripts/gen-fixes-index.mjs`，`gates:*` 只读核对）；release-checklist 的历史发布记录拆到 [release-records.md](release-records.md)，§2 的打包读数改由 `verify:package` 打印。
@@ -440,8 +442,9 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - **客户端**：按字节收帧（`StringDecoder`），chunk 边界切开中文不再变 U+FFFD；换子进程时 `reset()`。
 - **桥/宿主**：未落盘 + 脏 + 要保存的关闭**拒绝并保留内容**（P0）；租约身份核对通过就不判过期（心跳只作诊断）；孤儿回收记录升级 `version:2` 并带实例身份。
 - **参数面**：嵌套递归校验（FIXES 115）；`set_font.range` 补 `"all"`；`open_workbook` 补 `readOnly`/`updateLinks`；`set_print_area` 补 `sheet`；`save_as` 缺目录的文案改为可直接行动。
-- **评测**：`test/skilleval/` 固定场景脚手架 + 受控故障注入（默认惰性）；整轮 **1753/63 全绿**（2026-10-18）。
-- **发版前**：按 [release-checklist.md](release-checklist.md) 走完整流程；是否跑整轮按 [../AGENTS.md](../AGENTS.md) §2 先问用户。
+- **发版前回归（FIXES 116）**：嵌套校验让 schema 漏声明的 `format.numberFormat` 从「静默接受」变成「硬拒绝」，整组单元格格式失效；补声明后 `cell-format` 25/25、整轮复验全绿。
+- **评测**：`test/skilleval/` 固定场景脚手架 + 受控故障注入（默认惰性）；整轮 **1777/64 全绿**（2026-10-18）。
+- **发版前**：按 [release-checklist.md](release-checklist.md) 走完整流程；按 [../AGENTS.md](../AGENTS.md) §2 询问后，用户选择「整轮」并在 2026-10-18 跑出 1777/64 全绿。
 
 ### 8.5 工具面扩张的判据与方法（原 `tool-roadmap.md` 折叠，2026-10-18）
 

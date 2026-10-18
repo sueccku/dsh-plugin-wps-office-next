@@ -4,6 +4,18 @@
 > 现行发布流程与门禁在 [release-checklist.md](release-checklist.md)；现值数字看 [current-numbers.md](current-numbers.md)。
 > 新记录追加在**最上面**（最新版本在前）。
 
+## 0.9.0（2026-10-18）
+
+| 项 | 读数 |
+| --- | --- |
+| 主题 | 四个 Skill 重写为任务决策指南 · `wps_batch` 结构化状态 · 未落盘保存关闭不再丢内容（P0）· 租约/孤儿身份收口 · 嵌套参数校验（FIXES 115）；发版前修掉新校验引出的 `format.numberFormat` 回归（FIXES 116） |
+| 真机整轮 | **跑了**（用户 2026-10-18 选择「整轮」）：首轮 `TOTAL PASS=1761 FAIL=16 FILES=64`（唯一红 `cell-format`，16 红即 FIXES 116）；修复后重跑 `TOTAL PASS=1777 FAIL=0 FILES=64 REAPED=343 ORPHANS_LEFT=0`、`ALL TEST FILES GREEN`、`BASELINE OK (1777 >= 1283, 64 >= 51)` |
+| 静态门禁 | `npm run gates:release` **19 步全绿**：tsc + dist 对账、宿主与四个生成器重建对账、lint（含 Markdown 链接检查）、`verify --static` 23、参数契约 259 对 0 失效、spec 复现 16、`test:static` 17/17、文档数字对账 20；`verify:package` **11/11 → `PACKAGE RUNTIME OK`** |
+| 打包 | `entryCount=315  packed=766109 B (748.2KB)  unpacked=3,670,529 B (3.50MB)`；registry 实测 `fileCount=315`、`shasum=a8b5b9f55e06fc2956fed1a2325cc0cad3662db2`、`integrity=sha512-J+If3NTAGyMX2CIN0LGcfXGQYS1vfB9G4GXpZFmCYHVry60ewDnbm6WD95XvjdeKrHO6O0SKbU1UEUSBH0pM5Q==`；下载 tarball **766,109 字节**、sha1 与本地 pack 一致 |
+| 全新 profile 真装 | `dsh plugin --profile wps090 add dsh-plugin-wps-office-next@0.9.0` → 装出 0.9.0、`--dump-config` 两个 id 正常、副本内 `node scripts\doctor.mjs` → `DOCTOR OK`；验收后已 `remove` + 删 profile |
+| GitHub | 提交 `7cf05fb`、tag `v0.9.0`、Release <https://github.com/sueccku/dsh-plugin-wps-office-next/releases/tag/v0.9.0>；`git ls-remote --tags` 已见 `refs/tags/v0.9.0` |
+| 顺带 | FIXES 116 是**发版前整轮**抓到的回归：加严嵌套未知键校验，把 schema 漏声明的 `format.numberFormat` 判成未知参数，`wps_excel_set_cell_format` 的嵌套写法整组失效；静态门禁抓不到（`arg-shape-nested` 只验 schema 内部自洽，`param-contract` 把 setCellFormat 列为 UNVALIDATED）。详见 [FIXES.md](FIXES.md) 第 116 条 |
+
 ## 0.8.2（2026-10-12）
 
 | 项 | 读数 |
@@ -31,6 +43,7 @@
 
 | 日期 | 对比 | 读数 |
 | --- | --- | --- |
+| 2026-10-18 | 0.9.0 vs npm 0.8.2 | npm 0.8.2 = **294 文件**、本次 = **315 文件**，**新增 21、移除 0** —— 新增 = Skill 按需参考 11 份（6 `references` + 5 `recipes`）+ `arg-shape` / `fault-inject` 各 4 个 dist 产物 + `scripts/gen-fixes-index.mjs` / `scripts/run-gates.mjs`；**没有**漏进 `node_modules` / `test` / `src` |
 | 2026-10-12 | 0.8.2 vs 0.8.1 | 两边都是 294 文件；内容相同（0.8.1 的 tarball 曾短暂 404，制品就绪后正常） |
 | 2026-10-09 | 0.7.0 vs npm 0.6.3 | npm 0.6.3 = **296 文件**、本次 = **295 文件**，**新增 1、移除 2** —— 新增 `scripts/reap-wps.ps1`；移除的 `scripts/analyze-projection.mjs`、`scripts/analyze-upstream-tools.mjs` 是**本轮之前就已经删掉的死脚本**，不是打包漏件 |
 | 2026-10-07 | 0.6.3 vs npm 0.6.2 | **两边都是 296 文件、新增 0、移除 0** —— 内容就地更新，没有多带（没漏进 `node_modules` / `test` / `src`）也没有少带 |
