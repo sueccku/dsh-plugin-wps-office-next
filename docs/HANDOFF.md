@@ -491,6 +491,11 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 - 每次开工先 `git status`；**提交用明确的文件/目录路径 `git add`，禁止 `git add -A`，也避免 `git add -u`**（后者会扫全部已跟踪改动）。确需批量时，先确认 `git status` 里只有本次改动。
 - 原因：用户会在**另一条 DSH 会话**里同时改 `README.md` / `package.json`，已因此误扫过两次别人的未提交改动。
 
+**历史记录**
+- `FIXES.md` / `CHANGELOG.md` / `release-records.md` 的结论、实测读数、日期、版本号**不改**；
+  允许加更正注（保留原文）、把悬空链接改成纯文字或重指向、给条目补状态与版本归属。
+  边界与判断标准见 [../AGENTS.md](../AGENTS.md) §6。
+
 **方法**
 - 先测量再改代码；每个结论都要有可运行命令；优先用**真机 WPS** 验证而不是推理。
   **教训**：计划里「补 `PasswordDocument:=""`」这条**实测是错的**（空串=没给密码，照样弹框），

@@ -2,10 +2,13 @@
 
 对应 baseline/known-defects.md 的编号，记录本仓库相对上游 a825336 的修复。
 每条都要求有可复跑的验证，不接受“看起来对”。
+> **本文的维护边界（[AGENTS.md](../AGENTS.md) §6）**：结论 / 读数 / 日期不改；允许三类维护 ——
+> 加更正注（保留原文）、把悬空链接改成纯文字或重指向、给条目补状态与版本归属。
+>
 > **2026-10-07 文档清理**：本文是**历史记录**，行文中提到的 `docs/stabilization-plan.md`、`docs/CONTRACT-excel.md`、
-> `docs/bug-hunt-orders.md`、`docs/pending-bugs.md` 与 `baseline/upstream-0.1.0/` 已在文档清理中删除；
-> **链接保留原样（不改历史）**，它们的结论已分别落到 `docs/HANDOFF.md` §10（工具与测试陷阱）、
-> §3.1（开口决策）与本文自身的条目里。
+> `docs/bug-hunt-orders.md`、`docs/pending-bugs.md` 与 `baseline/upstream-0.1.0/` 已在文档清理中删除。
+> 当时选择**保留原链接**（属 §6 允许的例外，`bug-hunt-orders.md` 那条已登记进 `scripts/lint.mjs` 的白名单），
+> 它们的结论已分别落到 `docs/HANDOFF.md` §10（工具与测试陷阱）、§3.1（开口决策）与本文自身的条目里。
 >
 > **2026-10-18 文档清理（R15）**：`docs/PROGRESS.md`、`docs/scenarios/S1–S7-真机走查报告.md`、
 > `docs/work-orders/WO-001-word-gaps-from-s4.md` 已删除；下方历史条目里指向它们的链接改为纯文字，结论仍在各自条目里。
