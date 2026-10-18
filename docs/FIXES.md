@@ -138,6 +138,7 @@
 | 113 | S7 D1+D2：Word 分节族三件套（分节页面设置 / 页码格式与分节重编号 / 表头跨页重复）+ 一个静默丢方向的顺序缺陷 |
 | 114 | 用户报告：宿主 PATH 上没有 Node.js 时整行 MCP 条目死掉，95 个工具全部不注册（P0，已修） |
 | 115 | 嵌套参数只查了顶层：`calls[].tool` 缺失、`range` 只给 start、`data` 少一层数组都静默执行（C1） |
+| 116 | 嵌套校验上线后，schema 漏声明把一条一直可用的路径判死：`format.numberFormat` 被当未知参数（v0.9.0 发版前整轮抓到） |
 <!-- FIXES-INDEX:END -->
 
 ## 已修复
@@ -4561,3 +4562,40 @@ Windows 11 26H2，机器上**没装 Node.js**。插件装好、显示已启用�
 **不做/边界**：嵌套里的枚举值、`additionalProperties` 语义、跨参数约束（如"start 必须小于 end"）
 都不在这层校验里；它们仍由桥或 handler 裁决。改这条时不要顺手把 Skill 文案升级成"所有参数都严格校验"
 （改进指南 §2.3 明确要求不要扩展这个承诺）。
+
+## 116. 嵌套校验上线后，schema 漏声明把一条一直可用的路径判死：`format.numberFormat` 被当未知参数（v0.9.0 发版前整轮抓到）
+
+**症状**：0.9.0 发版前整轮真机回归（2026-10-18）唯一红文件 `test/cell-format.test.mjs`（**9/25**，16 条红）：
+`wps_excel_set_cell_format {range:"A1", format:{bold:true, …, numberFormat:"0.00%"}}` 被注册层整体拒绝 ——
+
+```
+未知参数: format.numberFormat（动作：wps_excel_set_cell_format）可选参数: bold / italic / fontSize / …
+```
+
+嵌套整对象被拒 → A1 的字体、字号、颜色、对齐、自动换行、数字格式**全都没写进去**，后续读回与
+openpyxl 落盘断言连续红。单文件复跑可稳定复现（不是环境抖动）。
+
+**根因**：FIXES 115 的递归校验开始检查嵌套层的未知键，而 `format` 对象的 `properties` 只声明了
+bold / italic / fontSize / fontName / fontColor / bgColor / underline / strikethrough /
+horizontalAlignment / verticalAlignment / wrapText —— **漏了 `numberFormat`**。桥
+（`mcp/scripts/wps-com.ps1` 的 setCellFormat 会读 `numberFormat` 并写 `NumberFormat`）与 handler
+（`format.ts` 会把嵌套与扁平的键合并）都支持它，测试也一直按嵌套写法用；校验上线前它只是"被静默接受"，
+所以旧测试全绿。**给未知键加严，等于把 schema 的漏声明从"静默接受"变成"硬拒绝"。**
+
+**修复**：在 `mcp/src/tools/excel/format.ts` 的 `format.properties` 补
+`numberFormat`（string，说明与顶层 `numberFormat` 同义），`format` 描述同步补一项；
+`mcp/src/spec/operations.ts` 的嵌套 schema 同步。只补声明，**没有**放宽嵌套未知键规则（其余未知键照样拒绝）。
+
+**验证**：
+
+- `node test/cell-format.test.mjs`：修复前 **9/25**（16 红）→ 修复后 **25/25 绿**（含 openpyxl 落盘断言）。
+- 重新整轮真机回归（2026-10-18）：**`TOTAL PASS=1777 FAIL=0 FILES=64 REAPED=343 ORPHANS_LEFT=0`、
+  `ALL TEST FILES GREEN`、`BASELINE OK`**。
+- 静态门禁：tsc + `mcp/dist` 对账、四个生成器与 spec 对账、lint、`verify --static` 23、参数契约 259 对
+  0 失效、spec 复现 16、`test:static` 17/17、`verify:package` 11/11。
+- 影响面：广告面 schema 字节 **55,346 → 55,510**（≈15,813 → 15,860 tokens），README / current-numbers 已同步。
+
+**教训**：加严校验前要扫一遍**所有**嵌套对象 schema 与 handler/桥实际接受的键是否一致。本次是
+**真机整轮**抓到的，静态门禁抓不到 —— `arg-shape-nested` 的自洽扫描只验证"schema 内部一致"，
+验证不了"schema 与桥一致"；而 `param-contract` 把 setCellFormat 列为 UNVALIDATED（桥没有静态键表）。
+

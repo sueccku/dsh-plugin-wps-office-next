@@ -4,6 +4,79 @@
 
 > **历史记录**：本文件按 `AGENTS.md` §6 维护 —— 已发布的结论与读数不改，只允许加更正注、修悬空链接、补状态。
 
+## 0.9.0（四个 Skill 重写为任务决策指南 · 批处理结构化状态 · 关闭丢内容等 P0 收口 · 嵌套参数校验）
+
+> **建议升级。** 本版**不新增也不删除广告面工具**（仍是 **95 / 270**），变化在「模型怎么用工具」和
+> 「失败时是否如实」：四个 Skill 重写成任务决策指南 + 按需参考；`wps_batch` 有了 `stopOnError` 与结构化
+> 状态；未落盘文档的保存关闭不再静默丢内容（P0）；租约不再被心跳误杀、孤儿回收先核对实例身份；
+> 参数校验补上嵌套层（FIXES 115）。另有 D1 真机评测（12 场景 × 3 轮 × 两臂，正确率打平、无统计显著性）
+> 与文档/门禁整理。逐条证据见 [docs/FIXES.md](docs/FIXES.md) 第 115、116 条。
+
+### 补上的能力
+
+- **四个 Skill 重写**：`wps-office-next`（共享执行协议：路由 / 目标 / 保存 / 验证 / 失败恢复，141 行）与
+  `wps-excel` / `wps-word` / `wps-ppt`（应用决策流程，107 / 111 / 120 行）改为任务决策指南；删掉手写的
+  广告状态、历史补丁叙述与工具清单，细节移到按需参考 `references/`（6 份）+ `recipes/`（5 份）。
+  `reference.md` 改为「完整目录 + 任务分组索引」。生成器不再往 `SKILL.md` 注入工具清单，新增
+  `gen-skill-tools --check` 只读门禁，`spec/skill-tool-groups.json` 硬校验归类；新增
+  `test/skill-quality.test.mjs`（123 项）守住引用可达与示例参数。
+- **`wps_batch` 结构化**：新增 `stopOnError`；整体返回
+  `{count, requested, succeeded, failed, status, stopOnError, stoppedAt, results[]}`（`status` ∈
+  completed / partial / failed），逐项带 `index`，失败项错误不截断。整批 `success` 语义保持兼容
+  （只表示「批处理跑完了」）。
+- **目标身份可读回**（仍无 documentId）：Excel 增加 `workbookPath`；PPT 增加演示名称/路径与画布
+  `slideWidth/slideHeight`（磅）+ `slideWidthPx/HeightPx`（像素），并写进工具输出 —— 桥有、handler 不打印
+  等于能力对模型不存在。
+- **schema 与真实接受类型对齐**：`wps_excel_open_workbook` 补 `readOnly` / `updateLinks`；
+  `wps_excel_set_print_area` 补 `sheet`；`wps_word_set_font.range` 补 `"all"`；改正 `set_slide_size`
+  描述里磅/像素混用。
+- **客户端按字节收帧**：MCP 客户端用 `Utf8LineReader`（`StringDecoder`）替代 `chunk.toString()`，
+  chunk 边界切开中文不再出现 U+FFFD；换子进程时重置解码状态。
+- **嵌套参数递归校验（FIXES 115）**：`calls[].tool` 缺失、`range.start` 只给一半、`data` 少一层数组、
+  `range.unit` 未知键、`range.start` 形状错位，都不再静默执行；错误路径按实参写法给出
+  （`range.start` / `calls[0].tool`）。仍只校验结构（形状 / 未知键 / 必填），枚举与跨参数规则由桥裁决。
+
+### 用户可见的修复
+
+- **未落盘文档的保存关闭会静默丢内容（P0，已修）**：`closeWorkbook` / `closeDocument` /
+  `closePresentation` 在「未落盘 + 有未保存改动 + `save=true`」时，原来把 save 降级成 false 照常关闭、
+  只回 warning 且 `success=true` —— 内容被丢弃。现在**保留文档打开并返回明确错误与下一步**，内容不丢。
+- **健康宿主不再被心跳误杀**：租约身份核对通过后，不再因心跳停更（原阈值 >120s）把闲置宿主判过期、
+  被新会话杀掉；心跳只作为拒绝文案里的诊断信息。
+- **孤儿回收先核对实例身份**：归属记录升级到 `version: 2`，带类名 / 安装目录 / 窗口句柄 / 当时打开的文件
+  清单，回收前逐项核对，身份不符或出现记录外文件一律不回收；旧记录向后兼容。顺带修掉记录「UTF-8 写出、
+  ANSI 读回」导致中文文件名乱码、身份永不相等的问题。
+- **横向页纸张读数不再误导**：WPS 对横向页可能把 `PaperSize` 读成未命名代码（如 `41`），桥现在统一带解释
+  （「41（横向纸张代码）」），`getPageSetup` / `setPageSetup` 共用，避免模型以为纸张被改坏、反复排查。
+- **`save_as` 缺目录的错误可直接行动**：输出目录不存在时直接回「输出目录不存在：<路径> + 下一步」，
+  不再只回一句「文档保存失败」；**不会**替调用方创建目录。
+- **`doctor.mjs` 误报**：用 DSH 自带 Node 跑自检时不再误报「没找到自带运行时」。
+
+### 工程与文档
+
+- **门禁收成单一入口**：`npm run gates:{docs,verify,code,bridge,package,release}`（实现在
+  `scripts/run-gates.mjs`），CI 只调 `gates:ci`；新增 Markdown 相对链接检查、版本号 / README 回退 tag
+  对账；`docs/FIXES.md` 顶部加生成式索引；发布记录拆到 [docs/release-records.md](docs/release-records.md)。
+- **评测脚手架**：`test/skilleval/` 提供 15 个固定场景的可执行脚手架（夹具生成 + 确定性断言 + dry-run）、
+  受控故障注入（默认完全惰性）、headless 探针（会话日志解码 + 真实 token 指标）。D1 扩到 12 场景 ×
+  3 轮 × 两臂，两臂正确率均 35/36、**无统计显著性**（不能据此声称新 Skill 更省 token，也不能据此删减
+  验证步骤）。
+- **文档整理**：删 21 份已完成/一次性文档与 10 个模板 README；场景卡归档；`tool-roadmap` 判据折叠进
+  HANDOFF；AGENTS §6 写清「不改历史」的边界（允许更正注 / 修悬空链接 / 补状态）。README 加
+  dsh-plugin.org 收录徽章。
+- **发版前修掉一个新校验引出的回归（FIXES 116）**：嵌套未知键校验（FIXES 115）上线后，
+  `wps_excel_set_cell_format` 的 `format.numberFormat` 因 schema 漏声明被判成未知参数、整组格式失效；
+  已补声明（广告面字节 55,346 → 55,510），单文件 25/25 与整轮复验均全绿。
+
+### 发版前测试（AGENTS.md §2：用户选择「整轮」）
+
+- **真机整轮**：2026-10-18 跑满 **64 个文件 / 1777 项，全绿**（`TOTAL PASS=1777 FAIL=0 FILES=64
+  REAPED=343 ORPHANS_LEFT=0`、`ALL TEST FILES GREEN`、`BASELINE OK`）。首轮唯一红文件
+  `cell-format.test.mjs` 暴露了 FIXES 116，修复后单文件 25/25、整轮重跑全绿。
+- **静态门禁**：`npm run gates:release` 19 步全绿 —— tsc + `mcp/dist` 对账、宿主与四个生成器重建对账、
+  lint（含 Markdown 链接检查）、`verify --static` 23、参数契约 259 对 0 失效、spec 复现 16、
+  `test:static` 17/17、`verify:package` 11/11、文档数字对账 20 项。
+
 ## 0.8.2（宿主 PATH 上没有 Node.js 时 95 个工具全部不可用 · 修掉静默失效的测试底线门禁）
 
 > **建议所有 DSH Desktop 用户升级。** 本版修掉一个「装了插件却一个 WPS 工具都用不了」的缺陷：此前

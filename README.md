@@ -95,9 +95,9 @@
 2. 判断我当前正在使用的 DSH profile（把 <profile> 换成它的名字）。
 3. 执行安装：
    dsh plugin --profile <profile> add dsh-plugin-wps-office-next
-   （刚发版后安装、或做安装验收时必须写全版本号，如 @0.8.2；否则 minimumReleaseAge 可能静默装成上一版）
+   （刚发版后安装、或做安装验收时必须写全版本号，如 @0.9.0；否则 minimumReleaseAge 可能静默装成上一版）
    如果报 ERR_PNPM_FETCH_404 或装不上，改用 GitHub 标签重试：
-   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.8.2
+   dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.9.0
 4. 用下面这条命令确认接线成功（输出里应出现 wps-office-next-plugin 与 mcp-wps-office-next）：
    dsh --profile <profile> --dump-config | Select-String wps
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
@@ -201,7 +201,7 @@ dsh plugin --profile <profile> add dsh-plugin-wps-office-next
 - 报 `ERR_PNPM_FETCH_404`（包名/版本取不到，或该机器改了 registry）或网络不通时，改用 GitHub 标签重试（标签就是发布版本，内容与 npm 包一致）：
 
   ```powershell
-  dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.8.2
+  dsh plugin --profile <profile> add github:sueccku/dsh-plugin-wps-office-next#v0.9.0
   ```
 
   > 标签必须是**真实存在、且能装上**的那个。历史上这里写的是 `v0.6.0`，而 `v0.6.0` 从未打过 tag（它的 npm 版本还是坏的、已撤销），照着敲只会拿到 `ERR_PNPM_GIT_RESOLVE_FAILED`。
@@ -210,7 +210,7 @@ dsh plugin --profile <profile> add dsh-plugin-wps-office-next
 - 报 `ERR_PNPM_GIT_RESOLVE_FAILED`、`could not connect to server`、连接超时等，是这台机器访问 github.com 不稳定。此时优先回到上面那条 npm 命令；确实要走 GitHub 又连不上时，可用打包地址（已实测可行）：
 
   ```powershell
-  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.8.2
+  dsh plugin --profile <profile> add https://codeload.github.com/sueccku/dsh-plugin-wps-office-next/tar.gz/refs/tags/v0.9.0
   ```
 
 - **注意 dsh 事后那句「构建脚本被拦截 / allowBuilds」提示**：本包没有任何 `prepare` 脚本，也没装 `esbuild` 之类的原生依赖，所以**永远不需要**改 `allowBuilds`。dsh 在 pnpm 失败时会补上这句通用提示，照着改只会白费功夫——**先看真正的错误**：如果是 `ERR_PNPM_GIT_RESOLVE_FAILED` / `Failed to connect to github.com`，用上面的 codeload 地址重试即可（这一条已实测：4.1 秒装好）。
@@ -308,8 +308,8 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | 档位 | 工具数 | schema 字节 | 约 tokens | 内容 |
 |---|---|---|---|---|
 | minimal | 4 | 1,609 | 460 | 仅 4 个门面工具 |
-| **standard（默认）** | **95** | **55,346** | **≈15,813** | 门面 + 91 个精选工具 |
-| full | 270 | 165,252 | 46,846 | 全量，保留完整描述 |
+| **standard（默认）** | **95** | **55,510** | **≈15,860** | 门面 + 91 个精选工具 |
+| full | 270 | 165,422 | 46,846 | 全量，保留完整描述 |
 
 注册目录 **270** 个工具：Excel 118 / Word 61 / PPT 77 / 通用 14（含门面）。
 
@@ -399,7 +399,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1753 项 / 63 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-18 全绿）**+ `verify` 28 项（23 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 95 工具 / 55,346 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **64** 个测试文件（新增的 `arg-shape-nested` 尚未进整轮）。
+当前数字：测试 **1777 项 / 64 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-18 全绿）**+ `verify` 28 项（23 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 95 工具 / 55,510 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **64** 个测试文件（全部已进整轮）。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）只调用 **`npm run gates:ci`**（=`gates:release` 那一组），跑同一批不需要 WPS 的静态门禁（tsc/生成物对账、lint、verify --static、参数契约、spec 复现、`test:static` 的 17 个 WPS-free 文件、打包冒烟、文档数字对账）；清单与顺序只在 `scripts/run-gates.mjs` 维护。需要真实 WPS 的测试与一键 e2e 留在本机。
 

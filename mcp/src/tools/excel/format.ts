@@ -46,7 +46,7 @@ export const setCellFormatDefinition: ToolDefinition = {
       },
       format: {
         type: 'object',
-        description: '格式设置对象，可包含 bold(粗体)、italic(斜体)、fontSize(字号)、fontName(字体名)、fontColor(字体颜色，如#FF0000)、bgColor(背景颜色)、underline(下划线)、strikethrough(删除线)、horizontalAlignment(水平对齐: left/center/right)、verticalAlignment(垂直对齐: top/center/bottom)、wrapText(自动换行)',
+        description: '格式设置对象，可包含 bold(粗体)、italic(斜体)、fontSize(字号)、fontName(字体名)、fontColor(字体颜色，如#FF0000)、bgColor(背景颜色)、underline(下划线)、strikethrough(删除线)、horizontalAlignment(水平对齐: left/center/right)、verticalAlignment(垂直对齐: top/center/bottom)、wrapText(自动换行)、numberFormat(数字格式串，如 0.00%)',
         properties: {
           bold: { type: 'boolean', description: '是否粗体' },
           italic: { type: 'boolean', description: '是否斜体' },
@@ -59,6 +59,7 @@ export const setCellFormatDefinition: ToolDefinition = {
           horizontalAlignment: { type: 'string', description: '水平对齐方式', enum: ['left', 'center', 'right'] },
           verticalAlignment: { type: 'string', description: '垂直对齐方式', enum: ['top', 'center', 'bottom'] },
           wrapText: { type: 'boolean', description: '是否自动换行' },
+          numberFormat: { type: 'string', description: '数字格式串，如 0.00%、#,##0（与顶层 numberFormat 等价）' },
         },
       },
       // 扁平写法：与嵌套的 format.* 等价。handler 两种都合并（FIXES 78），但模型只能看到 schema 里

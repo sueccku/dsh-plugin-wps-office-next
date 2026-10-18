@@ -7,9 +7,9 @@
 | 项 | 值 | 来源 |
 | --- | --- | --- |
 | 广告面工具 | **95 / 270** | spec/advertised.json + spec/tool-definitions.json |
-| 广告面 schema 字节 | **55,346（≈15,813 tokens）** | 真实 tools/list 载荷 |
+| 广告面 schema 字节 | **55,510（≈15,860 tokens）** | 真实 tools/list 载荷 |
 | minimal 档 | **4 工具 / 1,609 字节** | 同上 |
-| full 档 | **270 工具 / 165,252 字节** | 同上 |
+| full 档 | **270 工具 / 165,422 字节** | 同上 |
 | 桥 action | **265** | mcp/scripts/wps-com.ps1 的 case 块（与 verify.mjs 同口径） |
 | 其中带键表 | **264** | host/wps-actions.ps1 键表 |
 | 桥参数键 | **1008** | 同上 |
@@ -27,18 +27,18 @@
 | README badge advertised | 95 | 95 | ✅ |
 | README badge registered | 270 | 270 | ✅ |
 | README standard tools | 95 | 95 | ✅ |
-| README standard bytes | 55346 | 55346 | ✅ |
-| README standard tokens | 15813 | 15813 | ✅ |
+| README standard bytes | 55510 | 55510 | ✅ |
+| README standard tokens | 15860 | 15860 | ✅ |
 | README minimal tools | 4 | 4 | ✅ |
 | README minimal bytes | 1609 | 1609 | ✅ |
 | README full tools | 270 | 270 | ✅ |
-| README full bytes | 165252 | 165252 | ✅ |
+| README full bytes | 165422 | 165422 | ✅ |
 | README install guide advertisedTools | 95 | 95 | ✅ |
 | README status sample advertisedTools | 95 | 95 | ✅ |
 | README detail summary | 95 | 95 | ✅ |
 | README registered catalogue | 270 | 270 | ✅ |
 | README current advertised | 95 | 95 | ✅ |
-| README current bytes | 55346 | 55346 | ✅ |
+| README current bytes | 55510 | 55510 | ✅ |
 | HANDOFF advertised | 95 | 95 | ✅ |
 
 > 与测试计数有关的那几条声明只在**本机存在 `test/summary.json`** 时核对，**不属于 CI 核对范围**；
