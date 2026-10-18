@@ -5,7 +5,7 @@ exports.wordProduceTools = exports.deleteCommentHandler = exports.deleteCommentD
  * Input: Word 文档生产族工具的调用参数
  * Output: 页码 / 分栏 / 修订 / 批注删除 的执行结果
  * Pos: Word 文档生产族（P3-3）。支持面已用裸 COM 量过（见 test/.artifacts/e2e/word-probe*.ps1）。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P3 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 const uuid_1 = require("uuid");
 const impact_1 = require("../impact");

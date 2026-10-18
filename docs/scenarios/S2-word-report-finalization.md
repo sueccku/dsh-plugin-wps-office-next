@@ -196,6 +196,6 @@ $py = C:\Users\qwer\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\py
 2. `make_fixture.py` 生成脏初稿 + `expected.json`，`make_known_good.py` 造两份对照产物；
 3. `verify.py` 自检：known-good 全绿 / broken 对应项变红（**这一步不过就不进真机**）；
 4. 真机：`wpse2e` profile（`link:D:/dsh/a`）跑 headless DSH 任务，prompt 就是 §2 原文，WPS 由测试侧自动启动（D4）；
-5. 独立核验 + 交叉验证插件自述，写走查报告（报告文件已随 2026-10-18 文档清理删除）；
+5. 独立核验 + 交叉验证插件自述，写走查报告 `docs/scenarios/S2-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
 6. 发现缺陷按 **D3 = 能修就全修**（改 `mcp/` 代码并补回归，回归必须在修复前先红）；
-7. 结果**先不提交**（D5），证据与结论先给用户看。
+7. 结果先给用户看再决定是否提交（D5 当时定的是「先不提交」；后续记录已随 v0.8.0 入库）。

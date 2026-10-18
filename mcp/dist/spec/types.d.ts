@@ -3,7 +3,7 @@
  * Output: 操作规格（operation spec）的类型与构造器
  * Pos: P1 契约真源。spec 是唯一真源：工具 schema、宿主键表、技能参考表、广告集都由它生成。
  *      本文件只放声明式数据形状，生成逻辑在 scripts/gen-tool-surface.mjs。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P1 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 /** 参数在桥里被读取时的类型；用于生成 JSON Schema 与文档。 */
 export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'array2d' | readonly ParamScalarType[];

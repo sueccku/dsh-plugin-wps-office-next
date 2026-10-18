@@ -5,7 +5,7 @@
 //         test corpus that names tools.
 // Output: docs/tool-coverage.md (deterministic; CI regenerates and diffs it).
 //
-// 一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的覆盖矩阵一节。
+// 一旦我被修改，请更新我的头部注释，并重跑本生成器（覆盖数据见 docs/tool-coverage.md）。
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { analyseToolSource } from "./lib/tool-action-map.mjs";

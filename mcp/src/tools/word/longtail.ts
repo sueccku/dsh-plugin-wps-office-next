@@ -2,7 +2,7 @@
  * Input: Word 长尾工具的调用参数
  * Output: 内容控件 / 脚注尾注 / 索引 / 交叉引用 / 邮件合并 的执行结果
  * Pos: Word 长尾（P3-4，D2 的最后一块）。支持面已用裸 COM 量过（test/.artifacts/e2e/word-probe*.ps1）。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P3 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 import { v4 as uuidv4 } from 'uuid';
 import {

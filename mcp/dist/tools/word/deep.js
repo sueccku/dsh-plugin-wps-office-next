@@ -6,7 +6,7 @@ exports.wordDeepTools = exports.convertTableToTextHandler = exports.convertTable
  * Output: 书签/批注/文档统计/超链接 与 表格读写编辑的执行结果
  * Pos: Word 深水区工具（P3）。P3-1 把桥里已有却没有出口的能力挂出来；P3-2 是表格族的新 COM 代码。
  *      实测缺口：水印（表头 Shapes 全不支持）与文档属性（集合是坏壳）在 WPS 里做不到，见 docs/FIXES.md。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P3 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 const uuid_1 = require("uuid");
 const impact_1 = require("../impact");

@@ -3,7 +3,7 @@
  * Output: 建表/读表/加行删行/样式与总计行/调整范围/转回区域 的执行结果
  * Pos: Excel 表工具（P2-2）。WPS 的 ListObject 支持完整，但桥里此前一条 action 都没有，
  *      所以这一族是新 COM 代码；工具层只做翻译与呈现，语义全在桥里。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 import { v4 as uuidv4 } from 'uuid';
 import { impactText, type RangeImpact } from '../impact';

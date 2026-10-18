@@ -92,6 +92,8 @@ npm run lint
 node scripts\verify.mjs --static
 node scripts\param-contract.mjs;       git diff --exit-code -- docs\param-contract.md
 npm run verify:package                 # 打包产物运行期冒烟：装一遍 + 启动 MCP server 握手（必跑，见 §3.1；CI 也跑）
+node test\spec-reproduction.test.mjs     # P1 验收：spec 能复现出模型看到的工具面（AGENTS.md §3）
+npm run test:static                      # 17 个不碰真实 WPS 的测试文件（清单唯一来源：scripts/lib/static-tests.mjs）
 # 逐文件跑测试前先清掉插件自己发布的两个环境变量，否则 plugin.test.mjs 会假失败：
 # $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
 ```
@@ -264,9 +266,8 @@ dsh plugin --profile wpsnpm2 add dsh-plugin-wps-office-next@X.Y.Z   # 写全版�
 (Get-Content "$env:USERPROFILE\.dsh\profiles\wpsnpm2\node_modules\dsh-plugin-wps-office-next\package.json" | ConvertFrom-Json).version
 ```
 
-> ⚠️ **pnpm 元数据缓存陷阱（2026-10-04 实测）**：刚发布完就 `add <包名>`（不写版本）会**装到上一版** ——
-> pnpm 缓存了旧的 packument，而 `dsh plugin add` 把依赖写成 `^上一版`。别据此判断"发布没生效"：
-> 先写全版本号装一次证明 registry 上有，再 `pnpm store prune` 或等缓存过期。
+> ⚠️ **（2026-10-11 更正）**：刚发布完就 `add <包名>`（不写版本）会**装到上一版**，原因是这套 DSH/pnpm 的
+> `minimumReleaseAge`（供应链保护）在拒绝刚发布的版本 —— **不是**"pnpm 缓存了旧 packument"，`pnpm store prune` 之类清理无效（见本节开头 2026-10-11 实测）。应对：装的时候写全版本号。
 
 然后才是真实用户路径（会动到你自己在用的 profile，**先问过用户再执行**）：
 
@@ -286,7 +287,7 @@ dsh --profile desktop --dump-config | Select-String wps     # 应出现两个 id
 > 照着 README 回退的用户只会拿到 `ERR_PNPM_GIT_RESOLVE_FAILED`。
 
 ```powershell
-# 1) 先把 README 的两处回退 tag 改成 vX.Y.Z（第 98/190/196 行附近）
+# 1) 先把 README 的回退 tag 改成 vX.Y.Z（位置以 Select-String 结果为准，行号会漂）
 Select-String -Path README.md -Pattern '#v|refs/tags/v'
 # 2) 同步版本号：package.json / package-lock.json / mcp/package.json 三处都必须是本次版本
 # 3) 写 CHANGELOG 段（标题格式与既有一致：## X.Y.Z（一句话））

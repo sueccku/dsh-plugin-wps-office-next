@@ -6,7 +6,7 @@ exports.missingHalfTools = exports.groupColumnsHandler = exports.groupColumnsDef
  * Output: 表格「读/清/整」另一半能力的执行结果
  * Pos: Excel 补全工具（P2 第一波 + 余项，共 18 个）。这些能力在桥里早已实现，只是从来没有工具出口——
  *      上游做 demo 时不需要它们，而真实任务里必然要用（读命名范围、清除格式、查位置…）。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 const uuid_1 = require("uuid");
 const impact_1 = require("../impact");

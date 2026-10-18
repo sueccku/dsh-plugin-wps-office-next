@@ -4,7 +4,7 @@
  * Output: 共享解析函数读取的键：函数名 -> 该函数会从 '$p' 里取哪些键
  * Pos: P1 契约真源的一部分。生成器从这里的键表推导每个 action 真正接受的键（宿主脚本据此
  *      在派发前拒绝多余键）。原先它是 build-host-actions.ps1 里的一张手写表。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P1 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.helperKeys = void 0;

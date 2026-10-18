@@ -6,7 +6,7 @@ import { op, OperationSpec } from './types';
 // (that reproduction is the P1 acceptance test). Curation targets: drop aliases, add effect/enum/units,
 // split the union-parameter interfaces, and delete the opaque entries once nothing is unreadable.
 //
-// 一旦我被修改，请更新 docs/tool-roadmap.md 的 P1 状态。
+// 一旦我被修改，请更新 docs/FIXES.md 记账（本文件由 scripts/extract-spec.mjs 重建）。
 
 export const operations: OperationSpec[] = [
   op({

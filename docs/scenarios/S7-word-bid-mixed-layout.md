@@ -283,9 +283,9 @@ $py = "$env:USERPROFILE\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\pytho
 2. `make_fixture.py` 造脏初稿 + `expected.json`；`make_known_good.py` 造 1 份 known-good + N 份单缺陷 broken；
 3. `selfcheck.py`：known-good 全绿 / 每个 broken 只在预期项变红（**这一步不过就不进真机**）；
 4. 真机：运行根目录 `D:\s7-run\`（仓库之外），prompt 就是 §2 原文，WPS 由测试侧启动；
-5. 独立核验 + 交叉验证插件自述，写走查报告（报告文件已随 2026-10-18 文档清理删除）；
+5. 独立核验 + 交叉验证插件自述，写走查报告 `docs/scenarios/S7-真机走查报告.md`（如需重跑；2026-10-18 前的旧报告已删除）；
 6. 发现缺陷按 **D3 = 能修就全修**（改 `mcp/` 或 `host/` 并补回归，回归必须**先红后绿**）；
-7. 结果**先不提交**、**不 push**（与 S1–S6 同）；若准备 push，按 [AGENTS.md §2](../../AGENTS.md) 先问用户要不要跑整轮测试。
+7. 结果先给用户看再决定是否提交/push（当时定的是「先不提交、不 push」，与 S1–S6 同；后续记录已随 v0.8.0 入库）；若准备 push，按 [AGENTS.md §2](../../AGENTS.md) 先问用户要不要跑整轮测试。
 
 ---
 

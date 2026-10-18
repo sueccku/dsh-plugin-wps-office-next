@@ -4,7 +4,7 @@
  * Output: 桥侧的参数兼容声明：公开参数名 -> 该 action 实际读取的键；以及嵌套容器名
  * Pos: P1 契约真源的一部分。生成器从这里产出 spec/param-aliases.json 与 spec/param-containers.json，
  *      宿主脚本再据此在派发前改名与展平——取代了 build-host-actions.ps1 里那两张手写表。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P1 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.paramContainers = exports.dynamicParamActions = exports.paramAliases = void 0;

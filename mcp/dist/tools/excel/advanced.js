@@ -5,7 +5,7 @@ exports.advancedTools = exports.setChartLabelsHandler = exports.setChartLabelsDe
  * Input: 高级项工具的调用参数
  * Output: 透视表 / 单变量求解 / 迷你图 / 图表标签的执行结果
  * Pos: Excel 高级项工具（P2-4）。全部先用裸 COM 量过支持面；切片器与场景管理器按实测主动推迟（FIXES 43）。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 const uuid_1 = require("uuid");
 const impact_1 = require("../impact");

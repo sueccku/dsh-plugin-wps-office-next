@@ -3,7 +3,7 @@
  * Output: 这些设置的执行结果与回读快照
  * Pos: Excel 页面与打印工具（P2-3）。Excel 此前完全没有页面设置能力（桥里的 setPageSetup 是 Word 的）。
  *      打印与打印预览刻意不做成工具：前者是物理副作用，后者会开模态窗口卡住常驻宿主。
- *      一旦我被修改，请更新我的头部注释，以及 docs/tool-roadmap.md 的 P2 状态。
+ *      一旦我被修改，请更新我的头部注释，并在 docs/FIXES.md 记账。
  */
 import { v4 as uuidv4 } from 'uuid';
 import { impactText, type RangeImpact } from '../impact';

@@ -436,7 +436,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 
 ## 9. 环境与验证命令
 
-- **本机 DSH 版本：`0.2.0-rc.2`**（文档旧值 `0.1.5-rc.1` 已过时）。兼容性已逐面核验 + 真机验收（FIXES 83）：
+- **本机 DSH 版本：`0.2.1-rc.2`**（文档旧值 `0.1.5-rc.1` 已过时）。兼容性已逐面核验 + 真机验收（FIXES 83）：
   `accept-install` 14/14、`e2e` 29/29；契约自查用本版新增的 `dsh --profile <name> --dump-config-schema`。
   升级 DSH 后重跑这两条即可复验；若失败，先看 `dsh plugin add` 的报错与 `--dump-config` 里两个接线 id 是否还在。
 - 本机 DSH **是桌面版打包运行时**（FIXES 76）：`%LOCALAPPDATA%\Programs\DeepSeek Harness\` 下的
@@ -479,7 +479,7 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 ## 10. 纪律与已踩过的坑
 
 **提交卫生（重要）**
-- 每次开工先 `git status`；**提交只写明确路径，禁止 `git add -A`**。
+- 每次开工先 `git status`；**提交用明确的文件/目录路径 `git add`，禁止 `git add -A`，也避免 `git add -u`**（后者会扫全部已跟踪改动）。确需批量时，先确认 `git status` 里只有本次改动。
 - 原因：用户会在**另一条 DSH 会话**里同时改 `README.md` / `package.json`，已因此误扫过两次别人的未提交改动。
 
 **方法**
