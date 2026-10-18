@@ -24,20 +24,24 @@
 
 ## 3. 照常执行的静态门禁（不属于"完整/回归测试"）
 
-下面这些**不需要 WPS**、秒级到约 1 分钟，按老规矩照常跑（改了对应东西就要跑）：
+下面这些**不需要 WPS**，按改动类型跑对应的**门禁分组**（秒级到约 1 分钟）。命令清单只在
+`scripts/run-gates.mjs` 里维护——本文只规定"改什么跑哪组"，**不要**把命令再抄进别的文档或 CI。
 
-- `cd mcp; npx tsc`（构建产物要与源码一致）
-- `powershell -NoProfile -File scripts\build-host-actions.ps1`（桥源码 → 宿主生成物）
-- `node scripts\gen-tool-surface.mjs`、`node scripts\gen-skill-tools.mjs`、`node scripts\gen-tool-coverage.mjs`
-- `node scripts\gen-numbers.mjs --check`
-- `npm run lint`
-- `node scripts\verify.mjs --static`
-- `node scripts\param-contract.mjs`
-- `node test\spec-reproduction.test.mjs`（CI 的静态测试之一）
-- `npm run verify:package`（打包冒烟：装一遍 + 启动 MCP server 握手，不需要 WPS）
-- `npm run test:static`（= `node scripts/run-static-tests.mjs`；清单的唯一来源是 `scripts/lib/static-tests.mjs`）
+| 改动类型 | 跑这一组 | 覆盖 |
+| --- | --- | --- |
+| 只改文档 | `npm run gates:docs` | lint（含 Markdown 链接检查）+ 文档数字对账（实测约 1 秒） |
+| 只读核对（**不写工作区**） | `npm run gates:verify` | lint / `verify --static` / 参数契约只读 / spec 复现 / 技能参考表只读 / 静态测试清单 / 数字对账 |
+| 改 TS / 工具 / spec | `npm run gates:code` | tsc + `mcp/dist` 对账、三个生成器 + 对账、lint、verify、参数契约（写入 + 对账）、spec 复现、`test:static`、数字对账 |
+| 改桥 `mcp/scripts/wps-com.ps1` | `npm run gates:bridge` | `gates:code` + 重建 `host/wps-actions.ps1` + 对账 |
+| 改 `package.json` / `files` | `npm run gates:package` | `gates:code` + `verify:package`（打包冒烟） |
+| push / 发版前 | `npm run gates:release` | 全部（CI 跑的就是这一组） |
 
-完整的"改完代码复跑顺序"仍见 `README.md` 的「质量门禁与 CI」一节。
+补充：
+- **`verify:package` 经 `npm run` 执行**（不要直接 `node scripts\verify-package.mjs`）：两者环境不同，历史上藏过一个真缺陷（FIXES 85）。
+- 门禁里的生成器会**重写**已入库的生成物；跑完 `git diff` 里出现的生成物要一起提交（否则 CI 对账会红）。
+- `gates:verify` 是唯一保证"不写仓库"的分组，适合新对话开工前的只读核对。
+
+各分组的步骤、顺序与实现只在 `scripts/run-gates.mjs` 里维护；契约管线的 7 步手工顺序见 `docs/HANDOFF.md` §4。
 
 ## 4. 发版
 
@@ -46,5 +50,5 @@
 
 ## 5. CI
 
-`.github/workflows/ci.yml` 保持现状：push / PR 时自动跑**不需要 WPS** 的静态部分。
-CI 由 GitHub 触发，不受 §2 的"先问"约束。
+`.github/workflows/ci.yml` 只做一件事：push / PR 时跑 `npm run gates:ci`（= `gates:release` 那一组，
+不需要 WPS）。CI 由 GitHub 触发，不受 §2 的"先问"约束。

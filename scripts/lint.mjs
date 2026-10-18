@@ -1,8 +1,8 @@
 // 项目化 lint：只查「这个仓库真的在乎、而且机器能一眼判定」的事情，不做通用风格警察。
 // 规则来源都是本项目踩过的坑（BOM 被编辑器吃掉、CRLF 漂移、测试退出码不传播、遗留 console.log）。
 // Run: node scripts/lint.mjs [--quiet]
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { collectAlertsViolations } from './lint-alerts.mjs';
 import { collectBoundaryViolations } from './lint-com-boundary.mjs';
 
@@ -30,7 +30,7 @@ function textFiles() {
     const full = join(ROOT, d);
     try { if (statSync(full).isDirectory()) files.push(...walk(full)); } catch { }
   }
-  for (const f of ['plugin.js', 'cordis.patch.yml', 'README.md', 'CHANGELOG.md', 'package.json']) {
+  for (const f of ['plugin.js', 'cordis.patch.yml', 'README.md', 'CHANGELOG.md', 'AGENTS.md', 'THIRD_PARTY_NOTICES.md', 'package.json']) {
     const full = join(ROOT, f);
     try { if (statSync(full).isFile()) files.push(full); } catch { }
   }
@@ -94,6 +94,39 @@ for (const v of collectAlertsViolations(readFileSync(bridge, 'utf8'), bridge)) b
 // 6) COM 边界门禁（FIXES 74）：`return $range` 必须 `return ,$range`；裸 `catch { continue }` 必须登记理由。
 //    规则与理由见 scripts/lint-com-boundary.mjs —— 它过去只是一份没人跑的清单。
 for (const v of collectBoundaryViolations(readFileSync(bridge, 'utf8'), bridge)) bad(v.rule, v.file, v.detail);
+
+// 7) Markdown 相对链接必须指向存在的文件/目录。
+//    2026-10-18 文档清理暴露的问题：悬空链接只能靠人肉找（那次清完还留了一条历史链接）。
+//    历史遗留、故意保留的断链登记在这里；新增断链必须修掉或改成纯文字。
+const ALLOWED_BROKEN_LINKS = new Set([
+  'docs/FIXES.md -> bug-hunt-orders.md', // 2026-10-07 文档清理：按“不改历史”保留，文件头已注明
+]);
+function stripFencedCode(text) {
+  let fence = null;
+  return text.split(/\r?\n/).map((line) => {
+    const m = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (m) {
+      if (!fence) fence = m[1][0];
+      else if (m[1][0] === fence) fence = null;
+      return '';
+    }
+    return fence ? '' : line;
+  }).join('\n');
+}
+function decodeTarget(raw) { try { return decodeURIComponent(raw); } catch { return raw; } }
+for (const file of files.filter((f) => f.endsWith('.md'))) {
+  const rel = relative(ROOT, file).replace(/\\/g, '/');
+  const body = stripFencedCode(readFileSync(file, 'utf8'));
+  for (const m of body.matchAll(/\]\(([^)\s]+)\)/g)) {
+    const raw = m[1];
+    if (/^(?:https?:|mailto:|data:|#)/i.test(raw)) continue;
+    const target = decodeTarget(raw.split('#')[0].split('?')[0]);
+    if (!target || target.startsWith('/') || /^[A-Za-z]:[\\/]/.test(target)) continue;
+    if (existsSync(resolve(dirname(file), target))) continue;
+    const key = rel + ' -> ' + target;
+    if (!ALLOWED_BROKEN_LINKS.has(key)) bad('md-link', file, '链接目标不存在: ' + raw);
+  }
+}
 
 if (!QUIET) {
   for (const v of violations.slice(0, 40)) console.log('LINT ' + v.rule + '  ' + v.file + '  ' + v.detail);

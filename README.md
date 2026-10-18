@@ -371,47 +371,36 @@ node scripts\doctor.mjs
 
 > **测试时机以 [AGENTS.md](AGENTS.md) 为准（2026-10-10 / R13）**：普通修改后**不跑完整/回归测试**
 > （`scripts/run-tests.ps1` 整轮、`scripts/e2e.mjs`、逐文件 `test/*.test.mjs`）；只在准备 push 到 GitHub
-> **之前由用户决定**跑不跑。下面第 1–4 步是不需要 WPS 的**静态门禁，照常跑**；**第 5 步按需**。
+> **之前由用户决定**跑不跑。静态门禁照常跑，按改动类型选组（见下）；需要 WPS 的部分**按需**。
 
-改完代码按这个顺序复跑（前几条不需要 WPS）：
+改完代码跑对应的**门禁分组**（这六组都**不需要 WPS**；命令清单的唯一来源是
+[`scripts/run-gates.mjs`](scripts/run-gates.mjs)，本页只说明何时用哪组）：
 
 ```powershell
-# 1) 类型检查 + 构建（dist 已入库，构建产物要与源码一致）
-cd mcp; npx tsc; cd ..
+npm run gates:docs       # 只改文档：lint（含 Markdown 链接检查）+ 文档数字对账（约 1 秒）
+npm run gates:verify     # 只读核对（不写工作区）：lint / verify / 参数契约只读 / spec 复现 / 数字对账
+npm run gates:code       # TS / 工具 / spec：tsc + 生成器 + 对账 + lint + verify + 契约 + spec 复现 + test:static
+npm run gates:bridge     # 再改桥源码时：gates:code + 重建 host/wps-actions.ps1 + 对账
+npm run gates:package    # 改 package.json / files 时：gates:code + 打包冒烟 verify:package
+npm run gates:release    # push / 发版前：全部（CI 跑的就是这一组）
+```
 
-# 2) 由桥源码重新生成 host/wps-actions.ps1（生成前会解析校验）
-powershell -NoProfile -File scripts\build-host-actions.ps1
+- 门禁里的生成器会**重写**已入库的生成物；跑完 `git diff` 里出现的生成物要一起提交。
+- 需要本机 WPS 的部分 —— **按需，不要每次改完都跑**（见 AGENTS.md §1/§2）：只在准备 push 到 GitHub
+  且用户说「跑」时才执行。逐文件跑之前先清掉插件自己发布的两个环境变量（这个终端若是从「已装本插件」
+  的 DSH 会话里起的，它们会指向 profile 里那份副本，让 plugin.test.mjs 报一处假失败）：
 
-# 3) 由操作规格重新生成 spec/*.json，再由注册表重生成 4 份 reference.md、覆盖矩阵与现值数字
-node scripts\gen-tool-surface.mjs
-node scripts\gen-skill-tools.mjs
-node scripts\gen-tool-coverage.mjs
-node scripts\gen-numbers.mjs            # 只核对不落盘用 --check（文档数字与生成值必须一致，FIXES 91）
-
-# 4) 门禁：项目 lint、门面 / 派发 / 预算 / action 数量三方一致、参数契约对账、静态测试
-npm run lint
-node scripts\verify.mjs --static        # 不带 --static 时会连 WPS 调一次 wps_status，那部分属第 5 步「按需」
-node scripts\param-contract.mjs
-node scripts\gen-numbers.mjs --check    # 文档声明值与生成值对账（不写盘）
-node test\spec-reproduction.test.mjs    # P1 验收：spec 能复现出模型看到的工具面
-npm run test:static                     # = node scripts\run-static-tests.mjs，跑 scripts\lib\static-tests.mjs 里的清单
-npm run verify:package                 # 打包产物冒烟：装一遍 + 启动 MCP server 握手（不需要 WPS）
-#    ↑ CI 也会跑（FIXES 84 的门禁）；改动 package.json 的 files 时**必须**本地跑一次
-
-# 5) 需要本机 WPS 的部分 —— **按需，不要每次改完都跑**（见 AGENTS.md §1/§2）
-#    只在准备 push 到 GitHub 且用户说「跑」时才执行。逐文件跑之前先清掉插件自己发布的
-#    两个环境变量 —— 这个终端若是从「已装本插件」的 DSH 会话里起的，它们会指向 profile 里
-#    那份副本，让 plugin.test.mjs 报一处假失败：
-#    $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
+```powershell
+$env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
 node test\<文件名>.test.mjs             # 逐文件跑（把 <文件名> 换成 test/ 下的真实文件，如 excel-range）
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-tests.ps1  # 整轮 + 回收无头 WPS 孤儿
 node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫生断言）
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1753 项 / 63 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-18 全绿）**+ `verify` 26 项（21 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 95 工具 / 55,346 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **64** 个测试文件（新增的 `arg-shape-nested` 尚未进整轮）。
+当前数字：测试 **1753 项 / 63 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-18 全绿）**+ `verify` 28 项（23 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 95 工具 / 55,346 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **64** 个测试文件（新增的 `arg-shape-nested` 尚未进整轮）。
 
-`.github/workflows/ci.yml`（GitHub Actions，windows-latest）**只跑不需要 WPS 的静态部分**：tsc 构建并对账 `mcp/dist`、重生成宿主并对账、重生成 spec 并对账、重生成技能参考表并对账、重生成工具覆盖矩阵并对账、重生成 `docs/current-numbers.md` 并对账（文档里的数字与生成值必须一致，FIXES 91）、`verify --static`、参数契约对账、**打包产物冒烟 `npm run verify:package`**（装一遍 + 启动 MCP server 握手，FIXES 84/85），以及 **17 个**不碰真实 WPS 的测试文件（清单的唯一来源是 `scripts/lib/static-tests.mjs`，由 `node scripts/run-static-tests.mjs` 执行；当前 17 个：`plugin` / `skill-quality` / `com-host` / `host-lease` / `watchdog` / `silent-catch` / `install-selfcheck` / `mcp-node` / `arg-shape-guard` / `wps-version` / `encrypted-preflight` / `alerts-gate` / `com-boundary-gate` / `deprecated` / `style-names` / `fault-injection` / `arg-shape-nested`）。需要真实 WPS 的测试与一键 e2e 留在本机。
+`.github/workflows/ci.yml`（GitHub Actions，windows-latest）只调用 **`npm run gates:ci`**（=`gates:release` 那一组），跑同一批不需要 WPS 的静态门禁（tsc/生成物对账、lint、verify --static、参数契约、spec 复现、`test:static` 的 17 个 WPS-free 文件、打包冒烟、文档数字对账）；清单与顺序只在 `scripts/run-gates.mjs` 维护。需要真实 WPS 的测试与一键 e2e 留在本机。
 
 一键 e2e 是**一条命令**：`node scripts/e2e.mjs --profile <name>` 会自己造 fixture 工作簿（裸 COM，刻意不走本插件）→ 跑一个真实 headless 任务 → 逐帧解会话日志打印工具调用轨迹 → 用裸 COM 重开产物核对内容 → 断言「没有残留文档」「结果里没有缺陷标记」「模型没有自己写 COM 脚本」，以及「归属记录不会指向已经死掉的主人」。**29 项检查、约 2–4 分钟。** 轨迹、产物与 `report.json` 留在 `test/.artifacts/e2e/<run>/`。
 
@@ -432,7 +421,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | mcp/scripts/wps-com.ps1 | **桥的唯一真源**：265 个 COM action |
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
-| scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口 |
+| scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口、**门禁入口 un-gates.mjs** |
 | test/ | 回归测试文件（多数需要本机 WPS；**文件数以 [docs/current-numbers.md](docs/current-numbers.md) 为准**）；整轮 `scripts/run-tests.ps1` **按需跑**（见 AGENTS.md），收尾自动回收无头 WPS 孤儿并写出 `test/summary.json` |
 | baseline/ | 早期基线快照与缺陷清单 |
 | docs/ | 交接（HANDOFF）、修复记录（FIXES）、现值数字（current-numbers）、契约（param-contract / error-contract）、发布检查单、覆盖矩阵、真机场景卡（`docs/scenarios/`） |

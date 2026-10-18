@@ -43,14 +43,14 @@
 Set-Location "D:\dsh\a"
 git log --oneline -6 ; git status --porcelain ; git describe --tags
 git ls-remote --tags origin | Select-String "v0\.8"        # README 里的回退 tag 必须在这里
-node scripts/verify.mjs --static                            # 不需要 WPS：预算/桥动作/契约/长动作（21 项）
-node scripts/gen-numbers.mjs --check                        # 文档里的数字是否与生成值一致（20 项）
-node scripts/doctor.mjs                                     # 环境自检，末尾应打印 DOCTOR OK
+npm run gates:verify                                       # 不需要 WPS、不写工作区（lint/verify/契约/spec/数字）
+node scripts/doctor.mjs                                    # 环境自检，末尾应打印 DOCTOR OK
 ```
 
 > ⚠️ **不要在「正在开着 WPS 干活」的会话里跑需要 WPS 的检查**：宿主的单实例租约会把测试挡在门外
 > （`test/host-lease.test.mjs` 会打印中文「另一个 DSH 会话正在控制 WPS」）。这是环境冲突、不是代码缺陷。
-> 上面这组**都不写仓库、也不需要 WPS**（`verify.mjs` 不带 `--static` 时才连 WPS、会调一次 `wps_status`）。
+> `npm run gates:verify` **保证不写仓库、也不需要 WPS**（其中 `verify.mjs` 不带 `--static` 时才会连 WPS、
+> 会调一次 `wps_status`；这一组用的是 `--static`）。
 > `gen-numbers.mjs --check` 是**真只读**：它只把"会生成成什么"与磁盘上的比，不落盘（FIXES 91 修过这一点——以前
 > `--check` 照写不误，只是退出码不同）。要刷新生成物就跑不带 `--check` 的那条。
 
@@ -76,7 +76,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 **npm 上最新是 `v0.8.2`（2026-10-12）**：修 FIXES 114（宿主 PATH 上没有 Node.js 时 95 个工具全部不可用），
 逐版验收读数见 §2 与 [release-checklist.md](release-checklist.md) §9。
-**本地 `main` 比 `origin/main` 领先 12 个代码提交（另加本次文档清理提交）、尚未发版**：一轮 Skill 重构 + 一批真机测试驱动的接口修复 + FIXES 115。
+**本地 `main` 比 `origin/main` 领先 12 个代码提交（另加文档清理 / 门禁整理提交）、尚未发版**：一轮 Skill 重构 + 一批真机测试驱动的接口修复 + FIXES 115。
 
 | 未发版改动（详情见 §8.4） | 证据 |
 | --- | --- |
@@ -110,7 +110,7 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 | 项 | 值 |
 | --- | --- |
 | 仓库根 | `D:\dsh\a` |
-| 分支 / HEAD | `main`（以 `git describe --tags` / `git log --oneline -1` 为准）——**本地领先 `origin/main` 12 个代码提交（另加本次文档清理）、未 push**（2026-10-18 核对） |
+| 分支 / HEAD | `main`（以 `git describe --tags` / `git log --oneline -1` 为准）——**本地领先 `origin/main` 12 个代码提交（另加文档 / 门禁整理提交）、未 push**（2026-10-18 核对） |
 | 远程 | `https://github.com/sueccku/dsh-plugin-wps-office-next.git` |
 | 提交身份 | `sueccku <18247499+sueccku@users.noreply.github.com>` |
 | 标签 | `v0.2.0`…`v0.5.4`、`v0.6.1`–`v0.6.3`、`v0.7.0`、`v0.8.0`、`v0.8.1`、**`v0.8.2`**（**没有 `v0.6.0` 标签**——0.6.0 是坏版本，已从 registry 撤销） |
@@ -248,6 +248,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 | **2026-10-10** | **R13** | 普通修改后要不要跑完整/回归测试 | **改为按需**：普通修改后**不跑**完整测试与回归测试；**每次 push 到 GitHub 前先问用户**，用户说「跑」才跑；不需要 WPS 的静态门禁照常跑。**取代 R9** | [../AGENTS.md](../AGENTS.md)、README 质量门禁、检查单 §1/§8 |
 | **2026-10-11** | **R14**（= S6 的 D4） | 高频隐藏工具要不要进广告面 | **进**：按 S1/S4/S6 六轮真机轨迹取证，准入阈值 =「**跨 ≥2 轮真实走查出现，或单轮被调用 ≥5 次**」，**86 → 95**（54,273 / 60,000 字节，仍留 5 个位 / 5,727 字节余量）。最硬依据：`wps_excel_freeze_panes` 在 S6 attempt 1 被直呼时拿 `unknown tool`（一次硬失败 + 一次重试）。复算脚本 `test/.artifacts/scenario-s6/tools/rank-hidden-tools.mjs` + `plan-ad-surface.mjs`；回归 `test/advertised-surface.test.mjs`（26 项真机） | FIXES 112（S6 走查报告已随 2026-10-18 清理删除） |
 | **2026-10-18** | **R15** | 文档清理范围 | **深度清理**：删除已完成的过程文档（`PROGRESS.md`、`skill-audit.md`、`skill-refactor-report.md`、`work-orders/WO-001`、`com-surface-survey.md`）、7 份真机走查报告与 10 个模板 README；**保留**场景卡、FIXES、HANDOFF、生成物/契约/路线图/发布检查单；HANDOFF 同步删掉历史读数并补 §8.3/§8.4。**部分反转 R5/R10** | 本次提交 |
+| **2026-10-18** | **R16** | 静态门禁怎么维护 | **单一入口 + 按改动类型分层**：命令清单只放 [`scripts/run-gates.mjs`](../scripts/run-gates.mjs)，分 `docs` / `verify`（只读）/ `code` / `bridge` / `package` / `release` 六组；CI 只调 `gates:ci`；文档只写"改什么跑哪组"。同时新增两道静态门禁：Markdown 相对链接检查（lint）、版本号/README 回退 tag 对账（`verify --static`） | [AGENTS.md §3](../AGENTS.md)、README「质量门禁与 CI」 |
 
 > **编号纪律（2026-10-07 起）**：历史轮用 D1–D23，发布轮又撞了一次（例如历史 D15 = Word `range` 契约，发布轮 D15 = 提交方式）。
 > 从 R 系列起**新决策一律用 `R<n>` 或带日期的编号**，别再往 D 系列里加号。
@@ -421,7 +422,9 @@ Node 26 的 `zlib.zstdDecompressSync` 可用；会话日志是**多帧 zstd 拼�
 8. **模型侧 A/B 结论有限**：12 场景 × 3 轮 × 两臂（各 35/36，token +2%），单模型单机、无统计显著性 —— **不能**据此声称"模型更容易选对工具"，也**不能**据此删减 Skill 里的验证步骤。
 9. **Harness 的 Skill 加载已实测**：只加载应用 Skill 不会自动带出总 Skill（只有一行指针）；相对 `references/` / `recipes/` 能读到。因此应用 SKILL.md 自带协议短摘要**必要且已保留**。
 
-### 8.4 v0.8.2 之后的未发版改动（12 个提交，2026-10-17/18）
+### 8.4 v0.8.2 之后的未发版改动（2026-10-17/18 起）
+
+- **工程侧**：门禁收成单一入口 `npm run gates:{docs,verify,code,bridge,package,release}`（实现在 `scripts/run-gates.mjs`），CI 改调 `npm run gates:ci`；新增两个静态门禁：Markdown 相对链接检查（lint）、版本号/README 回退 tag 对账（`verify --static`，现 23 项）。
 
 - **Skill**：四个 `SKILL.md` 重写为任务决策指南 + 按需参考；`reference.md` 改为「完整目录 + 任务分组索引」；新增 10 份 `references/` / `recipes/`。门禁：`test/skill-quality.test.mjs`（123 项）、`gen-skill-tools.mjs --check` 进 CI。
 - **批处理**：`stopOnError` + `status/succeeded/failed/stoppedAt` + 逐项 `index`；失败项错误不截断。

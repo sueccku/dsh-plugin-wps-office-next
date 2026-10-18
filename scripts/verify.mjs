@@ -59,6 +59,25 @@ console.log("advertised tools=" + tools.length + " schemaBytes=" + bytes + " app
 check("budget: tools <= " + BUDGET.maxTools, tools.length <= BUDGET.maxTools, "actual=" + tools.length);
 check("budget: schemaBytes <= " + BUDGET.maxSchemaBytes, bytes <= BUDGET.maxSchemaBytes, "actual=" + bytes);
 
+// Version/pin consistency (2026-10-18): the release process keeps the version in six places by hand,
+// and 0.6.1 shipped with README pinning a tag that never existed. Both are static, so they are gates
+// now instead of checklist lines.
+function readManifest(p) { return JSON.parse(readFileSync(p, "utf8")); }
+const pkgVersion = readManifest("package.json").version;
+const versionSources = [
+  ["mcp/package.json", readManifest("mcp/package.json").version],
+  ["package-lock.json", readManifest("package-lock.json").version],
+  ["package-lock.json packages['']", readManifest("package-lock.json").packages?.[""]?.version],
+  ["mcp/package-lock.json", readManifest("mcp/package-lock.json").version],
+  ["mcp/package-lock.json packages['']", readManifest("mcp/package-lock.json").packages?.[""]?.version],
+];
+const staleVersions = versionSources.filter(([, v]) => v !== pkgVersion);
+check("version equals mcp/package.json and both lockfiles", staleVersions.length === 0, staleVersions.length ? staleVersions.map(([n, v]) => n + "=" + v).join(", ") : pkgVersion);
+const readmeText = readFileSync("README.md", "utf8");
+const pins = [...readmeText.matchAll(/#(v\d+\.\d+\.\d+)|refs\/tags\/(v\d+\.\d+\.\d+)/g)].map((m) => m[1] || m[2]);
+const stalePins = pins.filter((v) => v !== "v" + pkgVersion);
+check("README Git pins match the package version", pins.length >= 2 && stalePins.length === 0, pins.length ? [...new Set(pins)].join(", ") : "no pins found");
+
 // Guardrail: every long-action name must be a real bridge action. A typo here is invisible at
 // runtime - the action just quietly gets the 60s default and dies mid-flight (FIXES 81).
 try {

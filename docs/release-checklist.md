@@ -77,26 +77,17 @@ git status --short
 node -e "console.log(require('./package.json').version)"   # 必须等于本次要发的版本
 ```
 
-静态门禁（**不需要 WPS**，CI 跑的是同一批）：
+静态门禁（**不需要 WPS**；与 CI 同一组，命令清单只在 `scripts/run-gates.mjs` 维护）：
 
 ```powershell
-cd mcp; npx tsc; cd ..                     # 构建产物要与源码一致
-git diff --exit-code -- mcp/dist
-powershell -NoProfile -File scripts\build-host-actions.ps1
-git diff --exit-code -- host/wps-actions.ps1
-node scripts\gen-tool-surface.mjs;     git diff --exit-code -- spec
-node scripts\gen-skill-tools.mjs;      git diff --exit-code -- skills
-node scripts\gen-tool-coverage.mjs;    git diff --exit-code -- docs/tool-coverage.md
-node scripts\gen-numbers.mjs --check;  git diff --exit-code -- docs/current-numbers.md   # 文档数字对账（FIXES 91）
-npm run lint
-node scripts\verify.mjs --static
-node scripts\param-contract.mjs;       git diff --exit-code -- docs\param-contract.md
-npm run verify:package                 # 打包产物运行期冒烟：装一遍 + 启动 MCP server 握手（必跑，见 §3.1；CI 也跑）
-node test\spec-reproduction.test.mjs     # P1 验收：spec 能复现出模型看到的工具面（AGENTS.md §3）
-npm run test:static                      # 17 个不碰真实 WPS 的测试文件（清单唯一来源：scripts/lib/static-tests.mjs）
-# 逐文件跑测试前先清掉插件自己发布的两个环境变量，否则 plugin.test.mjs 会假失败：
-# $env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null
+npm run gates:release
 ```
+
+- 它会依次跑：tsc + `mcp/dist` 对账、重建宿主并对账、生成器与对账、lint（含 Markdown 链接检查）、
+  `verify --static`、参数契约（写入 + 对账）、spec 复现、`test:static`、`verify:package`、文档数字对账。
+- 只想做只读核对（**不写工作区**）：`npm run gates:verify`。
+- 逐文件跑测试前先清掉插件自己发布的两个环境变量，否则 plugin.test.mjs 会假失败：
+  `$env:WPS_OFFICE_MCP_ENTRY=$null; $env:WPS_OFFICE_HOST_SCRIPT=$null`
 
 真机部分（**按需：发版前先问用户，用户说「跑」才跑** —— R13，见 [AGENTS.md](../AGENTS.md) §2/§4；
 原 R9「发版前必跑」已于 2026-10-10 被取代。需要在跑着 WPS 的机器上；没跑时在发布记录里写明「本次未跑真机」）：
@@ -181,7 +172,7 @@ $b = [System.IO.File]::ReadAllBytes('mcp\scripts\wps-com.ps1')
 广告的工具数与 `spec/advertised.json` 一致（当前 **95**，断言从生成物读、不再写死）、`wps_status` 在列。**不需要 WPS**，全程只碰临时目录。**11 个断言**全绿会打印
 `PACKAGE RUNTIME OK`（2026-10-03 实测：12.4 秒、11/11）。
 
-> **CI 也会跑它**（2026-10-03 起，D6-B）：`.github/workflows/ci.yml` 里新增 gate `npm run verify:package`——
+> **CI 也会跑它**：`npm run gates:ci` 的步骤里包含 `verify:package`（2026-10-03 起，D6-B）——
 > 所以这一关不再依赖「人记得跑」。本地仍建议在**改动 `package.json` 的 `files` 时**手动跑一次。
 >
 > **务必照上面这条命令（经 `npm run`）跑**，别改成 `node scripts\verify-package.mjs`：两者的环境不同，

@@ -11,7 +11,7 @@
 // The bridge side comes from its own generated key table (the __validateParams control frame),
 // so it always matches the shipped script. The tool side is parsed out of the handler source.
 //
-// Usage: node scripts/param-contract.mjs [--json]
+// Usage: node scripts/param-contract.mjs [--json] [--check]
 import { spawn } from "node:child_process";
 import { analyseToolSource } from './lib/tool-action-map.mjs';
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -19,6 +19,8 @@ import path from "node:path";
 
 const PS = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
 const jsonOut = process.argv.includes("--json");
+// --check：只比对已入库的 docs/param-contract.md，不写盘（供只读门禁 gates:verify 使用）。
+const checkOnly = process.argv.includes("--check");
 
 const { map: TOOLS, unparsed } = analyseToolSource();
 
@@ -208,7 +210,17 @@ const doc = [
   ...unparsed.map((u) => "| `" + u.tool + "` | " + u.reason + " |"),
   "",
 ].join("\n");
-writeFileSync("docs/param-contract.md", doc);
+let docStale = false;
+if (checkOnly) {
+  let onDisk = null;
+  try { onDisk = readFileSync("docs/param-contract.md", "utf8"); } catch { }
+  docStale = onDisk !== doc;
+  console.log(docStale
+    ? "param-contract: docs/param-contract.md is STALE (run `node scripts/param-contract.mjs` to regenerate)"
+    : "param-contract: docs/param-contract.md is up to date");
+} else {
+  writeFileSync("docs/param-contract.md", doc);
+}
 
 if (jsonOut) console.log(JSON.stringify(report, null, 2));
 else {
@@ -230,5 +242,5 @@ else {
   console.log("UNPARSED (handler arguments not statically readable): " + unparsed.length);
   for (const u of unparsed) console.log("  " + u.tool + " (" + u.reason + ")");
 }
-process.exit(classA.length + classB.length + classC.length + classD.length === 0 ? 0 : 1);
+process.exit(classA.length + classB.length + classC.length + classD.length === 0 && !docStale ? 0 : 1);
 

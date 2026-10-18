@@ -1,7 +1,7 @@
 # Static gates only. These need nothing but the checkout, Node and Windows PowerShell 5.1, so they
 # run on GitHub's windows runner. The unit tests that drive a real WPS installation and the
-# one-command e2e stay local on purpose - see the quality-gate section of README.md and
-# docs/FIXES.md entries 24-30.
+# one-command e2e stay local on purpose - see AGENTS.md §3 and scripts/run-gates.mjs (the single
+# source of the gate list; this job only calls it).
 name: ci
 
 on:
@@ -34,73 +34,7 @@ jobs:
         working-directory: mcp
         run: npm ci --no-audit --no-fund
 
-      - name: Type-check and build the MCP server
-        working-directory: mcp
-        run: npx tsc
-
-      - name: Committed mcp/dist must match the sources
-        run: git diff --exit-code -- mcp/dist
-
-      - name: Regenerate the COM host and compare it with the committed copy
-        shell: powershell
-        run: |
-          ./scripts/build-host-actions.ps1
-          git diff --exit-code -- host/wps-actions.ps1
-
-      - name: Skill references are up to date (check mode, writes nothing)
-        run: node scripts/gen-skill-tools.mjs --check
-
-      - name: Regenerate the skill reference tables
-        run: node scripts/gen-skill-tools.mjs
-
-      - name: Committed skill references must match the registry
-        run: git diff --exit-code -- skills
-
-      - name: Regenerate the tool surface from the operation spec
-        run: node scripts/gen-tool-surface.mjs
-
-      - name: Committed tool surface must match the spec
-        run: git diff --exit-code -- spec
-
-      - name: Regenerate the tool coverage matrix
-        run: node scripts/gen-tool-coverage.mjs
-
-      - name: Committed coverage matrix must match
-        run: git diff --exit-code -- docs/tool-coverage.md
-
-      - name: Project lint (byte conventions, tabs, console, test exit codes, modal-dialog guards)
-        run: npm run lint
-
-      - name: Spec reproduces the model-facing surface (P1 acceptance)
-        run: node test/spec-reproduction.test.mjs
-
-      - name: Advertised surface, budget, bridge action count and dispatch guards
-        run: node scripts/verify.mjs --static
-
-      - name: Parameter contract accounting
-        run: node scripts/param-contract.mjs
-
-      - name: Committed contract report must match
-        run: git diff --exit-code -- docs/param-contract.md
-
-      # FIXES 84: 0.6.0 shipped without mcp/package.json (the CommonJS boundary of mcp/dist) and the published
-      # server could not even start. File-list checks cannot see that class of defect, so the packaged tarball is
-      # installed here for real and the MCP server is started for a JSON-RPC handshake. No WPS needed (~12-60s).
-      - name: Packaged tarball installs and the MCP server boots (FIXES 84 gate)
-        run: npm run verify:package
-
-      # 清单的**唯一来源**是 scripts/lib/static-tests.mjs。以前这里是一份手写列表：新增一个不需要 WPS 的
-      # 测试文件不会自动进 CI，门禁就静默变薄了。
-      - name: Static unit tests (WPS-free files listed in scripts/lib/static-tests.mjs)
-        run: node scripts/run-static-tests.mjs
-
-      # FIXES 91（B4）：文档里的数字只有一个来源。生成器从真实 tools/list + spec + 宿主键表算，
-      # 并核对 README / HANDOFF 的声明值；对不上就非零退出。
-      #
-      # **刻意放在最后**：记账类失败不该把上面的测试门禁整段 skipped —— 2026-10-10 的实测就是这道
-      # gate 从上线起连续 8 次 CI 全红，后面的静态测试一次都没跑过。
-      - name: Documented numbers must match the generated snapshot
-        run: node scripts/gen-numbers.mjs --check
-
-      - name: Committed numbers snapshot must match
-        run: git diff --exit-code -- docs/current-numbers.md
+      # 门禁清单的**唯一来源**是 scripts/run-gates.mjs（docs / verify / code / bridge / package / release 六组）。
+      # CI 跑 release 组；发版前本地执行的是同一条命令（npm run gates:release），两边不会再各抄一份清单。
+      - name: Static gates (single source: scripts/run-gates.mjs)
+        run: npm run gates:ci
