@@ -518,6 +518,13 @@ C. 跑真实任务，记录「模型想做但做不到」的每一步。
 - 每次开工先 `git status`；**提交用明确的文件/目录路径 `git add`，禁止 `git add -A`，也避免 `git add -u`**（后者会扫全部已跟踪改动）。确需批量时，先确认 `git status` 里只有本次改动。
 - 原因：用户会在**另一条 DSH 会话**里同时改 `README.md` / `package.json`，已因此误扫过两次别人的未提交改动。
 
+**CI 文件（2026-10-18 实测）**
+- 改 `.github/workflows/*.yml` 后先在本地解析一次 YAML（仓库里就有 `mcp/node_modules/js-yaml`）。
+  v0.9.0 首次 push 时，step `name: Static gates (single source: scripts/run-gates.mjs)` 里**未加引号的 `: `**
+  让**整份** workflow 解析失败：GitHub 只回一句「workflow file issue」、`gh run view` 里没有任何 job，
+  而本地 `gates:release` 全绿完全看不到（先判成服务故障，实际是 YAML 语法）。修复：把带 `: ` 的值加引号
+  （提交 `e706ab8`，CI run `39099549873` 全绿）。
+
 **历史记录**
 - `FIXES.md` / `CHANGELOG.md` / `release-records.md` 的结论、实测读数、日期、版本号**不改**；
   允许加更正注（保留原文）、把悬空链接改成纯文字或重指向、给条目补状态与版本归属。

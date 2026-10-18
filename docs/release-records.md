@@ -14,6 +14,7 @@
 | 打包 | `entryCount=315  packed=766109 B (748.2KB)  unpacked=3,670,529 B (3.50MB)`；registry 实测 `fileCount=315`、`shasum=a8b5b9f55e06fc2956fed1a2325cc0cad3662db2`、`integrity=sha512-J+If3NTAGyMX2CIN0LGcfXGQYS1vfB9G4GXpZFmCYHVry60ewDnbm6WD95XvjdeKrHO6O0SKbU1UEUSBH0pM5Q==`；下载 tarball **766,109 字节**、sha1 与本地 pack 一致 |
 | 全新 profile 真装 | `dsh plugin --profile wps090 add dsh-plugin-wps-office-next@0.9.0` → 装出 0.9.0、`--dump-config` 两个 id 正常、副本内 `node scripts\doctor.mjs` → `DOCTOR OK`；验收后已 `remove` + 删 profile |
 | GitHub | 提交 `7cf05fb`、tag `v0.9.0`、Release <https://github.com/sueccku/dsh-plugin-wps-office-next/releases/tag/v0.9.0>；`git ls-remote --tags` 已见 `refs/tags/v0.9.0` |
+| CI 插曲 | 首次 push 后 CI **红**（run 39099194529 / 39099193068）：GitHub 判定 workflow 文件无效、没有任何 job —— 原因是 `ci.yml` 的 step name 里写了未加引号的 `single source: scripts/run-gates.mjs`，YAML 把 `: ` 当映射分隔符，**整份文件解析失败**（本地 `gates:release` 全绿抓不到）。提交 `e706ab8` 加引号后 CI run 39099549873 **全绿**（static-gates 2m5s） |
 | 顺带 | FIXES 116 是**发版前整轮**抓到的回归：加严嵌套未知键校验，把 schema 漏声明的 `format.numberFormat` 判成未知参数，`wps_excel_set_cell_format` 的嵌套写法整组失效；静态门禁抓不到（`arg-shape-nested` 只验 schema 内部自洽，`param-contract` 把 setCellFormat 列为 UNVALIDATED）。详见 [FIXES.md](FIXES.md) 第 116 条 |
 
 ## 0.8.2（2026-10-12）
