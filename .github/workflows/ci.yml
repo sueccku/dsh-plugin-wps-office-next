@@ -36,5 +36,5 @@ jobs:
 
       # 门禁清单的**唯一来源**是 scripts/run-gates.mjs（docs / verify / code / bridge / package / release 六组）。
       # CI 跑 release 组；发版前本地执行的是同一条命令（npm run gates:release），两边不会再各抄一份清单。
-      - name: Static gates (single source: scripts/run-gates.mjs)
+      - name: "Static gates (single source: scripts/run-gates.mjs)"
         run: npm run gates:ci
