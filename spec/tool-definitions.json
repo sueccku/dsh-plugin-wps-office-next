@@ -1,7 +1,7 @@
 [
  {
   "name": "wps_batch",
-  "description": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。默认逐项继续（stopOnError=false），整体返回 status: completed/partial/failed 与逐项结果；整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。",
+  "description": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。默认遇到第一个失败就停止（stopOnError=true），整体返回 status: completed/partial/failed 与逐项结果；整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -25,7 +25,11 @@
     },
     "stopOnError": {
      "type": "boolean",
-     "description": "true 时遇到第一个失败就停止后续调用（默认 false = 逐项继续）。有依赖关系的步骤请用 stopOnError=true 或逐项调用，避免后续步骤落到错误的前置状态上。"
+     "description": "true 时遇到第一个失败就停止后续调用（默认 true）。确有独立步骤要逐项继续时显式传 false。"
+    },
+    "maxResultChars": {
+     "type": "number",
+     "description": "每项结果最多保留多少字符（默认 2000，范围 200–20000）；超长会标 truncated。"
     }
    },
    "required": [
@@ -91,7 +95,7 @@
  },
  {
   "name": "wps_common_save_as",
-  "description": "将当前文档另存为指定路径和格式。\n\n使用场景：\n- \"另存为到桌面\"\n- \"换个名字保存\"\n- \"保存一份副本到指定位置\"\n\n特点：\n- 支持指定完整文件路径\n- 可选指定保存格式",
+  "description": "将当前文档另存为指定路径和格式。默认会创建不存在的输出目录（createDirs=true），避免\"目录不存在\"直接失败。\n\n使用场景：\n- \"另存为到桌面\"\n- \"换个名字保存\"\n- \"保存一份副本到指定位置\"\n\n特点：\n- 支持指定完整文件路径\n- 可选指定保存格式\n- 可自动创建输出目录（createDirs，默认 true）",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -102,6 +106,10 @@
     "format": {
      "type": "string",
      "description": "保存格式（可选），如 docx, xlsx, pptx 等"
+    },
+    "createDirs": {
+     "type": "boolean",
+     "description": "输出目录不存在时是否自动创建，默认 true；传 false 则要求目录已存在"
     }
    },
    "required": [
@@ -221,7 +229,7 @@
  },
  {
   "name": "wps_help",
-  "description": "查询未直接广告的工具：无参看分组概览，传 app 或 query 查目录，传 tool 取完整参数 schema",
+  "description": "查询工具目录与参数 schema：无参看分组概览，传 app 查某应用目录（默认分页 200 条，隐藏工具优先），传 query 搜索，传 tool 取完整参数 schema。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -231,11 +239,19 @@
     },
     "query": {
      "type": "string",
-     "description": "按名称或描述搜索关键字"
+     "description": "按名称或描述搜索关键字（支持中文场景词，如 题注/文档比较/母版）"
     },
     "tool": {
      "type": "string",
      "description": "工具名，返回完整 inputSchema"
+    },
+    "offset": {
+     "type": "number",
+     "description": "分页起点（从 0 开始），默认 0"
+    },
+    "limit": {
+     "type": "number",
+     "description": "本页最多返回几条，默认 200，上限 500"
     }
    }
   }
@@ -581,7 +597,7 @@
  },
  {
   "name": "wps_excel_close_workbook",
-  "description": "关闭指定的Excel工作簿，可选是否保存。",
+  "description": "关闭指定的Excel工作簿。默认不保存（save=false），避免批量收尾时回写源文件；要保存改动必须显式传 save:true。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -591,7 +607,7 @@
     },
     "save": {
      "type": "boolean",
-     "description": "是否保存，默认true"
+     "description": "是否保存，默认 false（不保存关闭）；要保存改动必须显式传 true。"
     }
    },
    "required": []
@@ -1264,7 +1280,7 @@
  },
  {
   "name": "wps_excel_find_replace",
-  "description": "在Excel中查找并替换内容。",
+  "description": "在Excel中查找并替换内容。可限定 range/sheet（不填则整张活动表的已用区域），支持全字匹配。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -1279,6 +1295,18 @@
     "matchCase": {
      "type": "boolean",
      "description": "是否区分大小写，默认false"
+    },
+    "matchWholeWord": {
+     "type": "boolean",
+     "description": "是否全字匹配，默认false"
+    },
+    "range": {
+     "type": "string",
+     "description": "限定查找区域，如 A1:Z5000；不填则用已用区域"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称，不填则使用当前活动工作表"
     }
    },
    "required": [
@@ -1863,7 +1891,7 @@
  },
  {
   "name": "wps_excel_open_workbook",
-  "description": "打开指定路径的Excel工作簿文件。readOnly=true 时以只读方式打开（改不动原件，适合把来源数据读出来做汇总）；updateLinks 控制外部链接是否随之更新。",
+  "description": "打开指定路径的Excel工作簿文件。默认以只读打开（readOnly=true），防止读来源数据时误改原件；要编辑时显式传 readOnly:false。updateLinks 控制外部链接是否随之更新。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -1873,7 +1901,7 @@
     },
     "readOnly": {
      "type": "boolean",
-     "description": "以只读方式打开（默认 false）。读来源数据、又不该改原件时传 true。"
+     "description": "以只读方式打开（默认 true，安全默认）；要保存改动必须显式传 false。"
     },
     "updateLinks": {
      "type": "boolean",
@@ -1956,7 +1984,7 @@
  },
  {
   "name": "wps_excel_read_range",
-  "description": "读取Excel指定范围的单元格数据，返回二维数组格式的数据。",
+  "description": "读取Excel指定范围的单元格数据。用 startRow/maxRows 分页，避免一次把大表全部读进上下文；返回的是格式化文本（不是 JSON 二维数组）。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -1970,7 +1998,15 @@
     },
     "include_header": {
      "type": "boolean",
-     "description": "是否将第一行作为表头返回，默认false"
+     "description": "是否将返回的第一行作为表头返回，默认false"
+    },
+    "startRow": {
+     "type": "number",
+     "description": "从范围内的第几行开始返回（从1开始），默认1"
+    },
+    "maxRows": {
+     "type": "number",
+     "description": "本次最多返回几行，默认500，上限5000；超出会标 truncated 并给 nextStartRow"
     }
    },
    "required": [
@@ -2365,7 +2401,7 @@
  },
  {
   "name": "wps_excel_set_cell_style",
-  "description": "应用预定义样式到Excel单元格，如标题、强调、输入、输出等内置样式。",
+  "description": "应用预定义样式到Excel单元格，或直接给一组自定义格式（fontName/fontSize/bold/italic/fontColor/backgroundColor/horizontalAlignment/verticalAlignment/border/borderColor）。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -2375,7 +2411,57 @@
     },
     "style": {
      "type": "string",
-     "description": "预定义样式名称，如 标题、强调、好、差、适中、输入、输出、计算、检查单元格、解释性文本、汇总 等"
+     "description": "预定义样式名称，如 标题、强调、好、差、适中、输入、输出、计算、检查单元格、解释性文本、汇总 等；与自定义格式二选一"
+    },
+    "fontName": {
+     "type": "string",
+     "description": "字体名，如 微软雅黑"
+    },
+    "fontSize": {
+     "type": "number",
+     "description": "字号（磅）"
+    },
+    "bold": {
+     "type": "boolean",
+     "description": "是否加粗"
+    },
+    "italic": {
+     "type": "boolean",
+     "description": "是否斜体"
+    },
+    "fontColor": {
+     "type": "string",
+     "description": "字体颜色，如 #FF0000"
+    },
+    "backgroundColor": {
+     "type": "string",
+     "description": "背景色，如 #FFFF00"
+    },
+    "horizontalAlignment": {
+     "type": "string",
+     "enum": [
+      "left",
+      "center",
+      "right"
+     ],
+     "description": "水平对齐"
+    },
+    "verticalAlignment": {
+     "type": "string",
+     "enum": [
+      "top",
+      "center",
+      "bottom"
+     ],
+     "description": "垂直对齐"
+    },
+    "border": {
+     "type": "boolean",
+     "description": "是否显示边框"
+    },
+    "borderColor": {
+     "type": "string",
+     "description": "边框颜色，如 #000000"
     },
     "sheet": {
      "type": "string",
@@ -2383,8 +2469,7 @@
     }
    },
    "required": [
-    "range",
-    "style"
+    "range"
    ]
   }
  },
@@ -2475,7 +2560,7 @@
  },
  {
   "name": "wps_excel_set_conditional_format",
-  "description": "设置条件格式。",
+  "description": "设置条件格式：cellValue 比较（condition/format）、色阶（type=colorScale）、数据条（type=dataBar）。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -2485,23 +2570,50 @@
     },
     "condition": {
      "type": "string",
-     "description": "条件表达式，如 \">100\"、\"=0\"、\"between(1,10)\""
+     "description": "条件表达式，如 \">100\"、\"=0\"、\"between(1,10)\"；cellValue 类型必填"
     },
     "format": {
      "type": "string",
-     "description": "格式描述，如 \"red_fill\"、\"bold\"、\"green_font\""
+     "description": "格式描述，如 \"red_fill\"、\"bold\"、\"green_font\"；cellValue 类型必填"
+    },
+    "type": {
+     "type": "string",
+     "enum": [
+      "cellValue",
+      "colorScale",
+      "dataBar"
+     ],
+     "description": "条件格式类型，默认 cellValue"
+    },
+    "operator": {
+     "type": "string",
+     "description": "比较运算符（condition 之外的直传形式）：greaterThan/lessThan/equal/between 等"
+    },
+    "value1": {
+     "type": "string",
+     "description": "比较值 1（与 operator 配用）"
+    },
+    "value2": {
+     "type": "string",
+     "description": "比较值 2（between 配用）"
+    },
+    "colorScaleType": {
+     "type": "number",
+     "description": "色阶类型（1=双色，2=三色；默认 3 由桥处理）"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称，不填则使用当前活动工作表"
     }
    },
    "required": [
-    "range",
-    "condition",
-    "format"
+    "range"
    ]
   }
  },
  {
   "name": "wps_excel_set_data_validation",
-  "description": "设置Excel单元格的数据验证规则，如下拉列表、数值范围、日期范围等。",
+  "description": "设置Excel单元格的数据验证规则：下拉列表、数值/日期范围、输入提示与出错警告。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -2516,6 +2628,34 @@
     "formula": {
      "type": "string",
      "description": "验证公式。list类型用逗号分隔值如\"选项1,选项2,选项3\"；数值类型如\"1,100\"表示范围；custom类型为Excel公式"
+    },
+    "operator": {
+     "type": "string",
+     "description": "比较运算符：between/notBetween/equal/notEqual/greater/less/greaterEqual/lessEqual（默认 between）"
+    },
+    "formula2": {
+     "type": "string",
+     "description": "第二个公式（between/notBetween 用）"
+    },
+    "inputTitle": {
+     "type": "string",
+     "description": "输入提示标题"
+    },
+    "inputMessage": {
+     "type": "string",
+     "description": "输入提示正文"
+    },
+    "errorTitle": {
+     "type": "string",
+     "description": "出错警告标题"
+    },
+    "errorMessage": {
+     "type": "string",
+     "description": "出错警告正文"
+    },
+    "showDropdown": {
+     "type": "boolean",
+     "description": "list 类型是否显示下拉箭头（默认 true）"
     },
     "sheet": {
      "type": "string",
@@ -3025,7 +3165,7 @@
  },
  {
   "name": "wps_excel_sort_range",
-  "description": "对Excel选定区域按指定列排序。",
+  "description": "对Excel区域排序。单键用 column/ascending；多键用 keys:[{column,ascending}]（最多3键）。hasHeader 控制是否把首行当表头。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -3035,16 +3175,51 @@
     },
     "column": {
      "type": "number",
-     "description": "排序依据的列号（从1开始）"
+     "description": "排序依据的列号（从1开始）；单键时用"
     },
     "ascending": {
      "type": "boolean",
-     "description": "是否升序，默认true"
+     "description": "单键是否升序，默认true"
+    },
+    "keys": {
+     "type": "array",
+     "description": "多键排序，最多3项，如 [{column:2,ascending:false},{column:3}]",
+     "items": {
+      "type": "object",
+      "properties": {
+       "column": {
+        "type": "number",
+        "description": "列号（从1开始）"
+       },
+       "ascending": {
+        "type": "boolean",
+        "description": "是否升序，默认true"
+       },
+       "order": {
+        "type": "string",
+        "enum": [
+         "asc",
+         "desc"
+        ],
+        "description": "asc/desc；与 ascending 二选一"
+       }
+      },
+      "required": [
+       "column"
+      ]
+     }
+    },
+    "hasHeader": {
+     "type": "boolean",
+     "description": "首行是否表头，默认 true"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称，不填用活动表"
     }
    },
    "required": [
-    "range",
-    "column"
+    "range"
    ]
   }
  },
@@ -3560,13 +3735,13 @@
  },
  {
   "name": "wps_ppt_add_master_element",
-  "description": "向母版中添加新元素。\n\n支持添加文本框、形状、图片、Logo等母版级元素。\n\n使用场景：\n- \"在母版上添加公司Logo\"\n- \"给母版加个页脚\"\n- \"在母版添加水印\"",
+  "description": "向母版中添加文本框或形状。\n\n当前 WPS 桥只支持 type:\"textbox\" 与 type:\"shape\"；不支持图片/Logo（传 image 会明确报 Unsupported master element type）。\n需要 Logo 时，用插入图片到每页或修改母版背景的替代路径。\n\n使用场景：\n- \"在母版上加一个文本框\"\n- \"给母版加个形状\"",
   "inputSchema": {
    "type": "object",
    "properties": {
     "element": {
      "type": "object",
-     "description": "元素配置对象，如 {type:\"textbox\",text:\"...\",left:0,top:0,width:100,height:50} 或 {type:\"image\",path:\"...\",left:0,top:0}"
+     "description": "元素配置对象，如 {type:\"textbox\",text:\"...\",left:0,top:0,width:100,height:50} 或 {type:\"shape\",shapeType:5,left:0,top:0,width:100,height:50}"
     }
    },
    "required": [
@@ -3819,7 +3994,7 @@
  },
  {
   "name": "wps_ppt_close_presentation",
-  "description": "关闭演示文稿。可指定文稿名称，不指定则关闭当前活动文稿。\n\n使用场景：\n- \"关闭这个PPT\"\n- \"关闭演示文稿不保存\"\n- \"关闭指定的PPT\"",
+  "description": "关闭演示文稿。可指定文稿名称，不指定则关闭当前活动文稿。默认不保存（save=false），避免批量收尾时回写源稿；要保存改动必须显式传 save:true。\n\n使用场景：\n- \"关闭这个PPT\"\n- \"关闭演示文稿不保存\"\n- \"关闭指定的PPT\"",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -3829,7 +4004,7 @@
     },
     "save": {
      "type": "boolean",
-     "description": "关闭前是否保存，默认true"
+     "description": "关闭前是否保存，默认 false；要保存改动必须显式传 true"
     }
    },
    "required": []
@@ -4139,18 +4314,20 @@
  },
  {
   "name": "wps_ppt_get_slide_notes",
-  "description": "获取指定幻灯片的备注内容。\n\n使用场景：\n- \"查看第3页的备注\"\n- \"读取演讲备注\"\n- \"这页有什么备注\"",
+  "description": "获取幻灯片备注内容。传 all:true 返回全部页与 hasNotes，用于\"40 页里哪些没备注\"的体检。\n\n使用场景：\n- \"查看第3页的备注\"\n- \"读取演讲备注\"\n- \"这页有什么备注\"\n- \"哪些页没有备注\"（all:true）",
   "inputSchema": {
    "type": "object",
    "properties": {
     "slideIndex": {
      "type": "number",
-     "description": "幻灯片索引（从1开始）"
+     "description": "幻灯片索引（从1开始）；all:true 时忽略"
+    },
+    "all": {
+     "type": "boolean",
+     "description": "true 时返回全部幻灯片的备注与 hasNotes"
     }
    },
-   "required": [
-    "slideIndex"
-   ]
+   "required": []
   }
  },
  {
@@ -4350,11 +4527,25 @@
     },
     "rows": {
      "type": "number",
-     "description": "表格行数"
+     "description": "表格行数；给了 data 可省略"
     },
     "cols": {
      "type": "number",
-     "description": "表格列数"
+     "description": "表格列数；给了 data 可省略"
+    },
+    "data": {
+     "type": "array",
+     "description": "二维数组数据（P1）：一次写入表格，避免 N×M 次 set_table_cell",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": [
+        "string",
+        "number",
+        "boolean"
+       ]
+      }
+     }
     },
     "left": {
      "type": "number",
@@ -4366,9 +4557,7 @@
     }
    },
    "required": [
-    "slideIndex",
-    "rows",
-    "cols"
+    "slideIndex"
    ]
   }
  },
@@ -4395,13 +4584,17 @@
  },
  {
   "name": "wps_ppt_open_presentation",
-  "description": "打开指定路径的演示文稿文件。\n\n支持的文件格式：\n- .pptx: PowerPoint 演示文稿\n- .ppt: 旧版 PowerPoint 格式\n- .dps: WPS 演示格式\n\n使用场景：\n- \"打开桌面上的演示文稿\"\n- \"打开这个PPT文件\"",
+  "description": "打开指定路径的演示文稿文件。默认以只读打开（readOnly=true），防止读来源稿时误改原件；要编辑时显式传 readOnly:false。\n\n支持的文件格式：\n- .pptx: PowerPoint 演示文稿\n- .ppt: 旧版 PowerPoint 格式\n- .dps: WPS 演示格式\n\n使用场景：\n- \"打开桌面上的演示文稿\"\n- \"打开这个PPT文件\"",
   "inputSchema": {
    "type": "object",
    "properties": {
     "path": {
      "type": "string",
      "description": "演示文稿文件的完整路径"
+    },
+    "readOnly": {
+     "type": "boolean",
+     "description": "以只读方式打开（默认 true，安全默认）；要保存改动必须显式传 false。"
     }
    },
    "required": [
@@ -4563,28 +4756,35 @@
  },
  {
   "name": "wps_ppt_set_background_color",
-  "description": "设置幻灯片背景为指定颜色。\n\n使用场景：\n- \"把第1页背景改成蓝色\"\n- \"设置背景颜色为 #FF5733\"\n- \"背景换成白色\"",
+  "description": "设置幻灯片背景为指定颜色。\n\n使用场景：\n- \"把第1页背景改成蓝色\"\n- \"设置背景颜色为 #FF5733\"\n- \"背景换成白色\"\n- \"所有页背景都改成白色\"（applyToAll:true）",
   "inputSchema": {
    "type": "object",
    "properties": {
     "slideIndex": {
      "type": "number",
-     "description": "幻灯片页码（从1开始）"
+     "description": "幻灯片页码（从1开始）；applyToAll=true 时忽略"
     },
     "color": {
      "type": "string",
      "description": "十六进制颜色值，如 \"#FF0000\"、\"#FFFFFF\""
+    },
+    "applyToAll": {
+     "type": "boolean",
+     "description": "true 时应用到全部幻灯片，默认 false"
+    },
+    "presentationName": {
+     "type": "string",
+     "description": "目标演示文稿名称；不填用当前活动文稿"
     }
    },
    "required": [
-    "slideIndex",
     "color"
    ]
   }
  },
  {
   "name": "wps_ppt_set_background_gradient",
-  "description": "为幻灯片设置渐变色背景。\n\n渐变配置对象（gradient）属性：\n- type: 渐变类型（linear/radial），默认linear\n- angle: 渐变角度（0-360度），仅linear有效，默认180\n- colors: 渐变颜色数组（如 [\"#1a1a2e\", \"#16213e\", \"#0f3460\"]）\n- stops: 颜色停靠点数组（如 [0, 0.5, 1]），与colors对应\n\n使用场景：\n- \"设置蓝色渐变背景\"\n- \"给第2页加个从深到浅的渐变\"\n- \"设置PPT背景为渐变色\"",
+  "description": "为幻灯片设置两色渐变背景（WPS 桥实现只支持两色线性渐变）。\n\n颜色用 color1/color2（也可放在 gradient:{color1,color2} 里）。\n注意：type/angle/colors/stops 等高级渐变参数当前 WPS 桥不支持，传了会被当成未知参数。\n\n使用场景：\n- \"设置蓝色渐变背景\"\n- \"给第2页加个从深到浅的渐变\"\n- \"设置PPT背景为渐变色\"",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -4592,14 +4792,21 @@
      "type": "number",
      "description": "幻灯片页码（从1开始）"
     },
+    "color1": {
+     "type": "string",
+     "description": "起始颜色，如 #1a1a2e"
+    },
+    "color2": {
+     "type": "string",
+     "description": "结束颜色，如 #0f3460"
+    },
     "gradient": {
      "type": "object",
-     "description": "渐变配置对象，包含type（linear/radial）、angle（角度）、colors（颜色数组）、stops（停靠点数组）"
+     "description": "兼容写法：{color1:\"#xxx\",color2:\"#xxx\"}；桥会把它展平成 color1/color2"
     }
    },
    "required": [
-    "slideIndex",
-    "gradient"
+    "slideIndex"
    ]
   }
  },
@@ -4754,7 +4961,7 @@
    "properties": {
     "background": {
      "type": "object",
-     "description": "背景配置对象，支持 {type:\"solid\",color:\"#xxx\"}, {type:\"gradient\",colors:[...]}, {type:\"image\",path:\"...\"}"
+     "description": "背景配置对象：{type:\"solid\",color:\"#xxx\"}、{type:\"gradient\",colors:[...]} 或 {type:\"image\",imagePath:\"...\"}。图片键名是 imagePath（不是 path）。"
     }
    },
    "required": [
@@ -5203,6 +5410,10 @@
     "height": {
      "type": "number",
      "description": "幻灯片高度（像素）"
+    },
+    "scaleContent": {
+     "type": "boolean",
+     "description": "改尺寸时是否按比例缩放页面上的形状（PT3：确保内容不跑出画布）；默认 false"
     }
    },
    "required": [
@@ -5678,7 +5889,7 @@
  },
  {
   "name": "wps_word_close_document",
-  "description": "关闭 Word 文档，可选是否保存。\n\n使用场景：\n- \"关掉这个文档，别留着\"\n- 一批任务收尾时清理打开的文档\n\n从未保存到磁盘的文档不会被强制保存（不会弹出保存对话框），此时结果里会带 warning 说明。",
+  "description": "关闭 Word 文档。默认不保存（save=false），避免批量收尾时回写源文档；要保存改动必须显式传 save:true。\n\n使用场景：\n- \"关掉这个文档，别留着\"\n- 一批任务收尾时清理打开的文档\n\n从未保存到磁盘的文档不会被强制保存（不会弹出保存对话框），此时结果里会带 warning 说明。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -5688,7 +5899,7 @@
     },
     "save": {
      "type": "boolean",
-     "description": "是否保存后关闭，默认 true"
+     "description": "是否保存后关闭，默认 false；要保存改动必须显式传 true"
     }
    }
   }
@@ -5913,7 +6124,7 @@
  },
  {
   "name": "wps_word_get_document_text",
-  "description": "获取当前Word文档的文本内容。\n\n使用场景：\n- \"读取文档内容\"\n- \"获取文档的前100个字符\"\n- \"查看文档从第50到第200个字符的内容\"\n\n可指定起始和结束位置来获取部分文本。",
+  "description": "获取当前Word文档的文本内容。\n\n使用场景：\n- \"读取文档内容\"\n- \"获取文档的前100个字符\"\n- \"查看文档从第50到第200个字符的内容\"\n\n可指定起始和结束位置来获取部分文本（0 基字符索引）；默认只回前 10,000 字符，超出会标 truncated。",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -6057,44 +6268,86 @@
  },
  {
   "name": "wps_word_insert_footer",
-  "description": "设置页脚内容。\n\n使用场景：\n- \"给文档加个页脚\"\n- \"设置页脚为页码\"\n- \"修改第1节的页脚\"",
+  "description": "设置页脚内容（传空 text 可清空；includePageNumber 可同时插入页码域）。\n\n使用场景：\n- \"给文档加个页脚\"\n- \"设置页脚为页码\"\n- \"修改第1节的页脚\"",
   "inputSchema": {
    "type": "object",
    "properties": {
     "text": {
      "type": "string",
-     "description": "页脚文本内容"
+     "description": "页脚文本内容；传空字符串表示清空页脚"
     },
     "section": {
      "type": "number",
      "description": "节编号（从1开始），默认1",
      "default": 1
+    },
+    "alignment": {
+     "type": "string",
+     "enum": [
+      "left",
+      "center",
+      "right"
+     ],
+     "description": "页脚对齐方式；不传则保持原样"
+    },
+    "includePageNumber": {
+     "type": "boolean",
+     "description": "是否在页脚追加 PAGE 域（第 X 页）"
+    },
+    "firstPageDifferent": {
+     "type": "boolean",
+     "description": "首页页脚是否不同"
+    },
+    "oddEvenDifferent": {
+     "type": "boolean",
+     "description": "奇偶页页脚是否不同"
+    },
+    "linkToPrevious": {
+     "type": "boolean",
+     "description": "是否链接到前一条页脚（false=断开）"
     }
    },
-   "required": [
-    "text"
-   ]
+   "required": []
   }
  },
  {
   "name": "wps_word_insert_header",
-  "description": "设置页眉内容。\n\n使用场景：\n- \"给文档加个页眉\"\n- \"设置页眉为公司名称\"\n- \"修改第2节的页眉\"",
+  "description": "设置页眉内容（传空 text 可清空）。\n\n使用场景：\n- \"给文档加个页眉\"\n- \"设置页眉为公司名称\"\n- \"修改第2节的页眉\"\n- \"删掉页眉\"（text:\"\"）",
   "inputSchema": {
    "type": "object",
    "properties": {
     "text": {
      "type": "string",
-     "description": "页眉文本内容"
+     "description": "页眉文本内容；传空字符串表示清空页眉"
     },
     "section": {
      "type": "number",
      "description": "节编号（从1开始），默认1",
      "default": 1
+    },
+    "alignment": {
+     "type": "string",
+     "enum": [
+      "left",
+      "center",
+      "right"
+     ],
+     "description": "页眉对齐方式；不传则保持原样"
+    },
+    "firstPageDifferent": {
+     "type": "boolean",
+     "description": "首页页眉是否不同"
+    },
+    "oddEvenDifferent": {
+     "type": "boolean",
+     "description": "奇偶页页眉是否不同"
+    },
+    "linkToPrevious": {
+     "type": "boolean",
+     "description": "是否链接到前一条页眉（false=断开）"
     }
    },
-   "required": [
-    "text"
-   ]
+   "required": []
   }
  },
  {
@@ -6240,23 +6493,34 @@
  },
  {
   "name": "wps_word_insert_table",
-  "description": "在Word文档光标位置插入表格",
+  "description": "在Word文档光标位置插入表格。可一次带 data 写入（二维数组），避免插空表后逐格 set_table_cell。",
   "inputSchema": {
    "type": "object",
    "properties": {
     "rows": {
      "type": "number",
-     "description": "表格行数"
+     "description": "表格行数；给了 data 可省略"
     },
     "cols": {
      "type": "number",
-     "description": "表格列数"
+     "description": "表格列数；给了 data 可省略"
+    },
+    "data": {
+     "type": "array",
+     "description": "二维数组数据，如 [[\"姓名\",\"年龄\"],[\"张三\",30]]；行/列数会自动取 data 的形状",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": [
+        "string",
+        "number",
+        "boolean"
+       ]
+      }
+     }
     }
    },
-   "required": [
-    "rows",
-    "cols"
-   ]
+   "required": []
   }
  },
  {
@@ -6317,6 +6581,10 @@
     "outputPath": {
      "type": "string",
      "description": "单文档模式下的保存路径（.docx）；不给则新文档留在内存里，由调用方自己另存"
+    },
+    "imageField": {
+     "type": "string",
+     "description": "图片域列名：该列单元格是图片路径时，占位符处插入图片而不是文本"
     }
    },
    "required": [
@@ -6361,13 +6629,17 @@
  },
  {
   "name": "wps_word_open_document",
-  "description": "打开指定路径的Word文档。\n\n使用场景：\n- \"打开桌面上的报告.docx\"\n- \"帮我打开这个文件路径的文档\"\n- \"加载指定位置的Word文件\"",
+  "description": "打开指定路径的Word文档。默认以只读打开（readOnly=true），防止读来源文档时误改原件；要编辑时显式传 readOnly:false。\n\n使用场景：\n- \"打开桌面上的报告.docx\"\n- \"帮我打开这个文件路径的文档\"\n- \"加载指定位置的Word文件\"",
   "inputSchema": {
    "type": "object",
    "properties": {
     "path": {
      "type": "string",
      "description": "要打开的文档文件路径"
+    },
+    "readOnly": {
+     "type": "boolean",
+     "description": "以只读方式打开（默认 true，安全默认）；要保存改动必须显式传 false。"
     }
    },
    "required": [
@@ -6831,6 +7103,984 @@
    },
    "required": [
     "name"
+   ]
+  }
+ },
+ {
+  "name": "wps_word_get_fields",
+  "description": "列出 Word 文档里的域（PAGE/NUMPAGES/SEQ/TOC/REF/INCLUDEPICTURE 等）：序号、类型、域代码、当前结果。用于题注/交叉引用/目录/页码的体检。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_update_fields",
+  "description": "更新 Word 的域（相当于 F9）：不传 index 更新全部，传 index 只更新那一个。题注/目录/交叉引用/页码改完后用它刷新。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "index": {
+     "type": "number",
+     "description": "只更新第几个域（从1开始）；不填更新全部"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_select_range",
+  "description": "把 Word 选区定位到 0 基字符范围 [start,end)。后续 insert_*（图片/内容控件/交叉引用等）会插到这里，不再只能依赖当前用户选区。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "start": {
+     "type": "number",
+     "description": "起始字符位置（0 基）"
+    },
+    "end": {
+     "type": "number",
+     "description": "结束字符位置（不含）"
+    }
+   },
+   "required": [
+    "start",
+    "end"
+   ]
+  }
+ },
+ {
+  "name": "wps_word_protect",
+  "description": "保护/取消保护 Word 文档：type=readOnly/comments/revisions/forms，可带 password。protect=false 取消保护。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "protect": {
+     "type": "boolean",
+     "description": "true 保护（默认），false 取消保护"
+    },
+    "type": {
+     "type": "string",
+     "enum": [
+      "readOnly",
+      "comments",
+      "revisions",
+      "forms"
+     ],
+     "description": "保护类型，默认 readOnly"
+    },
+    "password": {
+     "type": "string",
+     "description": "保护密码（可选）"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_get_protection",
+  "description": "读取 Word 文档当前保护状态（none/revisions/comments/forms/readOnly）。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": []
+  }
+ },
+ {
+  "name": "wps_ppt_set_slide_hidden",
+  "description": "设置/取消幻灯片隐藏（hidden=true 隐藏，false 显示）。隐藏页在放映时不出现；导出 PDF 是否包含取决于导出选项。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "slideIndex": {
+     "type": "number",
+     "description": "幻灯片页码（从1开始）"
+    },
+    "hidden": {
+     "type": "boolean",
+     "description": "true 隐藏（默认），false 显示"
+    }
+   },
+   "required": [
+    "slideIndex"
+   ]
+  }
+ },
+ {
+  "name": "wps_ppt_get_hidden_slides",
+  "description": "列出演示文稿里被隐藏的幻灯片页码与总数，用于导出/放映前的检查。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": []
+  }
+ },
+ {
+  "name": "wps_ppt_get_fonts",
+  "description": "回读幻灯片文字的字体名/字号/加粗/颜色（每页去重）。用于\"只改字色不改字号\"这类任务的前后核对；不传 slideIndex 读全篇。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "slideIndex": {
+     "type": "number",
+     "description": "只读这一页；不填读全部"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_excel_allow_edit_range",
+  "description": "在工作表保护之下放行一块可编辑区域（AllowEditRanges）。先把单元格锁好/保护工作表，再给指定区域发编辑权限；可带密码。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "允许编辑的范围，如 B2:B100"
+    },
+    "title": {
+     "type": "string",
+     "description": "区域名（可选，默认自动生成）"
+    },
+    "password": {
+     "type": "string",
+     "description": "编辑密码（可选）"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称，不填用活动表"
+    }
+   },
+   "required": [
+    "range"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_get_links",
+  "description": "列出当前工作簿的外部链接源（LinkSources），用于源被改名/移走、更新链接弹窗的排查。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": []
+  }
+ },
+ {
+  "name": "wps_excel_insert_page_break",
+  "description": "在第 row 行上方插入手动分页符（row 从1开始）；只影响打印分页，不改数据。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "row": {
+     "type": "number",
+     "description": "分页符插在第几行上方（从1开始）"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称，不填用活动表"
+    }
+   },
+   "required": [
+    "row"
+   ]
+  }
+ },
+ {
+  "name": "wps_word_insert_caption",
+  "description": "在光标/选区处插入题注（图1、表1；可带章节号）。题注是 SEQ 域，插入后用 wps_word_update_fields 刷新编号。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "label": {
+     "type": "string",
+     "description": "题注标签，如 图、表；默认 图"
+    },
+    "title": {
+     "type": "string",
+     "description": "题注文字，如 \"系统架构\"（可选）"
+    },
+    "position": {
+     "type": "string",
+     "enum": [
+      "above",
+      "below"
+     ],
+     "description": "题注在对象上方/下方，默认 below"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_set_table_formula",
+  "description": "给 Word 表格单元格设置公式（如 =SUM(ABOVE)、=SUM(LEFT)），写入 Cell.Formula；结果可用 update_fields 刷新。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "table": {
+     "type": "number",
+     "description": "第几张表（从1开始），默认1"
+    },
+    "row": {
+     "type": "number",
+     "description": "行号（从1开始）"
+    },
+    "column": {
+     "type": "number",
+     "description": "列号（从1开始）"
+    },
+    "formula": {
+     "type": "string",
+     "description": "公式，如 =SUM(ABOVE)"
+    }
+   },
+   "required": [
+    "row",
+    "column",
+    "formula"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_disconnect_link",
+  "description": "断开指定外部链接源（BreakLink），保留当前值、切断后续更新。source 用 wps_excel_get_links 取。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "source": {
+     "type": "string",
+     "description": "外部链接源，如 D:\\数据\\源.xlsx"
+    }
+   },
+   "required": [
+    "source"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_change_link",
+  "description": "把外部链接从旧源改到新源（ChangeLink），不重建公式。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "oldSource": {
+     "type": "string",
+     "description": "旧链接源"
+    },
+    "newSource": {
+     "type": "string",
+     "description": "新链接源"
+    }
+   },
+   "required": [
+    "oldSource",
+    "newSource"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_get_charts",
+  "description": "列出工作表里的图表：序号、名称、位置、尺寸、图表类型；用于改图前先确认 chartIndex。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称，不填用活动表"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_insert_table_of_figures",
+  "description": "在光标/选区处插入图表目录（TablesOfFigures，按题注标签汇总图/表并带页码）。插入后用 wps_word_update_fields 刷新。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "label": {
+     "type": "string",
+     "description": "题注标签，如 图、表；默认 图"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_compare_documents",
+  "description": "比较两份已打开的 Word 文档（原始稿 + 修订稿），生成带修订标记的比较结果文档。两份文档都必须已打开。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "original": {
+     "type": "string",
+     "description": "原始稿文档名（已打开）"
+    },
+    "revised": {
+     "type": "string",
+     "description": "修订稿文档名（已打开）"
+    }
+   },
+   "required": [
+    "original",
+    "revised"
+   ]
+  }
+ },
+ {
+  "name": "wps_word_update_style",
+  "description": "修改 Word 样式定义（字体名/字号/加粗/颜色、行距、首行缩进、段前段后），一次改完所有套用该样式的段落；用于\"正文字体/行距统一\"。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "styleName": {
+     "type": "string",
+     "description": "样式名，如 正文、标题 1"
+    },
+    "fontName": {
+     "type": "string",
+     "description": "字体名"
+    },
+    "fontSize": {
+     "type": "number",
+     "description": "字号（磅）"
+    },
+    "bold": {
+     "type": "boolean",
+     "description": "是否加粗"
+    },
+    "color": {
+     "type": "number",
+     "description": "字体颜色（BGR 整数；可选）"
+    },
+    "lineSpacing": {
+     "type": "number",
+     "description": "行距（磅）"
+    },
+    "firstLineIndent": {
+     "type": "number",
+     "description": "首行缩进（磅）"
+    },
+    "spaceBefore": {
+     "type": "number",
+     "description": "段前（磅）"
+    },
+    "spaceAfter": {
+     "type": "number",
+     "description": "段后（磅）"
+    }
+   },
+   "required": [
+    "styleName"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_set_chart_axis",
+  "description": "设置图表坐标轴：标题、数字格式、最小/最大值。axis=category（横轴）或 value（纵轴）；先用 get_charts 拿 chartIndex。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "chartIndex": {
+     "type": "number",
+     "description": "图表序号（从1开始），默认1"
+    },
+    "axis": {
+     "type": "string",
+     "enum": [
+      "category",
+      "value"
+     ],
+     "description": "category=横轴，value=纵轴"
+    },
+    "hasTitle": {
+     "type": "boolean",
+     "description": "是否显示轴标题"
+    },
+    "title": {
+     "type": "string",
+     "description": "轴标题文字"
+    },
+    "numberFormat": {
+     "type": "string",
+     "description": "轴刻度数字格式，如 yyyy-mm、#,##0"
+    },
+    "minimum": {
+     "type": "number",
+     "description": "最小值（可选）"
+    },
+    "maximum": {
+     "type": "number",
+     "description": "最大值（可选）"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称，不填用活动表"
+    }
+   },
+   "required": [
+    "axis"
+   ]
+  }
+ },
+ {
+  "name": "wps_ppt_export_notes",
+  "description": "把演示文稿全部演讲者备注导出为 text/markdown 文件（每页一节，空备注跳过）。用于交付讲稿/提词稿；不做 Word 排版。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "outputPath": {
+     "type": "string",
+     "description": "输出文件路径（.md 或 .txt）"
+    },
+    "format": {
+     "type": "string",
+     "enum": [
+      "markdown",
+      "text"
+     ],
+     "description": "markdown（默认）或 text"
+    }
+   },
+   "required": [
+    "outputPath"
+   ]
+  }
+ },
+ {
+  "name": "wps_word_set_content_control",
+  "description": "按序号/标题/标签填写内容控件：文本/下拉/日期用 value，复选框用 checked。用于模板表单批量填值。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "index": {
+     "type": "number",
+     "description": "第几个内容控件（从1开始）"
+    },
+    "title": {
+     "type": "string",
+     "description": "按标题查找控件"
+    },
+    "tag": {
+     "type": "string",
+     "description": "按标签查找控件"
+    },
+    "value": {
+     "type": "string",
+     "description": "要填入的文本/下拉项/日期"
+    },
+    "checked": {
+     "type": "boolean",
+     "description": "复选框是否勾选"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_resolve_revisions",
+  "description": "按作者批量接受/拒绝修订：mode=accept/reject，author 不填则全部。用于\"只处理张三的修订\"这类审阅。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "mode": {
+     "type": "string",
+     "enum": [
+      "accept",
+      "reject"
+     ],
+     "description": "接受或拒绝"
+    },
+    "author": {
+     "type": "string",
+     "description": "只处理该作者的修订；不填处理全部"
+    }
+   },
+   "required": [
+    "mode"
+   ]
+  }
+ },
+ {
+  "name": "wps_ppt_set_theme_colors",
+  "description": "改演示文稿主题配色（dark1/light1/dark2/light2/accent1..6/hyperlink/followedHyperlink，十六进制）；只改变量，不逐个改形状。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "dark1": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "light1": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "dark2": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "light2": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "accent1": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "accent2": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "accent3": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "accent4": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "accent5": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "accent6": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "hyperlink": {
+     "type": "string",
+     "description": "#RRGGBB"
+    },
+    "followedHyperlink": {
+     "type": "string",
+     "description": "#RRGGBB"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_ppt_set_theme_fonts",
+  "description": "改演示文稿主题字体（标题字体 majorFont / 正文字体 minorFont）；只改主题字体，不逐个文本框改。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "majorFont": {
+     "type": "string",
+     "description": "标题字体名"
+    },
+    "minorFont": {
+     "type": "string",
+     "description": "正文字体名"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_ppt_add_section",
+  "description": "在指定页前新增一节（PowerPoint 节），便于 30+ 页长 deck 分组。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "beforeSlide": {
+     "type": "number",
+     "description": "在第几页前插入节（从1开始），默认1"
+    },
+    "name": {
+     "type": "string",
+     "description": "节名"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_excel_add_icon_set",
+  "description": "给区域加图标集条件格式（三色交通灯/箭头/旗标等）。iconSet 用 WPS 的 IconSets 序号（1 起），reverse 反转顺序，showValue=false 只显示图标。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "区域，如 B2:B100"
+    },
+    "iconSet": {
+     "type": "number",
+     "description": "图标集序号（1 起，WPS IconSets 顺序）"
+    },
+    "reverse": {
+     "type": "boolean",
+     "description": "是否反转图标顺序"
+    },
+    "showValue": {
+     "type": "boolean",
+     "description": "是否同时显示数值，默认 true"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称"
+    }
+   },
+   "required": [
+    "range"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_add_trendline",
+  "description": "给图表某系列加趋势线（线性/指数/对数/多项式/幂/移动平均），可设置前推/后推、显示公式与 R²。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "chartIndex": {
+     "type": "number",
+     "description": "图表序号（从1开始），默认1"
+    },
+    "seriesIndex": {
+     "type": "number",
+     "description": "系列序号（从1开始），默认1"
+    },
+    "type": {
+     "type": "number",
+     "description": "趋势线类型（WPS TrendlineType 枚举值，如 1=线性；不填用默认）"
+    },
+    "forward": {
+     "type": "number",
+     "description": "前推周期"
+    },
+    "backward": {
+     "type": "number",
+     "description": "后推周期"
+    },
+    "displayEquation": {
+     "type": "boolean",
+     "description": "显示公式"
+    },
+    "displayRSquared": {
+     "type": "boolean",
+     "description": "显示 R²"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_excel_import_csv",
+  "description": "按指定分隔符/编码导入 CSV（OpenText），保留前导零/日期识别比直接打开更可控；导入后工作簿未保存。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "path": {
+     "type": "string",
+     "description": "CSV 路径"
+    },
+    "delimiter": {
+     "type": "string",
+     "enum": [
+      "comma",
+      "tab"
+     ],
+     "description": "分隔符，默认 comma"
+    },
+    "encoding": {
+     "type": "string",
+     "enum": [
+      "utf8",
+      "gbk"
+     ],
+     "description": "编码，默认 utf8"
+    }
+   },
+   "required": [
+    "path"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_add_pivot_calculated_field",
+  "description": "给透视表加计算字段（CalculatedFields.Add），formula 用透视字段名，如 =销售额/数量。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "type": "string",
+     "description": "计算字段名"
+    },
+    "formula": {
+     "type": "string",
+     "description": "公式，如 =销售额/数量"
+    },
+    "pivotTableName": {
+     "type": "string",
+     "description": "透视表名；不填用活动表第一个"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称"
+    }
+   },
+   "required": [
+    "name",
+    "formula"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_advanced_filter",
+  "description": "高级筛选（AdvancedFilter）：criteriaRange 写条件区；action=inPlace 原地隐藏不匹配行，copyTo 复制到目标区域（需给 copyTo）。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "range": {
+     "type": "string",
+     "description": "数据区域（含表头）"
+    },
+    "criteriaRange": {
+     "type": "string",
+     "description": "条件区域（含条件表头）"
+    },
+    "action": {
+     "type": "string",
+     "enum": [
+      "inPlace",
+      "copyTo"
+     ],
+     "description": "原地筛选或复制到别处"
+    },
+    "copyTo": {
+     "type": "string",
+     "description": "copyTo 模式的目标起始单元格"
+    },
+    "unique": {
+     "type": "boolean",
+     "description": "是否只保留唯一记录"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称"
+    }
+   },
+   "required": [
+    "range",
+    "criteriaRange",
+    "action"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_set_series_axis",
+  "description": "把图表某系列改成另一种图型并放到次坐标轴（组合图）：chartType 用 WPS 图表类型枚举，secondaryAxis=true 走次轴。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "chartIndex": {
+     "type": "number",
+     "description": "图表序号（从1开始），默认1"
+    },
+    "seriesIndex": {
+     "type": "number",
+     "description": "系列序号（从1开始），默认1"
+    },
+    "chartType": {
+     "type": "number",
+     "description": "WPS ChartType 枚举值（如 4=折线）"
+    },
+    "secondaryAxis": {
+     "type": "boolean",
+     "description": "true 放次坐标轴"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_create_labels",
+  "description": "新建标签/席卡版式文档：按行列、标签宽高、页边距建网格（WPS 的 MailingLabel 在 12.1 上返回空文档，故用表格版式实现）。建好后可用 mail_merge 往当前文档填数据。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "rows": {
+     "type": "number",
+     "description": "行数，默认5"
+    },
+    "columns": {
+     "type": "number",
+     "description": "列数，默认2"
+    },
+    "labelWidth": {
+     "type": "number",
+     "description": "单个标签宽度（磅），默认200"
+    },
+    "labelHeight": {
+     "type": "number",
+     "description": "单个标签高度（磅），默认100"
+    },
+    "margin": {
+     "type": "number",
+     "description": "页边距（磅），默认36"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_word_create_envelope",
+  "description": "新建信封文档：可设宽高（磅）、收件人/发件人文字；用于打印信封或做席卡底稿。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "width": {
+     "type": "number",
+     "description": "信封宽度（磅），默认 A4 宽"
+    },
+    "height": {
+     "type": "number",
+     "description": "信封高度（磅），默认 A4 高"
+    },
+    "recipient": {
+     "type": "string",
+     "description": "收件人文字"
+    },
+    "sender": {
+     "type": "string",
+     "description": "发件人文字"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_ppt_set_placeholder_lock",
+  "description": "锁定/解锁占位符或形状（Shape.Locked），防止误拖误改；按 shapeIndex 或 shapeName 定位。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "slideIndex": {
+     "type": "number",
+     "description": "页码（从1开始），默认1"
+    },
+    "shapeIndex": {
+     "type": "number",
+     "description": "形状序号（从1开始）"
+    },
+    "shapeName": {
+     "type": "string",
+     "description": "形状名"
+    },
+    "locked": {
+     "type": "boolean",
+     "description": "true 锁定，false 解锁"
+    }
+   },
+   "required": [
+    "locked"
+   ]
+  }
+ },
+ {
+  "name": "wps_ppt_duplicate_master_layout",
+  "description": "复制母版版式（CustomLayouts.Duplicate）；WPS 12.1 的 CustomLayouts 没有 Add，复制现有版式是新增版式的可行路径。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "layoutIndex": {
+     "type": "number",
+     "description": "第几个母版版式（从1开始），默认1"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_ppt_embed_fonts",
+  "description": "把当前演示文稿另存一份并打开字体嵌入标志（SaveCopyAs 第三个参数 EmbedTrueTypeFonts）；原演示文稿路径不变。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "outputPath": {
+     "type": "string",
+     "description": "输出 .pptx 路径"
+    }
+   },
+   "required": [
+    "outputPath"
+   ]
+  }
+ },
+ {
+  "name": "wps_ppt_compress_images",
+  "description": "压缩幻灯片图片：把每张图按 quality 比例导出为 JPG 再替换（保持原位置/尺寸），会损失清晰度；不传 slideIndex 处理全篇。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "quality": {
+     "type": "number",
+     "description": "保留比例（0–1），默认 0.6"
+    },
+    "slideIndex": {
+     "type": "number",
+     "description": "只处理这一页；不填全篇"
+    }
+   },
+   "required": []
+  }
+ },
+ {
+  "name": "wps_ppt_export_pdf",
+  "description": "把演示文稿导出为 PDF（Presentation.Export，可指定像素宽高控制缩放/清晰度）。导出的是幻灯片页；备注页导出请用 export_notes。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "outputPath": {
+     "type": "string",
+     "description": "PDF 输出路径"
+    },
+    "width": {
+     "type": "number",
+     "description": "导出宽度（像素），默认1280"
+    },
+    "height": {
+     "type": "number",
+     "description": "导出高度（像素），默认720"
+    }
+   },
+   "required": [
+    "outputPath"
+   ]
+  }
+ },
+ {
+  "name": "wps_excel_group_pivot_dates",
+  "description": "对透视表的日期字段做自动分组（PivotField.AutoGroup）；WPS 12.1 只暴露 AutoGroup，按 WPS 默认粒度分组。",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "pivotTableName": {
+     "type": "string",
+     "description": "透视表名；不填用活动表第一个"
+    },
+    "field": {
+     "type": "string",
+     "description": "日期字段名（透视表字段名）"
+    },
+    "sheet": {
+     "type": "string",
+     "description": "工作表名称"
+    }
+   },
+   "required": [
+    "field"
    ]
   }
  }

@@ -105,7 +105,7 @@ exports.setMasterBackgroundDefinition = {
         properties: {
             background: {
                 type: 'object',
-                description: '背景配置对象，支持 {type:"solid",color:"#xxx"}, {type:"gradient",colors:[...]}, {type:"image",path:"..."}',
+                description: '背景配置对象：{type:"solid",color:"#xxx"}、{type:"gradient",colors:[...]} 或 {type:"image",imagePath:"..."}。图片键名是 imagePath（不是 path）。',
             },
         },
         required: ['background'],
@@ -153,21 +153,21 @@ exports.setMasterBackgroundHandler = setMasterBackgroundHandler;
  */
 exports.addMasterElementDefinition = {
     name: 'wps_ppt_add_master_element',
-    description: `向母版中添加新元素。
+    description: `向母版中添加文本框或形状。
 
-支持添加文本框、形状、图片、Logo等母版级元素。
+当前 WPS 桥只支持 type:"textbox" 与 type:"shape"；不支持图片/Logo（传 image 会明确报 Unsupported master element type）。
+需要 Logo 时，用插入图片到每页或修改母版背景的替代路径。
 
 使用场景：
-- "在母版上添加公司Logo"
-- "给母版加个页脚"
-- "在母版添加水印"`,
+- "在母版上加一个文本框"
+- "给母版加个形状"`,
     category: tools_1.ToolCategory.PRESENTATION,
     inputSchema: {
         type: 'object',
         properties: {
             element: {
                 type: 'object',
-                description: '元素配置对象，如 {type:"textbox",text:"...",left:0,top:0,width:100,height:50} 或 {type:"image",path:"...",left:0,top:0}',
+                description: '元素配置对象，如 {type:"textbox",text:"...",left:0,top:0,width:100,height:50} 或 {type:"shape",shapeType:5,left:0,top:0,width:100,height:50}',
             },
         },
         required: ['element'],

@@ -16,6 +16,7 @@ const proofread_1 = require("./proofread");
 const deep_1 = require("./deep");
 const produce_1 = require("./produce");
 const longtail_1 = require("./longtail");
+const structure_1 = require("./structure");
 /**
  * 所有Word相关的Tools
  * 包含：
@@ -39,6 +40,7 @@ exports.wordTools = [
     ...deep_1.wordDeepTools,
     ...produce_1.wordProduceTools,
     ...longtail_1.wordLongTailTools,
+    ...structure_1.wordStructureTools,
 ];
 // 分别导出，方便按需使用
 var format_2 = require("./format");

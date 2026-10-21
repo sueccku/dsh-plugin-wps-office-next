@@ -78,7 +78,7 @@ exports.saveHandler = saveHandler;
 // ============================================================
 exports.saveAsDefinition = {
     name: 'wps_common_save_as',
-    description: `将当前文档另存为指定路径和格式。
+    description: `将当前文档另存为指定路径和格式。默认会创建不存在的输出目录（createDirs=true），避免"目录不存在"直接失败。
 
 使用场景：
 - "另存为到桌面"
@@ -87,7 +87,8 @@ exports.saveAsDefinition = {
 
 特点：
 - 支持指定完整文件路径
-- 可选指定保存格式`,
+- 可选指定保存格式
+- 可自动创建输出目录（createDirs，默认 true）`,
     category: tools_1.ToolCategory.COMMON,
     inputSchema: {
         type: 'object',
@@ -100,12 +101,16 @@ exports.saveAsDefinition = {
                 type: 'string',
                 description: '保存格式（可选），如 docx, xlsx, pptx 等',
             },
+            createDirs: {
+                type: 'boolean',
+                description: '输出目录不存在时是否自动创建，默认 true；传 false 则要求目录已存在',
+            },
         },
         required: ['outputPath'],
     },
 };
 const saveAsHandler = async (args) => {
-    const { outputPath, format } = args;
+    const { outputPath, format, createDirs } = args;
     if (!outputPath || outputPath.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
@@ -119,6 +124,7 @@ const saveAsHandler = async (args) => {
         // one of them would be read, and the two that were not were silently discarded.
         const params = {
             outputPath: outputPath,
+            createDirs: createDirs === undefined ? true : createDirs,
         };
         if (format) {
             params.format = format.toLowerCase().replace(/^\./, '');

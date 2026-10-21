@@ -10,7 +10,7 @@ whenToUse: 任务针对工作表、工作簿、单元格区域、公式与计算
 本节是表格特有的决策与流程。**应用技能可能被单独加载**，所以下面这些关键规则在本文件里也写了一遍。
 
 <!-- GENERATED:advertised:start -->
-本应用注册 **118** 个工具，standard 档直接广告 **46** 个；
+本应用注册 **132** 个工具，standard 档直接广告 **47** 个；
 完整工具表与按任务分组索引见同目录 `reference.md`（未广告的用 `wps_call`）。
 <!-- GENERATED:advertised:end -->
 

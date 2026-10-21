@@ -133,7 +133,7 @@ exports.setCellFormatHandler = setCellFormatHandler;
 // ============================================================
 exports.setCellStyleDefinition = {
     name: 'wps_excel_set_cell_style',
-    description: '应用预定义样式到Excel单元格，如标题、强调、输入、输出等内置样式。',
+    description: '应用预定义样式到Excel单元格，或直接给一组自定义格式（fontName/fontSize/bold/italic/fontColor/backgroundColor/horizontalAlignment/verticalAlignment/border/borderColor）。',
     category: tools_1.ToolCategory.SPREADSHEET,
     inputSchema: {
         type: 'object',
@@ -144,20 +144,35 @@ exports.setCellStyleDefinition = {
             },
             style: {
                 type: 'string',
-                description: '预定义样式名称，如 标题、强调、好、差、适中、输入、输出、计算、检查单元格、解释性文本、汇总 等',
+                description: '预定义样式名称，如 标题、强调、好、差、适中、输入、输出、计算、检查单元格、解释性文本、汇总 等；与自定义格式二选一',
             },
+            fontName: { type: 'string', description: '字体名，如 微软雅黑' },
+            fontSize: { type: 'number', description: '字号（磅）' },
+            bold: { type: 'boolean', description: '是否加粗' },
+            italic: { type: 'boolean', description: '是否斜体' },
+            fontColor: { type: 'string', description: '字体颜色，如 #FF0000' },
+            backgroundColor: { type: 'string', description: '背景色，如 #FFFF00' },
+            horizontalAlignment: { type: 'string', enum: ['left', 'center', 'right'], description: '水平对齐' },
+            verticalAlignment: { type: 'string', enum: ['top', 'center', 'bottom'], description: '垂直对齐' },
+            border: { type: 'boolean', description: '是否显示边框' },
+            borderColor: { type: 'string', description: '边框颜色，如 #000000' },
             sheet: {
                 type: 'string',
                 description: '工作表名称，不填则使用当前活动工作表',
             },
         },
-        required: ['range', 'style'],
+        required: ['range'],
     },
 };
 const setCellStyleHandler = async (args) => {
-    const { range, style, sheet } = args;
+    const { range, style, sheet, fontName, fontSize, bold, italic, fontColor, backgroundColor, horizontalAlignment, verticalAlignment, border, borderColor } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setCellStyle', { range, style, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const params = { range };
+        for (const [key, value] of Object.entries({ style, sheet, fontName, fontSize, bold, italic, fontColor, backgroundColor, horizontalAlignment, verticalAlignment, border, borderColor })) {
+            if (value !== undefined)
+                params[key] = value;
+        }
+        const response = await wps_client_1.wpsClient.executeMethod('setCellStyle', params, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -172,7 +187,7 @@ const setCellStyleHandler = async (args) => {
             content: [
                 {
                     type: 'text',
-                    text: `样式应用成功！\n范围: ${range}\n样式: ${style}`,
+                    text: `样式应用成功！\n范围: ${range}\n${style ? `样式: ${style}` : '自定义格式已应用'}`,
                 },
             ],
         };
@@ -598,7 +613,7 @@ exports.setRowHeightHandler = setRowHeightHandler;
 // ============================================================
 exports.setDataValidationDefinition = {
     name: 'wps_excel_set_data_validation',
-    description: '设置Excel单元格的数据验证规则，如下拉列表、数值范围、日期范围等。',
+    description: '设置Excel单元格的数据验证规则：下拉列表、数值/日期范围、输入提示与出错警告。',
     category: tools_1.ToolCategory.SPREADSHEET,
     inputSchema: {
         type: 'object',
@@ -615,6 +630,13 @@ exports.setDataValidationDefinition = {
                 type: 'string',
                 description: '验证公式。list类型用逗号分隔值如"选项1,选项2,选项3"；数值类型如"1,100"表示范围；custom类型为Excel公式',
             },
+            operator: { type: 'string', description: '比较运算符：between/notBetween/equal/notEqual/greater/less/greaterEqual/lessEqual（默认 between）' },
+            formula2: { type: 'string', description: '第二个公式（between/notBetween 用）' },
+            inputTitle: { type: 'string', description: '输入提示标题' },
+            inputMessage: { type: 'string', description: '输入提示正文' },
+            errorTitle: { type: 'string', description: '出错警告标题' },
+            errorMessage: { type: 'string', description: '出错警告正文' },
+            showDropdown: { type: 'boolean', description: 'list 类型是否显示下拉箭头（默认 true）' },
             sheet: {
                 type: 'string',
                 description: '工作表名称，不填则使用当前活动工作表',
@@ -624,9 +646,14 @@ exports.setDataValidationDefinition = {
     },
 };
 const setDataValidationHandler = async (args) => {
-    const { range, type, formula, sheet } = args;
+    const { range, type, formula, sheet, operator, formula2, inputTitle, inputMessage, errorTitle, errorMessage, showDropdown } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('addDataValidation', { range, type, formula, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const params = { range, type, formula };
+        for (const [key, value] of Object.entries({ sheet, operator, formula2, inputTitle, inputMessage, errorTitle, errorMessage, showDropdown })) {
+            if (value !== undefined)
+                params[key] = value;
+        }
+        const response = await wps_client_1.wpsClient.executeMethod('addDataValidation', params, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success) {
             return {
                 id: (0, uuid_1.v4)(),

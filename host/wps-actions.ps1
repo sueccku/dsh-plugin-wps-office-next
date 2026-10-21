@@ -459,13 +459,13 @@ function Test-WpsOoxmlEncrypted([string]$path) {
     }
 }
 
-function Open-WordDocument($word, [string]$path) {
+function Open-WordDocument($word, [string]$path, [bool]$readOnly = $true) {
     if (Test-WpsOoxmlEncrypted $path) { throw ('文件已加密（打开密码）：' + $path) }
     # WPS 的 IDispatch 不支持命名参数（实测 E_INVALIDARG），只能按位置传，顺序不能改：
     # FileName, ConfirmConversions, ReadOnly, AddToRecentFiles, PasswordDocument, PasswordTemplate,
     # Revert, WritePasswordDocument, WritePasswordTemplate, Format, Encoding, Visible, OpenAndRepair,
     # DocumentDirection, NoEncodingDialog
-    return $word.Documents.Open($path, $false, $false, $true, $script:WpsNoPassword, "", $false, "", "", 0, 0, $false, $false, 0, $true)
+    return $word.Documents.Open($path, $false, $readOnly, $true, $script:WpsNoPassword, "", $false, "", "", 0, 0, $false, $false, 0, $true)
 }
 
 function Open-ExcelWorkbook($excel, [string]$path, $updateLinks, [bool]$readOnly) {
@@ -478,11 +478,11 @@ function Open-ExcelWorkbook($excel, [string]$path, $updateLinks, [bool]$readOnly
     return $excel.Workbooks.Open($path, $links, $readOnly, $null, $script:WpsNoPassword, "", $true)
 }
 
-function Open-PptPresentation($ppt, [string]$path) {
+function Open-PptPresentation($ppt, [string]$path, [bool]$readOnly = $true) {
     # Presentations.Open 没有密码参数，所以加密演示文稿只能靠这里的**文件头预检**挡住
     # （FIXES 69）：真到了 Open 这一步就只剩模态框一条路。FileName, ReadOnly, Untitled, WithWindow
     if (Test-WpsOoxmlEncrypted $path) { throw ('文件已加密（打开密码）：' + $path) }
-    return $ppt.Presentations.Open($path, $false, $false, $true)
+    return $ppt.Presentations.Open($path, $readOnly, $false, $true)
 }
 
 function Format-WpsOpenError([string]$path, [string]$kind, [string]$message) {
@@ -766,6 +766,27 @@ function Set-MailMergeValue($target, [string]$token, [string]$value) {
     $f.MatchCase = $false
     return [bool]$f.Execute([ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, [ref]$null, 2)
 }
+
+function Set-MailMergeImage($word, $work, [string]$token, [string]$path) {
+    # P1：图片域。Find 作用在 Selection 上才能拿到「命中的那段」——Range.Find 执行后 Range 仍是原范围，
+    # 用它插图片会插到全文开头（真机探针 probe-image2.ps1 证实）。占位符先清空，再在选区插 InlineShape。
+    try { $work.Activate() } catch { Add-WpsWarning ("激活图片域文档失败：" + $_.Exception.Message) }
+    $sel = $word.Selection
+    $f = $sel.Find
+    $f.ClearFormatting()
+    $f.Replacement.ClearFormatting()
+    $f.Text = $token
+    $f.Replacement.Text = ""
+    $f.Forward = $true
+    $f.Wrap = 0
+    $f.MatchCase = $false
+    $ok = [bool]$f.Execute()
+    if ($ok -and (Test-Path -LiteralPath $path)) {
+        try { $sel.InlineShapes.AddPicture($path) | Out-Null } catch { Add-WpsWarning ("插入图片域失败：" + $_.Exception.Message); return $false }
+    }
+    return $ok
+}
+
 
 function Close-WordDocQuietly($word, $doc) {
     # 邮件合并会为「每一行」临时建一份文档（S5 场景可能几十份）：循环里直接 Close(0) 一旦碰上脏文档/
@@ -1504,15 +1525,21 @@ $script:ActionParamKeys = @{
     'addDataValidation' = @('errorMessage', 'errorTitle', 'formula', 'formula1', 'formula2', 'inputMessage', 'inputTitle', 'list', 'operator', 'range', 'sheet', 'showDropdown', 'type', 'validationType')
     'addEndnote' = @('text')
     'addFootnote' = @('text')
+    'addIconSet' = @('iconSet', 'range', 'reverse', 'sheet', 'showValue')
     'addListRow' = @('sheet', 'table', 'values')
     'addMasterElement' = @('color', 'element', 'fontSize', 'height', 'left', 'presentationName', 'shapeType', 'text', 'top', 'type', 'width')
+    'addPivotCalculatedField' = @('formula', 'name', 'pivotTableName', 'sheet')
     'addPptHyperlink' = @('presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'subAddress', 'url')
+    'addSection' = @('beforeSlide', 'name', 'presentationName')
     'addShape' = @('fillColor', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'type', 'width')
     'addSlide' = @('content', 'layout', 'position', 'presentationName', 'title')
     'addSparkline' = @('location', 'markers', 'range', 'sheet', 'sparklineType')
     'addTableLines' = @('count', 'kind', 'position', 'table')
     'addTextBox' = @('fontName', 'fontSize', 'height', 'left', 'presentationName', 'slideIndex', 'text', 'top', 'width')
+    'addTrendline' = @('backward', 'chartIndex', 'displayEquation', 'displayRSquared', 'forward', 'seriesIndex', 'sheet', 'type')
+    'advancedFilter' = @('action', 'copyTo', 'criteriaRange', 'range', 'sheet', 'unique')
     'alignShapes' = @('alignment', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
+    'allowEditRange' = @('password', 'range', 'sheet', 'title')
     'applyStyle' = @('range', 'styleName')
     'applyTransitionToAll' = @('duration', 'presentationName', 'transition')
     'autoFilter' = @('column', 'criteria', 'field', 'range', 'sheet')
@@ -1522,6 +1549,7 @@ $script:ActionParamKeys = @{
     'autoSum' = @('range', 'sheet', 'targetCell')
     'beautifySlide' = @('presentationName', 'slideIndex', 'style')
     'calculateSheet' = @('all', 'sheet')
+    'changeLink' = @('newSource', 'oldSource')
     'cleanData' = @('operations', 'range', 'sheet')
     'clearFormats' = @('range', 'sheet')
     'clearPivotTable' = @('pivotTable', 'sheet')
@@ -1530,6 +1558,8 @@ $script:ActionParamKeys = @{
     'closeDocument' = @('name', 'save', 'saveChanges')
     'closePresentation' = @('name', 'save', 'saveChanges')
     'closeWorkbook' = @('name', 'save', 'saveChanges')
+    'compareDocuments' = @('original', 'revised')
+    'compressImages' = @('presentationName', 'quality', 'slideIndex')
     'consolidate' = @('createLinks', 'destination', 'function', 'leftColumn', 'sheet', 'sources', 'topRow')
     'convertFormat' = @('appType', 'outputPath', 'presentationName', 'targetFormat')
     'convertTableToText' = @('separator', 'table')
@@ -1539,6 +1569,8 @@ $script:ActionParamKeys = @{
     'copySheet' = @('name', 'newName', 'oldName', 'position', 'sheet')
     'createChart' = @('chartType', 'chartTypeName', 'left', 'position', 'range', 'sheet', 'showDataLabels', 'showLegend', 'title', 'top')
     'createDocument' = @()
+    'createEnvelope' = @('height', 'recipient', 'sender', 'width')
+    'createLabelSheet' = @('columns', 'labelHeight', 'labelWidth', 'margin', 'rows')
     'createListObject' = @('hasHeaders', 'name', 'range', 'sheet', 'tableStyle')
     'createNamedRange' = @('name', 'range', 'sheet')
     'createPivotTable' = @('columnFields', 'destinationCell', 'destinationSheet', 'filterFields', 'rowFields', 'sourceRange', 'tableName', 'valueFields')
@@ -1559,13 +1591,17 @@ $script:ActionParamKeys = @{
     'deleteTableLine' = @('kind', 'lineIndex', 'table')
     'deleteTextBox' = @('name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'textboxIndex')
     'diagnoseFormula' = @('cell', 'sheet')
+    'disconnectLink' = @('source')
     'distributeShapes' = @('direction', 'names', 'presentationName', 'shapeIndices', 'slideIndex')
+    'duplicateMasterLayout' = @('layoutIndex', 'presentationName')
     'duplicateShape' = @('name', 'presentationName', 'shapeIndex', 'slideIndex')
     'duplicateSlide' = @('index', 'presentationName', 'slideIndex', 'targetIndex')
+    'embedFonts' = @('outputPath', 'presentationName')
     'enableTrackChanges' = @('enable')
     'endSlideShow' = @()
     'evaluateFormula' = @('formula')
     'exportChartAsImage' = @('chartName', 'format', 'outputPath', 'sheet')
+    'exportPdf' = @('height', 'outputPath', 'presentationName', 'width')
     'exportRangeAsImage' = @('format', 'outputPath', 'range', 'sheet')
     'exportSlideAsImage' = @('format', 'height', 'outputPath', 'presentationName', 'slideIndex', 'width')
     'fillSeries' = @('direction', 'range', 'sheet', 'sourceRange', 'startValue', 'step', 'targetRange', 'type')
@@ -1590,14 +1626,17 @@ $script:ActionParamKeys = @{
     'getContentControls' = @()
     'getContext' = @('sheet')
     'getDataValidations' = @('range', 'sheet')
+    'getDocumentFields' = @()
     'getDocumentParagraphs' = @('endParagraph', 'startParagraph')
+    'getDocumentProtection' = @()
     'getDocumentStats' = @()
     'getDocumentTables' = @()
-    'getDocumentText' = @()
+    'getDocumentText' = @('end', 'start')
     'getExcelContext' = @('sheet')
     'getFormula' = @('cell', 'sheet')
     'getFormulaAudit' = @('cell', 'clearArrows', 'sheet', 'showDependents', 'showPrecedents')
     'getHeaderFooter' = @('section')
+    'getHiddenSlides' = @('presentationName')
     'getListObjects' = @('sheet')
     'getNamedRanges' = @()
     'getNotes' = @()
@@ -1615,49 +1654,57 @@ $script:ActionParamKeys = @{
     'getSheetList' = @()
     'getSheetSettings' = @('sheet')
     'getSlideCount' = @('presentationName')
+    'getSlideFonts' = @('presentationName', 'slideIndex')
     'getSlideInfo' = @('index', 'presentationName', 'slideIndex')
     'getSlideMaster' = @('presentationName')
-    'getSlideNotes' = @('index', 'presentationName', 'slideIndex')
+    'getSlideNotes' = @('all', 'index', 'presentationName', 'slideIndex')
     'getSlideTitle' = @('presentationName', 'slideIndex')
     'getTableData' = @('table')
     'getTextBoxes' = @('presentationName', 'slideIndex')
     'getTrackChangesStatus' = @()
+    'getWorkbookLinks' = @()
     'goalSeek' = @('cell', 'changingCell', 'goal', 'sheet')
     'groupColumns' = @('endColumn', 'sheet', 'startColumn')
+    'groupPivotDates' = @('field', 'pivotTableName', 'sheet')
     'groupRows' = @('endRow', 'sheet', 'startRow')
     'groupShapes' = @('names', 'presentationName', 'shapeIndices', 'slideIndex')
     'hideColumns' = @('column', 'columns', 'count', 'endColumn', 'hide', 'sheet', 'startColumn')
     'hideRows' = @('count', 'endRow', 'hide', 'row', 'rows', 'sheet', 'startRow')
+    'importCsv' = @('delimiter', 'encoding', 'path')
     'insertBookmark' = @('name')
+    'insertCaption' = @('label', 'position', 'title')
     'insertColumns' = @('column', 'count', 'sheet', 'startColumn')
     'insertCrossReference' = @('referenceItem', 'referenceKind', 'referenceType')
     'insertExcelImage' = @('cell', 'height', 'imagePath', 'left', 'sheet', 'top', 'width')
-    'insertFooter' = @('alignment', 'includePageNumber', 'section', 'text')
-    'insertHeader' = @('alignment', 'section', 'text')
+    'insertFooter' = @('alignment', 'firstPageDifferent', 'includePageNumber', 'linkToPrevious', 'oddEvenDifferent', 'section', 'text')
+    'insertHeader' = @('alignment', 'firstPageDifferent', 'linkToPrevious', 'oddEvenDifferent', 'section', 'text')
     'insertHyperlink' = @('displayText', 'text', 'url')
     'insertImage' = @('height', 'imagePath', 'scale', 'width')
     'insertIndex' = @()
-    'insertPageBreak' = @('type')
+    'insertPageBreak' = @('row', 'sheet')
     'insertPageNumbers' = @('alignment', 'includeTotal', 'numberStyle', 'position', 'restartSection', 'section', 'showFirstPage')
     'insertPptChart' = @('chartType', 'height', 'left', 'presentationName', 'slideIndex', 'title', 'top', 'type', 'width')
     'insertPptImage' = @('height', 'imagePath', 'left', 'presentationName', 'slideIndex', 'top', 'width')
-    'insertPptTable' = @('cols', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'top', 'width')
+    'insertPptTable' = @('cols', 'data', 'height', 'left', 'presentationName', 'rows', 'slideIndex', 'top', 'width')
     'insertRows' = @('count', 'row', 'sheet', 'startRow')
     'insertSectionBreak' = @('breakType')
     'insertSlidesFromFile' = @('afterIndex', 'path', 'presentationName', 'slideEnd', 'slideStart')
     'insertTable' = @('cols', 'data', 'rows')
+    'insertTableOfFigures' = @('label')
     'insertText' = @('new_paragraph', 'position', 'style', 'text')
+    'listCharts' = @('sheet')
     'lockCells' = @('locked', 'range', 'sheet')
-    'mailMerge' = @('dataFile', 'fields', 'fileNameField', 'outputPath', 'splitDir')
+    'mailMerge' = @('dataFile', 'fields', 'fileNameField', 'imageField', 'outputPath', 'splitDir')
     'mergeCells' = @('across', 'range', 'sheet')
     'mergeTableCells' = @('endColumn', 'endRow', 'startColumn', 'startRow', 'table')
     'moveSheet' = @('name', 'oldName', 'position', 'sheet')
     'moveSlide' = @('from', 'fromIndex', 'presentationName', 'to', 'toIndex')
-    'openDocument' = @('path')
-    'openPresentation' = @('path')
+    'openDocument' = @('path', 'readOnly')
+    'openPresentation' = @('path', 'readOnly')
     'openWorkbook' = @('path', 'readOnly', 'updateLinks')
     'pasteRange' = @('destination', 'pasteType', 'sheet')
     'ping' = @()
+    'protectDocument' = @('password', 'protect', 'type')
     'protectSheet' = @('contents', 'drawingObjects', 'password', 'protect', 'scenarios', 'sheet')
     'protectWorkbook' = @('password', 'protect', 'structure', 'windows')
     'refreshAllData' = @()
@@ -1677,8 +1724,10 @@ $script:ActionParamKeys = @{
     'replaceRange' = @('confirm', 'endPos', 'startPos', 'text')
     'resetPageBreaks' = @('sheet')
     'resizeListObject' = @('range', 'sheet', 'table')
+    'resolveRevisions' = @('author', 'mode')
     'save' = @()
-    'saveAs' = @('appType', 'format', 'outputPath')
+    'saveAs' = @('appType', 'createDirs', 'format', 'outputPath')
+    'selectDocumentRange' = @('end', 'start')
     'setAnimation' = @('delayIncrement', 'duration', 'effect', 'effectKind', 'presentationName', 'preset', 'shapeIndex', 'shapeName', 'slideIndex', 'trigger')
     'setAnimationOrder' = @('animationIndex', 'from', 'newOrder', 'presentationName', 'slideIndex', 'to')
     'setArrayFormula' = @('formula', 'range', 'sheet')
@@ -1688,9 +1737,11 @@ $script:ActionParamKeys = @{
     'setBorder' = @('borderStyle', 'color', 'position', 'range', 'sheet', 'style')
     'setCellStyle' = @('backgroundColor', 'bold', 'border', 'borderColor', 'fontColor', 'fontName', 'fontSize', 'horizontalAlignment', 'italic', 'range', 'sheet', 'style', 'verticalAlignment')
     'setCellValue' = @('col', 'row', 'sheet', 'value')
+    'setChartAxis' = @('axis', 'chartIndex', 'hasTitle', 'maximum', 'minimum', 'numberFormat', 'sheet', 'title')
     'setChartLabels' = @('categoryAxisTitle', 'chart', 'sheet', 'title', 'valueAxisTitle')
     'setColumns' = @('count', 'lineBetween', 'section', 'spacing')
     'setColumnWidth' = @('column', 'sheet', 'width')
+    'setContentControl' = @('checked', 'index', 'tag', 'title', 'value')
     'setFont' = @('bold', 'color', 'fontName', 'fontSize', 'italic', 'range', 'underline')
     'setFontColor' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setFormula' = @('col', 'formula', 'range', 'row', 'sheet')
@@ -1703,6 +1754,7 @@ $script:ActionParamKeys = @{
     'setOutlineLevels' = @('columnLevels', 'rowLevels', 'sheet', 'summaryColumn', 'summaryRow')
     'setPageSetup' = @('bottomMargin', 'leftMargin', 'orientation', 'paperSize', 'rightMargin', 'section', 'topMargin')
     'setParagraph' = @('alignment', 'firstLineIndent', 'leftIndent', 'lineSpacing', 'range', 'rightIndent', 'spaceAfter', 'spaceBefore')
+    'setPlaceholderLock' = @('locked', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex')
     'setPptChartData' = @('chartIndex', 'chartName', 'data', 'presentationName', 'slideIndex')
     'setPptChartStyle' = @('chartIndex', 'chartName', 'hasLegend', 'presentationName', 'slideIndex', 'style', 'title')
     'setPptTableCell' = @('col', 'presentationName', 'row', 'slideIndex', 'tableIndex', 'tableName', 'text', 'value')
@@ -1711,6 +1763,7 @@ $script:ActionParamKeys = @{
     'setRangeData' = @('data', 'range', 'sheet')
     'setRowHeight' = @('height', 'row', 'sheet')
     'setSelectedText' = @('text')
+    'setSeriesAxis' = @('chartIndex', 'chartType', 'secondaryAxis', 'seriesIndex', 'sheet')
     'setShapeEffect' = @('borderColor', 'borderEnabled', 'borderStyle', 'borderWidth', 'gradientColor1', 'gradientColor2', 'name', 'presentationName', 'shadowBlur', 'shadowColor', 'shadowEnabled', 'shadowOffsetX', 'shadowOffsetY', 'shadowTransparency', 'shapeIndex', 'slideIndex', 'transparency')
     'setShapeFill' = @('color', 'presentationName', 'shapeIndex', 'slideIndex')
     'setShapePosition' = @('height', 'left', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'top', 'width')
@@ -1724,23 +1777,26 @@ $script:ActionParamKeys = @{
     'setSlideBackground' = @('background', 'color', 'colors', 'imagePath', 'presentationName', 'slideIndex', 'type')
     'setSlideContent' = @('content', 'presentationName', 'slideIndex')
     'setSlideFooter' = @('autoUpdate', 'dateFormat', 'footerText', 'presentationName', 'showDate', 'showFooter', 'showSlideNumber')
+    'setSlideHidden' = @('hidden', 'presentationName', 'slideIndex')
     'setSlideLayout' = @('index', 'layout', 'presentationName', 'slideIndex')
     'setSlideNotes' = @('index', 'notes', 'presentationName', 'slideIndex')
-    'setSlideSize' = @('height', 'presentationName', 'width')
+    'setSlideSize' = @('height', 'presentationName', 'scaleContent', 'width')
     'setSlideSubtitle' = @('presentationName', 'slideIndex', 'subtitle')
     'setSlideTheme' = @('presentationName', 'theme')
     'setSlideTitle' = @('presentationName', 'slideIndex', 'title')
     'setSlideTransition' = @('duration', 'presentationName', 'slideIndex', 'sound', 'transition')
     'setTableCell' = @('column', 'row', 'table', 'text')
     'setTableFormat' = @('autoFit', 'borders', 'headerRepeat', 'headerShading', 'style', 'table')
+    'setTableFormula' = @('column', 'formula', 'row', 'table')
     'setTextBoxStyle' = @('alignment', 'bold', 'color', 'fontName', 'fontSize', 'italic', 'name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'style', 'textboxIndex')
     'setTextBoxText' = @('name', 'presentationName', 'shapeIndex', 'shapeName', 'slideIndex', 'text', 'textboxIndex')
     'setTextColor' = @('color', 'range')
+    'setThemeFonts' = @('majorFont', 'minorFont', 'presentationName')
     'setZoom' = @('percent', 'sheet')
     'showColumns' = @('column', 'columns', 'count', 'endColumn', 'sheet', 'startColumn')
     'showRows' = @('count', 'endRow', 'row', 'rows', 'sheet', 'startRow')
     'smartFillField' = @('fillMode', 'keyword', 'value')
-    'sortRange' = @('ascending', 'column', 'keyColumn', 'order', 'range', 'sheet')
+    'sortRange' = @('ascending', 'column', 'hasHeader', 'keyColumn', 'keys', 'order', 'range', 'sheet')
     'splitTableCell' = @('column', 'columns', 'row', 'rows', 'table')
     'startSlideShow' = @('fromSlide', 'presentationName')
     'subtotal' = @('columns', 'function', 'groupBy', 'range', 'replace', 'sheet', 'totalColumn', 'totalColumns')
@@ -1756,8 +1812,10 @@ $script:ActionParamKeys = @{
     'unmergeCells' = @('range', 'sheet')
     'unprotectSheet' = @('password', 'sheet')
     'updateChart' = @('chartIndex', 'chartName', 'chartType', 'colors', 'legendPosition', 'range', 'sheet', 'showDataLabels', 'showLegend', 'title')
+    'updateDocumentFields' = @('index')
     'updateListObject' = @('name', 'sheet', 'showAutoFilter', 'showHeaders', 'table', 'tableStyle')
     'updatePivotTable' = @('addColumnFields', 'addFilterFields', 'addRowFields', 'addValueFields', 'pivotTableCell', 'pivotTableName', 'refresh', 'removeColumnFields', 'removeFilterFields', 'removeRowFields', 'removeValueFields', 'sheet', 'updateValueFields')
+    'updateStyle' = @('bold', 'color', 'firstLineIndent', 'fontName', 'fontSize', 'lineSpacing', 'spaceAfter', 'spaceBefore', 'styleName')
     'wireCheck' = @()
     'wrapText' = @('range', 'sheet', 'wrap')
 }
@@ -1962,13 +2020,19 @@ return }
         $path = $p.outputPath
         if (-not $path) { Output-Json @{ success = $false; error = "Path required" }; return }
         # D1 实测（场景 4 第 1 轮）：给一个**不存在的输出目录**时，WPS 每个应用都只回一句
-        # 「文档保存失败」——模型只能再花一轮 mkdir 或换路径去试。这里先自己判断父目录，
-        # 给出能直接修的错误。刻意**不替调用方创建目录**：目录是调用方的意图，不是插件的。
+        # 「文档保存失败」——模型只能再花一轮 mkdir 或换路径去试。P0（2026-10-19）起默认
+        # createDirs=true，由插件创建父目录；调用方显式传 createDirs:false 时保留原来的明确报错。
+        $createDirs = if ($null -ne $p.createDirs) { [bool]$p.createDirs } else { $true }
         $parent = $null
         try { $parent = Split-Path -Parent ([string]$path) } catch { $parent = $null }
         if ($parent -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
-            Output-Json @{ success = $false; error = ("输出目录不存在：" + $parent + "（动作：saveAs）下一步：先创建这个目录，或把 outputPath 换到已存在的目录后重试。") }
+            if ($createDirs) {
+                try { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+                catch { Output-Json @{ success = $false; error = ("输出目录创建失败：" + $parent + "（动作：saveAs）" + $_.Exception.Message) }; return }
+            } else {
+                Output-Json @{ success = $false; error = ("输出目录不存在：" + $parent + "（动作：saveAs）下一步：先创建这个目录，或把 outputPath 换到已存在的目录后重试，或传 createDirs:true。") }
 return }
+        }
         $appType = if ($p.appType) { $p.appType } else { Get-AppTypeByExtension $path }
         if ($appType -eq 'excel') {
             $excel = Get-WpsExcel
@@ -3000,6 +3064,26 @@ return }
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
         $sheet = Get-WorksheetByParam $excel $p
         $range = $sheet.Range($p.range)
+        # P1：多键排序。keys=[{column:2,ascending:false},{column:3}]；旧 column/ascending 仍兼容。
+        if ($null -ne $p.keys -and @($p.keys).Count -gt 0) {
+            $keys = @($p.keys)
+            if ($keys.Count -gt 3) { Output-Json @{ success = $false; error = "keys supports at most 3 columns" }; return }
+            $keyRanges = @()
+            $orders = @()
+            foreach ($k in $keys) {
+                $col = if ($null -ne $k.column) { [int]$k.column } else { [int]$k.keyColumn }
+                $keyRanges += $range.Cells(1, $col)
+                $orders += if ($k.ascending -eq $false -or $k.order -eq "desc") { 2 } else { 1 }
+            }
+            $header = if ($null -ne $p.hasHeader) { [int][bool]$p.hasHeader } else { 1 }
+            $k1 = $keyRanges[0]; $o1 = $orders[0]
+            $k2 = if ($keyRanges.Count -gt 1) { $keyRanges[1] } else { $null }
+            $o2 = if ($orders.Count -gt 1) { $orders[1] } else { 1 }
+            $k3 = if ($keyRanges.Count -gt 2) { $keyRanges[2] } else { $null }
+            $o3 = if ($orders.Count -gt 2) { $orders[2] } else { 1 }
+            $range.Sort($k1, $o1, $k2, $o2, $k3, $o3, $header)
+            Output-Json @{ success = $true; data = @{ range = $p.range; keys = $keys.Count; hasHeader = [bool]$header } }
+return }
         # The tool schema passes a 1-based column number and a boolean; this action's own keys are
         # a key range and an order string.
         $keyRef = if ($null -ne $p.keyColumn) { $p.keyColumn } else { $p.column }
@@ -4960,7 +5044,9 @@ return }
                 foreach ($field in $fields) {
                     $fname = "$field"
                     if (-not $placeholderMap.ContainsKey($fname)) { continue }
-                    if (-not (Set-MailMergeValue $work.Content $placeholderMap[$fname] $values[$fname])) { $unreplaced += $fname }
+                    $isImage = ($p.imageField -and "$($p.imageField)" -eq $fname -and (Test-Path -LiteralPath "$($values[$fname])"))
+                    $ok = if ($isImage) { Set-MailMergeImage $word $work $placeholderMap[$fname] "$($values[$fname])" } else { Set-MailMergeValue $work.Content $placeholderMap[$fname] $values[$fname] }
+                    if (-not $ok) { $unreplaced += $fname }
                 }
                 # 文件名：fileNameField 既可以是「一个列的列名」（取该列的值），也可以是一段带
                 # {列名} 占位符的模板（例如 通知书_{部门}_{姓名}_{工号}）—— 后者在数据源没有预拼好
@@ -5014,7 +5100,9 @@ return }
             foreach ($field in $fields) {
                 $fname = "$field"
                 if (-not $placeholderMap.ContainsKey($fname)) { continue }
-                if (-not (Set-MailMergeValue $work.Content $placeholderMap[$fname] $values[$fname])) { $unreplaced += ("row" + ($r + 1) + ":" + $fname) }
+                $isImage = ($p.imageField -and "$($p.imageField)" -eq $fname -and (Test-Path -LiteralPath "$($values[$fname])"))
+                $ok = if ($isImage) { Set-MailMergeImage $word $work $placeholderMap[$fname] "$($values[$fname])" } else { Set-MailMergeValue $work.Content $placeholderMap[$fname] $values[$fname] }
+                if (-not $ok) { $unreplaced += ("row" + ($r + 1) + ":" + $fname) }
             }
             $insertAt = $merged.Content
             $insertAt.Collapse(0)
@@ -5657,7 +5745,8 @@ return }
         try { $prevAskLinks = [bool]$excel.AskToUpdateLinks; $excel.AskToUpdateLinks = $false } catch { }
         $wb = $null
         $openError = $null
-        try { $wb = Open-ExcelWorkbook $excel $p.path $p.updateLinks ([bool]$p.readOnly) } catch { $openError = $_.Exception.Message }
+        $readOnly = if ($null -ne $p.readOnly) { [bool]$p.readOnly } else { $true }
+        try { $wb = Open-ExcelWorkbook $excel $p.path $p.updateLinks $readOnly } catch { $openError = $_.Exception.Message }
         try { if ($null -ne $prevAskLinks) { $excel.AskToUpdateLinks = $prevAskLinks } } catch { }
         Restore-WpsAlerts $excel $prevAlerts
         if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'excel' $openError) }; return }
@@ -5793,9 +5882,20 @@ return }
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
         $doc = Get-ActiveWordDocument $word
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
-        $text = $doc.Content.Text
-        if ($text.Length -gt 10000) { $text = $text.Substring(0, 10000) + "...(truncated)" }
-        Output-Json @{ success = $true; data = @{ text = $text; length = $doc.Content.Text.Length } }
+        $total = [int]$doc.Content.Text.Length
+        $start = if ($null -ne $p.start) { [int]$p.start } else { 0 }
+        $end = if ($null -ne $p.end) { [int]$p.end } else { $total }
+        if ($start -lt 0 -or $end -lt 0 -or $start -gt $end) {
+            Output-Json @{ success = $false; error = ("字符范围不合法：start=$start、end=$end（要求 0 ≤ start ≤ end）。（动作：getDocumentText）") }
+return }
+        if ($start -gt $total) { $start = $total }
+        if ($end -gt $total) { $end = $total }
+        # P0（2026-10-19）：schema 一直承诺 start/end，旧实现却忽略它们并恒截前 10000 字符。
+        # 现在按 0 基字符位置取 doc.Range(start,end)，再对单次返回做 10000 字符上限。
+        $text = if ($start -eq 0 -and $end -eq $total) { [string]$doc.Content.Text } else { [string]$doc.Range($start, $end).Text }
+        $truncated = $false
+        if ($text.Length -gt 10000) { $text = $text.Substring(0, 10000); $truncated = $true }
+        Output-Json @{ success = $true; data = @{ text = $text; length = $text.Length; totalLength = $total; start = $start; end = $end; truncated = $truncated } }
     }
 
     "getOpenDocuments" {
@@ -5825,7 +5925,8 @@ return }
         $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
         $docItem = $null
         $openError = $null
-        try { $docItem = Open-WordDocument $word $p.path } catch { $openError = $_.Exception.Message }
+        $readOnly = if ($null -ne $p.readOnly) { [bool]$p.readOnly } else { $true }
+        try { $docItem = Open-WordDocument $word $p.path $readOnly } catch { $openError = $_.Exception.Message }
         Restore-WpsAlerts $word $prevAlerts
         if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'word' $openError) }; return }
         Output-Json @{ success = $true; data = @{ name = $docItem.Name; path = $docItem.FullName; paragraphs = $docItem.Paragraphs.Count } }
@@ -6341,13 +6442,18 @@ return }
             Output-Json @{ success = $false; error = ("section " + $sectionNo + " does not exist; the document has " + $doc.Sections.Count) }
 return }
         $section = $doc.Sections.Item($sectionNo)
+        try {
+            if ($null -ne $p.firstPageDifferent) { $section.PageSetup.DifferentFirstPageHeaderFooter = if ([bool]$p.firstPageDifferent) { -1 } else { 0 } }
+            if ($null -ne $p.oddEvenDifferent) { $section.PageSetup.OddAndEvenPagesHeaderFooter = if ([bool]$p.oddEvenDifferent) { -1 } else { 0 } }
+        } catch { Add-WpsWarning ("设置页眉高级属性失败：" + $_.Exception.Message) }
         $header = $section.Headers.Item(1)
+        if ($null -ne $p.linkToPrevious) { $header.LinkToPrevious = [bool]$p.linkToPrevious }
         $header.Range.Text = if ($p.text) { $p.text } else { "" }
         if ($p.alignment) {
             $alignMap = @{ left = 0; center = 1; right = 2 }
             $header.Range.ParagraphFormat.Alignment = $alignMap[$p.alignment]
         }
-        Output-Json @{ success = $true; data = @{ section = $sectionNo; text = $header.Range.Text } }
+        Output-Json @{ success = $true; data = @{ section = $sectionNo; text = $header.Range.Text; firstPageDifferent = $p.firstPageDifferent; oddEvenDifferent = $p.oddEvenDifferent; linkToPrevious = $p.linkToPrevious } }
     }
 
     "insertFooter" {
@@ -6359,7 +6465,12 @@ return }
             Output-Json @{ success = $false; error = ("section " + $sectionNo + " does not exist; the document has " + $doc.Sections.Count) }
 return }
         $section = $doc.Sections.Item($sectionNo)
+        try {
+            if ($null -ne $p.firstPageDifferent) { $section.PageSetup.DifferentFirstPageHeaderFooter = if ([bool]$p.firstPageDifferent) { -1 } else { 0 } }
+            if ($null -ne $p.oddEvenDifferent) { $section.PageSetup.OddAndEvenPagesHeaderFooter = if ([bool]$p.oddEvenDifferent) { -1 } else { 0 } }
+        } catch { Add-WpsWarning ("设置页脚高级属性失败：" + $_.Exception.Message) }
         $footer = $section.Footers.Item(1)
+        if ($null -ne $p.linkToPrevious) { $footer.LinkToPrevious = [bool]$p.linkToPrevious }
         $footer.Range.Text = if ($p.text) { $p.text } else { "" }
         if ($p.alignment) {
             $alignMap = @{ left = 0; center = 1; right = 2 }
@@ -6791,7 +6902,8 @@ return }
         $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
         $pres = $null
         $openError = $null
-        try { $pres = Open-PptPresentation $ppt $p.path } catch { $openError = $_.Exception.Message }
+        $readOnly = if ($null -ne $p.readOnly) { [bool]$p.readOnly } else { $true }
+        try { $pres = Open-PptPresentation $ppt $p.path $readOnly } catch { $openError = $_.Exception.Message }
         Restore-WpsAlerts $ppt $prevAlerts
         if ($null -ne $openError) { Output-Json @{ success = $false; error = (Format-WpsOpenError $p.path 'ppt' $openError) }; return }
         Output-Json @{ success = $true; data = @{ name = $pres.Name; path = $pres.FullName; slideCount = $pres.Slides.Count } }
@@ -7029,12 +7141,21 @@ return }
         if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
         $pres = Get-TargetPres $ppt $p
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "No active presentation" }; return }
+        if ($p.all) {
+            $items = @()
+            for ($i = 1; $i -le $pres.Slides.Count; $i++) {
+                $text = ""
+                try { $text = [string]$pres.Slides.Item($i).NotesPage.Shapes.Item(2).TextFrame.TextRange.Text } catch { $text = "" }
+                $items += @{ slideIndex = $i; notes = $text; hasNotes = ($text.Trim().Length -gt 0) }
+            }
+            Output-Json @{ success = $true; data = @{ total = $items.Count; withNotes = (@($items | Where-Object { $_.hasNotes })).Count; slides = $items } }
+return }
         $index = if ($p.index) { $p.index } else { $p.slideIndex }
         if (-not $index) { $index = 1 }
         $slide = $pres.Slides.Item($index)
         $notes = ""
         try { $notes = $slide.NotesPage.Shapes.Item(2).TextFrame.TextRange.Text } catch { $notes = "" }
-        Output-Json @{ success = $true; data = @{ slideIndex = $index; notes = $notes } }
+        Output-Json @{ success = $true; data = @{ slideIndex = $index; notes = $notes; hasNotes = ($notes.Trim().Length -gt 0) } }
     }
 
     "setSlideNotes" {
@@ -7542,7 +7663,15 @@ return }
         $width = if ($p.width) { $p.width } else { 400 }
         $height = if ($p.height) { $p.height } else { 200 }
         $table = $slide.Shapes.AddTable($rows, $cols, $left, $top, $width, $height)
-        Output-Json @{ success = $true; data = @{ name = $table.Name; rows = $rows; cols = $cols } }
+        if ($p.data) {
+            for ($r = 0; $r -lt [Math]::Min($p.data.Count, $rows); $r++) {
+                $rowData = @($p.data[$r])
+                for ($c = 0; $c -lt [Math]::Min($rowData.Count, $cols); $c++) {
+                    try { $table.Table.Cell($r + 1, $c + 1).Shape.TextFrame.TextRange.Text = [string]$rowData[$c] } catch { Add-WpsWarning $_.Exception.Message }
+                }
+            }
+        }
+        Output-Json @{ success = $true; data = @{ name = $table.Name; rows = $rows; cols = $cols; withData = [bool]$p.data } }
     }
 
     "setPptTableCell" {
@@ -8383,9 +8512,31 @@ return }
         if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
         try {
             $ps = $pres.PageSetup
-            if ($null -ne $p.width) { $ps.SlideWidth = [double]$p.width * 0.75 }
-            if ($null -ne $p.height) { $ps.SlideHeight = [double]$p.height * 0.75 }
-            Output-Json @{ success = $true; data = @{ slideWidth = $ps.SlideWidth; slideHeight = $ps.SlideHeight; requestedPixels = @{ width = $p.width; height = $p.height } } }
+            $oldW = [double]$ps.SlideWidth
+            $oldH = [double]$ps.SlideHeight
+            $newW = if ($null -ne $p.width) { [double]$p.width * 0.75 } else { $oldW }
+            $newH = if ($null -ne $p.height) { [double]$p.height * 0.75 } else { $oldH }
+            if ($newW -le 0 -or $newH -le 0) { Output-Json @{ success = $false; error = "width/height must be positive" }; return }
+            $scale = if ($null -ne $p.scaleContent -and [bool]$p.scaleContent) { $true } else { $false }
+            if ($scale -and $oldW -gt 0 -and $oldH -gt 0) {
+                $sx = $newW / $oldW
+                $sy = $newH / $oldH
+                for ($i = 1; $i -le $pres.Slides.Count; $i++) {
+                    $slide = $pres.Slides.Item($i)
+                    for ($j = 1; $j -le $slide.Shapes.Count; $j++) {
+                        $shape = $slide.Shapes.Item($j)
+                        try {
+                            $shape.Left = [double]$shape.Left * $sx
+                            $shape.Top = [double]$shape.Top * $sy
+                            $shape.Width = [double]$shape.Width * $sx
+                            $shape.Height = [double]$shape.Height * $sy
+                        } catch { Add-WpsWarning ("缩放形状失败：" + $_.Exception.Message) }
+                    }
+                }
+            }
+            $ps.SlideWidth = $newW
+            $ps.SlideHeight = $newH
+            Output-Json @{ success = $true; data = @{ slideWidth = $ps.SlideWidth; slideHeight = $ps.SlideHeight; scaleContent = $scale; affectedSlides = $pres.Slides.Count; requestedPixels = @{ width = $p.width; height = $p.height } } }
         } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
 
@@ -8504,6 +8655,631 @@ return }
             Output-Json @{ success = $true; data = @{ cells = $cells; find = $findText; replace = $replaceText; sheet = $sheet.Name; changed = [bool]$didReplace } }
         } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
     }
+
+    # ---- P1（2026-10-19）：Word 域 / 选区 / 保护；PPT 隐藏页 / 字体回读；Excel 允许编辑区域 / 外链 / 分页符 ----
+
+    "getDocumentFields" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $fields = @()
+        for ($i = 1; $i -le $doc.Fields.Count; $i++) {
+            $f = $doc.Fields.Item($i)
+            $code = ""; $result = ""
+            try { $code = [string]$f.Code.Text } catch { $code = "" }
+            try { $result = [string]$f.Result.Text } catch { $result = "" }
+            $fields += @{ index = $i; type = [int]$f.Type; code = $code; result = $result }
+        }
+        Output-Json @{ success = $true; data = @{ count = $fields.Count; fields = $fields } }
+    }
+
+    "updateDocumentFields" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        if ($null -ne $p.index) {
+            $doc.Fields.Item([int]$p.index).Update() | Out-Null
+            Output-Json @{ success = $true; data = @{ updated = 1; index = [int]$p.index } }
+        } else {
+            $count = [int]$doc.Fields.Count
+            $doc.Fields.Update() | Out-Null
+            Output-Json @{ success = $true; data = @{ updated = $count } }
+        }
+    }
+
+    "selectDocumentRange" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $start = [int]$p.start; $end = [int]$p.end
+        $total = [int]$doc.Content.End
+        if ($start -lt 0 -or $end -lt $start -or $end -gt $total) {
+            Output-Json @{ success = $false; error = ("字符范围不合法：start=$start、end=$end、total=$total（要求 0 ≤ start ≤ end ≤ total）") }; return }
+        $word.Selection.SetRange($start, $end)
+        Output-Json @{ success = $true; data = @{ start = $start; end = $end; selected = ($end - $start) } }
+    }
+
+    "protectDocument" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $protect = if ($null -ne $p.protect) { [bool]$p.protect } else { $true }
+        if ($protect) {
+            $typeMap = @{ revisions = 0; comments = 1; forms = 2; readOnly = 3 }
+            $typeName = if ($p.type) { [string]$p.type } else { "readOnly" }
+            $typeValue = $typeMap[$typeName]
+            if ($null -eq $typeValue) { Output-Json @{ success = $false; error = ("未知保护类型 '" + $typeName + "'；可用：revisions/comments/forms/readOnly") }; return }
+            $doc.Protect($typeValue, $true, $(if ($p.password) { [string]$p.password } else { "" }))
+            Output-Json @{ success = $true; data = @{ protect = $true; type = $typeName } }
+        } else {
+            $doc.Unprotect($(if ($p.password) { [string]$p.password } else { "" }))
+            Output-Json @{ success = $true; data = @{ protect = $false } }
+        }
+    }
+
+    "getDocumentProtection" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $typeMap = @{ "-1" = "none"; "0" = "revisions"; "1" = "comments"; "2" = "forms"; "3" = "readOnly" }
+        $typeValue = [int]$doc.ProtectionType
+        Output-Json @{ success = $true; data = @{ protectionType = $typeValue; protection = $typeMap[[string]$typeValue] } }
+    }
+
+    "setSlideHidden" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        $slide = $pres.Slides.Item($slideIndex)
+        $hidden = if ($null -ne $p.hidden) { [bool]$p.hidden } else { $true }
+        $slide.SlideShowTransition.Hidden = if ($hidden) { -1 } else { 0 }
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; hidden = $hidden } }
+    }
+
+    "getHiddenSlides" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        $hidden = @()
+        for ($i = 1; $i -le $pres.Slides.Count; $i++) {
+            $v = 0
+            try { $v = [int]$pres.Slides.Item($i).SlideShowTransition.Hidden } catch { $v = 0 }
+            if ($v -ne 0) { $hidden += $i }
+        }
+        Output-Json @{ success = $true; data = @{ count = $hidden.Count; hiddenSlides = $hidden; totalSlides = $pres.Slides.Count } }
+    }
+
+    "getSlideFonts" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 0 }
+        $fonts = @()
+        $seen = @{}
+        $startSlide = if ($slideIndex -gt 0) { $slideIndex } else { 1 }
+        $endSlide = if ($slideIndex -gt 0) { $slideIndex } else { $pres.Slides.Count }
+        for ($s = $startSlide; $s -le $endSlide; $s++) {
+            $slide = $pres.Slides.Item($s)
+            for ($i = 1; $i -le $slide.Shapes.Count; $i++) {
+                $shape = $slide.Shapes.Item($i)
+                try {
+                    if (-not $shape.HasTextFrame -or -not $shape.TextFrame.HasText) { continue }
+                    $font = $shape.TextFrame.TextRange.Font
+                    $key = [string]$font.Name + "|" + [string]$font.Size
+                    if ($seen.ContainsKey($key)) { continue }
+                    $seen[$key] = $true
+                    $color = ""
+                    try { $color = "#" + ([int]$font.Color).ToString("X6") } catch { $color = "" }
+                    $fonts += @{ slideIndex = $s; shape = $shape.Name; name = [string]$font.Name; size = [double]$font.Size; bold = [bool]$font.Bold; color = $color }
+                } catch { Add-WpsWarning ("读取形状字体失败：" + $_.Exception.Message) }
+            }
+        }
+        Output-Json @{ success = $true; data = @{ count = $fonts.Count; fonts = $fonts } }
+    }
+
+    "allowEditRange" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $title = if ($p.title) { [string]$p.title } else { "EditableRange" + [Guid]::NewGuid().ToString("N").Substring(0, 6) }
+        $password = if ($p.password) { [string]$p.password } else { "" }
+        $sheet.Protection.AllowEditRanges.Add($title, $sheet.Range($p.range), $password) | Out-Null
+        Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; title = $title; range = $p.range } }
+    }
+
+    "getWorkbookLinks" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        $links = @()
+        try {
+            $sources = $wb.LinkSources(1)
+            if ($null -ne $sources) { foreach ($s in @($sources)) { $links += [string]$s } }
+        } catch { Add-WpsWarning ("读取 LinkSources 失败：" + $_.Exception.Message) }
+        Output-Json @{ success = $true; data = @{ count = $links.Count; links = $links } }
+    }
+
+    "insertPageBreak" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $row = [int]$p.row
+        if ($row -lt 2 -or $row -gt ($sheet.Rows.Count)) { Output-Json @{ success = $false; error = "row out of range" }; return }
+        $sheet.Rows.Item($row).PageBreak = 1
+        Output-Json @{ success = $true; data = @{ row = $row; pageBreak = 1 } }
+    }
+
+    "insertCaption" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $label = if ($p.label) { [string]$p.label } else { "图" }
+        $title = if ($p.title) { [string]$p.title } else { "" }
+        $position = if ("$($p.position)" -eq "above") { 0 } else { 1 }
+        try {
+            $word.Selection.InsertCaption($label, $title, "", $position) | Out-Null
+            Output-Json @{ success = $true; data = @{ label = $label; title = $title; position = $position } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setTableFormula" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $tableIndex = if ($p.table) { [int]$p.table } else { 1 }
+        if ($tableIndex -lt 1 -or $tableIndex -gt $doc.Tables.Count) { Output-Json @{ success = $false; error = "table index out of range" }; return }
+        $table = $doc.Tables.Item($tableIndex)
+        $formula = [string]$p.formula
+        if (-not $formula) { Output-Json @{ success = $false; error = "formula required" }; return }
+        try {
+            $table.Cell([int]$p.row, [int]$p.column).Formula = $formula
+            Output-Json @{ success = $true; data = @{ table = $tableIndex; row = [int]$p.row; column = [int]$p.column; formula = $formula } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "disconnectLink" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        if (-not $p.source) { Output-Json @{ success = $false; error = "source required" }; return }
+        try { $wb.BreakLink([string]$p.source, 1); Output-Json @{ success = $true; data = @{ source = $p.source } } }
+        catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "changeLink" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; return }
+        if (-not $p.oldSource -or -not $p.newSource) { Output-Json @{ success = $false; error = "oldSource/newSource required" }; return }
+        try { $wb.ChangeLink([string]$p.oldSource, [string]$p.newSource, 1); Output-Json @{ success = $true; data = @{ oldSource = $p.oldSource; newSource = $p.newSource } } }
+        catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "listCharts" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $charts = @()
+        try {
+            for ($i = 1; $i -le $sheet.ChartObjects().Count; $i++) {
+                $c = $sheet.ChartObjects().Item($i)
+                $charts += @{ index = $i; name = $c.Name; left = [double]$c.Left; top = [double]$c.Top; width = [double]$c.Width; height = [double]$c.Height; chartType = [int]$c.Chart.ChartType }
+            }
+            Output-Json @{ success = $true; data = @{ sheet = $sheet.Name; count = $charts.Count; charts = $charts } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "insertTableOfFigures" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $label = if ($p.label) { [string]$p.label } else { "图" }
+        try {
+            $tof = $doc.TablesOfFigures.Add($word.Selection.Range, $label, $true, $true, 1, 9, "", $false, $true)
+            Output-Json @{ success = $true; data = @{ label = $label; count = $doc.TablesOfFigures.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "compareDocuments" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        if (-not $p.original -or -not $p.revised) { Output-Json @{ success = $false; error = "original/revised required" }; return }
+        try {
+            $docA = $word.Documents.Item([string]$p.original)
+            $docB = $word.Documents.Item([string]$p.revised)
+            $result = $word.CompareDocuments($docA, $docB)
+            Output-Json @{ success = $true; data = @{ name = $result.Name; path = $result.FullName } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "updateStyle" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        if (-not $p.styleName) { Output-Json @{ success = $false; error = "styleName required" }; return }
+        try {
+            $style = $doc.Styles.Item([string]$p.styleName)
+            if ($p.fontName) { $style.Font.Name = [string]$p.fontName }
+            if ($null -ne $p.fontSize) { $style.Font.Size = [double]$p.fontSize }
+            if ($null -ne $p.bold) { $style.Font.Bold = if ([bool]$p.bold) { -1 } else { 0 } }
+            if ($null -ne $p.color) { $style.Font.Color = [int]$p.color }
+            if ($null -ne $p.lineSpacing) { $style.ParagraphFormat.LineSpacing = [double]$p.lineSpacing }
+            if ($null -ne $p.firstLineIndent) { $style.ParagraphFormat.FirstLineIndent = [double]$p.firstLineIndent }
+            if ($null -ne $p.spaceBefore) { $style.ParagraphFormat.SpaceBefore = [double]$p.spaceBefore }
+            if ($null -ne $p.spaceAfter) { $style.ParagraphFormat.SpaceAfter = [double]$p.spaceAfter }
+            Output-Json @{ success = $true; data = @{ styleName = [string]$p.styleName } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setChartAxis" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $chartIndex = if ($p.chartIndex) { [int]$p.chartIndex } else { 1 }
+        if ($chartIndex -lt 1 -or $chartIndex -gt $sheet.ChartObjects().Count) { Output-Json @{ success = $false; error = "chartIndex out of range" }; return }
+        $chart = $sheet.ChartObjects().Item($chartIndex).Chart
+        $axisName = if ("$($p.axis)" -eq "value") { 2 } else { 1 }
+        try {
+            $axis = $chart.Axes($axisName)
+            if ($null -ne $p.hasTitle) {
+                $axis.HasTitle = if ([bool]$p.hasTitle) { -1 } else { 0 }
+                if ([bool]$p.hasTitle -and $p.title) { $axis.AxisTitle.Text = [string]$p.title }
+            }
+            if ($p.numberFormat) { $axis.TickLabels.NumberFormat = [string]$p.numberFormat }
+            if ($null -ne $p.minimum) { $axis.MinimumScale = [double]$p.minimum }
+            if ($null -ne $p.maximum) { $axis.MaximumScale = [double]$p.maximum }
+            Output-Json @{ success = $true; data = @{ chartIndex = $chartIndex; axis = if ($axisName -eq 2) { "value" } else { "category" }; hasTitle = $p.hasTitle; numberFormat = $p.numberFormat } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setContentControl" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $target = $null
+        if ($p.index) {
+            $target = $doc.ContentControls.Item([int]$p.index)
+        } elseif ($p.title -or $p.tag) {
+            for ($i = 1; $i -le $doc.ContentControls.Count; $i++) {
+                $c = $doc.ContentControls.Item($i)
+                $t = try { [string]$c.Title } catch { "" }
+                $g = try { [string]$c.Tag } catch { "" }
+                if (($p.title -and $t -eq [string]$p.title) -or ($p.tag -and $g -eq [string]$p.tag)) { $target = $c; break }
+            }
+        }
+        if ($null -eq $target) { Output-Json @{ success = $false; error = "content control not found (use index/title/tag)" }; return }
+        try {
+            if ($null -ne $p.checked) { $target.Checked = if ([bool]$p.checked) { -1 } else { 0 } }
+            if ($null -ne $p.value) { $target.Range.Text = [string]$p.value }
+            Output-Json @{ success = $true; data = @{ index = $p.index; title = $p.title; value = $p.value; checked = $p.checked } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "resolveRevisions" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $doc = Get-ActiveWordDocument $word
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; return }
+        $mode = if ("$($p.mode)" -eq "reject") { "reject" } else { "accept" }
+        $author = if ($p.author) { [string]$p.author } else { "" }
+        $done = 0
+        try {
+            for ($i = $doc.Revisions.Count; $i -ge 1; $i--) {
+                $rev = $doc.Revisions.Item($i)
+                $revAuthor = try { [string]$rev.Author } catch { "" }
+                if ($author -and $revAuthor -ne $author) { continue }
+                if ($mode -eq "accept") { $rev.Accept() | Out-Null } else { $rev.Reject() | Out-Null }
+                $done++
+            }
+            Output-Json @{ success = $true; data = @{ mode = $mode; author = $author; resolved = $done; remaining = [int]$doc.Revisions.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setThemeColors" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        try {
+            $scheme = $pres.SlideMaster.Theme.ThemeColorScheme
+            $map = @{ dark1 = 1; light1 = 2; dark2 = 3; light2 = 4; accent1 = 5; accent2 = 6; accent3 = 7; accent4 = 8; accent5 = 9; accent6 = 10; hyperlink = 11; followedHyperlink = 12 }
+            $applied = @{}
+            foreach ($k in $map.Keys) {
+                if ($null -ne $p.$k) {
+                    $rgb = Convert-HexColorToRgbInt([string]$p.$k)
+                    if ($null -eq $rgb) { Output-Json @{ success = $false; error = "invalid color for $k" }; return }
+                    $scheme.Colors($map[$k]).RGB = $rgb
+                    $applied[$k] = [string]$p.$k
+                }
+            }
+            Output-Json @{ success = $true; data = @{ applied = $applied } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setThemeFonts" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        try {
+            $fonts = $pres.SlideMaster.Theme.ThemeFontScheme
+            if ($p.majorFont) { $fonts.MajorFont.Item(1).Name = [string]$p.majorFont }
+            if ($p.minorFont) { $fonts.MinorFont.Item(1).Name = [string]$p.minorFont }
+            Output-Json @{ success = $true; data = @{ majorFont = $p.majorFont; minorFont = $p.minorFont } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "addSection" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        try {
+            $before = if ($p.beforeSlide) { [int]$p.beforeSlide } else { 1 }
+            $name = if ($p.name) { [string]$p.name } else { "节 " + ([int]$pres.SectionProperties.Count + 1) }
+            $pres.SectionProperties.AddBeforeSlide($before, $name)
+            Output-Json @{ success = $true; data = @{ name = $name; beforeSlide = $before; sections = [int]$pres.SectionProperties.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "addIconSet" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $range = $sheet.Range($p.range)
+        try {
+            $cf = $range.FormatConditions.AddIconSetCondition()
+            if ($null -ne $p.iconSet) { try { $cf.IconSet = $excel.ActiveWorkbook.IconSets([int]$p.iconSet) } catch { Add-WpsWarning ("设置图标集样式失败：" + $_.Exception.Message) } }
+            if ($null -ne $p.reverse) { $cf.ReverseOrder = [bool]$p.reverse }
+            if ($null -ne $p.showValue) { $cf.ShowIconOnly = -not [bool]$p.showValue }
+            Output-Json @{ success = $true; data = @{ range = $p.range; iconSet = $p.iconSet; count = $range.FormatConditions.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "addTrendline" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $chartIndex = if ($p.chartIndex) { [int]$p.chartIndex } else { 1 }
+        if ($chartIndex -lt 1 -or $chartIndex -gt $sheet.ChartObjects().Count) { Output-Json @{ success = $false; error = "chartIndex out of range" }; return }
+        $chart = $sheet.ChartObjects().Item($chartIndex).Chart
+        $seriesIndex = if ($p.seriesIndex) { [int]$p.seriesIndex } else { 1 }
+        try {
+            $series = $chart.SeriesCollection($seriesIndex)
+            $trend = $series.Trendlines().Add()
+            if ($null -ne $p.type) { $trend.Type = [int]$p.type }
+            if ($null -ne $p.forward) { $trend.Forward = [double]$p.forward }
+            if ($null -ne $p.backward) { $trend.Backward = [double]$p.backward }
+            if ($null -ne $p.displayEquation) { $trend.DisplayEquation = [bool]$p.displayEquation }
+            if ($null -ne $p.displayRSquared) { $trend.DisplayRSquared = [bool]$p.displayRSquared }
+            Output-Json @{ success = $true; data = @{ chartIndex = $chartIndex; seriesIndex = $seriesIndex; type = $p.type } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "importCsv" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        if (-not $p.path -or -not (Test-Path -LiteralPath ([string]$p.path))) { Output-Json @{ success = $false; error = "CSV path not found" }; return }
+        $origin = if ($p.encoding -eq "utf8") { 65001 } else { 936 }
+        $delimiter = if ([string]$p.delimiter -eq "tab") { 1 } else { 0 }
+        try {
+            # OpenText(FileName, Origin, StartRow, DataType, TextQualifier, ConsecutiveDelimiter, Tab, Semicolon, Comma, Space, Other, OtherChar)
+            $wb = $excel.Workbooks.OpenText([string]$p.path, $origin, 1, 1, 1, $false, $delimiter, $false, (-not $delimiter), $false, $false)
+            Output-Json @{ success = $true; data = @{ name = $wb.Name; path = $wb.FullName; delimiter = $p.delimiter; encoding = $p.encoding } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "addPivotCalculatedField" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $ptName = if ($p.pivotTableName) { [string]$p.pivotTableName } elseif ($sheet.PivotTables().Count -ge 1) { $sheet.PivotTables().Item(1).Name } else { "" }
+        if (-not $ptName) { Output-Json @{ success = $false; error = "no pivot table on sheet" }; return }
+        try {
+            $pt = $sheet.PivotTables($ptName)
+            $field = $pt.CalculatedFields().Add([string]$p.name, [string]$p.formula)
+            Output-Json @{ success = $true; data = @{ pivotTable = $ptName; name = [string]$p.name; formula = [string]$p.formula } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "advancedFilter" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        try {
+            $range = $sheet.Range($p.range)
+            $criteria = $sheet.Range($p.criteriaRange)
+            $action = if ("$($p.action)" -eq "copyTo") { 1 } else { 0 }
+            if ($action -eq 1) {
+                $dest = $sheet.Range($p.copyTo)
+                $range.AdvancedFilter($action, $criteria, $dest, [bool]$p.unique)
+            } else {
+                $range.AdvancedFilter($action, $criteria, $null, [bool]$p.unique)
+            }
+            Output-Json @{ success = $true; data = @{ range = $p.range; action = $p.action; criteriaRange = $p.criteriaRange } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setSeriesAxis" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $chartIndex = if ($p.chartIndex) { [int]$p.chartIndex } else { 1 }
+        if ($chartIndex -lt 1 -or $chartIndex -gt $sheet.ChartObjects().Count) { Output-Json @{ success = $false; error = "chartIndex out of range" }; return }
+        $chart = $sheet.ChartObjects().Item($chartIndex).Chart
+        $seriesIndex = if ($p.seriesIndex) { [int]$p.seriesIndex } else { 1 }
+        try {
+            $series = $chart.SeriesCollection($seriesIndex)
+            if ($null -ne $p.chartType) { $series.ChartType = [int]$p.chartType }
+            if ($null -ne $p.secondaryAxis) { $series.AxisGroup = if ([bool]$p.secondaryAxis) { 2 } else { 1 } }
+            Output-Json @{ success = $true; data = @{ chartIndex = $chartIndex; seriesIndex = $seriesIndex; chartType = $p.chartType; secondaryAxis = $p.secondaryAxis } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "createLabelSheet" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        $rows = if ($p.rows) { [int]$p.rows } else { 5 }
+        $cols = if ($p.columns) { [int]$p.columns } else { 2 }
+        $labelW = if ($p.labelWidth) { [double]$p.labelWidth } else { 200 }
+        $labelH = if ($p.labelHeight) { [double]$p.labelHeight } else { 100 }
+        $margin = if ($null -ne $p.margin) { [double]$p.margin } else { 36 }
+        try {
+            $doc = $word.Documents.Add()
+            $ps = $doc.PageSetup
+            $ps.TopMargin = $margin; $ps.BottomMargin = $margin; $ps.LeftMargin = $margin; $ps.RightMargin = $margin
+            $table = $doc.Tables.Add($doc.Content, $rows, $cols)
+            $table.Borders.Enable = 1
+            for ($c = 1; $c -le $cols; $c++) { Set-ComValue $table.Columns.Item($c) 'Width' $labelW }
+            for ($r = 1; $r -le $rows; $r++) { Set-ComValue $table.Rows.Item($r) 'Height' $labelH }
+            Output-Json @{ success = $true; data = @{ document = $doc.Name; rows = $rows; columns = $cols; labelWidth = $labelW; labelHeight = $labelH } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "createEnvelope" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; return }
+        try {
+            $doc = $word.Documents.Add()
+            if ($p.width) { $doc.PageSetup.PageWidth = [double]$p.width }
+            if ($p.height) { $doc.PageSetup.PageHeight = [double]$p.height }
+            $doc.PageSetup.TopMargin = 36; $doc.PageSetup.BottomMargin = 36; $doc.PageSetup.LeftMargin = 36; $doc.PageSetup.RightMargin = 36
+            if ($p.sender) { $doc.Content.Text = [string]$p.sender + "`r`n" }
+            if ($p.recipient) { $doc.Content.InsertAfter([string]$p.recipient) }
+            Output-Json @{ success = $true; data = @{ document = $doc.Name; width = $doc.PageSetup.PageWidth; height = $doc.PageSetup.PageHeight } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "setPlaceholderLock" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 1 }
+        $slide = $pres.Slides.Item($slideIndex)
+        $shape = $null
+        if ($p.shapeIndex) { $shape = $slide.Shapes.Item([int]$p.shapeIndex) }
+        elseif ($p.shapeName) { $shape = $slide.Shapes.Item([string]$p.shapeName) }
+        if ($null -eq $shape) { Output-Json @{ success = $false; error = "shapeIndex/shapeName required" }; return }
+        $locked = if ($null -ne $p.locked) { [bool]$p.locked } else { $true }
+        $shape.Locked = if ($locked) { -1 } else { 0 }
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; shape = $shape.Name; locked = $locked } }
+    }
+
+    "duplicateMasterLayout" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        $i = if ($p.layoutIndex) { [int]$p.layoutIndex } else { 1 }
+        if ($i -lt 1 -or $i -gt $pres.SlideMaster.CustomLayouts.Count) { Output-Json @{ success = $false; error = "layoutIndex out of range" }; return }
+        try {
+            $layout = $pres.SlideMaster.CustomLayouts.Item($i)
+            $dup = $layout.Duplicate()
+            Output-Json @{ success = $true; data = @{ source = $layout.Name; duplicated = $dup.Name; count = $pres.SlideMaster.CustomLayouts.Count } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "embedFonts" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        if (-not $p.outputPath) { Output-Json @{ success = $false; error = "outputPath required" }; return }
+        $path = [System.IO.Path]::GetFullPath([string]$p.outputPath)
+        $parent = [System.IO.Path]::GetDirectoryName($path)
+        if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Force -Path $parent | Out-Null }
+        try {
+            # 第三个参数是 EmbedTrueTypeFonts（MsoTriState）；SaveCopyAs 不改变当前演示文稿路径。
+            $pres.SaveCopyAs($path, 24, -1)
+            Output-Json @{ success = $true; data = @{ outputPath = $path; embedFonts = $true; exists = (Test-Path -LiteralPath $path) } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "compressImages" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        $quality = if ($p.quality) { [double]$p.quality } else { 0.6 }
+        if ($quality -le 0 -or $quality -gt 1) { Output-Json @{ success = $false; error = "quality must be (0,1]" }; return }
+        $slideIndex = if ($p.slideIndex) { [int]$p.slideIndex } else { 0 }
+        $count = 0
+        $start = if ($slideIndex -gt 0) { $slideIndex } else { 1 }
+        $end = if ($slideIndex -gt 0) { $slideIndex } else { $pres.Slides.Count }
+        try {
+            for ($s = $start; $s -le $end; $s++) {
+                $slide = $pres.Slides.Item($s)
+                for ($i = $slide.Shapes.Count; $i -ge 1; $i--) {
+                    $shape = $slide.Shapes.Item($i)
+                    if ([int]$shape.Type -ne 13) { continue }
+                    $tmp = Join-Path $env:TEMP ("wps-compress-" + [Guid]::NewGuid().ToString("N") + ".jpg")
+                    try {
+                        $w = [int]([double]$shape.Width * $quality); $h = [int]([double]$shape.Height * $quality)
+                        if ($w -lt 1) { $w = 1 }; if ($h -lt 1) { $h = 1 }
+                        $shape.Export($tmp, 2, $w, $h)
+                        $z = $shape.ZOrderPosition
+                        $new = $slide.Shapes.AddPicture($tmp, 0, -1, $shape.Left, $shape.Top, $shape.Width, $shape.Height)
+                        try { $new.ZOrder($z) } catch { Add-WpsWarning $_.Exception.Message }
+                        $shape.Delete()
+                        $count++
+                    } catch { Add-WpsWarning ("压缩图片失败：" + $_.Exception.Message) }
+                    finally { if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue } }
+                }
+            }
+            Output-Json @{ success = $true; data = @{ images = $count; quality = $quality } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "exportPdf" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; return }
+        $pres = Get-TargetPres $ppt $p
+        if ($null -eq $pres) { Output-Json @{ success = $false; error = "no presentation is open" }; return }
+        if (-not $p.outputPath) { Output-Json @{ success = $false; error = "outputPath required" }; return }
+        $path = [System.IO.Path]::GetFullPath([string]$p.outputPath)
+        $parent = [System.IO.Path]::GetDirectoryName($path)
+        if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Force -Path $parent | Out-Null }
+        $w = if ($p.width) { [int]$p.width } else { 1280 }
+        $h = if ($p.height) { [int]$p.height } else { 720 }
+        try {
+            $pres.Export($path, 'PDF', $w, $h)
+            Output-Json @{ success = $true; data = @{ outputPath = $path; width = $w; height = $h; exists = (Test-Path -LiteralPath $path) } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
+    "groupPivotDates" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; return }
+        $sheet = Get-WorksheetByParam $excel $p
+        $ptName = if ($p.pivotTableName) { [string]$p.pivotTableName } elseif ($sheet.PivotTables().Count -ge 1) { $sheet.PivotTables().Item(1).Name } else { "" }
+        if (-not $ptName) { Output-Json @{ success = $false; error = "no pivot table on sheet" }; return }
+        if (-not $p.field) { Output-Json @{ success = $false; error = "field required" }; return }
+        try {
+            $pt = $sheet.PivotTables($ptName)
+            $field = $pt.PivotFields([string]$p.field)
+            $field.AutoGroup()
+            Output-Json @{ success = $true; data = @{ pivotTable = $ptName; field = [string]$p.field; note = "WPS PivotField 只暴露 AutoGroup；按 WPS 默认粒度分组" } }
+        } catch { Output-Json @{ success = $false; error = $_.Exception.Message } }
+    }
+
     default {
         Output-Json @{ success = $false; error = "Unknown action: $Action" }
     }

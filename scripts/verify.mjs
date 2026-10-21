@@ -13,17 +13,15 @@ import { readFileSync } from "node:fs";
 const argv = process.argv.slice(2);
 const staticOnly = argv.includes("--static");
 const entry = argv.find((arg) => !arg.startsWith("--")) || "mcp/dist/index.js";
-// D1 (locked 2026-09-13; source of record now FIXES 68): the advertised surface is allowed 100 tools / 60,000
-// bytes. It was 45 / 25,000, then 60 / 32,000, then 70 / 40,000 (FIXES 42); v0.4.0 ended at
-// 69 / 37,573 - one tool slot and 2,427 bytes short of the ceiling - and the v0.5.0 pilot work needs
-// room, so the user raised it again (FIXES 68). The number moves with the decision, and this gate is
-// what makes the next growth a deliberate edit instead of a drift.
-const BUDGET = { maxTools: 100, maxSchemaBytes: 60000 };
+// D1 (locked 2026-09-13; source of record now FIXES 68): the advertised surface is allowed 120 tools / 80,000
+// bytes. It was 45 / 25,000, then 60 / 32,000, then 70 / 40,000 (FIXES 42), then 100 / 60,000
+// (FIXES 68). On 2026-10-21 the user raised the byte ceiling to 80,000 and the tool cap to 120.
+const BUDGET = { maxTools: 120, maxSchemaBytes: 80000 };
 // Snapshot of how many actions the bridge dispatches. Ad-hoc source edits have silently dropped a
 // whole case before (a patch script swallowed "slide.unifyFont"), and nothing noticed because every
 // remaining action still worked. Update this number deliberately when adding or removing an action.
-// WO-001 added two: getPageSetup / getHeaderFooter (263 -> 265).
-const EXPECTED_ACTIONS = 265;
+// WO-001 added two: getPageSetup / getHeaderFooter (263 -> 265). P1 (2026-10-19/21) added 16: 281.
+const EXPECTED_ACTIONS = 304;
 
 const child = spawn(process.execPath, [entry], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
 let buf = "";

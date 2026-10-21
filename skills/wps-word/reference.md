@@ -5,7 +5,7 @@
 必须先 `wps_help {tool:"..."}` 取参数 schema，再 `wps_call {tool, args}` 执行。
 参数类型、单位、默认值与枚举以运行时 schema（`wps_help`）为准，本文件不复制它们。
 
-## 按任务查找（7 组）
+## 按任务查找（8 组）
 
 ### 定位文档（7）
 
@@ -75,6 +75,23 @@
 - `wps_word_add_content_control`
 - `wps_word_mail_merge`
 
+### 域、选区与保护（14）
+
+- `wps_word_get_fields`
+- `wps_word_update_fields`
+- `wps_word_select_range`
+- `wps_word_protect`
+- `wps_word_get_protection`
+- `wps_word_insert_caption`
+- `wps_word_set_table_formula`
+- `wps_word_insert_table_of_figures`
+- `wps_word_compare_documents`
+- `wps_word_update_style`
+- `wps_word_set_content_control`
+- `wps_word_resolve_revisions`
+- `wps_word_create_labels`
+- `wps_word_create_envelope`
+
 ### 批注、修订与校对（11）
 
 - `wps_word_insert_comment`
@@ -89,7 +106,7 @@
 - `wps_word_add_footnote`
 - `wps_word_add_endnote`
 
-## WPS 文字工具（61，其中直达 27）（61）
+## WPS 文字工具（75，其中直达 30）（75）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -101,7 +118,7 @@
 | wps_word_insert_bookmark | wps_call | 在当前光标位置或选中区域插入书签。 |
 | wps_word_insert_text | 直达 | 在Word文档中插入文本。 |
 | wps_word_find_replace | 直达 | 在Word文档中查找并替换文本。 |
-| wps_word_insert_table | wps_call | 在Word文档光标位置插入表格 |
+| wps_word_insert_table | wps_call | 在Word文档光标位置插入表格。 |
 | wps_word_set_paragraph | 直达 | 设置段落格式：对齐方式、行间距、段前/段后间距、缩进。 |
 | wps_word_get_active_document | 直达 | 获取当前WPS Writer活动文档的基本信息 |
 | wps_word_insert_image | wps_call | 在Word文档中插入图片。 |
@@ -116,10 +133,10 @@
 | wps_word_switch_document | 直达 | 切换到指定名称的文档。 |
 | wps_word_open_document | 直达 | 打开指定路径的Word文档。 |
 | wps_word_create_document | 直达 | 新建一个空白 Word 文档（不是打开已有文件）。 |
-| wps_word_close_document | 直达 | 关闭 Word 文档，可选是否保存。 |
+| wps_word_close_document | 直达 | 关闭 Word 文档。 |
 | wps_word_get_document_text | 直达 | 获取当前Word文档的文本内容。 |
-| wps_word_insert_header | wps_call | 设置页眉内容。 |
-| wps_word_insert_footer | wps_call | 设置页脚内容。 |
+| wps_word_insert_header | wps_call | 设置页眉内容（传空 text 可清空）。 |
+| wps_word_insert_footer | wps_call | 设置页脚内容（传空 text 可清空；includePageNumber 可同时插入页码域）。 |
 | wps_word_insert_section_break | wps_call | 插入分节符，用于将文档分为不同的节，以便对各节应用不同的页面设置。 |
 | wps_word_set_line_spacing | wps_call | 设置段落行距。 |
 | wps_word_enable_track_changes | wps_call | 开启或关闭Word文档的修订模式（Track Changes）。 |
@@ -154,3 +171,17 @@
 | wps_word_insert_index | wps_call | 在文档末尾插入索引（按索引项自动生成）。 |
 | wps_word_insert_cross_reference | wps_call | 在光标处插入交叉引用（引用标题/书签/脚注等）。 |
 | wps_word_mail_merge | 直达 | 邮件合并：以当前文档为母版，接一个数据文件（CSV），把表格里的值填到母版的占位符处；默认合并成一份新文档，给了 splitDir 就每个数据行单独存一份（母版不动）。 |
+| wps_word_get_fields | 直达 | 列出 Word 文档里的域（PAGE/NUMPAGES/SEQ/TOC/REF/INCLUDEPICTURE 等）：序号、类型、域代码、当前结果。 |
+| wps_word_update_fields | wps_call | 更新 Word 的域（相当于 F9）：不传 index 更新全部，传 index 只更新那一个。 |
+| wps_word_select_range | wps_call | 把 Word 选区定位到 0 基字符范围 [start,end)。 |
+| wps_word_protect | 直达 | 保护/取消保护 Word 文档：type=readOnly/comments/revisions/forms，可带 password。 |
+| wps_word_get_protection | wps_call | 读取 Word 文档当前保护状态（none/revisions/comments/forms/readOnly）。 |
+| wps_word_insert_caption | wps_call | 在光标/选区处插入题注（图1、表1；可带章节号）。 |
+| wps_word_set_table_formula | wps_call | 给 Word 表格单元格设置公式（如 =SUM(ABOVE)、=SUM(LEFT)），写入 Cell. |
+| wps_word_insert_table_of_figures | wps_call | 在光标/选区处插入图表目录（TablesOfFigures，按题注标签汇总图/表并带页码）。 |
+| wps_word_compare_documents | 直达 | 比较两份已打开的 Word 文档（原始稿 + 修订稿），生成带修订标记的比较结果文档。 |
+| wps_word_update_style | wps_call | 修改 Word 样式定义（字体名/字号/加粗/颜色、行距、首行缩进、段前段后），一次改完所有套用该样式的段落；用于"正文字体/行距统一"。 |
+| wps_word_set_content_control | wps_call | 按序号/标题/标签填写内容控件：文本/下拉/日期用 value，复选框用 checked。 |
+| wps_word_resolve_revisions | wps_call | 按作者批量接受/拒绝修订：mode=accept/reject，author 不填则全部。 |
+| wps_word_create_labels | wps_call | 新建标签/席卡版式文档：按行列、标签宽高、页边距建网格（WPS 的 MailingLabel 在 12. |
+| wps_word_create_envelope | wps_call | 新建信封文档：可设宽高（磅）、收件人/发件人文字；用于打印信封或做席卡底稿。 |

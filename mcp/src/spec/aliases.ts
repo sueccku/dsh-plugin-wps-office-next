@@ -49,6 +49,7 @@ export const paramAliases: Record<string, Record<string, string>> = {
  */
 export const dynamicParamActions: Record<string, string> = {
   "setCellFormat": "参数键在运行时按 format 对象动态组装（工具侧允许任意键），静态提取给不出键表",
+  "setThemeColors": "主题色 12 个槽位按名称动态遍历 $p.<slot>，静态提取只能看到循环变量；槽位集合由工具 schema 固定",
 };
 
 /** 需要展平的嵌套容器名（其属性会被并到该 action 的扁平键集合上）。 */

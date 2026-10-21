@@ -112,27 +112,41 @@ exports.setBackgroundColorDefinition = {
 使用场景：
 - "把第1页背景改成蓝色"
 - "设置背景颜色为 #FF5733"
-- "背景换成白色"`,
+- "背景换成白色"
+- "所有页背景都改成白色"（applyToAll:true）`,
     category: tools_1.ToolCategory.PRESENTATION,
     inputSchema: {
         type: 'object',
         properties: {
             slideIndex: {
                 type: 'number',
-                description: '幻灯片页码（从1开始）',
+                description: '幻灯片页码（从1开始）；applyToAll=true 时忽略',
             },
             color: {
                 type: 'string',
                 description: '十六进制颜色值，如 "#FF0000"、"#FFFFFF"',
             },
+            applyToAll: {
+                type: 'boolean',
+                description: 'true 时应用到全部幻灯片，默认 false',
+            },
+            presentationName: {
+                type: 'string',
+                description: '目标演示文稿名称；不填用当前活动文稿',
+            },
         },
-        required: ['slideIndex', 'color'],
+        required: ['color'],
     },
 };
 const setBackgroundColorHandler = async (args) => {
-    const { slideIndex, color } = args;
+    const { slideIndex, color, applyToAll, presentationName } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundColor', { slideIndex, color }, wps_1.WpsAppType.PRESENTATION);
+        const params = { color, slideIndex: slideIndex ?? 1 };
+        if (applyToAll !== undefined)
+            params.applyToAll = applyToAll;
+        if (presentationName !== undefined)
+            params.presentationName = presentationName;
+        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundColor', params, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -140,7 +154,7 @@ const setBackgroundColorHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `背景颜色设置成功！\n幻灯片: 第 ${slideIndex} 页\n颜色: ${color}`,
+                        text: `背景颜色设置成功！\n${applyToAll ? '全部幻灯片' : `第 ${slideIndex ?? 1} 页`}\n颜色: ${color}`,
                     },
                 ],
             };

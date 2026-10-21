@@ -24,6 +24,8 @@ export const STATIC_TESTS = [
   "test/style-names.test.mjs",
   "test/fault-injection.test.mjs",
   "test/arg-shape-nested.test.mjs",
+  "test/p1-surface.test.mjs",
+  "test/skilleval/benchmark80.mjs",
 ];
 
 /** CI 里单独跑的静态门禁（不重复进 STATIC_TESTS）。 */

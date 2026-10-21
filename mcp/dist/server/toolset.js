@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.STANDARD_TOOLS = exports.FACADE_TOOLS = exports.DEFAULT_MODE = void 0;
+exports.HELP_SCENARIOS = exports.HELP_SYNONYMS = exports.STANDARD_TOOLS = exports.FACADE_TOOLS = exports.DEFAULT_MODE = void 0;
 exports.resolveMode = resolveMode;
 exports.selectToolNames = selectToolNames;
 exports.selectTools = selectTools;
 exports.compactDescription = compactDescription;
 exports.tokenizeHelpQuery = tokenizeHelpQuery;
 exports.scoreToolHelpMatch = scoreToolHelpMatch;
+exports.expandHelpQuery = expandHelpQuery;
+exports.scoreToolHelpMatchExpanded = scoreToolHelpMatchExpanded;
+exports.matchHelpScenarios = matchHelpScenarios;
 /** Mode used when WPS_OFFICE_TOOLSET is unset or invalid. */
 exports.DEFAULT_MODE = 'standard';
 /** Tools that are always advertised: the dispatcher facade. */
@@ -63,6 +66,8 @@ exports.STANDARD_TOOLS = [
     'wps_excel_set_sheet_print_titles',
     'wps_excel_get_cell_info',
     'wps_excel_sort_range',
+    // P2-2（2026-10-21）：80 场景里反复出现的外链排查入口；换入后广告面到 100。
+    'wps_excel_get_links',
     // D4（2026-10-11，场景 S6 走查后用户拍板）：把真实走查里**被需要、却只能用 wps_help + wps_call 两步绕进来**的
     // 高频隐藏工具提到广告面。取证口径：S1/S4/S6 六轮真机轨迹里经 wps_call / wps_batch 触达的隐藏工具，
     // 按「跨轮次出现的场景数 → 调用总次数」排序（复算脚本 test/.artifacts/scenario-s6/tools/rank-hidden-tools.mjs、
@@ -107,6 +112,10 @@ exports.STANDARD_TOOLS = [
     'wps_word_get_revisions',
     'wps_word_mail_merge',
     'wps_word_get_notes',
+    // P2-2（2026-10-21）：80 场景里的域、保护、比较是 Word 长文交付的三条高频缺口。
+    'wps_word_get_fields',
+    'wps_word_protect',
+    'wps_word_compare_documents',
     // FIXES 90：Word 侧同样缺"收尾"与"多文档"这两个高频动作（get_open_documents 19 次、close_document 15 次、
     // switch_document 2 次）。广告面以前只有 open/create，没有 close —— 生命周期不对称。
     'wps_word_get_open_documents',
@@ -127,6 +136,8 @@ exports.STANDARD_TOOLS = [
     'wps_ppt_set_table_format',
     'wps_ppt_export_slide_as_image',
     'wps_ppt_open_presentation',
+    // P2-2（2026-10-21）：备注导出是 PT10 的收尾动作；本地写文件，不依赖桥。
+    'wps_ppt_export_notes',
     // Common and conversion
     'wps_common_save',
     'wps_common_save_as',
@@ -223,5 +234,80 @@ function scoreToolHelpMatch(name, description, query, tokens) {
             score += 6 * coverage;
     }
     return score;
+}
+/**
+ * User words that do not appear in any tool name/description but are the normal way a Chinese
+ * office user names the task. Expanded terms are scored in addition to the original query; this
+ * keeps the original bigram behaviour while letting "题注/文献/母版" reach the right family.
+ */
+exports.HELP_SYNONYMS = {
+    '题注': ['caption', '题注', '编号', 'seq', '交叉引用'],
+    '交叉引用': ['cross reference', '交叉引用', '引用', 'ref', '题注'],
+    '图表目录': ['table of figures', '图表目录', '目录', 'toc'],
+    '域': ['field', '域', '更新域', 'fields'],
+    '更新域': ['update fields', '更新域', '域', '刷新'],
+    '奇偶页': ['odd even', '奇偶页', '页眉', 'header'],
+    '页眉横线': ['header border', '页眉横线', '边框', '页眉'],
+    '文档比较': ['compare', '比较', '文档比较', '修订', '对比'],
+    '标签': ['label', '标签', '邮件合并', '信封'],
+    '信封': ['envelope', '信封', '标签', '邮件合并'],
+    '席卡': ['label', '桌贴', '席卡', '邮件合并'],
+    '内容控件': ['content control', '内容控件', '表单', '控件'],
+    '限制编辑': ['restrict editing', '限制编辑', '保护', '只读', '窗体'],
+    '字体嵌入': ['embed font', '字体嵌入', '嵌入'],
+    '图片压缩': ['compress picture', '图片压缩', '压缩', '图片'],
+    '隐藏页': ['hidden slide', '隐藏页', '隐藏幻灯片'],
+    '备注页': ['notes page', '备注页', '备注'],
+    '母版': ['master', '母版', '版式', 'layout'],
+    '主题色': ['theme color', '主题色', '主题', 'theme'],
+};
+/** Expand a free-text query with the synonym groups it contains (deduplicated, original first). */
+function expandHelpQuery(query) {
+    const phrase = (query || '').trim().toLowerCase();
+    if (!phrase)
+        return [];
+    const out = [phrase];
+    for (const [key, extras] of Object.entries(exports.HELP_SYNONYMS)) {
+        if (!phrase.includes(key.toLowerCase()))
+            continue;
+        for (const extra of extras) {
+            const term = extra.toLowerCase();
+            if (!out.includes(term))
+                out.push(term);
+        }
+    }
+    return out;
+}
+/** Score a query with synonym expansion; best match across the original and expanded terms. */
+function scoreToolHelpMatchExpanded(name, description, query, tokens) {
+    let best = scoreToolHelpMatch(name, description, query, tokens);
+    for (const term of expandHelpQuery(query)) {
+        if (term === query.trim().toLowerCase())
+            continue;
+        const termTokens = tokenizeHelpQuery(term);
+        const score = scoreToolHelpMatch(name, description, term, termTokens);
+        if (score > best)
+            best = score;
+    }
+    return best;
+}
+exports.HELP_SCENARIOS = [
+    { keywords: ['批量合同', '一人一份', '邮件合并', '合同'], tools: ['wps_word_mail_merge'], recipe: 'skills/wps-word/recipes/fill-template.md' },
+    { keywords: ['目录页码', '目录', '页码'], tools: ['wps_word_generate_toc', 'wps_word_insert_page_numbers'], recipe: 'skills/wps-word/SKILL.md#6-目录与页码' },
+    { keywords: ['长文排版', '论文', '公文'], tools: ['wps_word_get_paragraphs', 'wps_word_set_font', 'wps_word_apply_style'], recipe: 'skills/wps-word/recipes/format-existing-report.md' },
+    { keywords: ['多表合并', '多工作簿', '总表'], tools: ['wps_excel_read_range', 'wps_excel_write_range', 'wps_excel_open_workbook'], recipe: 'skills/wps-excel/recipes/summarize-report.md' },
+    { keywords: ['透视表', '透视'], tools: ['wps_excel_create_pivot_table', 'wps_excel_get_pivot_tables', 'wps_excel_refresh_pivot_tables'], recipe: 'skills/wps-excel/SKILL.md' },
+    { keywords: ['条件格式', '整行变色'], tools: ['wps_excel_set_conditional_format', 'wps_excel_get_conditional_formats'], recipe: 'skills/wps-excel/SKILL.md' },
+    { keywords: ['打印', '打印预览', '页眉页脚'], tools: ['wps_excel_set_sheet_page_setup', 'wps_excel_set_sheet_print_titles', 'wps_excel_set_sheet_header_footer'], recipe: 'skills/wps-excel/SKILL.md' },
+    { keywords: ['跨应用', 'excel到ppt', '数据到ppt', '汇报'], tools: ['wps_ppt_insert_ppt_chart', 'wps_ppt_set_ppt_chart_data'], recipe: 'skills/wps-office-next/recipes/cross-app-report.md' },
+    { keywords: ['文档比较', '两版', '对比'], tools: ['wps_word_get_revisions'], recipe: 'skills/wps-word/SKILL.md', note: '当前无 compareDocuments 工具，先按"比较结果修订"处理或人工比较' },
+    { keywords: ['限制编辑', '只读', '保护'], tools: [], recipe: 'skills/wps-word/SKILL.md', note: 'Word 侧尚无 protect/restrict 工具；可先用文件只读或交付 PDF' },
+];
+/** Return scenario hints matching a user query. */
+function matchHelpScenarios(query) {
+    const phrase = (query || '').trim().toLowerCase();
+    if (!phrase)
+        return [];
+    return exports.HELP_SCENARIOS.filter((hint) => hint.keywords.some((word) => phrase.includes(word.toLowerCase())));
 }
 //# sourceMappingURL=toolset.js.map

@@ -4,6 +4,22 @@
 
 > **历史记录**：本文件按 `AGENTS.md` §6 维护 —— 已发布的结论与读数不改，只允许加更正注、修悬空链接、补状态。
 
+## Unreleased（P0 收口 + P1 全量 + P2 治理：批量配方、80 场景基准、广告面换血 95→100）
+
+> 依据 80 场景评估（`docs/scenario-review-270-tools-v2.md`）。广告面 **95 → 100**，注册面 **270 → 310**（40 个隐藏工具）；D1 上限按用户 2026-10-21 决定：**120 工具 / 80,000 字节**。
+
+- **P2 批量配方**：新增 `recipes/batch-files.md`（XA9 批量导 PDF / XA10 批量改名 / XA11 批量套模板 + 失败清单 JSON），不把通用文件系统工具塞进工具面。
+- **P2 80 场景基准**：`test/skilleval/scenarios-80.mjs`（80 条：Excel 28 / Word 21 / PPT 14 / 跨应用 17）+ `benchmark80.mjs` 静态验收；`plan-ad-surface.mjs` 按 R14 阈值从真实轨迹给出换血候选。
+- **P2 广告面换血**：95 → **100**（Word 域/保护/比较、PPT 备注导出、Excel 外链入口），仍在 100 工具 / 80,000 字节内；`plan-ad-surface.mjs` 留作后续真实轨迹复核。
+- **P1 新增（默认隐藏）**：Word `get_fields`/`update_fields`/`select_range`/`protect`/`get_protection`/`insert_caption`/`set_table_formula`/`insert_table_of_figures`/`compare_documents`/`update_style`/`set_content_control`/`resolve_revisions`/`create_labels`/`create_envelope`；PPT `set_slide_hidden`/`get_hidden_slides`/`get_fonts`/`export_notes`/`set_theme_colors`/`set_theme_fonts`/`add_section`/`set_placeholder_lock`/`duplicate_master_layout`/`embed_fonts`/`compress_images`/`export_pdf`；Excel `allow_edit_range`/`get_links`/`insert_page_break`/`disconnect_link`/`change_link`/`get_charts`/`set_chart_axis`/`add_icon_set`/`add_trendline`/`import_csv`/`add_pivot_calculated_field`/`advanced_filter`/`set_series_axis`/`group_pivot_dates`。
+- **P1 补齐**：PPT `insert_table` 支持 `data`；`get_slide_notes` 支持 `all`/`hasNotes`；`set_slide_size` 支持 `scaleContent`；Word 页眉页脚支持首頁/奇偶/链接前节；`mail_merge` 支持 `imageField`；Excel `sort_range` 支持多键与表头。
+- **预算**：D1 上限 **100 → 120 工具**、schema 上限 **60,000 → 80,000 字节**（当前 **100 / 60,264**）。
+- **`wps_help` 2.0**：分页（`offset`/`limit`，默认 200）、隐藏工具优先、中文同义词扩展、跨应用消歧、场景入口。
+- **安全默认值**：`open_*` 默认只读、`close_*` 默认不保存、`wps_batch` 默认遇错即停、`save_as` 默认建输出目录。
+- **契约补齐**：`read_range` 分页、`get_document_text` 真正支持 `start/end`、`wps_batch` 结果可配置长度并标 `truncated`；补条件格式/数据验证/单元格样式/Word 表格 data/PPT applyToAll/Word 页眉页脚等桥已实现的键；修 3 处描述-实现不符。
+- **80 场景配方与边界**：新增 `skills/wps-office-next/references/scope-and-boundaries.md` 与 `recipes/scenario-playbook.md`。
+- 细节与验证见 `docs/FIXES.md` 第 118–124 条；真机证伪的边界见第 123 条末尾。
+
 ## 0.9.0（四个 Skill 重写为任务决策指南 · 批处理结构化状态 · 关闭丢内容等 P0 收口 · 嵌套参数校验）
 
 > **建议升级。** 本版**不新增也不删除广告面工具**（仍是 **95 / 270**），变化在「模型怎么用工具」和

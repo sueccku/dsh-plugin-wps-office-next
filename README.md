@@ -1,7 +1,7 @@
 # dsh-plugin-wps-office-next
 
 [![ci](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml/badge.svg)](https://github.com/sueccku/dsh-plugin-wps-office-next/actions/workflows/ci.yml)
-![advertised tools](https://img.shields.io/badge/advertised%20tools-95%20%2F%20270-blue)
+![advertised tools](https://img.shields.io/badge/advertised%20tools-100%20%2F%20310-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%20x64%20%C2%B7%20WPS%2012.1%2B-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![npm](https://img.shields.io/badge/npm-dsh--plugin--wps--office--next-CB3837)](https://www.npmjs.com/package/dsh-plugin-wps-office-next)
@@ -103,7 +103,7 @@
 5. 然后告诉我「请完全关闭并重新打开 DSH，回来再让我验证」。
    插件是在 DSH 启动时加载的，必须重启才会生效。
 6. 我重启回来后，先提醒我启动 WPS 并打开一个表格/文档，然后调用 wps_status，
-   确认返回 connected: true（此时 advertisedTools 应为 95，registeredTools 应为 270）。
+   确认返回 connected: true（此时 advertisedTools 应为 100，registeredTools 应为 310）。
 
 安装、排错与卸载的完整说明见 README 的「给 AI 的安装指引」一节：
 https://github.com/sueccku/dsh-plugin-wps-office-next#给-ai-的安装指引
@@ -239,8 +239,8 @@ dsh --profile <profile> --dump-config | Select-String wps
 
    ```
    connected: true
-   advertisedTools: 95
-   registeredTools: 270
+   advertisedTools: 100
+   registeredTools: 310
    ```
 
 第一次调用可能慢约 1 秒（COM 宿主冷启动），之后 1–2 毫秒，属于正常。
@@ -301,17 +301,17 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 ## 它是怎么做的
 
 <details>
-<summary><b>工具面：注册 270 个，每次请求只广告 95 个</b></summary>
+<summary><b>工具面：注册 310 个，每次请求只广告 100 个</b></summary>
 
 一次请求塞几百个工具会浪费上下文。本插件把 `tools/list` 收敛为三档，由环境变量 `WPS_OFFICE_TOOLSET` 切换（默认 `standard`）：
 
 | 档位 | 工具数 | schema 字节 | 约 tokens | 内容 |
 |---|---|---|---|---|
-| minimal | 4 | 1,609 | 460 | 仅 4 个门面工具 |
-| **standard（默认）** | **95** | **55,510** | **≈15,860** | 门面 + 91 个精选工具 |
-| full | 270 | 165,422 | 46,846 | 全量，保留完整描述 |
+| minimal | 4 | 1,994 | 570 | 仅 4 个门面工具 |
+| **standard（默认）** | **100** | **60,264** | **≈17,218** | 门面 + 96 个精选工具 |
+| full | 310 | 193,077 | 54,628 | 全量，保留完整描述 |
 
-注册目录 **270** 个工具：Excel 118 / Word 61 / PPT 77 / 通用 14（含门面）。
+注册目录 **310** 个工具：Excel 132 / Word 75 / PPT 89 / 通用 14（含门面）。
 
 **未广告的工具只能用 `wps_call` 调用**（先用 `wps_help` 取 schema）。模型能直接调用的名字只来自 `tools/list`，即上面那一档广告面；直接按全名调用一个未广告的工具会得到 `unknown tool`。
 
@@ -338,7 +338,7 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | wps_common_get_app_info | 1858ms | 2ms |
 | 读 8000 格区域 | 8000 次 COM 往返 | 15–37ms（一次 Range.Value2 加二维编组） |
 
-宿主首次调用约 1.0s（进程启动 + 265 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
+宿主首次调用约 1.0s（进程启动 + 304 个 action 预热），之后 1–2ms 稳态；宿主被 kill 或超时后下次调用自动重启。
 
 </details>
 
@@ -399,7 +399,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1777 项 / 64 个文件**（多数需要真实 WPS；运行时合计，最新一次整轮回归的读数，2026-10-18 全绿）**+ `verify` 28 项（23 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 95 工具 / 55,510 字节（内部预算上限 100 / 60,000）；注册工具 270、桥 action 265，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **64** 个测试文件（全部已进整轮）。
+当前数字：测试 **1777 项（最近一次整轮）/ 65 个文件**（P1 新增 `p1-surface` 54 项静态，P2 新增 `benchmark80` 8 项静态；整轮读数仍是 2026-10-18 的 64 文件）**+ `verify` 28 项（23 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 100 工具 / 60,264 字节（内部预算上限 120 / 80,000）；注册工具 310、桥 action 304，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **65** 个测试文件（P1/P2 新增 2 个静态测试）。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）只调用 **`npm run gates:ci`**（=`gates:release` 那一组），跑同一批不需要 WPS 的静态门禁（tsc/生成物对账、lint、verify --static、参数契约、spec 复现、`test:static` 的 17 个 WPS-free 文件、打包冒烟、文档数字对账）；清单与顺序只在 `scripts/run-gates.mjs` 维护。需要真实 WPS 的测试与一键 e2e 留在本机。
 
@@ -419,7 +419,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | mcp/src/spec | **操作规格（唯一真源）**：工具名 ↔ 桥 action ↔ 参数/类型/必填/效果 |
 | spec/ | 由 spec 生成的产物（入库、CI 漂移检查） |
 | mcp/dist | 预构建产物（已入库，安装即用） |
-| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：265 个 COM action |
+| mcp/scripts/wps-com.ps1 | **桥的唯一真源**：304 个 COM action |
 | host/ | 常驻 COM 宿主 + 生成物 `wps-actions.ps1`（不要手改） |
 | skills/ | 4 个技能文档 + 生成的 reference.md |
 | scripts/ | doctor、verify、参数契约、一键 e2e、生成器、分析工具、整轮测试入口、**门禁入口 un-gates.mjs** |
@@ -493,7 +493,7 @@ node scripts\accept-install.mjs          # 全新 profile 安装验收（装一�
 | 目标环境 | WPS 12.1+ x64 |
 | 形态 | 单一 npm 包 = DSH bundle + 自带 MCP server + 自带 COM host + 全部 skills |
 | MCP serverName | wps-office-next |
-| 默认工具面 | standard 档 95 个工具；预算上限 100 工具 / 60,000 字节 |
+| 默认工具面 | standard 档 100 个工具；预算上限 120 工具 / 80,000 字节 |
 | 传输层 | 常驻 PowerShell STA 宿主 + stdin/stdout JSON 行 |
 | 加载项 | 全部删除，零依赖 |
 | 构建产物 | 预构建产物入库，安装后开箱可用 |

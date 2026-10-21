@@ -13,8 +13,11 @@ const PROMOTED = [
   'wps_excel_evaluate_formula', 'wps_excel_set_column_width', 'wps_excel_copy_range',
   'wps_excel_set_sheet_appearance', 'wps_excel_unmerge_cells', 'wps_excel_delete_rows',
   'wps_excel_freeze_panes', 'wps_excel_clear_range', 'wps_word_replace_range',
+  // P2-2（2026-10-21，80 场景候选）：广告面 95 → 100。
+  'wps_word_get_fields', 'wps_word_protect', 'wps_word_compare_documents',
+  'wps_ppt_export_notes', 'wps_excel_get_links',
 ];
-const BUDGET = { maxTools: 100, maxSchemaBytes: 60000 };
+const BUDGET = { maxTools: 120, maxSchemaBytes: 80000 };
 
 const srv = startServer({ clientName: 'advertised-surface' });
 const { call, req, text, ok } = srv;

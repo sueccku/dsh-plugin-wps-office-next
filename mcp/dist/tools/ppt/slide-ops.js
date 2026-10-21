@@ -433,30 +433,46 @@ exports.setSlideLayoutHandler = setSlideLayoutHandler;
 // ============================================================
 exports.getSlideNotesDefinition = {
     name: 'wps_ppt_get_slide_notes',
-    description: `获取指定幻灯片的备注内容。
+    description: `获取幻灯片备注内容。传 all:true 返回全部页与 hasNotes，用于"40 页里哪些没备注"的体检。
 
 使用场景：
 - "查看第3页的备注"
 - "读取演讲备注"
-- "这页有什么备注"`,
+- "这页有什么备注"
+- "哪些页没有备注"（all:true）`,
     category: tools_1.ToolCategory.PRESENTATION,
     inputSchema: {
         type: 'object',
         properties: {
             slideIndex: {
                 type: 'number',
-                description: '幻灯片索引（从1开始）',
+                description: '幻灯片索引（从1开始）；all:true 时忽略',
+            },
+            all: {
+                type: 'boolean',
+                description: 'true 时返回全部幻灯片的备注与 hasNotes',
             },
         },
-        required: ['slideIndex'],
+        required: [],
     },
 };
 const getSlideNotesHandler = async (args) => {
-    const { slideIndex } = args;
+    const { slideIndex, all } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('getSlideNotes', { slideIndex }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('getSlideNotes', all ? { all: true } : { slideIndex: slideIndex ?? 1 }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
-            const notes = response.data.notes;
+            if (all) {
+                const d = response.data;
+                return {
+                    id: (0, uuid_1.v4)(),
+                    success: true,
+                    content: [{
+                            type: 'text',
+                            text: `备注体检: ${d.withNotes ?? 0}/${d.total ?? 0} 页有备注\n${(d.slides || []).map((s) => `第${s.slideIndex}页: ${s.hasNotes ? s.notes : '(无备注)'}`).join('\n')}`,
+                        }],
+                };
+            }
+            const notes = response.data.notes || '';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
@@ -464,8 +480,8 @@ const getSlideNotesHandler = async (args) => {
                     {
                         type: 'text',
                         text: notes
-                            ? `第 ${slideIndex} 页备注内容：\n${notes}`
-                            : `第 ${slideIndex} 页没有备注内容`,
+                            ? `第 ${slideIndex ?? 1} 页备注内容：\n${notes}`
+                            : `第 ${slideIndex ?? 1} 页没有备注内容`,
                     },
                 ],
             };
@@ -1017,14 +1033,18 @@ exports.setSlideSizeDefinition = {
                 type: 'number',
                 description: '幻灯片高度（像素）',
             },
+            scaleContent: {
+                type: 'boolean',
+                description: '改尺寸时是否按比例缩放页面上的形状（PT3：确保内容不跑出画布）；默认 false',
+            },
         },
         required: ['width', 'height'],
     },
 };
 const setSlideSizeHandler = async (args) => {
-    const { width, height } = args;
+    const { width, height, scaleContent } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setSlideSize', { width, height }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('setSlideSize', { width, height, scaleContent }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -1032,7 +1052,7 @@ const setSlideSizeHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `幻灯片尺寸设置成功！\n宽度: ${width}px\n高度: ${height}px`,
+                        text: `幻灯片尺寸设置成功！\n宽度: ${width}px\n高度: ${height}px${response.data?.scaleContent ? `\n已按比例缩放 ${response.data?.affectedSlides ?? 0} 页上的形状` : '\n未缩放页面内容（scaleContent=false）'}`,
                     },
                 ],
             };

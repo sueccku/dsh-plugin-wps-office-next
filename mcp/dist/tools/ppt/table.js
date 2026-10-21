@@ -44,11 +44,16 @@ exports.insertPptTableDefinition = {
             },
             rows: {
                 type: 'number',
-                description: '表格行数',
+                description: '表格行数；给了 data 可省略',
             },
             cols: {
                 type: 'number',
-                description: '表格列数',
+                description: '表格列数；给了 data 可省略',
+            },
+            data: {
+                type: 'array',
+                description: '二维数组数据（P1）：一次写入表格，避免 N×M 次 set_table_cell',
+                items: { type: 'array', items: { type: ['string', 'number', 'boolean'] } },
             },
             left: {
                 type: 'number',
@@ -59,13 +64,15 @@ exports.insertPptTableDefinition = {
                 description: '表格左上角Y坐标（磅），可选',
             },
         },
-        required: ['slideIndex', 'rows', 'cols'],
+        required: ['slideIndex'],
     },
 };
 const insertPptTableHandler = async (args) => {
-    const { slideIndex, rows, cols, left, top } = args;
+    const { slideIndex, rows: rowsArg, cols: colsArg, data, left, top } = args;
+    const rows = Math.max(1, Math.floor(rowsArg ?? data?.length ?? 3));
+    const cols = Math.max(1, Math.floor(colsArg ?? data?.[0]?.length ?? 3));
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertPptTable', { slideIndex, rows, cols, left, top }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('insertPptTable', { slideIndex, rows, cols, left, top, data }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -73,7 +80,7 @@ const insertPptTableHandler = async (args) => {
                 content: [
                     {
                         type: 'text',
-                        text: `表格插入成功！\n幻灯片: 第 ${slideIndex} 页\n规格: ${rows} 行 × ${cols} 列\n表格索引: ${response.data.tableIndex}`,
+                        text: `表格插入成功！\n幻灯片: 第 ${slideIndex} 页\n规格: ${rows} 行 × ${cols} 列${Array.isArray(data) ? '（含数据）' : ''}\n表格: ${response.data.name ?? ''}`,
                     },
                 ],
             };

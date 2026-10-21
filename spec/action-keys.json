@@ -1101,7 +1101,10 @@
   "width"
  ],
  "insertIndex": [],
- "insertPageBreak": [],
+ "insertPageBreak": [
+  "row",
+  "sheet"
+ ],
  "insertPageNumbers": [
   "alignment",
   "includeTotal",
@@ -1131,6 +1134,7 @@
   "dataFile",
   "fields",
   "fileNameField",
+  "imageField",
   "outputPath",
   "splitDir"
  ],
@@ -1229,5 +1233,198 @@
  ],
  "switchDocument": [
   "name"
+ ],
+ "getDocumentFields": [],
+ "updateDocumentFields": [
+  "index"
+ ],
+ "selectDocumentRange": [
+  "end",
+  "start"
+ ],
+ "protectDocument": [
+  "password",
+  "protect",
+  "type"
+ ],
+ "getDocumentProtection": [],
+ "setSlideHidden": [
+  "hidden",
+  "slideIndex"
+ ],
+ "getHiddenSlides": [],
+ "getSlideFonts": [
+  "slideIndex"
+ ],
+ "allowEditRange": [
+  "password",
+  "range",
+  "sheet",
+  "title"
+ ],
+ "getWorkbookLinks": [],
+ "insertCaption": [
+  "label",
+  "position",
+  "title"
+ ],
+ "setTableFormula": [
+  "column",
+  "formula",
+  "row",
+  "table"
+ ],
+ "disconnectLink": [
+  "source"
+ ],
+ "changeLink": [
+  "newSource",
+  "oldSource"
+ ],
+ "listCharts": [
+  "sheet"
+ ],
+ "insertTableOfFigures": [
+  "label"
+ ],
+ "compareDocuments": [
+  "original",
+  "revised"
+ ],
+ "updateStyle": [
+  "bold",
+  "color",
+  "firstLineIndent",
+  "fontName",
+  "fontSize",
+  "lineSpacing",
+  "spaceAfter",
+  "spaceBefore",
+  "styleName"
+ ],
+ "setChartAxis": [
+  "axis",
+  "chartIndex",
+  "hasTitle",
+  "maximum",
+  "minimum",
+  "numberFormat",
+  "sheet",
+  "title"
+ ],
+ "setContentControl": [
+  "checked",
+  "index",
+  "tag",
+  "title",
+  "value"
+ ],
+ "resolveRevisions": [
+  "author",
+  "mode"
+ ],
+ "setThemeColors": [
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "dark1",
+  "dark2",
+  "followedHyperlink",
+  "hyperlink",
+  "light1",
+  "light2"
+ ],
+ "setThemeFonts": [
+  "majorFont",
+  "minorFont"
+ ],
+ "addSection": [
+  "beforeSlide",
+  "name"
+ ],
+ "addIconSet": [
+  "iconSet",
+  "range",
+  "reverse",
+  "sheet",
+  "showValue"
+ ],
+ "addTrendline": [
+  "backward",
+  "chartIndex",
+  "displayEquation",
+  "displayRSquared",
+  "forward",
+  "seriesIndex",
+  "sheet",
+  "type"
+ ],
+ "importCsv": [
+  "delimiter",
+  "encoding",
+  "path"
+ ],
+ "addPivotCalculatedField": [
+  "formula",
+  "name",
+  "pivotTableName",
+  "sheet"
+ ],
+ "advancedFilter": [
+  "action",
+  "copyTo",
+  "criteriaRange",
+  "range",
+  "sheet",
+  "unique"
+ ],
+ "setSeriesAxis": [
+  "chartIndex",
+  "chartType",
+  "secondaryAxis",
+  "seriesIndex",
+  "sheet"
+ ],
+ "createLabelSheet": [
+  "columns",
+  "labelHeight",
+  "labelWidth",
+  "margin",
+  "rows"
+ ],
+ "createEnvelope": [
+  "height",
+  "recipient",
+  "sender",
+  "width"
+ ],
+ "setPlaceholderLock": [
+  "locked",
+  "shapeIndex",
+  "shapeName",
+  "slideIndex"
+ ],
+ "duplicateMasterLayout": [
+  "layoutIndex"
+ ],
+ "embedFonts": [
+  "outputPath"
+ ],
+ "compressImages": [
+  "quality",
+  "slideIndex"
+ ],
+ "exportPdf": [
+  "height",
+  "outputPath",
+  "width"
+ ],
+ "groupPivotDates": [
+  "field",
+  "pivotTableName",
+  "sheet"
  ]
 }

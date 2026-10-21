@@ -22,7 +22,7 @@ import { WpsAppType } from '../../types/wps';
 export const openWorkbookDefinition: ToolDefinition = {
   name: 'wps_excel_open_workbook',
   description:
-    '打开指定路径的Excel工作簿文件。readOnly=true 时以只读方式打开（改不动原件，适合把来源数据读出来做汇总）；updateLinks 控制外部链接是否随之更新。',
+    '打开指定路径的Excel工作簿文件。默认以只读打开（readOnly=true），防止读来源数据时误改原件；要编辑时显式传 readOnly:false。updateLinks 控制外部链接是否随之更新。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
@@ -33,7 +33,7 @@ export const openWorkbookDefinition: ToolDefinition = {
       },
       readOnly: {
         type: 'boolean',
-        description: '以只读方式打开（默认 false）。读来源数据、又不该改原件时传 true。',
+        description: '以只读方式打开（默认 true，安全默认）；要保存改动必须显式传 false。',
       },
       updateLinks: {
         type: 'boolean',
@@ -62,8 +62,10 @@ export const openWorkbookHandler: ToolHandler = async (
     // readOnly / updateLinks are read by the bridge (Open-ExcelWorkbook) but were missing from the
     // schema — so the tool layer would have rejected them and there was no way to open a source
     // workbook without risking the original. Both are forwarded now.
+    // Safety default: opening a source workbook must not risk writing it back. Callers that need
+    // to edit pass readOnly:false explicitly.
     const params: Record<string, unknown> = { path: path };
-    if (readOnly !== undefined) params.readOnly = readOnly;
+    params.readOnly = readOnly === undefined ? true : readOnly;
     if (updateLinks !== undefined) params.updateLinks = updateLinks;
     const response = await wpsClient.executeMethod<{ message: string }>(
       'openWorkbook',
@@ -173,7 +175,7 @@ export const switchWorkbookHandler: ToolHandler = async (
  */
 export const closeWorkbookDefinition: ToolDefinition = {
   name: 'wps_excel_close_workbook',
-  description: '关闭指定的Excel工作簿，可选是否保存。',
+  description: '关闭指定的Excel工作簿。默认不保存（save=false），避免批量收尾时回写源文件；要保存改动必须显式传 save:true。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
@@ -184,7 +186,7 @@ export const closeWorkbookDefinition: ToolDefinition = {
       },
       save: {
         type: 'boolean',
-        description: '是否保存，默认true',
+        description: '是否保存，默认 false（不保存关闭）；要保存改动必须显式传 true。',
       },
     },
     required: [],
@@ -203,7 +205,7 @@ export const closeWorkbookHandler: ToolHandler = async (
       warning?: string;
     }>(
       'closeWorkbook',
-      { name, save: save !== false },
+      { name, save: save === true },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {

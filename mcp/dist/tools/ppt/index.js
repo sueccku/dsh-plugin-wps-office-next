@@ -44,6 +44,8 @@ const chart_flow_1 = require("./chart-flow");
 const misc_1 = require("./misc");
 const table_1 = require("./table");
 const beautify_advanced_1 = require("./beautify-advanced");
+const structure_1 = require("./structure");
+const export_notes_1 = require("./export-notes");
 /**
  * 所有PPT相关的Tools
  * 包含：
@@ -67,6 +69,8 @@ exports.pptTools = [
     ...misc_1.miscTools,
     ...table_1.tableTools,
     ...beautify_advanced_1.beautifyAdvancedTools,
+    ...structure_1.pptStructureTools,
+    ...export_notes_1.pptExportTools,
 ];
 // 分别导出，方便按需使用
 var slide_2 = require("./slide");

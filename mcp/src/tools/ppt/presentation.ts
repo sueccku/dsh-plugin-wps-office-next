@@ -98,7 +98,7 @@ export const createPresentationHandler: ToolHandler = async (
  */
 export const openPresentationDefinition: ToolDefinition = {
   name: 'wps_ppt_open_presentation',
-  description: `打开指定路径的演示文稿文件。
+  description: `打开指定路径的演示文稿文件。默认以只读打开（readOnly=true），防止读来源稿时误改原件；要编辑时显式传 readOnly:false。
 
 支持的文件格式：
 - .pptx: PowerPoint 演示文稿
@@ -116,6 +116,10 @@ export const openPresentationDefinition: ToolDefinition = {
         type: 'string',
         description: '演示文稿文件的完整路径',
       },
+      readOnly: {
+        type: 'boolean',
+        description: '以只读方式打开（默认 true，安全默认）；要保存改动必须显式传 false。',
+      },
     },
     required: ['path'],
   },
@@ -124,8 +128,9 @@ export const openPresentationDefinition: ToolDefinition = {
 export const openPresentationHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { path } = args as {
+  const { path, readOnly } = args as {
     path: string;
+    readOnly?: boolean;
   };
 
   try {
@@ -137,7 +142,7 @@ export const openPresentationHandler: ToolHandler = async (
       path: string;
     }>(
       'openPresentation',
-      { path },
+      { path, readOnly: readOnly === undefined ? true : readOnly },
       WpsAppType.PRESENTATION
     );
 
@@ -176,7 +181,7 @@ export const openPresentationHandler: ToolHandler = async (
  */
 export const closePresentationDefinition: ToolDefinition = {
   name: 'wps_ppt_close_presentation',
-  description: `关闭演示文稿。可指定文稿名称，不指定则关闭当前活动文稿。
+  description: `关闭演示文稿。可指定文稿名称，不指定则关闭当前活动文稿。默认不保存（save=false），避免批量收尾时回写源稿；要保存改动必须显式传 save:true。
 
 使用场景：
 - "关闭这个PPT"
@@ -192,7 +197,7 @@ export const closePresentationDefinition: ToolDefinition = {
       },
       save: {
         type: 'boolean',
-        description: '关闭前是否保存，默认true',
+        description: '关闭前是否保存，默认 false；要保存改动必须显式传 true',
       },
     },
     required: [],
@@ -217,7 +222,7 @@ export const closePresentationHandler: ToolHandler = async (
       'closePresentation',
       {
         name,
-        save: save !== false,
+        save: save === true,
       },
       WpsAppType.PRESENTATION
     );

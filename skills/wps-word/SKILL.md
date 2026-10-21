@@ -10,7 +10,7 @@ whenToUse: 任务针对文档、段落、标题、样式、字符格式、页眉
 本节是文字特有的决策与流程。**应用技能可能被单独加载**，所以关键规则在本文件里也写了一遍。
 
 <!-- GENERATED:advertised:start -->
-本应用注册 **61** 个工具，standard 档直接广告 **27** 个；
+本应用注册 **75** 个工具，standard 档直接广告 **30** 个；
 完整工具表与按任务分组索引见同目录 `reference.md`（未广告的用 `wps_call`）。
 <!-- GENERATED:advertised:end -->
 

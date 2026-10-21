@@ -38,7 +38,7 @@ import { WpsAppType } from '../../types/wps';
  */
 export const readRangeDefinition: ToolDefinition = {
   name: 'wps_excel_read_range',
-  description: '读取Excel指定范围的单元格数据，返回二维数组格式的数据。',
+  description: '读取Excel指定范围的单元格数据。用 startRow/maxRows 分页，避免一次把大表全部读进上下文；返回的是格式化文本（不是 JSON 二维数组）。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
@@ -53,7 +53,15 @@ export const readRangeDefinition: ToolDefinition = {
       },
       include_header: {
         type: 'boolean',
-        description: '是否将第一行作为表头返回，默认false',
+        description: '是否将返回的第一行作为表头返回，默认false',
+      },
+      startRow: {
+        type: 'number',
+        description: '从范围内的第几行开始返回（从1开始），默认1',
+      },
+      maxRows: {
+        type: 'number',
+        description: '本次最多返回几行，默认500，上限5000；超出会标 truncated 并给 nextStartRow',
       },
     },
     required: ['range'],
@@ -63,10 +71,12 @@ export const readRangeDefinition: ToolDefinition = {
 export const readRangeHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { range, sheet, include_header } = args as {
+  const { range, sheet, include_header, startRow, maxRows } = args as {
     range: string;
     sheet?: string;
     include_header?: boolean;
+    startRow?: number;
+    maxRows?: number;
   };
 
   try {
@@ -85,20 +95,28 @@ export const readRangeHandler: ToolHandler = async (
       };
     }
 
-    // 格式化输出
-    let output = `范围 ${range} 的数据（${response.length}行 x ${response[0]?.length || 0}列）：\n\n`;
+    const totalRows = response.length;
+    const from = Math.min(Math.max(1, Math.floor(startRow ?? 1)), totalRows);
+    const cap = Math.min(5000, Math.max(1, Math.floor(maxRows ?? 500)));
+    const slice = response.slice(from - 1, from - 1 + cap);
+    const truncated = from - 1 + slice.length < totalRows;
+    const nextStartRow = truncated ? from + slice.length : null;
 
-    if (include_header && response.length > 0) {
-      const headers = response[0] as unknown[];
+    // 格式化输出（说明：工具描述曾承诺"二维数组"，实际是文本表格 —— 这里把真实形状写清楚）。
+    let output = `范围 ${range} 的数据（共 ${totalRows} 行 x ${response[0]?.length || 0} 列；本次返回第 ${from}-${from + slice.length - 1} 行${truncated ? '，已截断' : ''}）：\n\n`;
+    if (truncated) output += `truncated=true nextStartRow=${nextStartRow}（继续读取请传 startRow=${nextStartRow}）\n\n`;
+
+    if (include_header && slice.length > 0) {
+      const headers = slice[0] as unknown[];
       output += `表头: ${headers.join(' | ')}\n`;
       output += '-'.repeat(50) + '\n';
 
-      for (let i = 1; i < response.length; i++) {
-        output += `第${i}行: ${(response[i] as unknown[]).join(' | ')}\n`;
+      for (let i = 1; i < slice.length; i++) {
+        output += `第${from + i}行: ${(slice[i] as unknown[]).join(' | ')}\n`;
       }
     } else {
-      response.forEach((row, index) => {
-        output += `第${index + 1}行: ${(row as unknown[]).join(' | ')}\n`;
+      slice.forEach((row, index) => {
+        output += `第${from + index}行: ${(row as unknown[]).join(' | ')}\n`;
       });
     }
 
@@ -423,37 +441,63 @@ export const removeDuplicatesHandler: ToolHandler = async (
  */
 export const sortRangeDefinition: ToolDefinition = {
   name: 'wps_excel_sort_range',
-  description: '对Excel选定区域按指定列排序。',
+  description: '对Excel区域排序。单键用 column/ascending；多键用 keys:[{column,ascending}]（最多3键）。hasHeader 控制是否把首行当表头。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
     properties: {
       range: { type: 'string', description: '要排序的范围，如 A1:D100' },
-      column: { type: 'number', description: '排序依据的列号（从1开始）' },
-      ascending: { type: 'boolean', description: '是否升序，默认true' },
+      column: { type: 'number', description: '排序依据的列号（从1开始）；单键时用' },
+      ascending: { type: 'boolean', description: '单键是否升序，默认true' },
+      keys: {
+        type: 'array',
+        description: '多键排序，最多3项，如 [{column:2,ascending:false},{column:3}]',
+        items: {
+          type: 'object',
+          properties: {
+            column: { type: 'number', description: '列号（从1开始）' },
+            ascending: { type: 'boolean', description: '是否升序，默认true' },
+            order: { type: 'string', enum: ['asc', 'desc'], description: 'asc/desc；与 ascending 二选一' },
+          },
+          required: ['column'],
+        },
+      },
+      hasHeader: { type: 'boolean', description: '首行是否表头，默认 true' },
+      sheet: { type: 'string', description: '工作表名称，不填用活动表' },
     },
-    required: ['range', 'column'],
+    required: ['range'],
   },
 };
 
 export const sortRangeHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { range, column, ascending } = args as {
+  const { range, column, ascending, keys, hasHeader, sheet } = args as {
     range: string;
-    column: number;
+    column?: number;
     ascending?: boolean;
+    keys?: Array<{ column: number; ascending?: boolean; order?: string }>;
+    hasHeader?: boolean;
+    sheet?: string;
   };
+  if ((!keys || keys.length === 0) && column === undefined) {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '单键排序需要 column；多键排序需要 keys' }], error: '缺少排序键' };
+  }
   try {
+    const params: Record<string, unknown> = { range };
+    if (keys && keys.length) { params.keys = keys; } else { params.column = column; params.ascending = ascending !== false; }
+    if (hasHeader !== undefined) params.hasHeader = hasHeader;
+    if (sheet !== undefined) params.sheet = sheet;
     const response = await wpsClient.executeMethod<{ message: string }>(
       'sortRange',
-      { range, column, ascending: ascending !== false },
+      params,
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `排序失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `排序完成！范围: ${range}，按第${column}列${ascending !== false ? '升序' : '降序'}` }] };
+    const desc = keys && keys.length ? `多键（${keys.length} 键）` : `第${column}列${ascending !== false ? '升序' : '降序'}`;
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `排序完成！范围: ${range}，${desc}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `排序出错: ${errMsg}` }], error: errMsg };
@@ -465,7 +509,7 @@ export const sortRangeHandler: ToolHandler = async (
  */
 export const findReplaceDefinition: ToolDefinition = {
   name: 'wps_excel_find_replace',
-  description: '在Excel中查找并替换内容。',
+  description: '在Excel中查找并替换内容。可限定 range/sheet（不填则整张活动表的已用区域），支持全字匹配。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
@@ -473,6 +517,9 @@ export const findReplaceDefinition: ToolDefinition = {
       find: { type: 'string', description: '要查找的文本' },
       replace: { type: 'string', description: '替换为的文本' },
       matchCase: { type: 'boolean', description: '是否区分大小写，默认false' },
+      matchWholeWord: { type: 'boolean', description: '是否全字匹配，默认false' },
+      range: { type: 'string', description: '限定查找区域，如 A1:Z5000；不填则用已用区域' },
+      sheet: { type: 'string', description: '工作表名称，不填则使用当前活动工作表' },
     },
     required: ['find', 'replace'],
   },
@@ -481,16 +528,19 @@ export const findReplaceDefinition: ToolDefinition = {
 export const findReplaceHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { find, replace, matchCase } = args as {
+  const { find, replace, matchCase, matchWholeWord, range, sheet } = args as {
     find: string;
     replace: string;
     matchCase?: boolean;
+    matchWholeWord?: boolean;
+    range?: string;
+    sheet?: string;
   };
   try {
     // Excel must not reuse the Word findReplace action: that one only touches Word documents.
     const response = await wpsClient.executeMethod<{ cells: number; find: string; replace: string; sheet: string; changed: boolean }>(
       'findReplaceExcel',
-      { findText: find, replaceText: replace, matchCase: matchCase || false },
+      { findText: find, replaceText: replace, matchCase: matchCase || false, matchWholeWord: matchWholeWord || false, range, sheet },
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {
@@ -586,33 +636,54 @@ export const protectSheetHandler: ToolHandler = async (
  */
 export const setConditionalFormatDefinition: ToolDefinition = {
   name: 'wps_excel_set_conditional_format',
-  description: '设置条件格式。',
+  description: '设置条件格式：cellValue 比较（condition/format）、色阶（type=colorScale）、数据条（type=dataBar）。',
   category: ToolCategory.SPREADSHEET,
   inputSchema: {
     type: 'object',
     properties: {
       range: { type: 'string', description: '要设置条件格式的范围，如 A1:D100' },
-      condition: { type: 'string', description: '条件表达式，如 ">100"、"=0"、"between(1,10)"' },
-      format: { type: 'string', description: '格式描述，如 "red_fill"、"bold"、"green_font"' },
+      condition: { type: 'string', description: '条件表达式，如 ">100"、"=0"、"between(1,10)"；cellValue 类型必填' },
+      format: { type: 'string', description: '格式描述，如 "red_fill"、"bold"、"green_font"；cellValue 类型必填' },
+      type: { type: 'string', enum: ['cellValue', 'colorScale', 'dataBar'], description: '条件格式类型，默认 cellValue' },
+      operator: { type: 'string', description: '比较运算符（condition 之外的直传形式）：greaterThan/lessThan/equal/between 等' },
+      value1: { type: 'string', description: '比较值 1（与 operator 配用）' },
+      value2: { type: 'string', description: '比较值 2（between 配用）' },
+      colorScaleType: { type: 'number', description: '色阶类型（1=双色，2=三色；默认 3 由桥处理）' },
+      sheet: { type: 'string', description: '工作表名称，不填则使用当前活动工作表' },
     },
-    required: ['range', 'condition', 'format'],
+    required: ['range'],
   },
 };
 
 export const setConditionalFormatHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { range, condition, format } = args as { range: string; condition: string; format: string };
+  const { range, condition, format, type, operator, value1, value2, colorScaleType, sheet } = args as {
+    range: string;
+    condition?: string;
+    format?: string;
+    type?: string;
+    operator?: string;
+    value1?: string;
+    value2?: string;
+    colorScaleType?: number;
+    sheet?: string;
+  };
   try {
+    const params: Record<string, unknown> = { range };
+    for (const [key, value] of Object.entries({ condition, format, type, operator, value1, value2, colorScaleType, sheet })) {
+      if (value !== undefined) params[key] = value;
+    }
     const response = await wpsClient.executeMethod<{ message: string }>(
       'addConditionalFormat',
-      { range, condition, format },
+      params,
       WpsAppType.SPREADSHEET
     );
     if (!response.success) {
       return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置条件格式失败: ${response.error}` }], error: response.error };
     }
-    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `条件格式设置成功！范围: ${range}，条件: ${condition}，格式: ${format}` }] };
+    const summary = [type || 'cellValue', condition ? `条件 ${condition}` : '', format ? `格式 ${format}` : ''].filter(Boolean).join('，');
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `条件格式设置成功！范围: ${range}，${summary}` }] };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置条件格式出错: ${errMsg}` }], error: errMsg };

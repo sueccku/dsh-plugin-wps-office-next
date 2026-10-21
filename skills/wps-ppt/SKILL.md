@@ -10,7 +10,7 @@ whenToUse: 任务针对演示文稿、幻灯片、页序、版式占位符、形
 本节是演示特有的决策与流程。**应用技能可能被单独加载**，所以关键规则在本文件里也写了一遍。
 
 <!-- GENERATED:advertised:start -->
-本应用注册 **77** 个工具，standard 档直接广告 **14** 个；
+本应用注册 **89** 个工具，standard 档直接广告 **15** 个；
 完整工具表与按任务分组索引见同目录 `reference.md`（未广告的用 `wps_call`）。
 <!-- GENERATED:advertised:end -->
 

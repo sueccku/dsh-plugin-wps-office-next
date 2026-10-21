@@ -46,4 +46,24 @@ export declare function tokenizeHelpQuery(query: string): string[];
  * its four bigrams.
  */
 export declare function scoreToolHelpMatch(name: string, description: string, query: string, tokens: string[]): number;
+/**
+ * User words that do not appear in any tool name/description but are the normal way a Chinese
+ * office user names the task. Expanded terms are scored in addition to the original query; this
+ * keeps the original bigram behaviour while letting "题注/文献/母版" reach the right family.
+ */
+export declare const HELP_SYNONYMS: Record<string, string[]>;
+/** Expand a free-text query with the synonym groups it contains (deduplicated, original first). */
+export declare function expandHelpQuery(query: string): string[];
+/** Score a query with synonym expansion; best match across the original and expanded terms. */
+export declare function scoreToolHelpMatchExpanded(name: string, description: string, query: string, tokens: string[]): number;
+/** Scenario entry: a natural-language task -> the tools + recipe that implement it. */
+export interface HelpScenarioHint {
+    keywords: string[];
+    tools: string[];
+    recipe: string;
+    note?: string;
+}
+export declare const HELP_SCENARIOS: HelpScenarioHint[];
+/** Return scenario hints matching a user query. */
+export declare function matchHelpScenarios(query: string): HelpScenarioHint[];
 //# sourceMappingURL=toolset.d.ts.map

@@ -25,8 +25,9 @@ import {
   resolveMode,
   selectTools,
   compactDescription,
-  scoreToolHelpMatch,
+  scoreToolHelpMatchExpanded,
   tokenizeHelpQuery,
+  matchHelpScenarios,
   FACADE_TOOLS,
 } from './toolset';
 import { allTools } from '../tools';
@@ -313,13 +314,16 @@ export class WpsMcpServer {
     this.registry.register(
       {
         name: 'wps_help',
-        description: '查询未直接广告的工具：无参看分组概览，传 app 或 query 查目录，传 tool 取完整参数 schema',
+        description:
+          '查询工具目录与参数 schema：无参看分组概览，传 app 查某应用目录（默认分页 200 条，隐藏工具优先），传 query 搜索，传 tool 取完整参数 schema。',
         inputSchema: {
           type: 'object',
           properties: {
             app: { type: 'string', description: '应用：excel / word / ppt / common' },
-            query: { type: 'string', description: '按名称或描述搜索关键字' },
+            query: { type: 'string', description: '按名称或描述搜索关键字（支持中文场景词，如 题注/文档比较/母版）' },
             tool: { type: 'string', description: '工具名，返回完整 inputSchema' },
+            offset: { type: 'number', description: '分页起点（从 0 开始），默认 0' },
+            limit: { type: 'number', description: '本页最多返回几条，默认 200，上限 500' },
           },
         },
         category: ToolCategory.COMMON,
@@ -337,18 +341,27 @@ export class WpsMcpServer {
 
         const app = typeof args.app === 'string' ? args.app.trim().toLowerCase() : '';
         const query = typeof args.query === 'string' ? args.query.trim().toLowerCase() : '';
+        const requestedOffset = typeof args.offset === 'number' ? Math.floor(args.offset) : 0;
+        const requestedLimit = typeof args.limit === 'number' ? Math.floor(args.limit) : 200;
+        const offset = Number.isFinite(requestedOffset) ? Math.max(0, requestedOffset) : 0;
+        const limit = Number.isFinite(requestedLimit) ? Math.min(500, Math.max(1, requestedLimit)) : 200;
+        const advertisedNames = new Set(selectTools(currentMode(), all).map((tool) => tool.name));
+        const appOf = (name: string): string => {
+          const match = /^wps_(excel|word|ppt|common|convert)_/.exec(name);
+          return match ? match[1] : 'builtin';
+        };
 
         if (!app && !query) {
           const groups: Record<string, number> = {};
           for (const tool of discoverable) {
-            const match = /^wps_(excel|word|ppt)_/.exec(tool.name);
-            const key = match ? match[1] : (/^wps_(common|convert)_/.test(tool.name) ? 'common' : 'builtin');
-            groups[key] = (groups[key] || 0) + 1;
+            groups[appOf(tool.name)] = (groups[appOf(tool.name)] || 0) + 1;
           }
           return text({
             toolset: currentMode(),
             groups,
             total: discoverable.length,
+            advertised: advertisedNames.size,
+            hidden: discoverable.length - advertisedNames.size,
             usage: 'wps_help 传 app 查某应用目录，传 query 搜索，传 tool 取参数 schema，然后用 wps_call 执行',
           });
         }
@@ -357,30 +370,68 @@ export class WpsMcpServer {
         if (app) {
           pool = pool.filter((tool) => tool.name.startsWith('wps_' + app + '_'));
         }
+        let scored = pool.map((tool) => ({ tool, score: 0 }));
         if (query) {
-          // Free-text search: score per token (plus CJK bigrams) instead of testing the whole
-          // phrase as one substring, which answered "matched: 0" for natural multi-word asks.
+          // Free-text search with synonym expansion: "题注/更新域/母版" do not appear in any
+          // tool name, so score the expanded terms too; the original bigram path still runs.
           const tokens = tokenizeHelpQuery(query);
-          pool = pool
-            .map((tool) => ({ tool, score: scoreToolHelpMatch(tool.name, tool.description || '', query, tokens) }))
-            .filter((entry) => entry.score > 0)
-            .sort((a, b) => b.score - a.score || a.tool.name.localeCompare(b.tool.name))
-            .map((entry) => entry.tool);
+          scored = scored
+            .map((entry) => ({
+              ...entry,
+              score: scoreToolHelpMatchExpanded(entry.tool.name, entry.tool.description || '', query, tokens),
+            }))
+            .filter((entry) => entry.score > 0);
         }
-        if (query && pool.length === 0) {
+        // Hidden tools first: wps_help exists to surface the 175 tools the model cannot see.
+        scored.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          const aAdv = advertisedNames.has(a.tool.name) ? 1 : 0;
+          const bAdv = advertisedNames.has(b.tool.name) ? 1 : 0;
+          if (aAdv !== bAdv) return aAdv - bAdv;
+          return a.tool.name.localeCompare(b.tool.name);
+        });
+        const matched = scored.length;
+        if (query && matched === 0) {
           return text({
             matched: 0,
             shown: 0,
+            offset,
+            limit,
             truncated: false,
+            nextOffset: null,
             tools: [],
+            scenarios: matchHelpScenarios(query),
             hint: '没有匹配的工具。改试 wps_help {app:"excel"|"word"|"ppt"} 列该应用目录，或 wps_help {tool:"完整工具名"} 取参数 schema。',
           });
         }
-        const shown = pool.slice(0, 60).map((tool) => ({
-          name: tool.name,
-          description: compactDescription(tool.description, 80),
+        const page = scored.slice(offset, offset + limit);
+        const shown = page.map((entry) => ({
+          name: entry.tool.name,
+          app: appOf(entry.tool.name),
+          advertised: advertisedNames.has(entry.tool.name),
+          description: compactDescription(entry.tool.description, 80),
         }));
-        return text({ matched: pool.length, shown: shown.length, truncated: pool.length > shown.length, tools: shown });
+        const apps: Record<string, number> = {};
+        for (const entry of page) apps[appOf(entry.tool.name)] = (apps[appOf(entry.tool.name)] || 0) + 1;
+        const truncated = offset + shown.length < matched;
+        const result: Record<string, unknown> = {
+          matched,
+          offset,
+          limit,
+          shown: shown.length,
+          truncated,
+          nextOffset: truncated ? offset + shown.length : null,
+          apps,
+          tools: shown,
+        };
+        if (query) {
+          const scenarios = matchHelpScenarios(query);
+          if (scenarios.length) result.scenarios = scenarios;
+          if (Object.keys(apps).length > 1) {
+            result.disambiguation = '结果跨多个应用：app 字段标出归属；同名能力（如"保护/公式/排序"）请按当前活动应用选择，勿把 Excel 工具当 Word 工具用。';
+          }
+        }
+        return text(result);
       }
     );
 
@@ -417,7 +468,7 @@ export class WpsMcpServer {
         name: 'wps_batch',
         description:
           '按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。' +
-          '默认逐项继续（stopOnError=false），整体返回 status: completed/partial/failed 与逐项结果；' +
+          '默认遇到第一个失败就停止（stopOnError=true），整体返回 status: completed/partial/failed 与逐项结果；' +
           '整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。',
         inputSchema: {
           type: 'object',
@@ -437,8 +488,11 @@ export class WpsMcpServer {
             stopOnError: {
               type: 'boolean',
               description:
-                'true 时遇到第一个失败就停止后续调用（默认 false = 逐项继续）。' +
-                '有依赖关系的步骤请用 stopOnError=true 或逐项调用，避免后续步骤落到错误的前置状态上。',
+                'true 时遇到第一个失败就停止后续调用（默认 true）。确有独立步骤要逐项继续时显式传 false。',
+            },
+            maxResultChars: {
+              type: 'number',
+              description: '每项结果最多保留多少字符（默认 2000，范围 200–20000）；超长会标 truncated。',
             },
           },
           required: ['calls'],
@@ -449,7 +503,9 @@ export class WpsMcpServer {
         const raw = Array.isArray(args.calls) ? args.calls : [];
         if (raw.length === 0) return failure('calls 不能为空');
         if (raw.length > 50) return failure('单次批量最多 50 项');
-        const stopOnError = args.stopOnError === true;
+        const stopOnError = args.stopOnError !== false;
+        const requestedMax = typeof args.maxResultChars === 'number' ? Math.floor(args.maxResultChars) : 2000;
+        const maxResultChars = Number.isFinite(requestedMax) ? Math.min(20000, Math.max(200, requestedMax)) : 2000;
         const results: Array<Record<string, unknown>> = [];
         let succeeded = 0;
         let failedCount = 0;
@@ -470,7 +526,11 @@ export class WpsMcpServer {
           const joined = blocks
             .map((block) => (block && typeof block === 'object' && 'text' in block ? String((block as { text?: string }).text || '') : ''))
             .join('\n');
-          const record: Record<string, unknown> = { index, tool, success: outcome.success, result: joined.slice(0, 2000) };
+          const record: Record<string, unknown> = { index, tool, success: outcome.success, result: joined.slice(0, maxResultChars) };
+          if (joined.length > maxResultChars) {
+            record.truncated = true;
+            record.originalChars = joined.length;
+          }
           if (outcome.success) {
             succeeded++;
           } else {

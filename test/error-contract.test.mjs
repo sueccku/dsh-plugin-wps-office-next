@@ -40,7 +40,7 @@ check("empty batch is rejected", isErr(empty) && text(empty).includes("calls 不
 const tooMany = await call("wps_batch", { calls: Array.from({ length: 51 }, () => ({ tool: "wps_common_ping" })) });
 check("a batch over 50 is rejected as a whole", isErr(tooMany) && text(tooMany).includes("50"), text(tooMany).slice(0, 70));
 
-const mixed = await call("wps_batch", { calls: [
+const mixed = await call("wps_batch", { stopOnError: false, calls: [
   { tool: "wps_common_ping" },
   { tool: "wps_definitely_not_a_tool" },
   { tool: "wps_common_ping" },
@@ -67,7 +67,7 @@ const h = payload(halted);
 check("stopOnError halts at the first failure", h.count === 2 && h.stoppedAt === 1 && h.status === "partial", JSON.stringify({ count: h.count, stoppedAt: h.stoppedAt, status: h.status, stopOnError: h.stopOnError }));
 check("stopOnError really skipped the remaining call", JSON.stringify((h.results || []).map((r) => r.tool)) === '["wps_common_ping","wps_definitely_not_a_tool"]', JSON.stringify((h.results || []).map((r) => r.tool)));
 
-const allBad = await call("wps_batch", { calls: [{ tool: "wps_nope_one" }, { tool: "wps_nope_two" }] });
+const allBad = await call("wps_batch", { stopOnError: false, calls: [{ tool: "wps_nope_one" }, { tool: "wps_nope_two" }] });
 const ab = payload(allBad);
 check("a batch where nothing succeeded reports status failed", ab.status === "failed" && ab.succeeded === 0 && ab.failed === 2, JSON.stringify({ status: ab.status, succeeded: ab.succeeded, failed: ab.failed }));
 

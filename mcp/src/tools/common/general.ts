@@ -90,7 +90,7 @@ export const saveHandler: ToolHandler = async (
 
 export const saveAsDefinition: ToolDefinition = {
   name: 'wps_common_save_as',
-  description: `将当前文档另存为指定路径和格式。
+  description: `将当前文档另存为指定路径和格式。默认会创建不存在的输出目录（createDirs=true），避免"目录不存在"直接失败。
 
 使用场景：
 - "另存为到桌面"
@@ -99,7 +99,8 @@ export const saveAsDefinition: ToolDefinition = {
 
 特点：
 - 支持指定完整文件路径
-- 可选指定保存格式`,
+- 可选指定保存格式
+- 可自动创建输出目录（createDirs，默认 true）`,
   category: ToolCategory.COMMON,
   inputSchema: {
     type: 'object',
@@ -112,6 +113,10 @@ export const saveAsDefinition: ToolDefinition = {
         type: 'string',
         description: '保存格式（可选），如 docx, xlsx, pptx 等',
       },
+      createDirs: {
+        type: 'boolean',
+        description: '输出目录不存在时是否自动创建，默认 true；传 false 则要求目录已存在',
+      },
     },
     required: ['outputPath'],
   },
@@ -120,9 +125,10 @@ export const saveAsDefinition: ToolDefinition = {
 export const saveAsHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { outputPath, format } = args as {
+  const { outputPath, format, createDirs } = args as {
     outputPath: string;
     format?: string;
+    createDirs?: boolean;
   };
 
   if (!outputPath || outputPath.trim() === '') {
@@ -139,6 +145,7 @@ export const saveAsHandler: ToolHandler = async (
     // one of them would be read, and the two that were not were silently discarded.
     const params: Record<string, unknown> = {
       outputPath: outputPath,
+      createDirs: createDirs === undefined ? true : createDirs,
     };
     if (format) {
       params.format = format.toLowerCase().replace(/^\./, '');

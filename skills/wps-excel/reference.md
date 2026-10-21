@@ -7,7 +7,7 @@
 
 ## 按任务查找（9 组）
 
-### 定位工作簿与工作表（14）
+### 定位工作簿与工作表（15）
 
 - `wps_excel_get_open_workbooks`
 - `wps_excel_switch_workbook`
@@ -23,6 +23,7 @@
 - `wps_excel_move_sheet`
 - `wps_excel_delete_sheet`
 - `wps_excel_set_sheet_appearance`
+- `wps_excel_import_csv`
 
 ### 读取数据（8）
 
@@ -85,7 +86,7 @@
 - `wps_excel_unmerge_cells`
 - `wps_excel_set_hyperlink`
 
-### 排序、筛选与整理（21）
+### 排序、筛选与整理（23）
 
 - `wps_excel_sort_range`
 - `wps_excel_auto_filter`
@@ -108,8 +109,10 @@
 - `wps_excel_set_zoom`
 - `wps_excel_set_named_range`
 - `wps_excel_delete_named_range`
+- `wps_excel_advanced_filter`
+- `wps_excel_add_icon_set`
 
-### 表（ListObject）与透视表（13）
+### 表（ListObject）与透视表（15）
 
 - `wps_excel_create_list_object`
 - `wps_excel_get_list_objects`
@@ -124,8 +127,10 @@
 - `wps_excel_get_pivot_tables`
 - `wps_excel_refresh_pivot_tables`
 - `wps_excel_clear_pivot_table`
+- `wps_excel_add_pivot_calculated_field`
+- `wps_excel_group_pivot_dates`
 
-### 图表、迷你图与导出图片（9）
+### 图表、迷你图与导出图片（13）
 
 - `wps_excel_create_chart`
 - `wps_excel_update_chart`
@@ -136,8 +141,12 @@
 - `wps_excel_add_sparkline`
 - `wps_excel_clear_sparkline`
 - `wps_excel_insert_excel_image`
+- `wps_excel_get_charts`
+- `wps_excel_set_chart_axis`
+- `wps_excel_add_trendline`
+- `wps_excel_set_series_axis`
 
-### 打印、批注与保护（12）
+### 打印、批注与保护（17）
 
 - `wps_excel_set_sheet_page_setup`
 - `wps_excel_set_sheet_print_titles`
@@ -151,8 +160,13 @@
 - `wps_excel_unprotect_sheet`
 - `wps_excel_protect_workbook`
 - `wps_excel_lock_cells`
+- `wps_excel_allow_edit_range`
+- `wps_excel_get_links`
+- `wps_excel_insert_page_break`
+- `wps_excel_disconnect_link`
+- `wps_excel_change_link`
 
-## WPS 表格工具（118，其中直达 46）（118）
+## WPS 表格工具（132，其中直达 47）（132）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -161,15 +175,15 @@
 | wps_excel_diagnose_formula | wps_call | 诊断公式错误，分析原因并提供修复建议。 |
 | wps_excel_evaluate_formula | 直达 | 计算并返回公式结果（由 Excel 求值，不写入任何单元格）。 |
 | wps_excel_set_print_area | wps_call | 设置打印区域（range 省略时清除）。 |
-| wps_excel_read_range | 直达 | 读取Excel指定范围的单元格数据，返回二维数组格式的数据。 |
+| wps_excel_read_range | 直达 | 读取Excel指定范围的单元格数据。 |
 | wps_excel_write_range | 直达 | 向Excel指定范围写入数据。 |
 | wps_excel_clean_data | wps_call | 数据清洗工具，支持多种清洗操作的组合。 |
 | wps_excel_remove_duplicates | wps_call | 删除指定范围内的重复行。 |
-| wps_excel_sort_range | 直达 | 对Excel选定区域按指定列排序。 |
+| wps_excel_sort_range | 直达 | 对Excel区域排序。 |
 | wps_excel_find_replace | 直达 | 在Excel中查找并替换内容。 |
 | wps_excel_add_comment | wps_call | 给单元格添加批注。 |
 | wps_excel_protect_sheet | wps_call | 保护或取消保护工作表。 |
-| wps_excel_set_conditional_format | 直达 | 设置条件格式。 |
+| wps_excel_set_conditional_format | 直达 | 设置条件格式：cellValue 比较（condition/format）、色阶（type=colorScale）、数据条（type=dataBar）。 |
 | wps_excel_protect_workbook | wps_call | 保护或取消保护工作簿，防止结构被修改（如添加/删除工作表）。 |
 | wps_excel_set_zoom | wps_call | 设置当前工作表的缩放比例（10-400%）。 |
 | wps_excel_create_pivot_table | 直达 | 创建Excel透视表，用于数据汇总和分析。 |
@@ -191,18 +205,18 @@
 | wps_excel_hide_column | wps_call | 隐藏或显示指定列。 |
 | wps_excel_auto_sum | wps_call | 对指定范围的列或行自动求和，并将结果写入目标单元格。 |
 | wps_excel_set_cell_format | 直达 | 设置Excel单元格格式，包括字体、颜色、背景色、粗体、斜体、字号等。 |
-| wps_excel_set_cell_style | wps_call | 应用预定义样式到Excel单元格，如标题、强调、输入、输出等内置样式。 |
+| wps_excel_set_cell_style | wps_call | 应用预定义样式到Excel单元格，或直接给一组自定义格式（fontName/fontSize/bold/italic/fontColor/backgroundColor/horiz |
 | wps_excel_set_border | wps_call | 设置Excel单元格边框样式，支持不同粗细、位置和颜色。 |
 | wps_excel_set_number_format | 直达 | 设置Excel单元格的数字格式。 |
 | wps_excel_merge_cells | wps_call | 合并Excel指定范围的单元格。 |
 | wps_excel_unmerge_cells | 直达 | 拆分Excel中已合并的单元格，恢复为独立的单元格。 |
 | wps_excel_set_column_width | 直达 | 设置Excel指定列的列宽。 |
 | wps_excel_set_row_height | wps_call | 设置Excel指定行的行高。 |
-| wps_excel_set_data_validation | wps_call | 设置Excel单元格的数据验证规则，如下拉列表、数值范围、日期范围等。 |
+| wps_excel_set_data_validation | wps_call | 设置Excel单元格的数据验证规则：下拉列表、数值/日期范围、输入提示与出错警告。 |
 | wps_excel_open_workbook | 直达 | 打开指定路径的Excel工作簿文件。 |
 | wps_excel_get_open_workbooks | 直达 | 获取当前所有已打开的Excel工作簿列表。 |
 | wps_excel_switch_workbook | 直达 | 切换到指定名称的Excel工作簿。 |
-| wps_excel_close_workbook | 直达 | 关闭指定的Excel工作簿，可选是否保存。 |
+| wps_excel_close_workbook | 直达 | 关闭指定的Excel工作簿。 |
 | wps_excel_create_workbook | wps_call | 新建一个空白Excel工作簿。 |
 | wps_excel_get_cell_value | wps_call | 获取Excel指定单元格的值。 |
 | wps_excel_set_cell_value | wps_call | 设置Excel指定单元格的值。 |
@@ -274,3 +288,17 @@
 | wps_excel_clear_sparkline | wps_call | 清除指定区域上的迷你图（数据不动）。 |
 | wps_excel_delete_chart | wps_call | 删除工作表上的图表（不删它引用的数据）。 |
 | wps_excel_set_chart_labels | 直达 | 给图表加标题与坐标轴标题（分类轴 = 横轴，数值轴 = 纵轴）。 |
+| wps_excel_allow_edit_range | wps_call | 在工作表保护之下放行一块可编辑区域（AllowEditRanges）。 |
+| wps_excel_get_links | 直达 | 列出当前工作簿的外部链接源（LinkSources），用于源被改名/移走、更新链接弹窗的排查。 |
+| wps_excel_insert_page_break | wps_call | 在第 row 行上方插入手动分页符（row 从1开始）；只影响打印分页，不改数据。 |
+| wps_excel_disconnect_link | wps_call | 断开指定外部链接源（BreakLink），保留当前值、切断后续更新。 |
+| wps_excel_change_link | wps_call | 把外部链接从旧源改到新源（ChangeLink），不重建公式。 |
+| wps_excel_get_charts | wps_call | 列出工作表里的图表：序号、名称、位置、尺寸、图表类型；用于改图前先确认 chartIndex。 |
+| wps_excel_set_chart_axis | wps_call | 设置图表坐标轴：标题、数字格式、最小/最大值。 |
+| wps_excel_add_icon_set | wps_call | 给区域加图标集条件格式（三色交通灯/箭头/旗标等）。 |
+| wps_excel_add_trendline | wps_call | 给图表某系列加趋势线（线性/指数/对数/多项式/幂/移动平均），可设置前推/后推、显示公式与 R²。 |
+| wps_excel_import_csv | wps_call | 按指定分隔符/编码导入 CSV（OpenText），保留前导零/日期识别比直接打开更可控；导入后工作簿未保存。 |
+| wps_excel_add_pivot_calculated_field | wps_call | 给透视表加计算字段（CalculatedFields. |
+| wps_excel_advanced_filter | wps_call | 高级筛选（AdvancedFilter）：criteriaRange 写条件区；action=inPlace 原地隐藏不匹配行，copyTo 复制到目标区域（需给 copyTo）。 |
+| wps_excel_set_series_axis | wps_call | 把图表某系列改成另一种图型并放到次坐标轴（组合图）：chartType 用 WPS 图表类型枚举，secondaryAxis=true 走次轴。 |
+| wps_excel_group_pivot_dates | wps_call | 对透视表的日期字段做自动分组（PivotField. |

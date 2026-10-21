@@ -8,15 +8,15 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 
 | metric | count |
 | --- | --- |
-| tools in the full catalog | 270 |
-| tool/action pairs checked | 259 |
+| tools in the full catalog | 310 |
+| tool/action pairs checked | 281 |
 | **A. handler sends a parameter the bridge never reads** | **0** |
 | B. schema advertises a parameter the handler never uses | 0 |
 | **C. nested object carries a property the action never reads** | **0** |
 | **D. pass-through handler advertises a parameter the bridge never reads** | **0** |
 | actions with no key table (guard skipped) | 1 |
-| handlers whose arguments are not statically readable | 5 |
-| of those, still covered by the D check below | 4 |
+| handlers whose arguments are not statically readable | 23 |
+| of those, still covered by the D check below | 22 |
 
 ## A. Sent by the tool, never read by the bridge
 
@@ -47,8 +47,26 @@ Only an entry with no action name has no coverage at all.
 | tool | reason |
 | --- | --- |
 | `wps_excel_set_cell_format` | bridge has no key table for `setCellFormat` |
+| `wps_excel_add_icon_set` | argument object not statically readable |
+| `wps_excel_add_trendline` | argument object not statically readable |
+| `wps_excel_add_pivot_calculated_field` | argument object not statically readable |
+| `wps_excel_advanced_filter` | argument object not statically readable |
+| `wps_excel_set_series_axis` | argument object not statically readable |
+| `wps_excel_group_pivot_dates` | argument object not statically readable |
 | `wps_excel_text_to_columns` | argument object not statically readable |
 | `wps_excel_evaluate_formula` | argument object not statically readable |
 | `wps_excel_set_print_area` | argument object not statically readable |
+| `wps_ppt_get_slide_notes` | argument object not statically readable |
+| `wps_ppt_get_fonts` | argument object not statically readable |
+| `wps_ppt_set_theme_colors` | argument object not statically readable |
+| `wps_ppt_set_placeholder_lock` | argument object not statically readable |
+| `wps_ppt_duplicate_master_layout` | argument object not statically readable |
+| `wps_ppt_embed_fonts` | argument object not statically readable |
+| `wps_ppt_compress_images` | argument object not statically readable |
+| `wps_ppt_export_pdf` | argument object not statically readable |
 | `wps_word_set_paragraph` | argument object not statically readable |
 | `wps_word_proofread_basic` | 0 executeMethod calls |
+| `wps_word_update_fields` | argument object not statically readable |
+| `wps_word_update_style` | argument object not statically readable |
+| `wps_word_create_labels` | argument object not statically readable |
+| `wps_word_create_envelope` | argument object not statically readable |

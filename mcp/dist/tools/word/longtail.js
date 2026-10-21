@@ -202,6 +202,7 @@ exports.mailMergeDefinition = {
             splitDir: { type: 'string', description: '给了这个目录就每个数据行单独生成一份 docx 存进去（文件名用 fileNameField，缺省用第一个字段）；不给则合并成一份新文档' },
             fileNameField: { type: 'string', description: 'splitDir 模式下决定文件名的字段名（取该列的值），或一段带 {列名} 占位符的模板，例如 通知书_{部门}_{姓名}_{工号}；缺省用第一个字段' },
             outputPath: { type: 'string', description: '单文档模式下的保存路径（.docx）；不给则新文档留在内存里，由调用方自己另存' },
+            imageField: { type: 'string', description: '图片域列名：该列单元格是图片路径时，占位符处插入图片而不是文本' },
         },
         required: ['dataFile'],
     },
@@ -214,6 +215,7 @@ const mailMergeHandler = async (args) => {
             splitDir: args.splitDir,
             fileNameField: args.fileNameField,
             outputPath: args.outputPath,
+            imageField: args.imageField,
         }, wps_1.WpsAppType.WRITER);
         if (!response.success)
             return longtailFail('邮件合并失败', response.error);

@@ -5,7 +5,7 @@
 必须先 `wps_help {tool:"..."}` 取参数 schema，再 `wps_call {tool, args}` 执行。
 参数类型、单位、默认值与枚举以运行时 schema（`wps_help`）为准，本文件不复制它们。
 
-## 按任务查找（8 组）
+## 按任务查找（9 组）
 
 ### 定位演示文稿（7）
 
@@ -108,7 +108,22 @@
 - `wps_ppt_remove_ppt_hyperlink`
 - `wps_ppt_export_slide_as_image`
 
-## WPS 演示工具（77，其中直达 14）（77）
+### 隐藏页与字体（12）
+
+- `wps_ppt_set_slide_hidden`
+- `wps_ppt_get_hidden_slides`
+- `wps_ppt_get_fonts`
+- `wps_ppt_export_notes`
+- `wps_ppt_set_theme_colors`
+- `wps_ppt_set_theme_fonts`
+- `wps_ppt_add_section`
+- `wps_ppt_set_placeholder_lock`
+- `wps_ppt_duplicate_master_layout`
+- `wps_ppt_embed_fonts`
+- `wps_ppt_compress_images`
+- `wps_ppt_export_pdf`
+
+## WPS 演示工具（89，其中直达 15）（89）
 
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
@@ -122,7 +137,7 @@
 | wps_ppt_get_slide_info | 直达 | 获取指定幻灯片的详细信息，包括布局、元素列表等。 |
 | wps_ppt_switch_slide | wps_call | 切换到指定的幻灯片页面。 |
 | wps_ppt_set_slide_layout | wps_call | 设置幻灯片的版式布局。 |
-| wps_ppt_get_slide_notes | wps_call | 获取指定幻灯片的备注内容。 |
+| wps_ppt_get_slide_notes | wps_call | 获取幻灯片备注内容。 |
 | wps_ppt_set_slide_notes | wps_call | 设置幻灯片的备注内容，用于演讲提示。 |
 | wps_ppt_add_shape | wps_call | 在幻灯片中添加形状。 |
 | wps_ppt_set_shape_style | wps_call | 设置幻灯片中形状的样式，包括填充颜色、边框颜色、边框粗细和圆角半径。 |
@@ -177,7 +192,7 @@
 | wps_ppt_set_ppt_chart_style | wps_call | 设置幻灯片中图表的样式属性。 |
 | wps_ppt_get_slide_master | wps_call | 获取当前演示文稿的母版信息。 |
 | wps_ppt_set_master_background | wps_call | 设置母版背景样式。 |
-| wps_ppt_add_master_element | wps_call | 向母版中添加新元素。 |
+| wps_ppt_add_master_element | wps_call | 向母版中添加文本框或形状。 |
 | wps_ppt_add_ppt_hyperlink | wps_call | 为幻灯片中的形状添加超链接。 |
 | wps_ppt_remove_ppt_hyperlink | wps_call | 移除幻灯片中形状的超链接。 |
 | wps_ppt_find_ppt_text | wps_call | 在演示文稿中搜索指定文本。 |
@@ -188,4 +203,16 @@
 | wps_ppt_insert_table | 直达 | 在幻灯片中插入表格。 |
 | wps_ppt_set_table_cell | wps_call | 设置PPT表格中指定单元格的文本内容。 |
 | wps_ppt_get_table_cell | wps_call | 获取PPT表格中指定单元格的文本内容。 |
-| wps_ppt_set_background_gradient | wps_call | 为幻灯片设置渐变色背景。 |
+| wps_ppt_set_background_gradient | wps_call | 为幻灯片设置两色渐变背景（WPS 桥实现只支持两色线性渐变）。 |
+| wps_ppt_set_slide_hidden | wps_call | 设置/取消幻灯片隐藏（hidden=true 隐藏，false 显示）。 |
+| wps_ppt_get_hidden_slides | wps_call | 列出演示文稿里被隐藏的幻灯片页码与总数，用于导出/放映前的检查。 |
+| wps_ppt_get_fonts | wps_call | 回读幻灯片文字的字体名/字号/加粗/颜色（每页去重）。 |
+| wps_ppt_set_theme_colors | wps_call | 改演示文稿主题配色（dark1/light1/dark2/light2/accent1. |
+| wps_ppt_set_theme_fonts | wps_call | 改演示文稿主题字体（标题字体 majorFont / 正文字体 minorFont）；只改主题字体，不逐个文本框改。 |
+| wps_ppt_add_section | wps_call | 在指定页前新增一节（PowerPoint 节），便于 30+ 页长 deck 分组。 |
+| wps_ppt_set_placeholder_lock | wps_call | 锁定/解锁占位符或形状（Shape. |
+| wps_ppt_duplicate_master_layout | wps_call | 复制母版版式（CustomLayouts. |
+| wps_ppt_embed_fonts | wps_call | 把当前演示文稿另存一份并打开字体嵌入标志（SaveCopyAs 第三个参数 EmbedTrueTypeFonts）；原演示文稿路径不变。 |
+| wps_ppt_compress_images | wps_call | 压缩幻灯片图片：把每张图按 quality 比例导出为 JPG 再替换（保持原位置/尺寸），会损失清晰度；不传 slideIndex 处理全篇。 |
+| wps_ppt_export_pdf | wps_call | 把演示文稿导出为 PDF（Presentation. |
+| wps_ppt_export_notes | 直达 | 把演示文稿全部演讲者备注导出为 text/markdown 文件（每页一节，空备注跳过）。 |

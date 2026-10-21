@@ -140,6 +140,14 @@
 | 115 | 嵌套参数只查了顶层：`calls[].tool` 缺失、`range` 只给 start、`data` 少一层数组都静默执行（C1） |
 | 116 | 嵌套校验上线后，schema 漏声明把一条一直可用的路径判死：`format.numberFormat` 被当未知参数（v0.9.0 发版前整轮抓到） |
 | 117 | `param-contract` 在宿主拒绝租约时永久挂起：把 `ready:false` 当成「已就绪」（门禁卡 10 分钟） |
+| 118 | P0（2026-10-19）：发现面 / 安全默认值 / 契约补齐 / 80 场景配方 |
+| 119 | P1 第一批（2026-10-19）：Word 域/选区/保护、PPT 隐藏页/字体、Excel 允许编辑区/外链/分页符、PPT 表格 data、备注体检 |
+| 120 | P1 第二批（2026-10-21）：Word 题注/表格公式/页眉高级、Excel 外链断开/改源/图表列表/多键排序、PPT 缩放内容 |
+| 121 | P1 第三批 + D1 字节预算放宽到 80,000（2026-10-21，用户决定） |
+| 122 | P1 第四批（2026-10-21）：Word 内容控件/按作者修订、PPT 主题色/主题字体/节、Excel 图标集/趋势线/CSV/透视计算字段/高级筛选/组合图次轴 |
+| 123 | P1 剩余 6 项收口（2026-10-21）：Word 标签/信封/图片域、PPT 占位符锁定/母版版式/字体嵌入/图片压缩/PDF 导出、Excel 日期分组 |
+| 124 | P2 收口（2026-10-21）：文件级批量配方 + 80 场景基准 + 广告面换血（95→100） |
+| 125 | D1 工具位上限 100 → 120（2026-10-21，用户决定） |
 <!-- FIXES-INDEX:END -->
 
 ## 已修复
@@ -4642,3 +4650,202 @@ horizontalAlignment / verticalAlignment / wrapText —— **漏了 `numberFormat
 **边界**：没有放宽「同一时间只允许一个宿主」的单实例租约 —— 那是刻意的；只保证被拒绝时
 **快速、可读地失败**。没有新增自动化测试：复现需要一个真实持有租约的宿主，会让本地门禁依赖
 外部状态；验收用上面的手工复现步骤。
+
+## 118. P0（2026-10-19）：发现面 / 安全默认值 / 契约补齐 / 80 场景配方
+
+**背景**：80 场景评估（`docs/scenario-review-270-tools-v2.md`）把 P0 定为四件事：`wps_help` 发现面、安全默认值、桥已实现但 schema 未暴露的契约、以及 80 场景配方与边界说明。本条只记实现与验证，不重复评估结论。
+
+**改动**：
+
+1. **`wps_help` 2.0**：增加 `offset` / `limit`（默认 200，上限 500），隐藏工具优先排序；结果带 `app` / `advertised` / `apps` / `nextOffset`，跨应用时给 `disambiguation`；`toolset.ts` 增加 20 组中文同义词扩展（题注/交叉引用/图表目录/域/奇偶页/文档比较/内容控件/限制编辑/字体嵌入/图片压缩/节/隐藏页/备注页/母版/主题色…）与场景入口 `HELP_SCENARIOS`（批量合同、多表合并、跨应用等）。
+2. **安全默认值**：`open_workbook` / `open_document` / `open_presentation` 默认 `readOnly:true`；三个 `close_*` 默认 `save:false`；`wps_batch` 默认 `stopOnError:true`；`wps_common_save_as` 默认 `createDirs:true`。桥侧 `Open-WordDocument` / `Open-PptPresentation` / `openWorkbook` 也按默认只读处理，避免绕过工具层。
+3. **契约补齐**：`read_range` 增加 `startRow`/`maxRows`（默认 500）与 `truncated`/`nextStartRow`；`get_document_text` 真正按 0 基 `start`/`end` 取 `doc.Range` 并返回 `totalLength`/`truncated`（旧实现忽略参数、恒截 1 万字符）；`wps_batch` 增加 `maxResultChars` 与逐项 `truncated`；`save_as` 支持 `createDirs`；`find_replace` 补 `range`/`sheet`/`matchWholeWord`；`set_conditional_format` 补 `type`/`operator`/`value1`/`value2`/`colorScaleType`/`sheet`；`set_data_validation` 补输入提示/出错警告/`showDropdown`/`operator`/`formula2`；`set_cell_style` 补自定义字体/颜色/边框；`word_insert_table` 补 `data`；PPT `set_background_color` 补 `applyToAll`/`presentationName`；Word `insert_header/footer` 补 `alignment`/`includePageNumber` 并允许空 `text` 清空。
+4. **描述-实现对齐**：`wps_ppt_set_background_gradient` 改为只承诺两色渐变（`color1`/`color2`）；`set_master_background` 的图片键改为 `imagePath`；`add_master_element` 明确只支持 textbox/shape，不再宣称图片/Logo。
+5. **80 场景配方与边界**：新增 `skills/wps-office-next/references/scope-and-boundaries.md` 与 `skills/wps-office-next/recipes/scenario-playbook.md`，在 `SKILL.md` 里登记；明确 PDF/打印/云/手机/AI/OLE/水印/文档属性/媒体/SmartArt/密码/宏等边界与替代路径。
+
+**兼容性**：`wps_help` / `wps_batch` 的 schema 有新增可选参数；`close_*` / `open_*` 默认值变化是**有意的 breaking 语义变更**（旧调用不传 `readOnly:false` / `save:true` 时不再写源文件/不再保存）。WPS 真机行为（`open_*` 的只读默认、`close_*` 的不保存、`doc.Range` 坐标、`createDirs`）未在本轮真机验证，按 AGENTS §1 留待需要时抽测。
+
+**验证**：
+
+- `npm run gates:bridge` **17 步全绿**（含 tsc、dist/spec/host 对账、lint、param-contract、spec-reproduction 16/16、静态测试 17/17、数字对账）。
+- 广告面仍 **95 / 270**；schema **57,281 字节 / ≈16,366 tokens**（≤60,000）；参数契约 A/B/C/D 四类仍为 0；`spec-reproduction` 与活 `tools/list` 逐字节一致。
+- 未跑真机整轮（遵循 R13）；`test/close-safety.test.mjs` 已按新默认更新，`test/error-contract.test.mjs` 的“默认继续”用例改为显式 `stopOnError:false`。
+
+**本轮未做完（如实记账，留 P1）**：
+
+- `wps_excel_*` 里 13 个操作型工具的 `sheet` 透传只补了 `find_replace` / `set_conditional_format` / `set_data_validation` 等已改到的工具；`add_comment`、`auto_sum`、`diagnose_formula`、`freeze_panes`、`generate_formula`、`hide_column`、`protect/unprotect_sheet`、`set_zoom`、`sort_range`、`update_pivot_table` 仍未在 schema 暴露 `sheet`。
+- 全局改动的 `dryRun` / `影响面回执` 未实现；P0-2 只完成了默认值与“先 save_as 副本”的配方。
+- `open_*` 只读默认、`close_*` 不保存、`doc.Range(start,end)`、`save_as.createDirs` 的 WPS 真机行为未验证（本机有安装版宿主持有的租约，按 AGENTS 未抢）；需要时在无活跃宿主的终端抽测。
+
+
+## 119. P1 第一批（2026-10-19）：Word 域/选区/保护、PPT 隐藏页/字体、Excel 允许编辑区/外链/分页符、PPT 表格 data、备注体检
+
+**背景**：80 场景评估的 P1 是 1–3 周能力族工程。本轮先落第一批 11 个隐藏工具 + 2 个桥已有能力的补齐；广告面不变（95），注册面 270 → 281。
+
+**新增工具（默认隐藏，不占广告面）**：
+
+- Word（5）：`wps_word_get_fields`、`wps_word_update_fields`、`wps_word_select_range`、`wps_word_protect`、`wps_word_get_protection`。对应 action：`getDocumentFields` / `updateDocumentFields` / `selectDocumentRange` / `protectDocument` / `getDocumentProtection`。
+- PPT（3）：`wps_ppt_set_slide_hidden`、`wps_ppt_get_hidden_slides`、`wps_ppt_get_fonts`。action：`setSlideHidden` / `getHiddenSlides` / `getSlideFonts`。
+- Excel（3）：`wps_excel_allow_edit_range`、`wps_excel_get_links`、`wps_excel_insert_page_break`。action：`allowEditRange` / `getWorkbookLinks` / `insertPageBreak`。
+
+**补齐已有工具**：
+
+- `wps_ppt_insert_table` 增加 `data` 二维数组，一次写入表格（不再 N×M 次 `set_table_cell`）；桥 `insertPptTable` 同步支持。
+- `wps_ppt_get_slide_notes` 增加 `all`：一次返回全部页的备注与 `hasNotes`，并单页返回 `hasNotes`。
+
+**验证**：
+
+- `test/p1-surface.test.mjs`（新，20 项静态）：`tools/list` 281、11 个新工具全注册、关键参数（read_range 分页、batch maxResultChars、save_as createDirs、help offset/limit、word/ppt insert_table data、notes all）都在 schema 里；已加入 `STATIC_TESTS`。
+- `npm run gates:bridge` 全绿（详见本轮终端；283 个桥读键、参数契约四类 0；spec-reproduction 16/16；静态测试 18/18）。
+- 广告面 95 / 281；schema 57,508 字节 / ≈16,431 tokens（≤60,000）；桥 action 276。
+
+**本轮未做（P1 剩余，如实记账）**：
+
+- Word：题注/图表目录/表格公式/文档比较/按作者修订/内容控件参数/邮件合并标签/图片域/页眉奇偶首页不同/链接到前一条。
+- PPT：母版新版式/占位符锁定/主题色与主题字体/字体嵌入/图片压缩/节/隐藏页导出选项/备注导出。
+- Excel：外链改源/断开、多键排序/高级筛选、图标集、组合图次轴/趋势线、透视计算字段/日期分组、CSV 导入参数/固定宽度分列。
+- 以上多数需要 WPS COM 可行性探针；本轮未真机验证 11 个新 action 的 COM 行为（本机有安装版宿主持有租约，按 AGENTS 未抢）。
+
+## 120. P1 第二批（2026-10-21）：Word 题注/表格公式/页眉高级、Excel 外链断开/改源/图表列表/多键排序、PPT 缩放内容
+
+**背景**：在 119 的第一批 11 个工具之后，补 P1 的第二批：5 个新工具 + 3 个已有工具的能力扩展。广告面仍 95；注册面 281 → 286；桥 action 276 → 281。
+
+**新增工具（默认隐藏）**：
+
+- Word：`wps_word_insert_caption`（Selection.InsertCaption，题注/SEQ 域）、`wps_word_set_table_formula`（Table.Cell.Formula，=SUM(ABOVE) 等）。
+- Excel：`wps_excel_disconnect_link`（BreakLink）、`wps_excel_change_link`（ChangeLink）、`wps_excel_get_charts`（ChartObjects 列表/类型/几何）。
+
+**已有工具扩展**：
+
+- `wps_word_insert_header` / `wps_word_insert_footer`：增加 `firstPageDifferent` / `oddEvenDifferent` / `linkToPrevious`，分别映射 `PageSetup.DifferentFirstPageHeaderFooter`、`OddAndEvenPagesHeaderFooter`、`Header/Footer.LinkToPrevious`。
+- `wps_excel_sort_range`：增加 `keys`（最多 3 键，`{column,ascending|order}`）与 `hasHeader`；旧 `column/ascending` 保持兼容。
+- `wps_ppt_set_slide_size`：增加 `scaleContent`（按新旧画布比例缩放每页形状），返回 `affectedSlides`；解决 PT3 "4:3→16:9 内容跑出画布"。
+- `wps_ppt_insert_table` 的 `data`、`wps_ppt_get_slide_notes.all`（119 已做）继续有效。
+
+**验证**：
+
+- `test/p1-surface.test.mjs` 扩到 28 项：新 5 工具注册 + sort keys/hasHeader + slide scaleContent + header firstPageDifferent 等。
+- `npm run gates:bridge` 全绿（本轮终端）：spec-reproduction 16/16，静态测试 18/18，参数契约 A/B/C/D 0。
+- 注册 **286 / 广告 95**；schema **58,200 字节 / ≈16,629 tokens**（≤60,000）；桥 action **281**。
+- 新 action 仍未真机验证（本机有安装版宿主持有租约，按 AGENTS 未抢）。最高风险：`InsertCaption` 的 WPS 参数映射、`Table.Cell.Formula`、`BreakLink/ChangeLink`、`scaleContent` 的形状缩放。
+
+**P1 仍未做**：Word 图表目录/文档比较/按作者修订/内容控件参数/邮件合并标签与图片域；PPT 母版新版式/主题色与字体/字体嵌入/图片压缩/节/导出选项/备注导出；Excel 图标集/组合图次轴/趋势线/透视计算字段/CSV 导入参数；P1-5 整族。
+
+## 121. P1 第三批 + D1 字节预算放宽到 80,000（2026-10-21，用户决定）
+
+**预算决定**：用户明确把广告面 schema 上限从 **60,000 → 80,000 字节**；工具数仍 ≤ **100**。已同步 `scripts/verify.mjs` 的 `BUDGET`、`test/advertised-surface.test.mjs`、`docs/HANDOFF.md` D1、`README.md` 当前数字；FIXES 68 与 R14 的历史读数保留不改。当前广告面 **95 / 58,200**，余 **21,800 字节**，但**没有**因此把隐藏工具批量塞进广告面 —— R14 的准入证据规则仍有效。
+
+**P1 第三批（5 个新工具，默认隐藏）**：
+
+- `wps_word_insert_table_of_figures`：按题注标签插入图表目录（TablesOfFigures.Add）。
+- `wps_word_compare_documents`：比较两份**已打开**的 Word 文档，生成带修订标记的比较文档。
+- `wps_word_update_style`：改样式定义（字体/字号/加粗/颜色/行距/首行缩进/段前段后），一次影响所有套用段落。
+- `wps_excel_set_chart_axis`：设置图表横/纵轴标题、数字格式、最小/最大值。
+- `wps_ppt_export_notes`：把全部演讲者备注导出为 text/markdown（本地写文件，复用 `getSlideNotes({all:true})`，无新桥 action）。
+
+**验证**：
+
+- 注册 **291 / 广告 95**；桥 action **285**；全量 schema **182,497 字节**；广告面 **58,200 / 80,000**。
+- `test/p1-surface.test.mjs` 扩到 **35 项**（5 个新工具注册 + compare/export_notes schema 断言）。
+- `npm run gates:bridge` 全绿：spec-reproduction 16/16、静态 18/18、参数契约 A/B/C/D 0。
+- 新 action 仍未真机验证（本机安装版宿主持有租约）；最高风险：`TablesOfFigures.Add` 的可选参数、`CompareDocuments` 的 WPS 签名、`Styles.Item` 的样式名、`Axes()`/`AxisTitle`。
+
+**P1 仍未做**：Word 内容控件下拉/日期、按作者筛选修订、邮件合并标签/图片域/一对多；PPT 母版新版式/占位符锁定/主题色与主题字体/字体嵌入/图片压缩/节/导出选项；Excel 图标集/组合图次轴/趋势线/透视计算字段/日期分组/CSV 导入参数/高级筛选；P1-5 其余。
+
+## 122. P1 第四批（2026-10-21）：Word 内容控件/按作者修订、PPT 主题色/主题字体/节、Excel 图标集/趋势线/CSV/透视计算字段/高级筛选/组合图次轴
+
+**背景**：继续清 P1 剩余族。第四批 11 个新工具（默认隐藏），桥 action 285 → 296，注册面 291 → 302；广告面仍 95 / 58,200 字节（新工具全部隐藏），80,000 预算不变。
+
+**新增工具**：
+
+- Word：`wps_word_set_content_control`（按 index/title/tag 填文本/下拉/日期/复选框）、`wps_word_resolve_revisions`（按作者 accept/reject）。
+- PPT：`wps_ppt_set_theme_colors`（12 个主题色槽位）、`wps_ppt_set_theme_fonts`（major/minor 字体）、`wps_ppt_add_section`（在指定页前加节）。
+- Excel：`wps_excel_add_icon_set`（AddIconSetCondition）、`wps_excel_add_trendline`（Series.Trendlines.Add）、`wps_excel_import_csv`（Workbooks.OpenText，分隔符/编码）、`wps_excel_add_pivot_calculated_field`（CalculatedFields.Add）、`wps_excel_advanced_filter`（AdvancedFilter 原地/复制）、`wps_excel_set_series_axis`（组合图改系列图型 + 次坐标轴）。
+
+**实现约束**：
+
+- `setThemeColors` 的 12 个槽位按名字动态读取 `$p.<slot>`，静态参数提取给不出键表；已在 `mcp/src/spec/aliases.ts` 的 `dynamicParamActions` 显式登记（理由：槽位集合由工具 schema 固定），宿主守卫对它跳过。
+- 其余 action 都写进 `spec/operations.ts`，桥 action 总数 296；`param_keys_skipped=setCellFormat,setThemeColors`。
+
+**验证**：
+
+- `npm run gates:bridge` 全绿：spec-reproduction 16/16（302 工具，spec 序列化 188,783 字节；gen-numbers 的 full 读数 189,086）、静态 18/18、参数契约 A/B/C/D 0。
+- `test/p1-surface.test.mjs` 扩到 46 项；注册 **302 / 广告 95**；全量 schema **189,086 字节**；桥 action **296**。
+- 新 action 仍未真机验证（本机安装版宿主持有租约）。最高风险：`ContentControls` 的控件值/复选框、`Revisions.Accept/Reject` 循环、`ThemeColorScheme`/`ThemeFontScheme`、`SectionProperties`、`IconSet` 赋值、`OpenText` 的 11 个参数、`CalculatedFields.Add`、`AdvancedFilter`、`Series.AxisGroup`。
+
+**P1 仍未做（不再硬写假实现）**：
+
+- Word：邮件合并的**标签/信封**与**图片域**（现有 mail_merge 只做 CSV 文本占位符；Word MailMerge 对象在 WPS 的可用性未探明）。
+- PPT：占位符锁定/母版新增版式、字体嵌入、图片压缩、导出选项（隐藏页/备注页/缩放）。这些依赖 WPS 对 PowerPoint 高级对象模型的支持，需真机 COM 探针。
+- Excel：透视表日期分组（PivotField.Group 的 WPS 行为未探明）。
+
+## 123. P1 剩余 6 项收口（2026-10-21）：Word 标签/信封/图片域、PPT 占位符锁定/母版版式/字体嵌入/图片压缩/PDF 导出、Excel 日期分组
+
+**真机探针结论**（WPS 12.1，Windows x64）：
+
+- `Shape.Locked` 可读写（占位符锁定可行）。
+- `SlideMaster.CustomLayouts` **没有 Add**，但 `CustomLayouts.Item(i).Duplicate()` 存在（复制版式是新增版式的可行路径）。
+- `Presentation.SaveCopyAs(path, 24, -1)` 的第三个参数是 `EmbedTrueTypeFonts`，可另存带嵌入标志的副本且不改当前路径。
+- 没有 `Presentation.CompressPictures`；`Shape.Export(path, 2, w, h)` 可用，因此图片压缩用"降采样导出 JPG 后替换原图"实现。
+- `Presentation.Export(path, 'PDF', w, h)` 可用；`ExportAsFixedFormat` 在 PowerShell COM 绑定下报 `DISP_E_TYPEMISMATCH`，不用它。
+- `PivotField` **没有 Group**，但 `AutoGroup()` 可用（WPS 默认粒度）。
+- `MailingLabel.CreateNewDocument` 在 WPS 12.1 返回空文档（Name 为空、Close 报错），不能作为标签实现；改为**表格网格版式**（行列/标签宽高/页边距）实现标签/席卡底稿。
+
+**新增工具（8 个，默认隐藏）**：
+
+- Word：`wps_word_create_labels`（表格网格标签/席卡版式）、`wps_word_create_envelope`（自定义宽高信封）；`wps_word_mail_merge` 增加 `imageField`（CSV 某列是图片路径时，占位符处插入 InlineShape 而不是文本）。
+- PPT：`wps_ppt_set_placeholder_lock`（Shape.Locked）、`wps_ppt_duplicate_master_layout`（CustomLayouts.Duplicate）、`wps_ppt_embed_fonts`（SaveCopyAs + EmbedTrueTypeFonts）、`wps_ppt_compress_images`（Shape.Export 降采样替换）、`wps_ppt_export_pdf`（Presentation.Export，支持宽高缩放）。
+- Excel：`wps_excel_group_pivot_dates`（PivotField.AutoGroup）。
+
+**验证**：
+
+- 注册 **310 / 广告 95**；桥 action **304**；全量 schema **193,077 字节**；广告面 **58,341 / 80,000**（`mail_merge.imageField` 让广告面 +141 字节）。
+- `test/p1-surface.test.mjs` **54 项**；`npm run gates:bridge` 全绿；spec-reproduction 16/16；静态 18/18；参数契约 A/B/C/D 0。
+- 真机探针脚本在 `.tmp-eval/probe-*.ps1`（本机产物，不入库）：确认上述能力、并记录 `MailingLabel` / `ExportAsFixedFormat` 两条不可用路径。
+
+**边界（真机证伪，不再当 P1 缺口）**：
+
+- WPS PPT 没有 `Presentation.CompressPictures`：图片压缩只能走 Shape.Export 降采样替换（会重编码、可能改变图层顺序，已在工具描述里写明）。
+- WPS PPT 的 `ExportAsFixedFormat` 在 PowerShell COM 绑定下不可用：PDF 导出用 `Presentation.Export`（幻灯片页；备注页用 `export_notes` 导文本）。
+- WPS Word 的 `MailingLabel` 返回空文档：标签用表格网格版式实现，不是 Word 原生标签模板；信封同理用页面尺寸 + 段落实现。
+- WPS Excel 没有 `PivotField.Group`：日期分组是 `AutoGroup()`，不能指定起始日/步长。
+
+**桥动作真机验收**（`.tmp-eval/probe-actions.mjs` / `probe-actions3.mjs`，真实宿主 + WPS）：
+
+- Word：`createDocument`/`insertText`/`createLabelSheet`/`createEnvelope` 全 pass；`mailMerge` 带 `imageField` 输出 `merge2.docx`，打开后 `InlineShapes.Count=1`（图片已插到占位符处，预览文本显示为 `/`）。
+- PPT：`setPlaceholderLock`、`duplicateMasterLayout`、`embedFonts`（生成 .pptx）、`compressImages`（无图时 0 张）、`exportPdf`（生成 PDF）全 pass。
+- Excel：`setRangeData` + `createPivotTable` + `groupPivotDates` 全 pass（`AutoGroup` 在 WPS 12.1 上生效）。
+- 图片域实现细节：`Range.Find` 执行后 Range 仍是原范围，`$found` 为空；改用 `work.Activate()` + `Selection.Find`，找到后 `Selection.InlineShapes.AddPicture(path)`（探针 `probe-image.ps1`/`probe-image2.ps1` 证实）。
+
+## 124. P2 收口（2026-10-21）：文件级批量配方 + 80 场景基准 + 广告面换血（95→100）
+
+**P2-1 文件级批量（不塞工具面）**：
+
+- 新增 `skills/wps-office-next/recipes/batch-files.md`：XA9 批量导出 PDF、XA10 批量改名（Harness 文件工具）、XA11 批量套模板，含「先试一个 / 逐份四步 / 失败清单 JSON / O(N) 成本 / 会员风控」。
+- `wps-office-next/SKILL.md` 与 `scenario-playbook.md` 已登记该文件；`save_as.createDirs`（P0）继续作为批量输出目录的唯一入口。
+- 验收：XA9/XA10/XA11 有可执行配方；批量失败用 `{file,step,error,retryable}` 清单，不把"跑完"写成"全对"。
+
+**P2-2 80 场景基准 + 广告面换血**：
+
+- 新增 `test/skilleval/scenarios-80.mjs`：从两份 80 场景评估报告抽取 **80 条**（Excel 28 / Word 21 / PPT 14 / 跨应用 17），每条有 id/标题/应用/提示/确定性轨迹断言/coreCheck；`ready:false` 明确表示夹具/真实轨迹未落盘。
+- 新增 `test/skilleval/benchmark80.mjs`（8 项静态验收，已进 `STATIC_TESTS`）：80 条、唯一 id/key、四类应用、断言前缀合法。
+- 新增 `test/skilleval/plan-ad-surface.mjs`：读真实轨迹 `metrics.json`，按 R14 阈值排序隐藏工具；0 条轨迹时输出 NO EVIDENCE，后续复核用。
+- **广告面换血（按 80 场景评估候选，2026-10-21）**：95 → **100**（仍 ≤100）：
+  - 换入 Word `wps_word_get_fields` / `wps_word_protect` / `wps_word_compare_documents`；
+  - 换入 PPT `wps_ppt_export_notes`；
+  - 换入 Excel `wps_excel_get_links`。
+  - 这 5 个是 80 场景里反复出现的域/保护/比较/备注收尾/外链排查入口；本轮**没有换出**（广告面从 95 到 100，未超 100 上限）。若后续要换其他工具，仍按 `plan-ad-surface` 的 R14 阈值和"等量换出"规则。
+- 广告面字节：**58,341 → 60,264 / 80,000**（+1,923）；工具数到 100 上限后，后续只能换血，不能再扩容。
+
+**验证**：
+
+- 工具面：**310 / 100**；桥 action **304**；广告面 **60,264 / 80,000**；全量 **193,077 字节**。
+- 静态测试 **19/19 全绿**（含 `benchmark80` 8 项；`test/*.test.mjs` 仍 65 个，`benchmark80.mjs` 在 `test/skilleval/` 计入静态清单）；`gates:bridge` 全绿。
+- 未跑 80 条模型会话（按 AGENTS §1，跑模型需用户明确同意）；80 场景候选来自已完成的评估表，换入后仍需真实轨迹复核。
+
+## 125. D1 工具位上限 100 → 120（2026-10-21，用户决定）
+
+- 用户决定：广告面工具位上限从 **100 → 120**，schema 字节上限保持 **80,000**。
+- 已同步：`scripts/verify.mjs` 的 `BUDGET`、`test/advertised-surface.test.mjs`、`docs/HANDOFF.md` D1、`README.md` 当前数字。
+- 当前广告面 **100 / 60,264**，留 **20 个工具位 / 19,736 字节**；本轮**没有**新增广告工具，只是放开上限和文档。
+- 历史 FIXES 68 / R14 / FIXES 124 的 100 读数保留；FIXES 124 的 95→100 换血仍是当时的动作，不回改。

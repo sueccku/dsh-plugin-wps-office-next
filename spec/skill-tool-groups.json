@@ -32,7 +32,7 @@
         "wps_excel_open_workbook", "wps_excel_close_workbook", "wps_excel_get_sheet_list",
         "wps_excel_get_sheet_info", "wps_excel_switch_sheet", "wps_excel_create_sheet",
         "wps_excel_rename_sheet", "wps_excel_copy_sheet", "wps_excel_move_sheet",
-        "wps_excel_delete_sheet", "wps_excel_set_sheet_appearance"
+        "wps_excel_delete_sheet", "wps_excel_set_sheet_appearance", "wps_excel_import_csv"
       ]
     },
     {
@@ -83,7 +83,8 @@
         "wps_excel_group_columns", "wps_excel_set_outline_levels", "wps_excel_hide_rows",
         "wps_excel_show_rows", "wps_excel_hide_column", "wps_excel_show_columns",
         "wps_excel_consolidate", "wps_excel_freeze_panes", "wps_excel_set_zoom",
-        "wps_excel_set_named_range", "wps_excel_delete_named_range"
+        "wps_excel_set_named_range", "wps_excel_delete_named_range",
+        "wps_excel_advanced_filter", "wps_excel_add_icon_set"
       ]
     },
     {
@@ -94,7 +95,8 @@
         "wps_excel_set_list_object_totals", "wps_excel_resize_list_object",
         "wps_excel_unlist_list_object", "wps_excel_create_pivot_table",
         "wps_excel_update_pivot_table", "wps_excel_get_pivot_tables",
-        "wps_excel_refresh_pivot_tables", "wps_excel_clear_pivot_table"
+        "wps_excel_refresh_pivot_tables", "wps_excel_clear_pivot_table",
+        "wps_excel_add_pivot_calculated_field", "wps_excel_group_pivot_dates"
       ]
     },
     {
@@ -103,7 +105,8 @@
         "wps_excel_create_chart", "wps_excel_update_chart", "wps_excel_delete_chart",
         "wps_excel_set_chart_labels", "wps_excel_export_chart_as_image",
         "wps_excel_export_range_as_image", "wps_excel_add_sparkline", "wps_excel_clear_sparkline",
-        "wps_excel_insert_excel_image"
+        "wps_excel_insert_excel_image", "wps_excel_get_charts", "wps_excel_set_chart_axis",
+        "wps_excel_add_trendline", "wps_excel_set_series_axis"
       ]
     },
     {
@@ -113,7 +116,9 @@
         "wps_excel_set_sheet_header_footer", "wps_excel_set_print_area",
         "wps_excel_reset_page_breaks", "wps_excel_add_comment", "wps_excel_get_cell_comments",
         "wps_excel_delete_cell_comment", "wps_excel_protect_sheet", "wps_excel_unprotect_sheet",
-        "wps_excel_protect_workbook", "wps_excel_lock_cells"
+        "wps_excel_protect_workbook", "wps_excel_lock_cells", "wps_excel_allow_edit_range",
+        "wps_excel_get_links", "wps_excel_insert_page_break", "wps_excel_disconnect_link",
+        "wps_excel_change_link"
       ]
     }
   ],
@@ -166,6 +171,17 @@
         "wps_word_smart_fill_field", "wps_word_insert_bookmark",
         "wps_word_replace_bookmark_content", "wps_word_add_content_control",
         "wps_word_mail_merge"
+      ]
+    },
+    {
+      "title": "域、选区与保护",
+      "tools": [
+        "wps_word_get_fields", "wps_word_update_fields", "wps_word_select_range",
+        "wps_word_protect", "wps_word_get_protection", "wps_word_insert_caption",
+        "wps_word_set_table_formula", "wps_word_insert_table_of_figures",
+        "wps_word_compare_documents", "wps_word_update_style",
+        "wps_word_set_content_control", "wps_word_resolve_revisions",
+        "wps_word_create_labels", "wps_word_create_envelope"
       ]
     },
     {
@@ -247,6 +263,15 @@
         "wps_ppt_unify_font", "wps_ppt_set_font_color", "wps_ppt_add_master_element",
         "wps_ppt_set_slide_footer", "wps_ppt_add_ppt_hyperlink", "wps_ppt_remove_ppt_hyperlink",
         "wps_ppt_export_slide_as_image"
+      ]
+    },
+    {
+      "title": "隐藏页与字体",
+      "tools": [
+        "wps_ppt_set_slide_hidden", "wps_ppt_get_hidden_slides", "wps_ppt_get_fonts",
+        "wps_ppt_export_notes", "wps_ppt_set_theme_colors", "wps_ppt_set_theme_fonts",
+        "wps_ppt_add_section", "wps_ppt_set_placeholder_lock", "wps_ppt_duplicate_master_layout",
+        "wps_ppt_embed_fonts", "wps_ppt_compress_images", "wps_ppt_export_pdf"
       ]
     }
   ]

@@ -83,7 +83,7 @@ exports.createPresentationHandler = createPresentationHandler;
  */
 exports.openPresentationDefinition = {
     name: 'wps_ppt_open_presentation',
-    description: `打开指定路径的演示文稿文件。
+    description: `打开指定路径的演示文稿文件。默认以只读打开（readOnly=true），防止读来源稿时误改原件；要编辑时显式传 readOnly:false。
 
 支持的文件格式：
 - .pptx: PowerPoint 演示文稿
@@ -101,15 +101,19 @@ exports.openPresentationDefinition = {
                 type: 'string',
                 description: '演示文稿文件的完整路径',
             },
+            readOnly: {
+                type: 'boolean',
+                description: '以只读方式打开（默认 true，安全默认）；要保存改动必须显式传 false。',
+            },
         },
         required: ['path'],
     },
 };
 const openPresentationHandler = async (args) => {
-    const { path } = args;
+    const { path, readOnly } = args;
     try {
         // 桥读的就是 path（FIXES 77 把公开名对齐到桥键），不再重复发送旧别名。
-        const response = await wps_client_1.wpsClient.executeMethod('openPresentation', { path }, wps_1.WpsAppType.PRESENTATION);
+        const response = await wps_client_1.wpsClient.executeMethod('openPresentation', { path, readOnly: readOnly === undefined ? true : readOnly }, wps_1.WpsAppType.PRESENTATION);
         if (response.success && response.data) {
             return {
                 id: (0, uuid_1.v4)(),
@@ -147,7 +151,7 @@ exports.openPresentationHandler = openPresentationHandler;
  */
 exports.closePresentationDefinition = {
     name: 'wps_ppt_close_presentation',
-    description: `关闭演示文稿。可指定文稿名称，不指定则关闭当前活动文稿。
+    description: `关闭演示文稿。可指定文稿名称，不指定则关闭当前活动文稿。默认不保存（save=false），避免批量收尾时回写源稿；要保存改动必须显式传 save:true。
 
 使用场景：
 - "关闭这个PPT"
@@ -163,7 +167,7 @@ exports.closePresentationDefinition = {
             },
             save: {
                 type: 'boolean',
-                description: '关闭前是否保存，默认true',
+                description: '关闭前是否保存，默认 false；要保存改动必须显式传 true',
             },
         },
         required: [],
@@ -174,7 +178,7 @@ const closePresentationHandler = async (args) => {
     try {
         const response = await wps_client_1.wpsClient.executeMethod('closePresentation', {
             name,
-            save: save !== false,
+            save: save === true,
         }, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
             const closed = response.data?.closed ?? name ?? '(当前演示文稿)';

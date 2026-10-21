@@ -1,0 +1,25 @@
+import { ToolDefinition, ToolHandler, RegisteredTool } from '../../types/tools';
+export declare const setSlideHiddenDefinition: ToolDefinition;
+export declare const setSlideHiddenHandler: ToolHandler;
+export declare const getHiddenSlidesDefinition: ToolDefinition;
+export declare const getHiddenSlidesHandler: ToolHandler;
+export declare const getFontsDefinition: ToolDefinition;
+export declare const getFontsHandler: ToolHandler;
+export declare const setThemeColorsDefinition: ToolDefinition;
+export declare const setThemeColorsHandler: ToolHandler;
+export declare const setThemeFontsDefinition: ToolDefinition;
+export declare const setThemeFontsHandler: ToolHandler;
+export declare const addSectionDefinition: ToolDefinition;
+export declare const addSectionHandler: ToolHandler;
+export declare const setPlaceholderLockDefinition: ToolDefinition;
+export declare const setPlaceholderLockHandler: ToolHandler;
+export declare const duplicateMasterLayoutDefinition: ToolDefinition;
+export declare const duplicateMasterLayoutHandler: ToolHandler;
+export declare const embedFontsDefinition: ToolDefinition;
+export declare const embedFontsHandler: ToolHandler;
+export declare const compressImagesDefinition: ToolDefinition;
+export declare const compressImagesHandler: ToolHandler;
+export declare const exportPdfDefinition: ToolDefinition;
+export declare const exportPdfHandler: ToolHandler;
+export declare const pptStructureTools: RegisteredTool[];
+//# sourceMappingURL=structure.d.ts.map

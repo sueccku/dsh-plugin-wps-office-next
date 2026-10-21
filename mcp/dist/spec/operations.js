@@ -14,7 +14,7 @@ exports.operations = [
         "tool": "wps_batch",
         "action": null,
         "app": "common",
-        "summary": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。默认逐项继续（stopOnError=false），整体返回 status: completed/partial/failed 与逐项结果；整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。",
+        "summary": "按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。默认遇到第一个失败就停止（stopOnError=true），整体返回 status: completed/partial/failed 与逐项结果；整体 success 只表示「批处理本身跑完了」，每一项是否生效看 results[].success。",
         "params": {
             "calls": {
                 "type": "array",
@@ -46,7 +46,12 @@ exports.operations = [
             // A4（改进指南 §9 P1）：stopOnError 也在本地生效（不进桥），所以同样标 local。
             "stopOnError": {
                 "type": "boolean",
-                "description": "true 时遇到第一个失败就停止后续调用（默认 false = 逐项继续）。有依赖关系的步骤请用 stopOnError=true 或逐项调用，避免后续步骤落到错误的前置状态上。",
+                "description": "true 时遇到第一个失败就停止后续调用（默认 true）。确有独立步骤要逐项继续时显式传 false。",
+                "kind": "local"
+            },
+            "maxResultChars": {
+                "type": "number",
+                "description": "每项结果最多保留多少字符（默认 2000，范围 200–20000）；超长会标 truncated。",
                 "kind": "local"
             }
         },
@@ -279,7 +284,7 @@ exports.operations = [
         "tool": "wps_help",
         "action": null,
         "app": "common",
-        "summary": "查询未直接广告的工具：无参看分组概览，传 app 或 query 查目录，传 tool 取完整参数 schema",
+        "summary": "查询工具目录与参数 schema：无参看分组概览，传 app 查某应用目录（默认分页 200 条，隐藏工具优先），传 query 搜索，传 tool 取完整参数 schema。",
         "params": {
             "app": {
                 "type": "string",
@@ -288,12 +293,22 @@ exports.operations = [
             },
             "query": {
                 "type": "string",
-                "description": "按名称或描述搜索关键字",
+                "description": "按名称或描述搜索关键字（支持中文场景词，如 题注/文档比较/母版）",
                 "kind": "local"
             },
             "tool": {
                 "type": "string",
                 "description": "工具名，返回完整 inputSchema",
+                "kind": "local"
+            },
+            "offset": {
+                "type": "number",
+                "description": "分页起点（从 0 开始），默认 0",
+                "kind": "local"
+            },
+            "limit": {
+                "type": "number",
+                "description": "本页最多返回几条，默认 200，上限 500",
                 "kind": "local"
             }
         },
@@ -7336,6 +7351,10 @@ exports.operations = [
             "outputPath": {
                 "type": "string",
                 "description": "单文档模式下的保存路径（.docx）；不给则新文档留在内存里，由调用方自己另存"
+            },
+            "imageField": {
+                "type": "string",
+                "description": "图片域列名：该列单元格是图片路径时，占位符处插入图片而不是文本"
             }
         },
         "effect": "write",
@@ -7919,6 +7938,555 @@ exports.operations = [
         "required": [
             "name"
         ],
+        "engine": "bridge"
+    }),
+    // P1（2026-10-19）：Word 域/选区/保护、PPT 隐藏页/字体、Excel 允许编辑区域/外链/分页符
+    (0, types_1.op)({
+        "tool": "wps_word_get_fields",
+        "action": "getDocumentFields",
+        "app": "word",
+        "summary": "列出 Word 文档里的域（PAGE/NUMPAGES/SEQ/TOC/REF 等）",
+        "params": {},
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_update_fields",
+        "action": "updateDocumentFields",
+        "app": "word",
+        "summary": "更新 Word 的域（F9）",
+        "params": {
+            "index": { "type": "number", "description": "只更新第几个域（从1开始）；不填更新全部" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_select_range",
+        "action": "selectDocumentRange",
+        "app": "word",
+        "summary": "把 Word 选区定位到 0 基字符范围",
+        "params": {
+            "start": { "type": "number", "description": "起始字符位置", "required": true },
+            "end": { "type": "number", "description": "结束字符位置（不含）", "required": true }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["start", "end"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_protect",
+        "action": "protectDocument",
+        "app": "word",
+        "summary": "保护/取消保护 Word 文档",
+        "params": {
+            "protect": { "type": "boolean", "description": "true 保护，false 取消保护" },
+            "type": { "type": "string", "enum": ["readOnly", "comments", "revisions", "forms"], "description": "保护类型" },
+            "password": { "type": "string", "description": "保护密码" }
+        },
+        "effect": "write",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_get_protection",
+        "action": "getDocumentProtection",
+        "app": "word",
+        "summary": "读取 Word 文档保护状态",
+        "params": {},
+        "effect": "read",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_set_slide_hidden",
+        "action": "setSlideHidden",
+        "app": "ppt",
+        "summary": "设置/取消幻灯片隐藏",
+        "params": {
+            "slideIndex": { "type": "number", "description": "幻灯片页码（从1开始）", "required": true },
+            "hidden": { "type": "boolean", "description": "true 隐藏，false 显示" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["slideIndex"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_get_hidden_slides",
+        "action": "getHiddenSlides",
+        "app": "ppt",
+        "summary": "列出被隐藏的幻灯片页码",
+        "params": {},
+        "effect": "read",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_get_fonts",
+        "action": "getSlideFonts",
+        "app": "ppt",
+        "summary": "回读幻灯片文字的字体名/字号/加粗/颜色",
+        "params": {
+            "slideIndex": { "type": "number", "description": "只读这一页；不填读全部" }
+        },
+        "effect": "read",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_allow_edit_range",
+        "action": "allowEditRange",
+        "app": "excel",
+        "summary": "在工作表保护之下放行一块可编辑区域",
+        "params": {
+            "range": { "type": "string", "description": "允许编辑的范围", "required": true },
+            "title": { "type": "string", "description": "区域名" },
+            "password": { "type": "string", "description": "编辑密码" },
+            "sheet": { "type": "string", "description": "工作表名称" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["range"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_get_links",
+        "action": "getWorkbookLinks",
+        "app": "excel",
+        "summary": "列出当前工作簿的外部链接源",
+        "params": {},
+        "effect": "read",
+        "advertised": true,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_insert_page_break",
+        "action": "insertPageBreak",
+        "app": "excel",
+        "summary": "在第 row 行上方插入手动分页符",
+        "params": {
+            "row": { "type": "number", "description": "分页符插在第几行上方（从1开始）", "required": true },
+            "sheet": { "type": "string", "description": "工作表名称" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["row"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_insert_caption",
+        "action": "insertCaption",
+        "app": "word",
+        "summary": "在光标/选区处插入题注",
+        "params": {
+            "label": { "type": "string", "description": "题注标签，如 图/表" },
+            "title": { "type": "string", "description": "题注文字" },
+            "position": { "type": "string", "enum": ["above", "below"], "description": "题注位置" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_set_table_formula",
+        "action": "setTableFormula",
+        "app": "word",
+        "summary": "给 Word 表格单元格设置公式",
+        "params": {
+            "table": { "type": "number", "description": "第几张表（从1开始）" },
+            "row": { "type": "number", "description": "行号（从1开始）", "required": true },
+            "column": { "type": "number", "description": "列号（从1开始）", "required": true },
+            "formula": { "type": "string", "description": "公式，如 =SUM(ABOVE)", "required": true }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["row", "column", "formula"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_disconnect_link",
+        "action": "disconnectLink",
+        "app": "excel",
+        "summary": "断开指定外部链接源",
+        "params": {
+            "source": { "type": "string", "description": "外部链接源", "required": true }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["source"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_change_link",
+        "action": "changeLink",
+        "app": "excel",
+        "summary": "把外部链接从旧源改到新源",
+        "params": {
+            "oldSource": { "type": "string", "description": "旧链接源", "required": true },
+            "newSource": { "type": "string", "description": "新链接源", "required": true }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["oldSource", "newSource"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_get_charts",
+        "action": "listCharts",
+        "app": "excel",
+        "summary": "列出工作表里的图表",
+        "params": {
+            "sheet": { "type": "string", "description": "工作表名称" }
+        },
+        "effect": "read",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_insert_table_of_figures",
+        "action": "insertTableOfFigures",
+        "app": "word",
+        "summary": "插入图表目录",
+        "params": {
+            "label": { "type": "string", "description": "题注标签，如 图/表" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_compare_documents",
+        "action": "compareDocuments",
+        "app": "word",
+        "summary": "比较两份已打开的 Word 文档",
+        "params": {
+            "original": { "type": "string", "description": "原始稿文档名", "required": true },
+            "revised": { "type": "string", "description": "修订稿文档名", "required": true }
+        },
+        "effect": "write",
+        "advertised": true,
+        "required": ["original", "revised"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_update_style",
+        "action": "updateStyle",
+        "app": "word",
+        "summary": "修改 Word 样式定义",
+        "params": {
+            "styleName": { "type": "string", "description": "样式名", "required": true },
+            "fontName": { "type": "string", "description": "字体名" },
+            "fontSize": { "type": "number", "description": "字号（磅）" },
+            "bold": { "type": "boolean", "description": "是否加粗" },
+            "color": { "type": "number", "description": "字体颜色（BGR 整数）" },
+            "lineSpacing": { "type": "number", "description": "行距（磅）" },
+            "firstLineIndent": { "type": "number", "description": "首行缩进（磅）" },
+            "spaceBefore": { "type": "number", "description": "段前（磅）" },
+            "spaceAfter": { "type": "number", "description": "段后（磅）" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["styleName"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_set_chart_axis",
+        "action": "setChartAxis",
+        "app": "excel",
+        "summary": "设置图表坐标轴标题/数字格式/最值",
+        "params": {
+            "chartIndex": { "type": "number", "description": "图表序号（从1开始）" },
+            "axis": { "type": "string", "enum": ["category", "value"], "description": "category=横轴，value=纵轴", "required": true },
+            "hasTitle": { "type": "boolean", "description": "是否显示轴标题" },
+            "title": { "type": "string", "description": "轴标题文字" },
+            "numberFormat": { "type": "string", "description": "轴刻度数字格式" },
+            "minimum": { "type": "number", "description": "最小值" },
+            "maximum": { "type": "number", "description": "最大值" },
+            "sheet": { "type": "string", "description": "工作表名称" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["axis"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_export_notes",
+        "action": null,
+        "app": "ppt",
+        "summary": "把全部演讲者备注导出为 text/markdown 文件（本地写文件，不走桥）",
+        "params": {
+            "outputPath": { "type": "string", "description": "输出文件路径", "required": true, "kind": "local" },
+            "format": { "type": "string", "enum": ["markdown", "text"], "description": "markdown 或 text", "kind": "local" }
+        },
+        "effect": "write",
+        "advertised": true,
+        "required": ["outputPath"],
+        "engine": "local"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_set_content_control",
+        "action": "setContentControl",
+        "app": "word",
+        "summary": "按序号/标题/标签填写内容控件",
+        "params": {
+            "index": { "type": "number", "description": "第几个内容控件（从1开始）" },
+            "title": { "type": "string", "description": "按标题查找控件" },
+            "tag": { "type": "string", "description": "按标签查找控件" },
+            "value": { "type": "string", "description": "要填入的文本/下拉项/日期" },
+            "checked": { "type": "boolean", "description": "复选框是否勾选" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_resolve_revisions",
+        "action": "resolveRevisions",
+        "app": "word",
+        "summary": "按作者批量接受/拒绝修订",
+        "params": {
+            "mode": { "type": "string", "enum": ["accept", "reject"], "required": true },
+            "author": { "type": "string", "description": "只处理该作者的修订；不填处理全部" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["mode"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_set_theme_colors",
+        "action": "setThemeColors",
+        "app": "ppt",
+        "summary": "改演示文稿主题配色",
+        "params": {
+            "dark1": { "type": "string" }, "light1": { "type": "string" },
+            "dark2": { "type": "string" }, "light2": { "type": "string" },
+            "accent1": { "type": "string" }, "accent2": { "type": "string" },
+            "accent3": { "type": "string" }, "accent4": { "type": "string" },
+            "accent5": { "type": "string" }, "accent6": { "type": "string" },
+            "hyperlink": { "type": "string" }, "followedHyperlink": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_set_theme_fonts",
+        "action": "setThemeFonts",
+        "app": "ppt",
+        "summary": "改演示文稿主题字体",
+        "params": {
+            "majorFont": { "type": "string" }, "minorFont": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_add_section",
+        "action": "addSection",
+        "app": "ppt",
+        "summary": "在指定页前新增一节",
+        "params": {
+            "beforeSlide": { "type": "number" }, "name": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_add_icon_set",
+        "action": "addIconSet",
+        "app": "excel",
+        "summary": "给区域加图标集条件格式",
+        "params": {
+            "range": { "type": "string", "required": true },
+            "iconSet": { "type": "number" }, "reverse": { "type": "boolean" },
+            "showValue": { "type": "boolean" }, "sheet": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["range"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_add_trendline",
+        "action": "addTrendline",
+        "app": "excel",
+        "summary": "给图表系列加趋势线",
+        "params": {
+            "chartIndex": { "type": "number" }, "seriesIndex": { "type": "number" },
+            "type": { "type": "number" }, "forward": { "type": "number" },
+            "backward": { "type": "number" }, "displayEquation": { "type": "boolean" },
+            "displayRSquared": { "type": "boolean" }, "sheet": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_import_csv",
+        "action": "importCsv",
+        "app": "excel",
+        "summary": "按分隔符/编码导入 CSV",
+        "params": {
+            "path": { "type": "string", "required": true },
+            "delimiter": { "type": "string", "enum": ["comma", "tab"] },
+            "encoding": { "type": "string", "enum": ["utf8", "gbk"] }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["path"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_add_pivot_calculated_field",
+        "action": "addPivotCalculatedField",
+        "app": "excel",
+        "summary": "给透视表加计算字段",
+        "params": {
+            "name": { "type": "string", "required": true },
+            "formula": { "type": "string", "required": true },
+            "pivotTableName": { "type": "string" }, "sheet": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["name", "formula"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_advanced_filter",
+        "action": "advancedFilter",
+        "app": "excel",
+        "summary": "高级筛选（原地或复制）",
+        "params": {
+            "range": { "type": "string", "required": true },
+            "criteriaRange": { "type": "string", "required": true },
+            "action": { "type": "string", "enum": ["inPlace", "copyTo"], "required": true },
+            "copyTo": { "type": "string" }, "unique": { "type": "boolean" },
+            "sheet": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["range", "criteriaRange", "action"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_set_series_axis",
+        "action": "setSeriesAxis",
+        "app": "excel",
+        "summary": "把图表系列改成另一种图型并放到次坐标轴",
+        "params": {
+            "chartIndex": { "type": "number" }, "seriesIndex": { "type": "number" },
+            "chartType": { "type": "number" }, "secondaryAxis": { "type": "boolean" },
+            "sheet": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_create_labels",
+        "action": "createLabelSheet",
+        "app": "word",
+        "summary": "新建标签/席卡版式文档",
+        "params": {
+            "rows": { "type": "number" }, "columns": { "type": "number" },
+            "labelWidth": { "type": "number" }, "labelHeight": { "type": "number" },
+            "margin": { "type": "number" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_word_create_envelope",
+        "action": "createEnvelope",
+        "app": "word",
+        "summary": "新建信封文档",
+        "params": {
+            "width": { "type": "number" }, "height": { "type": "number" },
+            "recipient": { "type": "string" }, "sender": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_set_placeholder_lock",
+        "action": "setPlaceholderLock",
+        "app": "ppt",
+        "summary": "锁定/解锁占位符或形状",
+        "params": {
+            "slideIndex": { "type": "number" }, "shapeIndex": { "type": "number" },
+            "shapeName": { "type": "string" }, "locked": { "type": "boolean", "required": true }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["locked"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_duplicate_master_layout",
+        "action": "duplicateMasterLayout",
+        "app": "ppt",
+        "summary": "复制母版版式",
+        "params": { "layoutIndex": { "type": "number" } },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_embed_fonts",
+        "action": "embedFonts",
+        "app": "ppt",
+        "summary": "另存副本并打开字体嵌入标志",
+        "params": { "outputPath": { "type": "string", "required": true } },
+        "effect": "write",
+        "advertised": false,
+        "required": ["outputPath"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_compress_images",
+        "action": "compressImages",
+        "app": "ppt",
+        "summary": "压缩幻灯片图片",
+        "params": { "quality": { "type": "number" }, "slideIndex": { "type": "number" } },
+        "effect": "write",
+        "advertised": false,
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_ppt_export_pdf",
+        "action": "exportPdf",
+        "app": "ppt",
+        "summary": "导出演示文稿为 PDF",
+        "params": {
+            "outputPath": { "type": "string", "required": true },
+            "width": { "type": "number" }, "height": { "type": "number" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["outputPath"],
+        "engine": "bridge"
+    }),
+    (0, types_1.op)({
+        "tool": "wps_excel_group_pivot_dates",
+        "action": "groupPivotDates",
+        "app": "excel",
+        "summary": "对透视表日期字段自动分组",
+        "params": {
+            "pivotTableName": { "type": "string" }, "field": { "type": "string", "required": true },
+            "sheet": { "type": "string" }
+        },
+        "effect": "write",
+        "advertised": false,
+        "required": ["field"],
         "engine": "bridge"
     }),
 ];

@@ -182,3 +182,10 @@ WPS_OFFICE_FAULT_INJECT="<tool正则>:<mode>[:<count>];..."      # 多条用 ; �
 | 2 | only-word-skill | 不是任务场景；插件目前无条件注册四个技能，没有"只注册一个"的配置项。它要回答的问题已由 §3.2 实测（应用 Skill 单独加载**不会**带出总 Skill） |
 
 #12/#14 原先也在此列，现在用上面的注入开关补齐了。未跑的场景**不计入**"已跑"。
+
+## P2-2：80 场景基准（`scenarios-80.mjs` + `benchmark80.mjs`）
+
+- `scenarios-80.mjs` 从 `docs/scenario-review-270-tools.md` 与 v2 报告抽取 **80** 条真实场景（Excel 28 / Word 21 / PPT 14 / 跨应用 17），每条含 id、标题、应用、提示、确定性轨迹断言与 coreCheck；`ready:false` 表示夹具/真实轨迹尚未落盘。
+- `node test/skilleval/benchmark80.mjs` 是**静态**验收（进 `test:static`）：80 条、唯一 id/key、提示/断言/coreCheck、四类应用齐全。
+- 真跑仍按 `probe.mjs`（需要模型凭据；按 AGENTS §1 先问用户），产物落 `test/.artifacts/skill-eval/`，不入库。
+- 广告面换血计划器：`node test/skilleval/plan-ad-surface.mjs` 读真实轨迹 `metrics.json`，按 R14 阈值（跨 ≥2 轮出现或单轮 ≥5 次）排序隐藏工具；**没有轨迹时明确输出 NO EVIDENCE，不换血、不扩容**。换入还需等量换出并保持 ≤100 工具 / ≤80,000 字节。

@@ -40,6 +40,8 @@ import { chartFlowTools } from './chart-flow';
 import { miscTools } from './misc';
 import { tableTools } from './table';
 import { beautifyAdvancedTools } from './beautify-advanced';
+import { pptStructureTools } from './structure';
+import { pptExportTools } from './export-notes';
 
 /**
  * 所有PPT相关的Tools
@@ -64,6 +66,8 @@ export const pptTools: RegisteredTool[] = [
   ...miscTools,
   ...tableTools,
   ...beautifyAdvancedTools,
+  ...pptStructureTools,
+  ...pptExportTools,
 ];
 
 // 分别导出，方便按需使用

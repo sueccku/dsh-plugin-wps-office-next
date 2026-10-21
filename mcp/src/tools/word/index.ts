@@ -14,6 +14,7 @@ import { proofreadTools } from './proofread';
 import { wordDeepTools } from './deep';
 import { wordProduceTools } from './produce';
 import { wordLongTailTools } from './longtail';
+import { wordStructureTools } from './structure';
 
 /**
  * 所有Word相关的Tools
@@ -38,6 +39,7 @@ export const wordTools: RegisteredTool[] = [
   ...wordDeepTools,
   ...wordProduceTools,
   ...wordLongTailTools,
+  ...wordStructureTools,
 ];
 
 // 分别导出，方便按需使用

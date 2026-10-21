@@ -15,6 +15,8 @@ whenToUse: 用户点名 WPS / 金山办公，或任务依赖 WPS 里当前打开
 - 目标是一个**文件路径**（不管它现在有没有打开）→ 先打开它，不要让用户自己去点。
 - 只要求"产出一份 Office 文件"、不依赖 WPS 的运行状态 → 也可以用宿主的其它能力生成；两条路都行时按用户要求选。
 - 只要答案不依赖真实文档（纯文本推理）→ 不必调用本技能。
+- **范围边界**：PDF 输入/合并/拆分、打印/打印预览、云文档协作、手机端、WPS AI、OLE/活链接、水印、文档属性、媒体/SmartArt、密码解密、宏/VBA 都**不在**本插件能力面内；先说明边界再给替代路径，详见 `references/scope-and-boundaries.md`。
+- **安全默认值**：`open_*` 默认只读、`close_*` 默认不保存、`wps_batch` 默认遇错即停；要改原件/保存必须显式传 `readOnly:false` / `save:true`。
 
 ## 2. 确定任务类型
 
@@ -129,13 +131,16 @@ whenToUse: 用户点名 WPS / 金山办公，或任务依赖 WPS 里当前打开
 | 想了解 | 读哪里 |
 |---|---|
 | 全部工具、按任务分组的索引、直达 / wps_call 标记 | 同目录 `reference.md`（自动生成） |
+| **能力范围、明确不支持、安全默认值** | 同目录 `references/scope-and-boundaries.md` |
+| **80 个真实任务配方（Excel/Word/PPT/跨应用）** | 同目录 `recipes/scenario-playbook.md` |
+| **文件级批量（批量转 PDF/改名/套模板 + 失败清单）** | 同目录 `recipes/batch-files.md` |
 | 共享执行契约（目标、保存、验证、失败分流）细则 | `references/execution-contract.md` |
 | 版本 / 构建相关的异常与限制 | `references/compatibility.md` |
 | 跨应用任务实例 | `recipes/cross-app-report.md` |
 | 各应用流程 | `wps-excel` / `wps-word` / `wps-ppt` 技能 |
 
 <!-- GENERATED:advertised:start -->
-standard 档默认直接广告 **95** 个工具（门面 4 / 通用 4 / 表格 46 / 文字 27 / 演示 14），注册目录共 **270** 个；
+standard 档默认直接广告 **100** 个工具（门面 4 / 通用 4 / 表格 47 / 文字 30 / 演示 15），注册目录共 **310** 个；
 未广告的工具**只能用 `wps_call` 调用**（先用 `wps_help` 取 schema）。
 完整工具表与按任务分组索引见同目录 `reference.md`。
 <!-- GENERATED:advertised:end -->

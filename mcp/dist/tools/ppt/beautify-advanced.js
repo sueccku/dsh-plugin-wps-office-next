@@ -17,13 +17,10 @@ const wps_client_1 = require("../../client/wps-client");
 const wps_1 = require("../../types/wps");
 exports.setBackgroundGradientDefinition = {
     name: 'wps_ppt_set_background_gradient',
-    description: `为幻灯片设置渐变色背景。
+    description: `为幻灯片设置两色渐变背景（WPS 桥实现只支持两色线性渐变）。
 
-渐变配置对象（gradient）属性：
-- type: 渐变类型（linear/radial），默认linear
-- angle: 渐变角度（0-360度），仅linear有效，默认180
-- colors: 渐变颜色数组（如 ["#1a1a2e", "#16213e", "#0f3460"]）
-- stops: 颜色停靠点数组（如 [0, 0.5, 1]），与colors对应
+颜色用 color1/color2（也可放在 gradient:{color1,color2} 里）。
+注意：type/angle/colors/stops 等高级渐变参数当前 WPS 桥不支持，传了会被当成未知参数。
 
 使用场景：
 - "设置蓝色渐变背景"
@@ -37,28 +34,39 @@ exports.setBackgroundGradientDefinition = {
                 type: 'number',
                 description: '幻灯片页码（从1开始）',
             },
+            color1: { type: 'string', description: '起始颜色，如 #1a1a2e' },
+            color2: { type: 'string', description: '结束颜色，如 #0f3460' },
             gradient: {
                 type: 'object',
-                description: '渐变配置对象，包含type（linear/radial）、angle（角度）、colors（颜色数组）、stops（停靠点数组）',
+                description: '兼容写法：{color1:"#xxx",color2:"#xxx"}；桥会把它展平成 color1/color2',
             },
         },
-        required: ['slideIndex', 'gradient'],
+        required: ['slideIndex'],
     },
 };
 const setBackgroundGradientHandler = async (args) => {
-    const { slideIndex, gradient } = args;
+    const { slideIndex, gradient, color1, color2 } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundGradient', { slideIndex, gradient }, wps_1.WpsAppType.PRESENTATION);
+        const params = { slideIndex };
+        if (color1 !== undefined)
+            params.color1 = color1;
+        if (color2 !== undefined)
+            params.color2 = color2;
+        if (gradient !== undefined)
+            params.gradient = gradient;
+        const response = await wps_client_1.wpsClient.executeMethod('setBackgroundGradient', params, wps_1.WpsAppType.PRESENTATION);
         if (response.success) {
-            const gradientType = gradient.type === 'radial' ? '径向渐变' : '线性渐变';
-            const colors = Array.isArray(gradient.colors) ? gradient.colors.join(' → ') : '';
+            const g = gradient;
+            const c1 = color1 ?? g?.color1;
+            const c2 = color2 ?? g?.color2;
+            const colorText = c1 || c2 ? `\n颜色: ${c1 ?? '?'} → ${c2 ?? '?'}` : '';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
                 content: [
                     {
                         type: 'text',
-                        text: `渐变背景设置成功！\n幻灯片: 第 ${slideIndex} 页\n渐变类型: ${gradientType}${gradient.angle ? `\n渐变角度: ${gradient.angle}°` : ''}${colors ? `\n颜色: ${colors}` : ''}`,
+                        text: `渐变背景设置成功！\n幻灯片: 第 ${slideIndex} 页（两色线性渐变）${colorText}`,
                     },
                 ],
             };

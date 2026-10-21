@@ -25,6 +25,8 @@ const missing_halves_1 = require("./missing-halves");
 const list_object_1 = require("./list-object");
 const sheet_settings_1 = require("./sheet-settings");
 const advanced_1 = require("./advanced");
+const guards_1 = require("./guards");
+const analysis_1 = require("./analysis");
 /**
  * 所有Excel相关的Tools
  * 包含：
@@ -60,6 +62,8 @@ exports.excelTools = [
     ...list_object_1.listObjectTools,
     ...sheet_settings_1.sheetSettingsTools,
     ...advanced_1.advancedTools,
+    ...guards_1.excelGuardTools,
+    ...analysis_1.excelAnalysisTools,
 ];
 // 分别导出，方便按需使用
 var formula_2 = require("./formula");

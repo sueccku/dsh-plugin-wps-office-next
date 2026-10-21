@@ -38,7 +38,7 @@
 | 工具 | 在 standard 档 | 说明 |
 |---|---|---|
 | wps_status | 直达 | 查看 WPS 连接状态、当前活动应用与所选工具面；编辑前先调用它 |
-| wps_help | 直达 | 查询未直接广告的工具：无参看分组概览，传 app 或 query 查目录，传 tool 取完整参数 schema |
+| wps_help | 直达 | 查询工具目录与参数 schema：无参看分组概览，传 app 查某应用目录（默认分页 200 条，隐藏工具优先），传 query 搜索，传 tool 取完整参数 schema。 |
 | wps_call | 直达 | 执行任意已注册但未直接广告的 WPS 工具；先用 wps_help 取到工具名与参数 |
 | wps_batch | 直达 | 按顺序批量执行多个 WPS 工具调用，用于跨应用的连续操作；单次最多 50 项。 |
 | wps_convert_to_pdf | 直达 | 将当前文档转换为PDF格式。 |

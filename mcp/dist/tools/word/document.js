@@ -161,7 +161,7 @@ exports.switchDocumentHandler = switchDocumentHandler;
  */
 exports.openDocumentDefinition = {
     name: 'wps_word_open_document',
-    description: `打开指定路径的Word文档。
+    description: `打开指定路径的Word文档。默认以只读打开（readOnly=true），防止读来源文档时误改原件；要编辑时显式传 readOnly:false。
 
 使用场景：
 - "打开桌面上的报告.docx"
@@ -175,12 +175,16 @@ exports.openDocumentDefinition = {
                 type: 'string',
                 description: '要打开的文档文件路径',
             },
+            readOnly: {
+                type: 'boolean',
+                description: '以只读方式打开（默认 true，安全默认）；要保存改动必须显式传 false。',
+            },
         },
         required: ['path'],
     },
 };
 const openDocumentHandler = async (args) => {
-    const { path } = args;
+    const { path, readOnly } = args;
     if (!path || path.trim() === '') {
         return {
             id: (0, uuid_1.v4)(),
@@ -192,6 +196,7 @@ const openDocumentHandler = async (args) => {
     try {
         const params = {
             path: path,
+            readOnly: readOnly === undefined ? true : readOnly,
         };
         const response = await wps_client_1.wpsClient.executeMethod('openDocument', params, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
@@ -238,7 +243,7 @@ exports.getDocumentTextDefinition = {
 - "获取文档的前100个字符"
 - "查看文档从第50到第200个字符的内容"
 
-可指定起始和结束位置来获取部分文本。`,
+可指定起始和结束位置来获取部分文本（0 基字符索引）；默认只回前 10,000 字符，超出会标 truncated。`,
     category: tools_1.ToolCategory.DOCUMENT,
     inputSchema: {
         type: 'object',
@@ -264,16 +269,18 @@ const getDocumentTextHandler = async (args) => {
             params.end = end;
         const response = await wps_client_1.wpsClient.executeMethod('getDocumentText', params, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
+            const d = response.data;
             const rangeInfo = start !== undefined || end !== undefined
-                ? `\n范围: ${start ?? 0} - ${end ?? '末尾'}`
+                ? `\n范围: ${d.start ?? start ?? 0} - ${d.end ?? end ?? '末尾'}`
                 : '';
+            const truncInfo = d.truncated ? `\n注意: 只返回前 ${d.length} 字符（全文 ${d.totalLength ?? '?'} 字符），请用 start/end 分页读取。` : '';
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
                 content: [
                     {
                         type: 'text',
-                        text: `文档文本内容 (${response.data.length}字符)${rangeInfo}:\n\n${response.data.text}`,
+                        text: `文档文本内容 (${d.length}字符${d.totalLength !== undefined ? `，全文 ${d.totalLength} 字符` : ''})${rangeInfo}${truncInfo}:\n\n${d.text}`,
                     },
                 ],
             };
@@ -303,46 +310,56 @@ exports.getDocumentTextHandler = getDocumentTextHandler;
  */
 exports.insertHeaderDefinition = {
     name: 'wps_word_insert_header',
-    description: `设置页眉内容。
+    description: `设置页眉内容（传空 text 可清空）。
 
 使用场景：
 - "给文档加个页眉"
 - "设置页眉为公司名称"
-- "修改第2节的页眉"`,
+- "修改第2节的页眉"
+- "删掉页眉"（text:""）`,
     category: tools_1.ToolCategory.DOCUMENT,
     inputSchema: {
         type: 'object',
         properties: {
             text: {
                 type: 'string',
-                description: '页眉文本内容',
+                description: '页眉文本内容；传空字符串表示清空页眉',
             },
             section: {
                 type: 'number',
                 description: '节编号（从1开始），默认1',
                 default: 1,
             },
+            alignment: {
+                type: 'string',
+                enum: ['left', 'center', 'right'],
+                description: '页眉对齐方式；不传则保持原样',
+            },
+            firstPageDifferent: { type: 'boolean', description: '首页页眉是否不同' },
+            oddEvenDifferent: { type: 'boolean', description: '奇偶页页眉是否不同' },
+            linkToPrevious: { type: 'boolean', description: '是否链接到前一条页眉（false=断开）' },
         },
-        required: ['text'],
+        required: [],
     },
 };
 const insertHeaderHandler = async (args) => {
-    const { text, section = 1 } = args;
-    if (!text) {
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: '页眉文本不能为空！' }],
-            error: '页眉文本为空',
-        };
-    }
+    const { text, section = 1, alignment, firstPageDifferent, oddEvenDifferent, linkToPrevious } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertHeader', { text, section }, wps_1.WpsAppType.WRITER);
+        const params = { text: text ?? '', section };
+        if (alignment !== undefined)
+            params.alignment = alignment;
+        if (firstPageDifferent !== undefined)
+            params.firstPageDifferent = firstPageDifferent;
+        if (oddEvenDifferent !== undefined)
+            params.oddEvenDifferent = oddEvenDifferent;
+        if (linkToPrevious !== undefined)
+            params.linkToPrevious = linkToPrevious;
+        const response = await wps_client_1.wpsClient.executeMethod('insertHeader', params, wps_1.WpsAppType.WRITER);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [{ type: 'text', text: `页眉已设置: "${text}" (第${section}节)` }],
+                content: [{ type: 'text', text: text ? `页眉已设置: "${text}" (第${section}节)` : `页眉已清空 (第${section}节)` }],
             };
         }
         else {
@@ -370,7 +387,7 @@ exports.insertHeaderHandler = insertHeaderHandler;
  */
 exports.insertFooterDefinition = {
     name: 'wps_word_insert_footer',
-    description: `设置页脚内容。
+    description: `设置页脚内容（传空 text 可清空；includePageNumber 可同时插入页码域）。
 
 使用场景：
 - "给文档加个页脚"
@@ -382,34 +399,49 @@ exports.insertFooterDefinition = {
         properties: {
             text: {
                 type: 'string',
-                description: '页脚文本内容',
+                description: '页脚文本内容；传空字符串表示清空页脚',
             },
             section: {
                 type: 'number',
                 description: '节编号（从1开始），默认1',
                 default: 1,
             },
+            alignment: {
+                type: 'string',
+                enum: ['left', 'center', 'right'],
+                description: '页脚对齐方式；不传则保持原样',
+            },
+            includePageNumber: {
+                type: 'boolean',
+                description: '是否在页脚追加 PAGE 域（第 X 页）',
+            },
+            firstPageDifferent: { type: 'boolean', description: '首页页脚是否不同' },
+            oddEvenDifferent: { type: 'boolean', description: '奇偶页页脚是否不同' },
+            linkToPrevious: { type: 'boolean', description: '是否链接到前一条页脚（false=断开）' },
         },
-        required: ['text'],
+        required: [],
     },
 };
 const insertFooterHandler = async (args) => {
-    const { text, section = 1 } = args;
-    if (!text) {
-        return {
-            id: (0, uuid_1.v4)(),
-            success: false,
-            content: [{ type: 'text', text: '页脚文本不能为空！' }],
-            error: '页脚文本为空',
-        };
-    }
+    const { text, section = 1, alignment, includePageNumber, firstPageDifferent, oddEvenDifferent, linkToPrevious } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertFooter', { text, section }, wps_1.WpsAppType.WRITER);
+        const params = { text: text ?? '', section };
+        if (alignment !== undefined)
+            params.alignment = alignment;
+        if (includePageNumber !== undefined)
+            params.includePageNumber = includePageNumber;
+        if (firstPageDifferent !== undefined)
+            params.firstPageDifferent = firstPageDifferent;
+        if (oddEvenDifferent !== undefined)
+            params.oddEvenDifferent = oddEvenDifferent;
+        if (linkToPrevious !== undefined)
+            params.linkToPrevious = linkToPrevious;
+        const response = await wps_client_1.wpsClient.executeMethod('insertFooter', params, wps_1.WpsAppType.WRITER);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [{ type: 'text', text: `页脚已设置: "${text}" (第${section}节)` }],
+                content: [{ type: 'text', text: text ? `页脚已设置: "${text}" (第${section}节)` : `页脚已清空 (第${section}节)` }],
             };
         }
         else {
@@ -604,7 +636,7 @@ exports.createDocumentHandler = createDocumentHandler;
  */
 exports.closeDocumentDefinition = {
     name: 'wps_word_close_document',
-    description: `关闭 Word 文档，可选是否保存。
+    description: `关闭 Word 文档。默认不保存（save=false），避免批量收尾时回写源文档；要保存改动必须显式传 save:true。
 
 使用场景：
 - "关掉这个文档，别留着"
@@ -616,14 +648,14 @@ exports.closeDocumentDefinition = {
         type: 'object',
         properties: {
             name: { type: 'string', description: '要关闭的文档名称；不填则关闭当前活动文档' },
-            save: { type: 'boolean', description: '是否保存后关闭，默认 true' },
+            save: { type: 'boolean', description: '是否保存后关闭，默认 false；要保存改动必须显式传 true' },
         },
     },
 };
 const closeDocumentHandler = async (args) => {
     const { name, save } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('closeDocument', { name, save }, wps_1.WpsAppType.WRITER);
+        const response = await wps_client_1.wpsClient.executeMethod('closeDocument', { name, save: save === true }, wps_1.WpsAppType.WRITER);
         if (response.success && response.data) {
             const d = response.data;
             const lines = [`文档已关闭: ${d.closed}（${d.saved ? '已保存' : '未保存'}）`];

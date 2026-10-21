@@ -21,6 +21,8 @@ import { missingHalfTools } from './missing-halves';
 import { listObjectTools } from './list-object';
 import { sheetSettingsTools } from './sheet-settings';
 import { advancedTools } from './advanced';
+import { excelGuardTools } from './guards';
+import { excelAnalysisTools } from './analysis';
 
 /**
  * 所有Excel相关的Tools
@@ -57,6 +59,8 @@ export const excelTools: RegisteredTool[] = [
   ...listObjectTools,
   ...sheetSettingsTools,
   ...advancedTools,
+  ...excelGuardTools,
+  ...excelAnalysisTools,
 ];
 
 // 分别导出，方便按需使用

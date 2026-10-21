@@ -292,26 +292,36 @@ exports.findReplaceHandler = findReplaceHandler;
  */
 exports.insertTableDefinition = {
     name: 'wps_word_insert_table',
-    description: '在Word文档光标位置插入表格',
+    description: '在Word文档光标位置插入表格。可一次带 data 写入（二维数组），避免插空表后逐格 set_table_cell。',
     category: tools_1.ToolCategory.DOCUMENT,
     inputSchema: {
         type: 'object',
         properties: {
-            rows: { type: 'number', description: '表格行数' },
-            cols: { type: 'number', description: '表格列数' },
+            rows: { type: 'number', description: '表格行数；给了 data 可省略' },
+            cols: { type: 'number', description: '表格列数；给了 data 可省略' },
+            data: {
+                type: 'array',
+                description: '二维数组数据，如 [["姓名","年龄"],["张三",30]]；行/列数会自动取 data 的形状',
+                items: { type: 'array', items: { type: ['string', 'number', 'boolean'] } },
+            },
         },
-        required: ['rows', 'cols'],
+        required: [],
     },
 };
 const insertTableHandler = async (args) => {
-    const { rows, cols } = args;
+    const { rows: rowsArg, cols: colsArg, data } = args;
+    const rows = Math.max(1, Math.floor(rowsArg ?? data?.length ?? 3));
+    const cols = Math.max(1, Math.floor(colsArg ?? data?.[0]?.length ?? 3));
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertTable', { rows, cols }, wps_1.WpsAppType.WRITER);
+        const params = { rows, cols };
+        if (Array.isArray(data))
+            params.data = data;
+        const response = await wps_client_1.wpsClient.executeMethod('insertTable', params, wps_1.WpsAppType.WRITER);
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),
                 success: true,
-                content: [{ type: 'text', text: `已插入 ${rows}×${cols} 表格` }],
+                content: [{ type: 'text', text: `已插入 ${rows}×${cols} 表格${Array.isArray(data) ? '（含数据）' : ''}` }],
             };
         }
         return {
