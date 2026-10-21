@@ -308,8 +308,8 @@ dsh plugin --profile web remove dsh-plugin-wps-office-next
 | 档位 | 工具数 | schema 字节 | 约 tokens | 内容 |
 |---|---|---|---|---|
 | minimal | 4 | 1,994 | 570 | 仅 4 个门面工具 |
-| **standard（默认）** | **100** | **60,264** | **≈17,218** | 门面 + 96 个精选工具 |
-| full | 310 | 193,077 | 54,628 | 全量，保留完整描述 |
+| **standard（默认）** | **100** | **60,351** | **≈17,243** | 门面 + 96 个精选工具 |
+| full | 310 | 193,153 | 55,186 | 全量，保留完整描述 |
 
 注册目录 **310** 个工具：Excel 132 / Word 75 / PPT 89 / 通用 14（含门面）。
 
@@ -399,7 +399,7 @@ node scripts\e2e.mjs --profile <name>    # 一键端到端验收（含进程卫�
 node scripts\accept-install.mjs          # 全新 profile 安装验收（装一遍再拆掉）
 ```
 
-当前数字：测试 **1777 项（最近一次整轮）/ 65 个文件**（P1 新增 `p1-surface` 54 项静态，P2 新增 `benchmark80` 8 项静态；整轮读数仍是 2026-10-18 的 64 文件）**+ `verify` 28 项（23 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 100 工具 / 60,264 字节（内部预算上限 120 / 80,000）；注册工具 310、桥 action 304，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **65** 个测试文件（P1/P2 新增 2 个静态测试）。
+当前数字：测试 **1841 项 / 65 个文件**（最近一次整轮全绿，2026-10-21；P1 新增 `p1-surface` 54 项静态，P2 新增 `benchmark80` 8 项静态）**+ `verify` 28 项（23 项静态 + 5 项需 WPS）+ spec 复现 16 项**；广告面 100 工具 / 60,351 字节（内部预算上限 120 / 80,000）；注册工具 310、桥 action 304，与注册表三方一致；参数契约 259 对，四类静默失效均为 0。目录现有 **65** 个测试文件（P1/P2 新增 2 个静态测试）。
 
 `.github/workflows/ci.yml`（GitHub Actions，windows-latest）只调用 **`npm run gates:ci`**（=`gates:release` 那一组），跑同一批不需要 WPS 的静态门禁（tsc/生成物对账、lint、verify --static、参数契约、spec 复现、`test:static` 的 17 个 WPS-free 文件、打包冒烟、文档数字对账）；清单与顺序只在 `scripts/run-gates.mjs` 维护。需要真实 WPS 的测试与一键 e2e 留在本机。
 

@@ -1630,8 +1630,11 @@ switch ($Action) {
     }
 
     "save" {
+        # P0 收口：多应用同时打开时，"save" 不能永远先命中 Excel。可选 appType 指定目标；
+        # 不传时保持旧的 Excel→Word→PPT 顺序（兼容），但显式 appType 会跳过其它应用。
+        $want = if ($p.appType) { ([string]$p.appType).ToLower() } else { "" }
         $excel = Get-WpsExcel
-        if ($null -ne $excel -and $null -ne $excel.ActiveWorkbook) {
+        if (($want -eq "" -or $want -eq "excel") -and $null -ne $excel -and $null -ne $excel.ActiveWorkbook) {
             $wb = $excel.ActiveWorkbook
             # 未落盘的对象不能 Save：弹出的「另存为」框实测不受 DisplayAlerts 控制（FIXES 70），
             # 而 Excel 会静默写到「文档」目录——两种都不该发生，所以直接拒绝并让调用方走 save_as。
@@ -1642,7 +1645,7 @@ switch ($Action) {
             exit
         }
         $word = Get-WpsWord
-        if ($null -ne $word -and $null -ne $word.ActiveDocument) {
+        if (($want -eq "" -or $want -eq "word") -and $null -ne $word -and $null -ne $word.ActiveDocument) {
             $doc = Get-ActiveWordDocument $word
             if (-not (Test-WpsHasDiskPath $doc)) { Output-Json @{ success = $false; error = "这个文档还没有保存过，调用「保存」会弹出「另存为」对话框把会话卡住；请先用 wps_common_save_as 指定路径。" }; exit }
             $prevAlerts = Set-WpsAlertsSuppressed $word 'word'
@@ -1651,7 +1654,7 @@ switch ($Action) {
             exit
         }
         $ppt = Get-WpsPpt
-        if ($null -ne $ppt -and $null -ne $ppt.ActivePresentation) {
+        if (($want -eq "" -or $want -eq "ppt") -and $null -ne $ppt -and $null -ne $ppt.ActivePresentation) {
             $pres = $ppt.ActivePresentation
             if (-not (Test-WpsHasDiskPath $pres)) { Output-Json @{ success = $false; error = "这个演示文稿还没有保存过，调用「保存」会弹出「另存为」对话框把会话卡住；请先用 wps_common_save_as 指定路径。" }; exit }
             $prevAlerts = Set-WpsAlertsSuppressed $ppt 'ppt'
@@ -6884,10 +6887,17 @@ switch ($Action) {
         }
         $index = if ($p.index) { $p.index } else { $p.slideIndex }
         if (-not $index) { $index = 1 }
-        $slide = $pres.Slides.Item($index)
+        $slide = $null
+        try {
+            if ([int]$index -ge 1 -and [int]$index -le [int]$pres.Slides.Count) { $slide = $pres.Slides.Item([int]$index) }
+        } catch { Add-WpsWarning ("读取幻灯片备注目标失败：" + $_.Exception.Message) }
+        if ($null -eq $slide) {
+            Output-Json @{ success = $true; data = @{ slideIndex = [int]$index; notes = ""; hasNotes = $false } }
+            exit
+        }
         $notes = ""
-        try { $notes = $slide.NotesPage.Shapes.Item(2).TextFrame.TextRange.Text } catch { $notes = "" }
-        Output-Json @{ success = $true; data = @{ slideIndex = $index; notes = $notes; hasNotes = ($notes.Trim().Length -gt 0) } }
+        try { $notes = [string]$slide.NotesPage.Shapes.Item(2).TextFrame.TextRange.Text } catch { $notes = "" }
+        Output-Json @{ success = $true; data = @{ slideIndex = [int]$index; notes = $notes; hasNotes = ($notes.Trim().Length -gt 0) } }
     }
 
     "setSlideNotes" {
@@ -8553,7 +8563,7 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ count = $links.Count; links = $links } }
     }
 
-    "insertPageBreak" {
+    "insertExcelPageBreak" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = Get-WorksheetByParam $excel $p

@@ -38,7 +38,7 @@ check('it fails fast, not after the 60s timeout', wholeColumn.ms < 20000, wholeC
 
 await call('wps_excel_write_range', { range: 'A1:C2', data: [[1, 2, 3], [4, 5, 6]] });
 const small = await call('wps_excel_read_range', { range: 'A1:C2' });
-check('a small range still reads back', !small.isErr && /2行 x 3列/.test(small.text), small.text.slice(0, 90));
+check('a small range still reads back', !small.isErr && /2\s*行\s*x\s*3\s*列/.test(small.text), small.text.slice(0, 90));
 check('and keeps the 2D shape after the preallocation change', /1 \| 2 \| 3/.test(small.text) && /4 \| 5 \| 6/.test(small.text), small.text.slice(0, 140));
 
 // ---- per-cell budget (clean_data) --------------------------------------------------------------------
@@ -60,7 +60,7 @@ await call('wps_excel_create_workbook', {});
 await call('wps_excel_write_range', { range: 'A1:D1', data: [['a', 'b', 'c', 'd']] });
 const ins = await call('wps_excel_insert_columns', { column: 'B', count: 2 });
 const shifted = await call('wps_excel_read_range', { range: 'A1:F1' });
-check('inserting two columns reports and performs one span insert', !ins.isErr && /1行 x 6列/.test(shifted.text), ins.text.slice(0, 70) + ' | ' + shifted.text.slice(0, 90));
+check('inserting two columns reports and performs one span insert', !ins.isErr && /1\s*行\s*x\s*6\s*列/.test(shifted.text), ins.text.slice(0, 70) + ' | ' + shifted.text.slice(0, 90));
 check('the data really shifted right by two', /\| b \| c \| d/.test(shifted.text), shifted.text.slice(0, 140));
 await call('wps_excel_close_workbook', { save: false });
 

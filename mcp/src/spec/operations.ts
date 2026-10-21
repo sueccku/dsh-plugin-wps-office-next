@@ -123,8 +123,10 @@ export const operations: OperationSpec[] = [
     "tool": "wps_common_save",
     "action": "save",
     "app": "common",
-    "summary": "保存当前文档。\n\n使用场景：\n- \"保存一下\"\n- \"Ctrl+S\"\n- \"把修改存起来\"\n\n特点：\n- 自动保存当前活动文档\n- 如果文档从未保存过，可能会提示选择保存路径",
-    "params": {},
+    "summary": "保存当前文档。多应用同时打开时用 appType 指定目标（word/excel/ppt）；不传保持旧的 Excel→Word→PPT 顺序。",
+    "params": {
+      "appType": { "type": "string", "enum": ["word", "excel", "ppt"], "description": "指定保存哪个应用；不填按 Excel→Word→PPT 顺序找活动对象" }
+    },
     "effect": "lifecycle",
     "advertised": true,
     "required": [],
@@ -8064,7 +8066,7 @@ export const operations: OperationSpec[] = [
   }),
   op({
     "tool": "wps_excel_insert_page_break",
-    "action": "insertPageBreak",
+    "action": "insertExcelPageBreak",
     "app": "excel",
     "summary": "在第 row 行上方插入手动分页符",
     "params": {

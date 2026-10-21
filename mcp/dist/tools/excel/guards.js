@@ -75,7 +75,7 @@ exports.insertPageBreakDefinition = {
 const insertPageBreakHandler = async (args) => {
     const { row, sheet } = args;
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('insertPageBreak', { row, sheet }, wps_1.WpsAppType.SPREADSHEET);
+        const response = await wps_client_1.wpsClient.executeMethod('insertExcelPageBreak', { row, sheet }, wps_1.WpsAppType.SPREADSHEET);
         if (!response.success)
             return { id: (0, uuid_1.v4)(), success: false, content: [{ type: 'text', text: `插入分页符失败: ${response.error}` }], error: response.error };
         return { id: (0, uuid_1.v4)(), success: true, content: [{ type: 'text', text: `已在第 ${response.data?.row} 行插入分页符` }] };

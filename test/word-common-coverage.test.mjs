@@ -190,8 +190,10 @@ for (const [name, args, expect] of MATRIX) {
 }
 
 // save only once the document has a real path, otherwise a Save As dialog would wedge WPS.
-if (ok(saved)) check("common_save (document already has a path)", ok(await call("wps_common_save", {})), "");
-else check("common_save skipped (save_as failed, avoiding a modal Save As)", true, "save_as did not succeed");
+if (ok(saved)) {
+  const cs = await call("wps_common_save", { appType: "word" });
+  check("common_save (document already has a path)", ok(cs), text(cs).replace(/\s+/g, " ").slice(0, 180));
+} else check("common_save skipped (save_as failed, avoiding a modal Save As)", true, "save_as did not succeed: " + text(saved).replace(/\s+/g, " ").slice(0, 180));
 
 // ---- 独立 oracle：把文档重新存一份，读**文件本身** ----
 const WD = resolvePath("test/.artifacts/wordcov-final.docx");

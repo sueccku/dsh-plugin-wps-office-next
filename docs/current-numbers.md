@@ -7,13 +7,13 @@
 | 项 | 值 | 来源 |
 | --- | --- | --- |
 | 广告面工具 | **100 / 310** | spec/advertised.json + spec/tool-definitions.json |
-| 广告面 schema 字节 | **60,264（≈17,218 tokens）** | 真实 tools/list 载荷 |
+| 广告面 schema 字节 | **60,351（≈17,243 tokens）** | 真实 tools/list 载荷 |
 | minimal 档 | **4 工具 / 1,994 字节** | 同上 |
-| full 档 | **310 工具 / 193,077 字节** | 同上 |
+| full 档 | **310 工具 / 193,153 字节** | 同上 |
 | 桥 action | **304** | mcp/scripts/wps-com.ps1 的 case 块（与 verify.mjs 同口径） |
-| 其中带键表 | **301** | host/wps-actions.ps1 键表 |
-| 桥参数键 | **1145** | 同上 |
-| 带键表的 action | **301** | spec/action-keys.json |
+| 其中带键表 | **302** | host/wps-actions.ps1 键表 |
+| 桥参数键 | **1147** | 同上 |
+| 带键表的 action | **302** | spec/action-keys.json |
 | 未工具化 action | **2（getActivePresentation / getActiveWorkbook）** | 键表 − spec |
 | 测试文件 | **65** | test/*.test.mjs |
 
@@ -27,18 +27,18 @@
 | README badge advertised | 100 | 100 | ✅ |
 | README badge registered | 310 | 310 | ✅ |
 | README standard tools | 100 | 100 | ✅ |
-| README standard bytes | 60264 | 60264 | ✅ |
-| README standard tokens | 17218 | 17218 | ✅ |
+| README standard bytes | 60351 | 60351 | ✅ |
+| README standard tokens | 17243 | 17243 | ✅ |
 | README minimal tools | 4 | 4 | ✅ |
 | README minimal bytes | 1994 | 1994 | ✅ |
 | README full tools | 310 | 310 | ✅ |
-| README full bytes | 193077 | 193077 | ✅ |
+| README full bytes | 193153 | 193153 | ✅ |
 | README install guide advertisedTools | 100 | 100 | ✅ |
 | README status sample advertisedTools | 100 | 100 | ✅ |
 | README detail summary | 100 | 100 | ✅ |
 | README registered catalogue | 310 | 310 | ✅ |
 | README current advertised | 100 | 100 | ✅ |
-| README current bytes | 60264 | 60264 | ✅ |
+| README current bytes | 60351 | 60351 | ✅ |
 | HANDOFF advertised | 100 | 100 | ✅ |
 
 > 与测试计数有关的那几条声明只在**本机存在 `test/summary.json`** 时核对，**不属于 CI 核对范围**；

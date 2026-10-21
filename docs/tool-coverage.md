@@ -29,7 +29,7 @@
 | `wps_common_get_app_info` | 通用 | `getAppInfo` |  | bespoke | word-common-coverage.test.mjs |
 | `wps_common_get_selected_text` | 通用 | `getSelectedText` |  | bespoke | word-common-coverage.test.mjs |
 | `wps_common_ping` | 通用 | `ping` |  | bespoke | error-contract.test.mjs, open-safety.test.mjs |
-| `wps_common_save` | 通用 | `save` | ✅ | bespoke | cell-format.test.mjs, excel-advanced.test.mjs, excel-contract-fixes.test.mjs, +22 |
+| `wps_common_save` | 通用 | — | ✅ | bespoke | cell-format.test.mjs, excel-advanced.test.mjs, excel-contract-fixes.test.mjs, +22 |
 | `wps_common_save_as` | 通用 | `saveAs` | ✅ | bespoke | cell-format.test.mjs, excel-advanced.test.mjs, excel-contract-fixes.test.mjs, +22 |
 | `wps_common_set_selected_text` | 通用 | `setSelectedText` |  | bespoke | word-common-coverage.test.mjs |
 | `wps_common_wire_check` | 通用 | `wireCheck` |  | bespoke | word-common-coverage.test.mjs |
@@ -108,7 +108,7 @@
 | `wps_excel_import_csv` | Excel | `importCsv` |  | bespoke | p1-surface.test.mjs |
 | `wps_excel_insert_columns` | Excel | `insertColumns` |  | bespoke | excel-coverage.test.mjs, merged-tools.test.mjs, range-limits.test.mjs |
 | `wps_excel_insert_excel_image` | Excel | `insertExcelImage` |  | bespoke | excel-contract-fixes.test.mjs, range-limits.test.mjs |
-| `wps_excel_insert_page_break` | Excel | `insertPageBreak` |  | bespoke | p1-surface.test.mjs |
+| `wps_excel_insert_page_break` | Excel | `insertExcelPageBreak` |  | bespoke | p1-surface.test.mjs |
 | `wps_excel_insert_rows` | Excel | `insertRows` |  | bespoke | excel-coverage.test.mjs, merged-tools.test.mjs |
 | `wps_excel_lock_cells` | Excel | `lockCells` |  | bespoke | excel-coverage.test.mjs |
 | `wps_excel_merge_cells` | Excel | `mergeCells` |  | bespoke | advertised-surface.test.mjs, excel-coverage.test.mjs |
@@ -339,10 +339,11 @@
 
 无——310 个工具都至少被一个测试或 e2e 在代码里点到（注释不算）。
 
-## 解析不出桥 action 的工具（28）
+## 解析不出桥 action 的工具（29）
 
 - `wps_batch`
 - `wps_call`
+- `wps_common_save`
 - `wps_excel_add_icon_set`
 - `wps_excel_add_pivot_calculated_field`
 - `wps_excel_add_trendline`

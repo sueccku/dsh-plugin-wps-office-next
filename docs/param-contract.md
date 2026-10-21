@@ -9,14 +9,14 @@ its own switch in `scripts/build-host-actions.ps1`). No COM call is made.
 | metric | count |
 | --- | --- |
 | tools in the full catalog | 310 |
-| tool/action pairs checked | 281 |
+| tool/action pairs checked | 280 |
 | **A. handler sends a parameter the bridge never reads** | **0** |
 | B. schema advertises a parameter the handler never uses | 0 |
 | **C. nested object carries a property the action never reads** | **0** |
 | **D. pass-through handler advertises a parameter the bridge never reads** | **0** |
 | actions with no key table (guard skipped) | 1 |
-| handlers whose arguments are not statically readable | 23 |
-| of those, still covered by the D check below | 22 |
+| handlers whose arguments are not statically readable | 24 |
+| of those, still covered by the D check below | 23 |
 
 ## A. Sent by the tool, never read by the bridge
 
@@ -47,6 +47,7 @@ Only an entry with no action name has no coverage at all.
 | tool | reason |
 | --- | --- |
 | `wps_excel_set_cell_format` | bridge has no key table for `setCellFormat` |
+| `wps_common_save` | argument object not statically readable |
 | `wps_excel_add_icon_set` | argument object not statically readable |
 | `wps_excel_add_trendline` | argument object not statically readable |
 | `wps_excel_add_pivot_calculated_field` | argument object not statically readable |

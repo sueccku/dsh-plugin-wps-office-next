@@ -95,12 +95,12 @@ node scripts\gen-numbers.mjs          # 再用新计数刷新 docs/current-numbe
 
 | 指标 | 现值 | 权威来源 |
 | --- | --- | --- |
-| 注册工具 / 广告面 | **310 / 100**（广告面 **60,264 字节**，预算上限 80,000） | [current-numbers.md](current-numbers.md) |
+| 注册工具 / 广告面 | **310 / 100**（广告面 **60,351 字节**，预算上限 120 / 80,000） | [current-numbers.md](current-numbers.md) |
 | 桥 action / 参数契约 | **304 / 259 对**（A/B/C/D 四类静默失效均为 0） | 同上 |
-| 测试 | **1777 项（历史整轮，2026-10-18）/ 65 个文件**（P1 新增 `p1-surface` 54 项静态，P2 新增 `benchmark80` 8 项静态） | `test/summary.json` |
-| FIXES | 1～124 | [FIXES.md](FIXES.md) |
+| 测试 | **1841 项 / 65 个文件（2026-10-21 整轮全绿）**（P1 新增 `p1-surface` 54 项静态，P2 新增 `benchmark80` 8 项静态） | `test/summary.json` |
+| FIXES | 1～126 | [FIXES.md](FIXES.md) |
 
-> 当前广告面 **100 个**（60,264 字节 / 上限 80,000）；工具位上限 **120**，当前留 20 个位。
+> 当前广告面 **100 个**（60,351 字节 / 上限 120 / 80,000）；工具位上限 **120**，当前留 20 个位。
 
 > `confirm-dialog` 那条曾长期红：看门狗把**全机**的 Qt 窗口（本机是微信）当成 WPS 弹框，属测试口径问题、不是代码缺陷。
 > **已修（FIXES 92 / P1）**：先做基线，只报新增窗口。
@@ -152,7 +152,7 @@ L1（71 个弱断言 → 0）、L2/L9（英文样式名 / `set_active_target`）
 
 ### 3.2 长期决策（不要再翻案）
 
-- **D1 广告预算**：对外工具 ≤ **120 个**、schema ≤ **80,000 字节**（2026-09-30 第三次上抬 100/60,000，FIXES 68；**2026-10-21 用户决定把字节上限放宽到 80,000、工具上限 100 → 120**；当前用量 **100 / 60,264** —— 见 [current-numbers.md](current-numbers.md)）。
+- **D1 广告预算**：对外工具 ≤ **120 个**、schema ≤ **80,000 字节**（2026-09-30 第三次上抬 100/60,000，FIXES 68；**2026-10-21 用户决定把字节上限放宽到 80,000、工具上限 100 → 120**；当前用量 **100 / 60,351** —— 见 [current-numbers.md](current-numbers.md)）。
 - **D2 Word 长尾**：全都要（不做减法）。
 - **D3 PPT 收敛**：**删** 媒体 / SmartArt / 讲义 / 3D 族 / 美化族；**保留** 版式 / 主题 / 尺寸 / 母版 / 节。
 - **D4 废弃名处理**：~~18 个旧工具名保留一个周期作为 dispatch 别名~~ —— **已被 v0.5.0 线决策推翻**（18 个废弃名与其别名表已清掉，`ALIAS_DEBT = 0`，FIXES 77）；12 个 builtin 的删除照旧。
@@ -325,10 +325,10 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 | --- | --- | --- |
 | 注册动作 | **304** | `scripts/verify.mjs` 的 `EXPECTED_ACTIONS` |
 | 对外工具 | **100**（96 curated + 4 facade） | `mcp/src/server/toolset.ts` + `spec/advertised.json` |
-| 广告面字节 | **60,264** / 上限 80,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
-| 全量 schema | 193,077 字节（310 工具） | 同上 |
+| 广告面字节 | **60,351** / 上限 80,000 | `node scripts/gen-numbers.mjs`（真实 tools/list 载荷） |
+| 全量 schema | 193,153 字节（310 工具） | 同上 |
 | 预算 | `{ maxTools: 120, maxSchemaBytes: 80000 }` | `scripts/verify.mjs` |
-| 测试 | **1777 断言 / 64 个测试文件**（口径见下方注；FIXES 89 +90、FIXES 90 +4、FIXES 91 发版审计 +3、FIXES 106 +1、2026-10-10 去重回归 +13、FIXES 114 +16 与新增的 `mcp-node` 文件、FIXES 115 +19（`arg-shape-nested`）） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
+| 测试 | **1841 断言 / 65 个测试文件**（口径见下方注；含 P1 `p1-surface`、P2 `benchmark80`） | `test/*.test.mjs`（S3–S9 后 595 → 816，P2 +19，FIXES 65/66 +7，P3 +14，FIXES 80–83 +8；静态点名的 `check(` 与运行时合计不是一回事，差额来自循环内断言） |
 | e2e | 29 项检查，约 2–4 分钟（含归属记录一项） | `scripts/e2e.mjs` |
 | 账本 | `ALIAS_DEBT = 0`、`UNTOOLED_ACTIONS = 2`（只剩 `getActivePresentation` / `getActiveWorkbook`，故意留着） | `test/spec-reproduction.test.mjs` |
 | 参数契约 | **259** 对（A/B/C/D 四类均为 0，未解析 5） | `scripts/param-contract.mjs` |
@@ -337,7 +337,7 @@ surface 出来的 `action` 还是 `null`」，而且门禁只在 `spec-reproduct
 按能力域：Excel 132 / Word 75 / PPT 89 / 通用 9 / 内置 5（含 4 个门面 + 转换）＝ 注册 310。
 
 > **「断言数」的口径说明（2026-10-04 重写）**：上表那个数**不再靠推算** —— 它就是 `scripts/run-tests.ps1` 跑完
-> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（FIXES 92 之后整轮首次全绿；当前读数 **1777 = 1777 通过 + 0 失败 / 64 个文件**，2026-10-18）。
+> 每个文件后把各自打印的 `PASS/FAIL` 汇总、写进 `test/summary.json` 的**运行时合计**（当前读数 **1841 = 1841 通过 + 0 失败 / 65 个文件**，2026-10-21）。
 > 想刷新：跑一次整轮，再 `node scripts/gen-numbers.mjs`。
 > **这一行不再写进 `docs/current-numbers.md`**（2026-10-10）：断言数只有跑过整轮才算得出来，写进入库快照
 > 会让 CI 的 `--check` 在干净检出上永远 drift。它现在只在本机的 `test/summary.json` /

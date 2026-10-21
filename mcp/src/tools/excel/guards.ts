@@ -83,7 +83,7 @@ export const insertPageBreakHandler: ToolHandler = async (args: Record<string, u
   const { row, sheet } = args as { row: number; sheet?: string };
   try {
     const response = await wpsClient.executeMethod<{ row: number }>(
-      'insertPageBreak', { row, sheet }, WpsAppType.SPREADSHEET
+      'insertExcelPageBreak', { row, sheet }, WpsAppType.SPREADSHEET
     );
     if (!response.success) return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入分页符失败: ${response.error}` }], error: response.error };
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `已在第 ${response.data?.row} 行插入分页符` }] };

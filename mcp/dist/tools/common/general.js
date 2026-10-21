@@ -24,26 +24,19 @@ const wps_client_1 = require("../../client/wps-client");
 // ============================================================
 exports.saveDefinition = {
     name: 'wps_common_save',
-    description: `保存当前文档。
-
-使用场景：
-- "保存一下"
-- "Ctrl+S"
-- "把修改存起来"
-
-特点：
-- 自动保存当前活动文档
-- 如果文档从未保存过，可能会提示选择保存路径`,
+    description: `保存当前文档。多应用同时打开时用 appType 指定目标（word/excel/ppt）；不传保持旧的 Excel→Word→PPT 顺序。`,
     category: tools_1.ToolCategory.COMMON,
     inputSchema: {
         type: 'object',
-        properties: {},
+        properties: {
+            appType: { type: 'string', enum: ['word', 'excel', 'ppt'], description: '指定保存哪个应用；不填按 Excel→Word→PPT 顺序找活动对象' },
+        },
         required: [],
     },
 };
-const saveHandler = async (_args) => {
+const saveHandler = async (args) => {
     try {
-        const response = await wps_client_1.wpsClient.executeMethod('save', {});
+        const response = await wps_client_1.wpsClient.executeMethod('save', args.appType ? { appType: args.appType } : {});
         if (response.success) {
             return {
                 id: (0, uuid_1.v4)(),

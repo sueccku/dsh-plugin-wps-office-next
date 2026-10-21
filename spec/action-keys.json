@@ -2,7 +2,9 @@
  "getAppInfo": [],
  "getSelectedText": [],
  "ping": [],
- "save": [],
+ "save": [
+  "appType"
+ ],
  "saveAs": [
   "format",
   "outputPath"
@@ -1101,10 +1103,7 @@
   "width"
  ],
  "insertIndex": [],
- "insertPageBreak": [
-  "row",
-  "sheet"
- ],
+ "insertPageBreak": [],
  "insertPageNumbers": [
   "alignment",
   "includeTotal",
@@ -1263,6 +1262,10 @@
   "title"
  ],
  "getWorkbookLinks": [],
+ "insertExcelPageBreak": [
+  "row",
+  "sheet"
+ ],
  "insertCaption": [
   "label",
   "position",

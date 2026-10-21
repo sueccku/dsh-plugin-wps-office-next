@@ -148,6 +148,7 @@
 | 123 | P1 剩余 6 项收口（2026-10-21）：Word 标签/信封/图片域、PPT 占位符锁定/母版版式/字体嵌入/图片压缩/PDF 导出、Excel 日期分组 |
 | 124 | P2 收口（2026-10-21）：文件级批量配方 + 80 场景基准 + 广告面换血（95→100） |
 | 125 | D1 工具位上限 100 → 120（2026-10-21，用户决定） |
+| 126 | 全量回归修出的 3 个问题（2026-10-21）：Word 分页符被 Excel action 顶掉、`save` 误存 Excel、测试对新默认值过期 |
 <!-- FIXES-INDEX:END -->
 
 ## 已修复
@@ -4849,3 +4850,16 @@ horizontalAlignment / verticalAlignment / wrapText —— **漏了 `numberFormat
 - 已同步：`scripts/verify.mjs` 的 `BUDGET`、`test/advertised-surface.test.mjs`、`docs/HANDOFF.md` D1、`README.md` 当前数字。
 - 当前广告面 **100 / 60,264**，留 **20 个工具位 / 19,736 字节**；本轮**没有**新增广告工具，只是放开上限和文档。
 - 历史 FIXES 68 / R14 / FIXES 124 的 100 读数保留；FIXES 124 的 95→100 换血仍是当时的动作，不回改。
+
+## 126. 全量回归修出的 3 个问题（2026-10-21）：Word 分页符被 Excel action 顶掉、`save` 误存 Excel、测试对新默认值过期
+
+**背景**：P0/P1 收口后第一次整轮（65 文件）在 `file-ops` / `ppt-coverage` / `range-limits` / `word-common-coverage` 共 7 项红。修复后整轮 **1841/1841 / 65 文件全绿**（2026-10-21）。
+
+1. **action 重名（真实缺陷）**：P1 给 Excel 加了 `"insertPageBreak"`，与 Word 已有的 `"insertPageBreak"` 在同一个 switch 里重名；PowerShell 后者覆盖前者，`wps_word_insert_page_break` 实际跑 Excel 分支（没有 Excel 活动工作簿时失败）。Excel action 改名 **`insertExcelPageBreak`**，工具/operations 同步；Word 的 `insertPageBreak` 保留。
+2. **`wps_common_save` 在多应用同时打开时永远先命中 Excel（真实缺陷）**：Word 文档已落盘，但 Excel 还开着未落盘工作簿时，`save` 先拒绝 Excel，Word 保存失败。`wps_common_save` 增加可选 `appType`（word/excel/ppt），显式指定时跳过其它应用；不传仍保持旧顺序（兼容）。回归测试 `word-common-coverage` 显式传 `appType:"word"`。
+3. **测试对新默认值过期（测试缺陷）**：
+   - `file-ops` 的 save_as 拒绝用例未清理上一轮目录、且未显式 `createDirs:false`；现在先删目录、显式 false 拒绝，再断言默认 true 会建目录。
+   - `range-limits` 仍按旧文案 `2行 x 3列` 匹配；P0 输出带空格，改为 `2\s*行\s*x\s*3\s*列`（两条）。
+   - `ppt-coverage` 的 `get_slide_notes` 在空/异常 NotesPage 上抛 null；桥动作加 slide 存在性检查，空页返回空备注而不是报错。
+
+**验证**：`scripts\run-tests.ps1` **PASS=1841 FAIL=0 FILES=65**，`ALL TEST FILES GREEN`，`test/summary.json` 更新为 1841/65；`gates:release` 随后重跑。
